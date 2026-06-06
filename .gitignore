@@ -1,13 +1,23 @@
+# Rust
 /target
 Cargo.lock
+
+# Python
 __pycache__/
 *.so
 *.pyd
 .venv/
 dist/
 
+# macOS
+.DS_Store
+**/.DS_Store
+
 # LaTeX: keep .tex and the compiled .pdf; ignore the local tectonic binary + aux
 writeup/tectonic
 writeup/*.aux
 writeup/*.log
 writeup/*.out
+writeup/*.synctex.gz
+writeup/*.fls
+writeup/*.fdb_latexmk

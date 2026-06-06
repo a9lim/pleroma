@@ -249,8 +249,18 @@ likewise small — but these are *not* elementary-abelian 2-groups, so they do n
 coordinatise as `F₂^k` and the quadric question doesn't even apply; and the one
 that does, `⋆ ↦ ℤ/2`, has a rank-0 (linear) P-set. So no genuine quadric P-set
 turns up among the tame games — consistent with tame ≈ linear. A *wild* quotient
-of shape `(ℤ/2)^k`, `k ≥ 2`, with Arf-rank ≥ 2 is what would be needed; the
-instrument is ready to test one.
+of shape `(ℤ/2)^k`, `k ≥ 2`, with Arf-rank ≥ 2 is what would be needed.
+
+*The octal hunt (`examples/octal_hunt.rs`).* `octal_misere_quotient` extends the
+computer to octal games (heap-multiset positions, splitting moves and all). The
+hunt sweeps 292 octal codes (length ≤ 3, `d₁` odd, heaps to 4 — 876 bounded
+quotients) for that closing shape. Clean **negative**: the misère-quotient orders
+that occur are `2, 6, 10, 12, 14` — *no power of 2 above 2 appears at all*, so no
+`(ℤ/2)^{k≥2}` arises, and there are no quadric P-sets. The only
+elementary-abelian-2 quotient in range is `ℤ/2` (a linear P-set); the wild ones
+(orders 6/10/12/14) are not 2-groups. So the quadric P-set, if it exists, does not
+come from an elementary-2-abelian octal misère quotient in this range — the open
+question survives the hunt, now with the search scope on record.
 
 *Interactive route (`kernel.rs`, `examples/interactive_kernel.rs`).* A
 retrograde Win/Loss/Draw solver for any finite game graph (the P-positions are the

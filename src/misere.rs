@@ -169,22 +169,14 @@ pub struct Quotient {
     pub class_is_p: Vec<bool>,
 }
 
-/// Compute the bounded misère quotient of `game` over the generating `atoms`,
-/// distinguishing elements (sums up to `elem_bound`) by their outcomes against
-/// tests (sums up to `test_bound`).
-pub fn misere_quotient(
-    game: &AbstractGame,
-    atoms: &[usize],
-    elem_bound: usize,
-    test_bound: usize,
+/// Build a quotient from `elements` and a `tests` set, given an `outcome`
+/// function (`true` = N) on atom-multisets. `outcome` carries its own memo. Two
+/// elements share a class iff `outcome(G+T)` agrees for every test `T`.
+fn build_quotient(
+    elements: Vec<Vec<usize>>,
+    tests: &[Vec<usize>],
+    mut outcome: impl FnMut(&[usize]) -> bool,
 ) -> Quotient {
-    let mut atoms_sorted = atoms.to_vec();
-    atoms_sorted.sort_unstable();
-    let elements = multisets(&atoms_sorted, elem_bound);
-    let tests = multisets(&atoms_sorted, test_bound);
-    let mut memo: HashMap<Vec<usize>, bool> = HashMap::new();
-
-    // signature(G) = outcomes of G+T across all tests T
     let signatures: Vec<Vec<bool>> = elements
         .iter()
         .map(|g| {
@@ -193,7 +185,7 @@ pub fn misere_quotient(
                 .map(|t| {
                     let mut gt = g.clone();
                     gt.extend_from_slice(t);
-                    game.misere_outcome(&gt, &mut memo)
+                    outcome(&gt)
                 })
                 .collect()
         })
@@ -212,10 +204,7 @@ pub fn misere_quotient(
             }
         }
     }
-    let class_is_p: Vec<bool> = class_rep
-        .iter()
-        .map(|r| !game.misere_outcome(r, &mut memo))
-        .collect();
+    let class_is_p: Vec<bool> = class_rep.iter().map(|r| !outcome(r)).collect();
 
     Quotient {
         num_classes: uniq.len(),
@@ -224,6 +213,93 @@ pub fn misere_quotient(
         class_rep,
         class_is_p,
     }
+}
+
+/// Compute the bounded misère quotient of `game` over the generating `atoms`,
+/// distinguishing elements (sums up to `elem_bound`) by their outcomes against
+/// tests (sums up to `test_bound`).
+pub fn misere_quotient(
+    game: &AbstractGame,
+    atoms: &[usize],
+    elem_bound: usize,
+    test_bound: usize,
+) -> Quotient {
+    let mut atoms_sorted = atoms.to_vec();
+    atoms_sorted.sort_unstable();
+    let elements = multisets(&atoms_sorted, elem_bound);
+    let tests = multisets(&atoms_sorted, test_bound);
+    let mut memo: HashMap<Vec<usize>, bool> = HashMap::new();
+    build_quotient(elements, &tests, |g| game.misere_outcome(g, &mut memo))
+}
+
+// ---------------------------------------------------------------------------
+// Octal games — the wild hunting ground for a quadric P-set
+// ---------------------------------------------------------------------------
+
+/// Moves of an octal game `0.d₁d₂…` (`code[k-1] = dₖ`) on a heap-multiset. From a
+/// heap of size n, remove k tokens (1 ≤ k ≤ n): leaving the heap empty needs
+/// `dₖ & 1`; leaving one nonempty heap `n−k` needs `dₖ & 2`; splitting `n−k` into
+/// two nonempty heaps needs `dₖ & 4`. (Nim is `0.333…`, Dawson's chess `0.137`.)
+pub fn octal_moves(code: &[u8], pos: &[u32]) -> Vec<Vec<u32>> {
+    let mut out = Vec::new();
+    for idx in 0..pos.len() {
+        let n = pos[idx];
+        let base: Vec<u32> = pos
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| i != idx)
+            .map(|(_, &h)| h)
+            .collect();
+        for k in 1..=n {
+            let d = *code.get((k - 1) as usize).unwrap_or(&0);
+            let rem = n - k;
+            if rem == 0 {
+                if d & 1 != 0 {
+                    let mut p = base.clone();
+                    p.sort_unstable();
+                    out.push(p);
+                }
+            } else {
+                if d & 2 != 0 {
+                    let mut p = base.clone();
+                    p.push(rem);
+                    p.sort_unstable();
+                    out.push(p);
+                }
+                if d & 4 != 0 {
+                    for a in 1..=rem / 2 {
+                        let mut p = base.clone();
+                        p.push(a);
+                        p.push(rem - a);
+                        p.sort_unstable();
+                        out.push(p);
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The bounded misère quotient of an octal game, over single heaps of size
+/// `1..=max_heap` as atoms (a heap-multiset is a sum). Splitting moves are handled
+/// (a heap can become two), so the position type is the heap-multiset itself.
+pub fn octal_misere_quotient(
+    code: &[u8],
+    max_heap: usize,
+    elem_bound: usize,
+    test_bound: usize,
+) -> Quotient {
+    let atoms: Vec<usize> = (1..=max_heap).collect();
+    let elements = multisets(&atoms, elem_bound);
+    let tests = multisets(&atoms, test_bound);
+    let mut memo: HashMap<Vec<u32>, bool> = HashMap::new();
+    let moves = |p: &Vec<u32>| octal_moves(code, p);
+    build_quotient(elements, &tests, |g| {
+        let mut pos: Vec<u32> = g.iter().map(|&x| x as u32).collect();
+        pos.sort_unstable();
+        misere_is_n(&pos, &moves, &mut memo)
+    })
 }
 
 #[cfg(test)]
@@ -274,6 +350,38 @@ mod tests {
         assert_eq!(two, empty_class);
         // exactly one P-class (the win-bias is a single coset)
         assert_eq!(q.class_is_p.iter().filter(|&&p| p).count(), 1);
+    }
+
+    #[test]
+    fn octal_nim_matches_misere_nim() {
+        // 0.333… is Nim: octal moves' misère outcomes match Bouton's theorem.
+        let code = [3u8, 3, 3, 3];
+        let mut memo: HashMap<Vec<u32>, bool> = HashMap::new();
+        for heaps in [
+            vec![1u32],
+            vec![1, 1],
+            vec![2],
+            vec![2, 1],
+            vec![3, 2, 1],
+            vec![2, 2],
+            vec![3, 3],
+        ] {
+            let mut h = heaps.clone();
+            h.sort_unstable();
+            let is_n = misere_is_n(&h, &|p| octal_moves(&code, p), &mut memo);
+            assert_eq!(
+                is_n,
+                !misere_nim_p_predicted(&heaps),
+                "octal Nim ≠ Bouton at {heaps:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn octal_star_quotient_is_z2() {
+        // Nim restricted to heaps of size 1 (just ⋆) ⇒ the ℤ/2 quotient again.
+        let q = octal_misere_quotient(&[3, 3, 3], 1, 5, 3);
+        assert_eq!(q.num_classes, 2);
     }
 
     #[test]

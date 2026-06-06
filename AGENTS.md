@@ -66,9 +66,10 @@ src/
                 # (retrograde analysis); P-positions = Loss. The interactive-route
                 # instrument for the open question.
   misere.rs     # misère-play outcomes (misere_is_n/_is_p) for any finite
-                # impartial game; misère Nim vs Bouton's theorem; plus the bounded
-                # indistinguishability quotient (misere_quotient). The non-linear
-                # (misère) route to the open question.
+                # impartial game; misère Nim vs Bouton's theorem; the bounded
+                # indistinguishability quotient (misere_quotient); and octal games
+                # (octal_moves, octal_misere_quotient). The non-linear (misère)
+                # route to the open question.
   partizan.rs   # short partizan games (sum/neg/order/birthday/is_number) + the
                 # exterior algebra of the GAME group: Λ over ℤ on game
                 # generators (Clifford-adjacent structure living on all of
@@ -82,6 +83,8 @@ src/
 examples/tour.rs   # cargo run --example tour   (Rust-only demo)
 examples/misere_quotient.rs    # misère quotients + the quadric test on P-sets
 examples/interactive_kernel.rs # B-coupled interactive games vs {Q=0}
+examples/octal_hunt.rs         # sweep octal games for a (ℤ/2)^k quadric P-set
+                               # (cargo run --release --example octal_hunt)
 demo.py            # the same tour from Python
 experiments/       # research probes ON TOP of the shipped lib: Arf of Gold
                    # forms, the game-built synthesis, the Arf win-bias,

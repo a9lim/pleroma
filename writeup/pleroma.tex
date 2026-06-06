@@ -44,10 +44,15 @@ $\Tr(x^{1+2^a})$ are \emph{composites of combinatorial-game operations}; and
 (iii) the framing of the Arf invariant as a \emph{win-bias}: by Dickson's
 democratic-value theorem it is exactly the sign of the majority margin of the
 form's zero-set, which we confirm on the game-built forms. We close with a sharp
-open question: is there a \emph{natural} game whose $P$-positions are such a
-form's zero set? The classical results we lean on (the Arf--Clifford
-correspondence, Dickson's theorem, the Gold-function ranks, and
-Turning-Corners~$=$~nim-multiplication) are reproduced by the tool as
+open question---is there a \emph{natural} game whose $P$-positions are such a
+form's zero set?---and narrow it with two computational probes: an
+interactive-game kernel solver and a (bounded) misère indistinguishability-quotient
+computer. These pin the obstruction to the polar form, separate a tautological
+``solution'' (a rule that references $Q$ itself) from a genuine one, and, via a
+sweep of $292$ octal games, rule out the one misère-quotient shape that could
+host such a zero set as a quadric in the range searched. The classical results we
+lean on (the Arf--Clifford correspondence, Dickson's theorem, the Gold-function
+ranks, and Turning-Corners~$=$~nim-multiplication) are reproduced by the tool as
 validation, not claimed as new.
 \end{abstract}
 
@@ -241,34 +246,126 @@ On the game-built forms, the Arf invariant equals the win-bias in the counting
 sense: it is the sign of the majority margin of the zero-set.
 \end{observation}
 
-\section{What remains open}
+\section{What remains open, and how far we narrowed it}
 
 The bridge closes at the level of \emph{construction} (Observation~\ref{obs:built})
 and of \emph{counting} (the Arf invariant is the zero-set bias). What is not
 established is a \emph{realisation}: a natural game whose $P$-positions are
 $\{v:Q(v)=0\}$. The obstruction is structural and informative.
 
-\begin{remark}
+\begin{remark}\label{rem:linear}
 Normal-play disjunctive sums cannot do it. Their outcomes are $\oplus$-linear in
 the components (Sprague--Grundy), so a $P$-position set is always a linear
 subspace, never a genuine quadric. This is exactly why coin-turning yields the
 \emph{bilinear} nim-product but not a quadratic refinement.
 \end{remark}
 
-\begin{question}
-Is there a natural, necessarily non-disjunctive game whose $P$-positions are the
-zero set of a Gold form $Q_a$ (equivalently, whose win-bias is read off by
-$\Arf(Q_a)$)? Two candidate families avoid the linearity obstruction:
-\emph{interactive} coin-turning / lights-out games coupled through the polar form
-$b$, and \emph{misère} play, where sums are genuinely non-linear and quadratic
-structure can live in a misère quotient~\cite{WW}. We are not aware of either in
-the literature; Welter's game, the deepest relative, lands in the representation
-theory of symmetric groups~\cite{Irie18} rather than in Arf invariants.
+\paragraph{The obstruction is exactly the polar form.}
+In characteristic $2$, $Q(u+v)=Q(u)+Q(v)+B(u,v)$, so for $u,v$ already in the
+zero set ($Q(u)=Q(v)=0$),
+\[
+  u+v \in \{Q=0\} \iff B(u,v)=0.
+\]
+The failure of the candidate $P$-set to be a subspace is therefore measured,
+term for term, by the polar form $B$---and $B$ is the \emph{game-realizable}
+nim-product / coin-turning (Tartan) form. We confirm this concretely: the polar
+form of a Gold form, $B(e_i,e_j)=\Tr\!\bigl(e_i\nimmul e_j^{2^a}\oplus e_j\nimmul
+e_i^{2^a}\bigr)$, is reproduced exactly from literal Turning-Corners products on
+the bit basis. So of the three layers a $P$-position game would need---the
+\emph{linear} part (Grundy/$\oplus$), the \emph{bilinear} coupling $B$, and a
+\emph{quadratic} play rule---the first two are already built from games; the open
+piece is precisely a play rule that reads out $Q$ rather than $B$.
+
+\paragraph{A test bench.}
+To interrogate any candidate, \texttt{pleroma} solves over $\F_2$ whether a set
+$S\subseteq\F_2^k$ is the zero set of \emph{some} quadratic form (constant,
+linear, and quadratic terms, by Gaussian elimination), returning its Arf
+invariant and---crucially---whether it is a \emph{genuine} quadric (nonzero polar
+rank) or a mere affine flat. As a sanity check it finds exactly $2^7$ of the
+$2^8$ subsets of $\F_2^3$ to be quadrics. Every $P$-set below is classified by
+this routine.
+
+\paragraph{Two routes.}
+Remark~\ref{rem:linear} leaves two escapes. \emph{Misère} play first: misère sums
+are genuinely non-linear---the misère-Nim $P$-set is not $\{\oplus=0\}$, not even
+a coset (Bouton~\cite{Bouton}), clearing the bar normal play fails---and quadratic
+structure could live in a misère quotient~\cite{PS,WW}. We implement a bounded
+indistinguishability-quotient computer (verified to return $\star\mapsto\mathbb{Z}/2$);
+the $\F_2$-quadric question applies only when the quotient is an elementary abelian
+$2$-group $(\mathbb{Z}/2)^k$. \emph{Interactive} play second: a retrograde
+Win/Loss/Draw kernel solver for arbitrary finite game graphs lets us test any
+non-disjunctive move rule. Two findings sharpen the question rather than answer it.
+First, \emph{existence is trivial}: a hand-built acyclic game has $P$-set exactly
+$\{Q=0\}$, so the question was never about existence but about a \emph{natural}
+rule. Second, among uniform terminating rules on $\F_2^m$, the rule ``move iff you
+flip $Q$'' does reproduce $\{Q=0\}$---but only by referencing $Q$ in the move
+legality, i.e.\ tautologically; the rules coupled through the legitimate
+combinatorial datum $B$ do \emph{not} (a $B$-coupled descent gives an affine
+subspace, a single-bit $B$-gated turn a \emph{different} quadric).
+
+\paragraph{A hunt over octal games.}
+The one quotient shape that could host a quadric $P$-set is $(\mathbb{Z}/2)^k$
+with $k\ge 2$ and Arf-rank $\ge 2$. We swept $292$ octal codes (length $\le 3$,
+$d_1$ odd, heaps to $4$; $876$ bounded misère quotients in all), classifying each
+$(\mathbb{Z}/2)^k$ $P$-set with the test bench. The result is a clean negative
+(Table~\ref{tab:hunt}): the misère-quotient orders that occur are
+$2,6,10,12,14$---\emph{no power of $2$ above $2$ appears at all}, so no
+$(\mathbb{Z}/2)^{k\ge2}$ arises, and there are no quadric $P$-sets.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{rr}
+\toprule
+misère-quotient order & \# codes$\times$cutoffs \\
+\midrule
+$2$  & $432$ \\
+$6$  & $433$ \\
+$10$ & $6$ \\
+$12$ & $2$ \\
+$14$ & $3$ \\
+\bottomrule
+\end{tabular}
+\caption{Bounded misère-quotient orders over $292$ octal games (each at heap
+cutoffs $1..k$, $k=2,3,4$). The only elementary-abelian-$2$ quotient is
+$\mathbb{Z}/2$ (order $2$, a linear $P$-set); the wild quotients have orders
+$6,10,12,14$, never $4,8,16$. No genuine quadric $P$-set occurs.}
+\label{tab:hunt}
+\end{table}
+
+\begin{observation}
+Among the octal games searched, the only elementary abelian $2$-group misère
+quotient is $\mathbb{Z}/2$, whose $P$-set is linear; the wild quotients are not
+$2$-groups. The quadric $P$-set, if it exists, does not arise from an
+elementary-$2$-abelian octal misère quotient in this range.
+\end{observation}
+
+\begin{question}[sharpened]
+Is there a game whose moves are built from the combinatorial data---the polar
+form $B$ / coin-turning---\emph{alone, not from $Q$ itself}---whose $P$-set
+(kernel, or misère-quotient $P$-portion) is the Gold quadric $\{Q=0\}$?
+Referencing $Q$ is tautological; referencing only $B$ does not (yet) integrate up
+to $Q$; and no $(\mathbb{Z}/2)^{k\ge2}$ misère quotient---the only shape that
+could carry such a $P$-set as a quadric---appears among the octal games searched.
 \end{question}
 
-A candidate must hit the win-bias of Table~\ref{tab:bias}; \texttt{pleroma}
-makes that target computable. The source, tests, and the three experiments
-underlying Tables~\ref{tab:gold} and~\ref{tab:bias} are available at
+A candidate must hit the win-bias of Table~\ref{tab:bias}, and now also clear the
+test bench above. The deepest relative, Welter's game, lands in the
+representation theory of symmetric groups~\cite{Irie18} rather than in Arf
+invariants.
+
+\paragraph{Beyond the open thread.}
+The library has also grown into a fuller Clifford engine: a characteristic-$0$
+classifier (the companion to the Arf invariant, returning $\Cl(p,q)$ as a matrix
+algebra over $\mathbb{R}$, $\mathbb{C}$, or $\mathbb{H}$ by $8$-fold periodicity);
+general-bilinear-form (quantum-Clifford) products; the Witt group
+$W_q(\F_{2^m})\cong\mathbb{Z}/2$; the Dickson invariant (the characteristic-$2$
+determinant, with $\mathrm{SO}=\ker D$); and the exterior algebra of the game
+\emph{group} over $\mathbb{Z}$---the one Clifford-adjacent structure that lives on
+\emph{all} of game-world, non-numbers ($\star$, $\uparrow$) included, since it
+needs only a module and not the (nonexistent) game product. These round out the
+engine; the open thread above remains its sharpest point.
+
+The source, tests, and the experiments underlying all tables are available at
 \url{https://github.com/a9lim/pleroma}.
 
 \section*{Acknowledgements}
@@ -281,6 +378,8 @@ verification are the author's.
 \bibitem{Arf41} C.~Arf, \emph{Untersuchungen \"uber quadratische Formen in
 K\"orpern der Charakteristik~2, I}, J.\ Reine Angew.\ Math.\ \textbf{183}
 (1941), 148--167.
+\bibitem{Bouton} C.~L.~Bouton, \emph{Nim, a game with a complete mathematical
+theory}, Ann.\ of Math.\ \textbf{3} (1901/02), 35--39.
 \bibitem{WW} E.~R.~Berlekamp, J.~H.~Conway, R.~K.~Guy, \emph{Winning Ways for
 Your Mathematical Plays}, 2nd ed., A~K Peters, 2001--2004.
 \bibitem{Conway76} J.~H.~Conway, \emph{On Numbers and Games}, Academic Press,
@@ -298,6 +397,8 @@ University Press, 1997.
 \bibitem{Ovsienko16} V.~Ovsienko, \emph{Real Clifford algebras and quadratic
 forms over $\F_2$: two old problems become one}, The Mathematical Intelligencer
 \textbf{38} (2016); arXiv:1601.07664.
+\bibitem{PS} T.~E.~Plambeck, A.~N.~Siegel, \emph{Misère quotients for impartial
+games}, J.\ Combin.\ Theory Ser.\ A \textbf{115} (2008), 593--622.
 \end{thebibliography}
 
 \end{document}

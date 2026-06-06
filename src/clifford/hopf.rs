@@ -83,7 +83,7 @@ pub fn antipode<S: Scalar>(alg: &CliffordAlgebra<S>, mv: &Multivector<S>) -> Mul
 mod tests {
     use super::*;
     use crate::clifford::{grade, Metric};
-    use crate::nimber::Nimber;
+    use crate::scalar::Nimber;
     use crate::scalar::Rational;
 
     fn r(n: i128) -> Rational {

@@ -33,7 +33,7 @@ The payoff: Bertram, Kervaire et al. / the survey *"Real Clifford algebras and
 quadratic forms over F₂: two old problems become one"* (arXiv:1601.07664) prove
 that the classification of (real) Clifford algebras **is** the classification of
 F₂ quadratic forms, with the Arf invariant complete. So computing the Arf
-invariant of a nim-Clifford form (see `src/arf.rs`, `pl.arf_invariant`) is not a
+invariant of a nim-Clifford form (see `src/forms/char2.rs`, `pl.arf_invariant`) is not a
 toy — it returns the isomorphism class of the char-2 Clifford algebra.
 
 `A ⊕ A ≅ H ⊕ H` (two anisotropic planes ≅ two hyperbolic planes) is the
@@ -113,7 +113,7 @@ Findings:
 
 ## Chasing the bridge: the Gold form is game-built
 
-`src/games.rs` implements nim-multiplication a second way — Conway's
+`src/games/coin_turning.rs` implements nim-multiplication a second way — Conway's
 Turning-Corners excludant recurrence,
 `x ⊗ y = mex{(i⊗y) ⊕ (x⊗j) ⊕ (i⊗j) : i<x, j<y}` — which is the *game*
 definition of the product. It agrees with the algebraic Fermat-power `nim_mul`
@@ -202,7 +202,7 @@ instrument.
 
 ### Both next steps, built
 
-*Tartan side — the bilinear layer is game-built.* `games.rs` now carries general
+*Tartan side — the bilinear layer is game-built.* `games/coin_turning.rs` now carries general
 1-D coin-turning games (companion-set encoding, `grundy_1d`) and the 2-D Tartan
 product (`tartan_grundy`), with the **Tartan/Product theorem verified**
 (`tartan_grundy = nim-product of the component Grundy values`), recovering Turning
@@ -213,7 +213,7 @@ reproduced *exactly* by Turning-Corners products and the trace — so the obstru
 three layers (linear Grundy, bilinear `B`) are now realized in code from actual
 games.
 
-*Misère side — the non-linearity bar is cleared.* `misere.rs` is a memoised
+*Misère side — the non-linearity bar is cleared.* `games/misere.rs` is a memoised
 misère-outcome evaluator for any finite impartial game, with misère Nim checked
 against Bouton's theorem. The point it nails down: the misère P-set is **not**
 `{⊕ = 0}` — `[1]` has nim-sum 1 yet is a P-position, `[1,1]` has nim-sum 0 yet is
@@ -241,7 +241,7 @@ quadratic (nonzero polar-rank) or a mere affine flat. (Sanity: it finds exactly
 `2^7` of the `2^8` subsets of F₂³ are quadrics.) So any candidate game's P-set can
 be classified: not-a-quadric / linear / genuine quadric-with-Arf.
 
-*Misère route (`misere.rs`, `examples/misere_quotient.rs`).* A bounded
+*Misère route (`games/misere.rs`, `examples/misere_quotient.rs`).* A bounded
 indistinguishability-quotient computer (Plambeck–Siegel) over an abstract
 impartial game; verified to give `⋆ ↦ ℤ/2`. Applied to small games it finds:
 misère Nim heaps {1,2} has the order-6 quotient (matching the literature), {1,2,3}
@@ -262,7 +262,7 @@ elementary-abelian-2 quotient in range is `ℤ/2` (a linear P-set); the wild one
 come from an elementary-2-abelian octal misère quotient in this range — the open
 question survives the hunt, now with the search scope on record.
 
-*Interactive route (`kernel.rs`, `examples/interactive_kernel.rs`).* A
+*Interactive route (`games/kernel.rs`, `examples/interactive_kernel.rs`).* A
 retrograde Win/Loss/Draw solver for any finite game graph (the P-positions are the
 Loss positions). Two findings. (i) *Existence is trivial*: a hand-built acyclic
 graph has P-set exactly `{Q=0}` (send every non-zero-of-`Q` to a fixed loss in the
@@ -280,10 +280,10 @@ Arf). So the open problem reaches its sharpest form yet:
 Referencing `Q` is cheating; referencing only `B` does not (yet) integrate up to
 `Q`. The kernel solver + `fit_f2_quadratic` are the bench any candidate runs on.
 
-## The char-0 companion: a matrix-algebra classifier (`classify.rs`)
+## The char-0 companion: a matrix-algebra classifier (`forms/char0.rs`)
 
 The Arf invariant returns the isomorphism class of a *char-2* Clifford algebra.
-Until now char 0 had the engine but no classifier — an asymmetry. `classify.rs`
+Until now char 0 had the engine but no classifier — an asymmetry. `forms/char0.rs`
 closes it: `Cl(p,q)` over a real-closed field follows the 8-fold Bott table
 indexed by `s = (q − p) mod 8`, and over an algebraically closed field the 2-fold
 table. Because the surreals are real-closed, this *is* the genuine ℝ-Clifford
@@ -303,7 +303,7 @@ The trace `Tr_{F_{2^m}/F₂}(x) = Σ x^{2^i}` that pushes the Arf invariant down
 F₂ (the canonical `k/℘(k) ≅ F₂`) is the *same* trace that obstructs the
 Artin–Schreier equation `y² + y = c`: it is solvable iff `Tr(c) = 0`. So the two
 halves of this repo — the Arf classifier and the field arithmetic of `On₂` — run
-on one object. `nimber.rs` now exposes it directly: `nim_sqrt` (the inverse
+on one object. `scalar/nimber.rs` now exposes it directly: `nim_sqrt` (the inverse
 Frobenius, `x^{2^{63}}` in F_{2^64}, always defined in char 2), `nim_trace`, and
 `nim_solve_artin_schreier` (an exact F₂ linear solve, solvable exactly on the
 trace-zero hyperplane — half the field).
@@ -314,7 +314,7 @@ form's value is Artin–Schreier-solvable; the win-bias sign *is* the trace
 obstruction aggregated over the form. The field-level operation behind the bias
 is now in the library, not just implied.
 
-## Dickson: classifying `O(Q)`, not the form (`arf.rs`)
+## Dickson: classifying `O(Q)`, not the form (`forms/char2.rs`)
 
 In char 2 the determinant of any `g ∈ O(Q)` is forced to 1, so it cannot tell a
 rotation from a reflection. The **Dickson invariant** `D(g) = rank(g − I) mod 2`
@@ -324,7 +324,7 @@ nim-field; `dickson_of_versor` reads it off a Clifford versor as its grade
 parity. This is the companion to Arf on the *other* side of the same geometry:
 **Arf classifies the form, Dickson classifies the form's isometries.**
 
-## The Witt group makes additivity a group law (`witt.rs`)
+## The Witt group makes additivity a group law (`forms/witt.rs`)
 
 `A ⊕ A ≅ H ⊕ H` was checked pointwise via the Arf invariant. The Witt group
 `W_q(F)` of nonsingular quadratic forms mod hyperbolics is the home of that fact:
@@ -332,7 +332,7 @@ over a finite nim-field it is `≅ ℤ/2`, classified completely by Arf, with `�
 the group operation and the hyperbolic plane as identity. `WittClass` makes the
 additivity a one-liner: `w(A) + w(A) = 0` *is* `A ⊕ A ≅ H ⊕ H`.
 
-## General bilinear form: deforming the product (`clifford.rs`)
+## General bilinear form: deforming the product (`clifford/engine.rs`)
 
 The engine now computes `Cl(V, B)` for an *arbitrary* (not necessarily symmetric)
 bilinear form `B`, via the Chevalley product `e_i e_j = e_i∧e_j + B(e_i,e_j)` in
@@ -349,7 +349,7 @@ exterior structures (the quantum-Clifford / normal-ordering setting of
 Fauser–Oziewicz, interpolating toward the Weyl side). It is the right amount of
 generality, faithfully implemented, not a claim of new isomorphism classes.
 
-## The exterior algebra of the game group (`partizan.rs`)
+## The exterior algebra of the game group (`games/partizan.rs`)
 
 A Clifford algebra needs a commutative scalar *ring*, which is exactly why this
 project only reaches the three field-like cores. An **exterior algebra** needs
@@ -358,7 +358,7 @@ the group of partizan games under disjunctive sum is a ℤ-module. So `Λ(game
 group)` is well defined on **all** of game-world, the one Clifford-adjacent
 structure that does not require the (nonexistent) game product.
 
-`partizan.rs` ships a small short-game engine (sum, negation, the recursive
+`games/partizan.rs` ships a small short-game engine (sum, negation, the recursive
 order, birthday, the number test) and the bridge `Λ¹ → (game group)`,
 `e_i ↦ g_i`, built on the shipped Grassmann engine over the new ℤ scalar. The
 point is the generators may be **non-numbers** (`⋆`, `↑`) — precisely where the
@@ -377,17 +377,17 @@ char-0/char-2 mirror the rest of the repo runs on.
 
 ## New scalar worlds
 
-### Odd characteristic: `Fp` and the invariant trichotomy (`fp.rs`, `disc.rs`)
+### Odd characteristic: `Fp` and the invariant trichotomy (`scalar/fp.rs`, `forms/oddchar.rs`)
 
 The classifier story had a hole. Char 0 is named by signature → a matrix algebra
-(`classify.rs`); char 2 by the Arf invariant (`arf.rs`); **odd characteristic**
-had neither backend nor classifier. `fp.rs` adds `Fp<const P>` — the prime field
+(`forms/char0.rs`); char 2 by the Arf invariant (`forms/char2.rs`); **odd characteristic**
+had neither backend nor classifier. `scalar/fp.rs` adds `Fp<const P>` — the prime field
 `F_P`, carried in the *type* (a different prime is a different type, matching the
 per-backend no-mixing discipline; the modulus can't live in the value because
 `Scalar::zero()`/`one()` take no `self`). Unlike the nimbers, `neg` here is a
 genuine negation (`P−a ≠ a`), so the Clifford antisymmetry signs are real.
 
-`disc.rs` then completes the trichotomy: over a finite field a nondegenerate form
+`forms/oddchar.rs` then completes the trichotomy: over a finite field a nondegenerate form
 is classified completely by **dimension + discriminant** (det mod squares) — the
 odd-char analogue of Arf-completeness, verified here against an *independent*
 brute-force congruence search. The **Hasse–Witt / Clifford invariant** is
@@ -403,7 +403,7 @@ the `ℤ/4` — verified by walking the order of `⟨1⟩` in both fields. This 
 characteristic mirror of the existing Artin–Schreier↔Arf unification: **signature
 / discriminant+Hasse / Arf, one trichotomy across the three characteristics.**
 
-### Omnific integers `Oz` (`omnific.rs`)
+### Omnific integers `Oz` (`scalar/omnific.rs`)
 
 The surreal mirror of the `ℤ` backend: a *transfinite commutative ring*. A surreal
 is an omnific integer iff its CNF has no infinitesimal terms and an integer
@@ -414,11 +414,11 @@ algebra with genuinely transfinite coefficients** (`ω·e₀ ∧ e₁ = ω·e₀
 against the `ℤ` backend on integer inputs. Only `±1` are units (it is a ring, not
 a field: `1/ω = ε` leaves `Oz`).
 
-### Transfinite (ordinal) nimbers (`onag.rs`)
+### Transfinite (ordinal) nimbers (`scalar/onag.rs`)
 
 The shipped `Nimber(u64)` backend is a *single* layer `F_{2^64}`; even `⋃ F_{2^{2^n}}`
 is not algebraically closed (it lacks `F₈`, degree 3), despite the docs leaning on
-On₂'s closure. `onag.rs` is the char-2 mirror of `surreal.rs`: ordinals in Cantor
+On₂'s closure. `scalar/onag.rs` is the char-2 mirror of `scalar/surreal.rs`: ordinals in Cantor
 normal form, with the same exponent-only recursion as the termination argument.
 **nim-addition is complete and exact** — like-`ω`-power coefficients XOR, giving
 the genuine transfinite characteristic-2 additive group (`ω⊕ω=0`, `ω⊕1=ω+1`,
@@ -442,7 +442,7 @@ successively larger finite fields.
 
 ## New geometric-algebra structure on the engine
 
-### Outermorphisms and the determinant (`outermorphism.rs`)
+### Outermorphisms and the determinant (`clifford/outermorphism.rs`)
 
 A grade-1 linear map lifts to an algebra endomorphism by `f(a∧b)=f(a)∧f(b)`. The
 **determinant** falls out as Grassmann defined it — the scalar by which the lift
@@ -452,7 +452,7 @@ of cofactor expansion, so it doubles as an engine check. Multiplicativity
 determinant (= permanent) comes out right with no sign hardcoded, because the lift
 inherits its signs from `wedge`.
 
-### The exterior Hopf algebra (`hopf.rs`)
+### The exterior Hopf algebra (`clifford/hopf.rs`)
 
 Coproduct (the unshuffle split on blades, `Δ(e_S)=Σ_{T⊆S} sign·(e_T⊗e_{S∖T})`,
 the sign read straight off `wedge` so char 2 collapses it to `+`), counit, and
@@ -462,7 +462,7 @@ this primitively-generated coproduct the antipode is the **grade involution**
 `(−1)^k`, *not* the reversion-twisted `(−1)^{k(k+1)/2}` — `S(v∧w)=+v∧w` by the
 axiom, which the tests pin down.
 
-### Conformal and projective GA, over the surreals (`cga.rs`)
+### Conformal and projective GA, over the surreals (`clifford/cga.rs`)
 
 The conformal model `Cl(n+1,1)` in a null basis (`up(p)=n_o+p+½|p|²n_∞`,
 `up(p)·up(q)=−½|p−q|²`), generic over the scalar — so it runs over the **surreals**,
@@ -476,9 +476,9 @@ exponential**: `exp(B)=1+B+…` terminates when `B²=0`, giving exact translatio
 (`exp(e₀∧e₁)` translates `e₁↦e₁+2e₀`) with no transcendentals — the rotational
 motor (`B²<0`, needing `cos`/`sin`) is honestly out of scope and returns `None`.
 
-### Concrete spinor modules (`spinor.rs`)
+### Concrete spinor modules (`clifford/spinor.rs`)
 
-Where `classify.rs` *names* `Cl(p,q)≅M_d(K)`, this *builds* it: a primitive
+Where `forms/char0.rs` *names* `Cl(p,q)≅M_d(K)`, this *builds* it: a primitive
 idempotent `f=∏½(1+w)` from commuting `+1`-square blades, the minimal left ideal
 `Cl·f`, and the matrices of left multiplication by each generator on it. Those
 matrices satisfy the Clifford relations `Mᵢ²=qᵢ·I`, `MᵢMⱼ+MⱼMᵢ=0` automatically,
@@ -488,7 +488,7 @@ abstract classification, realized as explicit operators on column spinors.
 
 ## Deeper invariant theory
 
-### Non-Archimedean Springer decomposition (`springer.rs`)
+### Non-Archimedean Springer decomposition (`forms/springer.rs`)
 
 The surreal Hahn field `ℝ((ω^No))` is real-closed but non-Archimedean, with the
 ω-adic valuation. `springer_decompose` splits a diagonal form into
@@ -511,7 +511,7 @@ the built-in check is that the residue signatures sum to the ordinary
 - J. DiMuro, *On On_p* (arXiv:1108.0962, 2015) — the explicit field-tower
   construction `φ_Δ` and Lemma 1.1 (the ordinal `[Σ φⁱ αᵢ]` equals the field
   element `Σ φⁱ ⊗ αᵢ`) that makes ordinal nim-multiplication concrete in
-  `onag.rs` across the whole of `φ_{ω+1}`.
+  `scalar/onag.rs` across the whole of `φ_{ω+1}`.
 - T. Y. Lam, *Introduction to Quadratic Forms over Fields* (the Witt group of a
   finite field; signed discriminant and Hasse invariant).
 - T. A. Springer, *Quadratic forms over fields with a discrete valuation* (1955).
@@ -531,7 +531,7 @@ the built-in check is that the residue signatures sum to the ordinary
 - Y. Irie, *p-Saturations of Welter's Game and the Irreducible Representations
   of Symmetric Groups* (2018).
 - P. Lounesto, *Clifford Algebras and Spinors* (2nd ed.), Table 16.4 — the
-  `Cl(p,q)` classification by `(q−p) mod 8` used in `classify.rs`.
+  `Cl(p,q)` classification by `(q−p) mod 8` used in `forms/char0.rs`.
 - C. Chevalley, *The Algebraic Theory of Spinors* (1954); B. Fauser & Z.
   Oziewicz, *Clifford Hopf gebra for two-dimensional space* / "Clifford algebra
   of an arbitrary bilinear form" — associativity of the deformed product.

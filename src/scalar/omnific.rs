@@ -22,7 +22,7 @@
 //! (delegating to `Surreal::inv` would leave the ring: `ω ↦ ε`).
 
 use crate::scalar::Scalar;
-use crate::surreal::Surreal;
+use crate::scalar::Surreal;
 
 /// An omnific integer: a surreal with no infinitesimal part and an integer
 /// constant term. The inner surreal is private so every value is validated at

@@ -200,7 +200,7 @@ pub fn exp_nilpotent<S: Scalar>(
 mod tests {
     use super::*;
     use crate::scalar::Rational;
-    use crate::surreal::Surreal;
+    use crate::scalar::Surreal;
 
     fn r(n: i128) -> Rational {
         Rational::int(n)

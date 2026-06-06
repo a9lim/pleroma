@@ -1,15 +1,15 @@
 //! A quick tour of pleroma's verified core. Run with:
 //!   cargo run --example tour
 
-use pleroma::arf::{dickson_matrix, dickson_of_versor};
-use pleroma::classify::classify_surreal;
+use pleroma::forms::{dickson_matrix, dickson_of_versor};
+use pleroma::forms::classify_surreal;
 use pleroma::clifford::{CliffordAlgebra, Metric};
-use pleroma::nimber::{nim_solve_artin_schreier, nim_sqrt, nim_trace, Nimber};
-use pleroma::partizan::{Game, GameExterior};
+use pleroma::scalar::{nim_solve_artin_schreier, nim_sqrt, nim_trace, Nimber};
+use pleroma::games::{Game, GameExterior};
 use pleroma::scalar::{Integer, Rational, Scalar};
-use pleroma::surcomplex::Surcomplex;
-use pleroma::surreal::Surreal;
-use pleroma::witt::WittClass;
+use pleroma::scalar::Surcomplex;
+use pleroma::scalar::Surreal;
+use pleroma::forms::WittClass;
 use std::collections::BTreeMap;
 
 fn rule(title: &str) {
@@ -179,5 +179,5 @@ fn main() {
 
 /// (helper) nim-square, for the tour's √ check.
 fn nim_mul_sq(x: u64) -> u64 {
-    pleroma::nimber::nim_square(x)
+    pleroma::scalar::nim_square(x)
 }

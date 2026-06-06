@@ -169,7 +169,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nimber::nim_mul;
+    use crate::scalar::nim_mul;
 
     #[test]
     fn game_definition_equals_algebraic_nim_mul() {

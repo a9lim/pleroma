@@ -25,96 +25,104 @@ bindings on top. "With nilpotents" = the quadratic form may be degenerate
 
 ```
 src/
-  scalar.rs     # Scalar trait (add/neg/mul/zero/one/is_zero) + an exact
-                # Rational used ONLY to validate the engine in char 0, plus an
-                # exact Integer (ℤ) used as the coefficient ring for the game
-                # exterior algebra (partizan.rs).
-  nimber.rs     # On₂ in u64 (= F_{2^64}): nim_add = XOR; nim_mul via Fermat-
-                # power recursion, memoised on 2^i ⊗ 2^j. Also nim_square /
-                # nim_sqrt (Frobenius & its inverse), nim_trace, and the
-                # Artin–Schreier solver (y²+y=c, solvable ⇔ Tr(c)=0).
-  clifford.rs   # Metric { q, b, a } + CliffordAlgebra<S> + Multivector<S>.
-                # The whole engine, generic over Scalar. geom_product_blades is
-                # the core (general-bilinear Chevalley product; reduce_word is a
-                # #[cfg(test)] oracle it is cross-validated against). The
-                # versor/GA layer: versor_inverse, sandwich, twisted_sandwich
-                # (Pin action), reflect, left/right_contract, dual,
-                # grade_involution, norm2. Plus even_part / even_subalgebra and
-                # direct_sum / graded_tensor. (bits/grade are now pub.)
-  outermorphism.rs # lift a grade-1 LinearMap<S> to all grades (f(a∧b)=f(a)∧f(b));
-                # determinant as the pseudoscalar action f(I)=det·I; compose,
-                # inverse_outermorphism. Char-faithful (det multiplicative over
-                # Nimber too — the char-2 determinant).
-  hopf.rs       # the exterior Hopf algebra: unshuffle coproduct (sign read off
-                # wedge), counit, antipode = grade involution (NOT reversion-
-                # twist). Hopf axioms tested over Rational AND Nimber.
-  cga.rs        # conformal (Cl(n+1,1) null basis: up/down/inner/sphere/plane/
-                # meet) + projective (pga = Cl(n,0,1), exp_nilpotent terminating
-                # motor exp) GA. Char-0 (needs ½); surreal ∞/ε radii are exact.
-  spinor.rs     # concrete minimal left ideals Cl·f from a primitive idempotent
-                # ∏½(1+w); basis + gen_matrices realizing M_d(K) on column
-                # spinors. Ideal dim matches classify; Clifford relations hold.
-  surreal.rs    # Conway normal form: Vec<(exponent: Surreal, coeff: Rational)>
-                # with recursive exponents. Hahn arithmetic: ω^a·ω^b = ω^{a+b}.
-                # (Rational now has is_integer, used by omnific.rs.)
-  surcomplex.rs # Surcomplex<S> = adjoin i over any backend.
-  omnific.rs    # the omnific integers Oz: Omnific(Surreal) newtype, a transfinite
-                # commutative RING (not field). Surreal mirror of the Integer
-                # backend; supports the exterior algebra with ω-scale coefficients.
-  fp.rs         # Fp<const P>: the prime field F_P (odd characteristic), a
-                # comparison backend completing the char trichotomy. Genuine neg.
-  onag.rs       # transfinite (ordinal) nimbers: Ordinal in CNF (mirror of
-                # surreal.rs). nim-add COMPLETE (coeff XOR); nim-mul COMPLETE
-                # across the whole field φ_{ω+1} (all ordinals < ω³ Cantor) via
-                # DiMuro Lemma 1.1: polynomial mult in (finite nimbers)[ω] mod
-                # ω³−2. ω⊗ω⊗ω=2 (Conway's nim-cube-root); F₄(ω)≅F₆₄ field axioms
-                # verified exhaustively. Above ω³ staged (Lenstra/DiMuro tower).
-  classify.rs   # the char-0 Clifford classifier (companion to arf.rs): Cl(p,q)
-                # → matrix algebra over ℝ/ℂ/ℍ via the 8-fold table (real-closed
-                # surreal/rational) and the 2-fold table (surcomplex). Diagonal
-                # metrics; signature read off the surreal/rational signs.
-  disc.rs       # the odd-char classifier (third leg of the trichotomy): discriminant
-                # + is_square (Euler) + hilbert_symbol/hasse_invariant (≡ +1 over
-                # finite fields) + classify_oddchar + oddchar_witt. dim+disc
-                # completeness checked vs a brute-force congruence search.
-  springer.rs   # non-Archimedean Springer decomposition over the surreals: a
-                # diagonal form's ω-adic valuation filtration into residue ℝ-forms.
-                # Honest: value group is 2-divisible ⇒ W(No)=W(ℝ)=ℤ (no bigger
-                # group); the filtration itself is the novelty.
-  arf.rs        # Arf invariant (the char-2 Clifford classifier): arf_f2 (F₂,
-                # bitmask) + arf_nimber (any nim-field, via symplectic reduction
-                # + the field trace). arf_invariant routes to arf_nimber. Also
-                # the Dickson invariant: dickson_matrix (rank(g−I) mod 2, the
-                # char-2 determinant; ker = SO) + dickson_of_versor; and
-                # fit_f2_quadratic (is a set a quadric? its Arf?) — the shared
-                # test bench for the open-question probes.
-  witt.rs       # WittClass: the Witt group W_q(F) ≅ ℤ/2 of a finite nim-field,
-                # Arf-classified. Makes A⊕A ≅ H⊕H a one-line group identity. Plus
-                # WittClassG: the Char0/OddChar/Char2 trichotomy enum (odd-char is
-                # the order-4 group ℤ/4 or ℤ/2×ℤ/2; see disc.rs).
-  games.rs      # nim_mul_mex: nim-multiplication as Conway's Turning-Corners
-                # mex recurrence (the GAME definition); == algebraic nim_mul.
-                # Also general 1-D coin-turning games (grundy_1d) and the 2-D
-                # Tartan product (tartan_grundy), with the Tartan/Product theorem
-                # (tartan == nim-product of component Grundy values) verified.
-  kernel.rs     # normal-play Win/Loss/Draw outcomes of any finite game graph
-                # (retrograde analysis); P-positions = Loss. The interactive-route
-                # instrument for the open question.
-  misere.rs     # misère-play outcomes (misere_is_n/_is_p) for any finite
-                # impartial game; misère Nim vs Bouton's theorem; the bounded
-                # indistinguishability quotient (misere_quotient); and octal games
-                # (octal_moves, octal_misere_quotient). The non-linear (misère)
-                # route to the open question.
-  partizan.rs   # short partizan games (sum/neg/order/birthday/is_number) + the
-                # exterior algebra of the GAME group: Λ over ℤ on game
-                # generators (Clifford-adjacent structure living on all of
-                # game-world, including non-numbers ⋆/↑). NB: distinct from
-                # games.rs — that is coin-turning; this is partizan + exterior.
-  py.rs         # PyO3 per-backend classes (feature = "python"). The backend!
-                # macro stamps out <World>Algebra + <World>MV (now incl. the
-                # Integer backend). Plus classify/witt/dickson/nim-field/Game
-                # bindings.
-  lib.rs
+  lib.rs          # crate root: the four pillars + the (feature-gated) py module.
+                # Each pillar's mod.rs re-exports its children flat, so public
+                # paths stay shallow (scalar::Nimber, clifford::sandwich, …).
+
+  scalar/         # PILLAR — the commutative coefficient worlds (generic Scalar)
+    mod.rs        # Scalar trait (add/neg/mul/zero/one/is_zero) + an exact
+                  # Rational used ONLY to validate the engine in char 0, plus an
+                  # exact Integer (ℤ) used as the coefficient ring for the game
+                  # exterior algebra (games/partizan.rs).
+    nimber.rs     # On₂ in u64 (= F_{2^64}): nim_add = XOR; nim_mul via Fermat-
+                  # power recursion, memoised on 2^i ⊗ 2^j. Also nim_square /
+                  # nim_sqrt (Frobenius & its inverse), nim_trace, and the
+                  # Artin–Schreier solver (y²+y=c, solvable ⇔ Tr(c)=0).
+    surreal.rs    # Conway normal form: Vec<(exponent: Surreal, coeff: Rational)>
+                  # with recursive exponents. Hahn arithmetic: ω^a·ω^b = ω^{a+b}.
+    surcomplex.rs # Surcomplex<S> = adjoin i over any backend.
+    omnific.rs    # the omnific integers Oz: Omnific(Surreal) newtype, a transfinite
+                  # commutative RING (not field). Surreal mirror of Integer; the
+                  # exterior algebra with ω-scale coefficients.
+    onag.rs       # transfinite (ordinal) nimbers: Ordinal in CNF (mirror of
+                  # scalar/surreal.rs). nim-add COMPLETE (coeff XOR); nim-mul
+                  # COMPLETE across φ_{ω+1} (all ordinals < ω³ Cantor) via DiMuro
+                  # Lemma 1.1: poly mult in (finite nimbers)[ω] mod ω³−2.
+                  # ω⊗ω⊗ω=2; F₄(ω)≅F₆₄ verified. Above ω³ staged (Lenstra tower).
+    fp.rs         # Fp<const P>: the prime field F_P (odd characteristic), a
+                  # comparison backend completing the char trichotomy. Genuine neg.
+
+  clifford/       # PILLAR — the multivector engine + GA layer (generic Scalar)
+    mod.rs        # thin hub: re-exports engine + versor + the structured-algebra
+                  # modules flat (clifford::Metric, clifford::sandwich, …).
+    engine.rs     # Metric { q, b, a } + CliffordAlgebra<S> + Multivector<S>. The
+                  # associative-algebra core: geom_product_blades (general-bilinear
+                  # Chevalley product; reduce_word is a #[cfg(test)] oracle it is
+                  # cross-validated against), blade arithmetic, grade projection.
+                  # (bits/grade are pub; q_val/has_upper are pub(crate).)
+    versor.rs     # the GA layer on top: versor_inverse, sandwich, twisted_sandwich
+                  # (Pin action), reflect, left/right_contract, dual,
+                  # grade_involution, norm2, even_part / even_subalgebra.
+    outermorphism.rs # lift a grade-1 LinearMap<S> to all grades (f(a∧b)=f(a)∧f(b));
+                  # determinant as the pseudoscalar action f(I)=det·I; compose,
+                  # inverse_outermorphism. Char-faithful (the char-2 determinant too).
+    hopf.rs       # the exterior Hopf algebra: unshuffle coproduct (sign read off
+                  # wedge), counit, antipode = grade involution (NOT reversion-
+                  # twist). Hopf axioms tested over Rational AND Nimber.
+    cga.rs        # conformal (Cl(n+1,1) null basis: up/down/inner/sphere/plane/
+                  # meet) + projective (pga = Cl(n,0,1), exp_nilpotent terminating
+                  # motor exp) GA. Char-0 (needs ½); surreal ∞/ε radii are exact.
+    spinor.rs     # concrete minimal left ideals Cl·f from a primitive idempotent
+                  # ∏½(1+w); basis + gen_matrices realizing M_d(K) on column
+                  # spinors. Ideal dim matches classify; Clifford relations hold.
+
+  forms/          # PILLAR — quadratic forms & invariants, by the char trichotomy
+    mod.rs        # re-exports the three legs + witt + springer flat.
+    char0.rs      # (was classify.rs) the char-0 Clifford classifier: Cl(p,q) →
+                  # matrix algebra over ℝ/ℂ/ℍ via the 8-fold table (real-closed
+                  # surreal/rational) and the 2-fold table (surcomplex).
+    oddchar.rs    # (was disc.rs) the odd-char classifier: discriminant + is_square
+                  # (Euler) + hilbert_symbol/hasse_invariant (≡ +1 over finite
+                  # fields) + classify_oddchar + oddchar_witt. dim+disc complete.
+    char2.rs      # (was arf.rs) the Arf invariant (char-2 classifier): arf_f2 (F₂
+                  # bitmask) + arf_nimber (any nim-field, symplectic reduction + the
+                  # field trace). Also the Dickson invariant (dickson_matrix =
+                  # rank(g−I) mod 2, ker = SO; dickson_of_versor) and
+                  # fit_f2_quadratic (is a set a quadric? its Arf?).
+    witt.rs       # WittClass: the Witt group W_q(F) ≅ ℤ/2 of a finite nim-field,
+                  # Arf-classified. Plus WittClassG: the Char0/OddChar/Char2
+                  # trichotomy enum (odd-char is order-4: ℤ/4 or ℤ/2×ℤ/2).
+    springer.rs   # non-Archimedean Springer decomposition over the surreals: a
+                  # diagonal form's ω-adic valuation filtration into residue ℝ-forms.
+                  # Honest: value group 2-divisible ⇒ W(No)=W(ℝ)=ℤ; the filtration
+                  # itself is the novelty.
+
+  games/          # PILLAR — combinatorial game theory (mostly Scalar-free)
+    mod.rs        # re-exports the modules below flat.
+    coin_turning.rs # (was games.rs) nim_mul_mex: nim-mult as Conway's Turning-
+                  # Corners mex recurrence (== algebraic nim_mul). Plus general 1-D
+                  # coin-turning (grundy_1d) and the 2-D Tartan product
+                  # (tartan_grundy), with the Tartan/Product theorem verified.
+    kernel.rs     # normal-play Win/Loss/Draw outcomes of any finite game graph
+                  # (retrograde analysis); P-positions = Loss. The interactive route.
+    misere.rs     # misère-play outcomes (misere_is_n/_is_p) for any finite
+                  # impartial game; misère Nim vs Bouton; the bounded
+                  # indistinguishability quotient (misere_quotient); octal games
+                  # (octal_moves, octal_misere_quotient). The non-linear route.
+    partizan.rs   # short partizan games (sum/neg/order/birthday/is_number) + the
+                  # exterior algebra of the GAME group: Λ over ℤ on game generators
+                  # (living on all of game-world, incl. non-numbers ⋆/↑). NB:
+                  # distinct from coin_turning.rs — that is coin-turning.
+
+  py/             # PyO3 bindings (feature = "python"), split per pillar
+    mod.rs        # the #[pymodule]; chains each submodule's pub(crate) register().
+    scalars.rs    # the scalar pyclasses + constructors + nim-field fns; the
+                  # parse_*/wrap_* hooks the backend! macro threads in.
+    engine.rs     # the backend! macro → <World>Algebra + <World>MV pairs (incl.
+                  # the Integer backend) + conformal GA (Cga).
+    forms.rs      # classify / witt / dickson / odd-char / springer bindings.
+    games.rs      # Game / GameExterior + nim_mul_mex.
+
 examples/tour.rs   # cargo run --example tour   (Rust-only demo)
 examples/misere_quotient.rs    # misère quotients + the quadric test on P-sets
 examples/interactive_kernel.rs # B-coupled interactive games vs {Q=0}
@@ -130,9 +138,10 @@ experiments/       # research probes ON TOP of the shipped lib: Arf of Gold
 
 The math thread (Arf↔Clifford, the games bridge, the char-0/char-2 classifier
 symmetry, the Artin–Schreier ↔ Arf unification, the open play-semantics
-question) is written up in `NOTES.md` — read it before touching `arf.rs`,
-`classify.rs`, `games.rs`, `kernel.rs`, `misere.rs`, `witt.rs`, `experiments/`,
-or the `misere_quotient` / `interactive_kernel` examples.
+question) is written up in `NOTES.md` — read it before touching `forms/char2.rs`,
+`forms/char0.rs`, `games/coin_turning.rs`, `games/kernel.rs`, `games/misere.rs`,
+`forms/witt.rs`, `experiments/`, or the `misere_quotient` / `interactive_kernel`
+examples.
 
 ## Commands
 
@@ -152,7 +161,7 @@ PATH (`. "$HOME/.cargo/env"`).
 1. **The math core is generic over `Scalar` and pure Rust.** PyO3 lives behind
    the `python` feature (`pyo3` is an optional dep; `extension-module` only
    enabled there). This is what keeps `cargo test` from linking libpython.
-   Never `use pyo3` outside `py.rs`; never make it non-optional.
+   Never `use pyo3` outside the `py/` module; never make it non-optional.
 
 2. **The metric carries `q` and `b` independently — do not collapse them.**
    `q[i] = eᵢ²` (quadratic form); `b[(i,j)] = {eᵢ,eⱼ}` (polar/anticommutator,
@@ -204,7 +213,7 @@ PATH (`. "$HOME/.cargo/env"`).
 ## Testing
 
 `cargo test` is the source of truth and needs no Python. The Python layer is
-smoke-tested via `demo.py`. After touching `clifford.rs` or `surreal.rs`, run
+smoke-tested via `demo.py`. After touching `clifford/` or `scalar/surreal.rs`, run
 `cargo test` **and** rebuild + run `demo.py` — display changes don't surface in
 `cargo test`.
 

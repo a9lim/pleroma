@@ -10,8 +10,8 @@
 //! P-set through `fit_f2_quadratic`. Any hit is printed loudly; otherwise the
 //! summary records how close anything got.
 
-use pleroma::arf::fit_f2_quadratic;
-use pleroma::misere::{octal_misere_quotient, Quotient};
+use pleroma::forms::fit_f2_quadratic;
+use pleroma::games::{octal_misere_quotient, Quotient};
 
 /// If the quotient on atoms `1..=k` is a full-rank `(ℤ/2)^k` (the `2^k` squarefree
 /// subsets hit all `2^k` classes bijectively), return its P-set as `F₂^k` masks.

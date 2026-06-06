@@ -19,9 +19,9 @@
 //! This prints (a) as a sanity check and then the result of (b): the natural
 //! rules tried, how close their P-sets come to {Q=0}, and what they are instead.
 
-use pleroma::arf::fit_f2_quadratic;
-use pleroma::kernel::{outcomes, Outcome};
-use pleroma::nimber::{nim_add, nim_mul, nim_square, nim_trace};
+use pleroma::forms::fit_f2_quadratic;
+use pleroma::games::{outcomes, Outcome};
+use pleroma::scalar::{nim_add, nim_mul, nim_square, nim_trace};
 
 /// Gold form Q_a(v) = Tr(v^{1+2^a}) over F_{2^m}, valued in {0,1}.
 fn gold(v: u64, a: u32, m: u32) -> u64 {

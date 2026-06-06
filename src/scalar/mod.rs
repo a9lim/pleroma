@@ -11,6 +11,23 @@
 //! engine against the known Cl(p,q) classification before we trust the
 //! exotic backends.
 
+// The coefficient worlds. Each is a commutative-ring `Scalar` backend; this
+// module is the shared trait plus the exact `Rational`/`Integer` used to
+// validate the engine. Re-exported flat so call sites read `scalar::Nimber`.
+pub mod fp;
+pub mod nimber;
+pub mod omnific;
+pub mod onag;
+pub mod surcomplex;
+pub mod surreal;
+
+pub use fp::*;
+pub use nimber::*;
+pub use omnific::*;
+pub use onag::*;
+pub use surcomplex::*;
+pub use surreal::*;
+
 use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Debug;

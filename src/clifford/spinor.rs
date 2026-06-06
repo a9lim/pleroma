@@ -171,7 +171,7 @@ pub fn spinor_rep<S: Scalar>(alg: &CliffordAlgebra<S>) -> Option<SpinorRep<S>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::classify::{classify_rational, BaseField};
+    use crate::forms::{classify_rational, BaseField};
     use crate::clifford::Metric;
     use crate::scalar::Rational;
 

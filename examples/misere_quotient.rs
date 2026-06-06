@@ -15,8 +15,8 @@
 //! `k ≥ 2` and Arf-rank `≥ 2`; finding (or ruling out) one is the open work. This
 //! prints what the instrument actually finds.
 
-use pleroma::arf::fit_f2_quadratic;
-use pleroma::misere::{misere_quotient, AbstractGame, Quotient};
+use pleroma::forms::fit_f2_quadratic;
+use pleroma::games::{misere_quotient, AbstractGame, Quotient};
 
 /// Build the abstract game of Nim with the given heap sizes as position types:
 /// position `h` (1..=max) is a heap of size h, moving to any smaller heap (incl.

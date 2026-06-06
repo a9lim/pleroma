@@ -96,19 +96,25 @@ the surreals — exact `ω`-scale points and `ε`-radius spheres); and
 ## architecture
 
 Pure-Rust math core (`cargo test`, no Python in the loop), Python layer on top.
+Four pillars under `src/`, each re-exported flat (`scalar::Nimber`,
+`clifford::sandwich`, `forms::arf_invariant`, …):
 
-- `scalar.rs` — the `Scalar` trait + an exact `Rational` (engine validation only)
-- `nimber.rs` — On₂ in `u64` (= F_{2^64}): nim-add = XOR, nim-mul via Fermat-power recursion
-- `clifford.rs` — the multivector engine, generic over `Scalar`, with independent `q`/`b` (characteristic-faithful)
-- `surreal.rs` — Conway normal form with recursive surreal exponents (ℚ coefficients)
-- `surcomplex.rs` — adjoin `i` over any backend
-- `arf.rs` — Arf invariant (the char-2 Clifford classifier), over any nim-field
-- `games.rs` — nim-multiplication as Conway's Turning-Corners game (= `nim_mul`)
-- `fp.rs` / `disc.rs` — odd-characteristic fields + discriminant/Hasse classifier
-- `omnific.rs` / `onag.rs` — omnific integers `Oz` + transfinite ordinal nimbers
-- `outermorphism.rs` / `hopf.rs` / `cga.rs` / `spinor.rs` — the GA-engine layer
-- `springer.rs` — non-Archimedean valuation decomposition over the surreals
-- `py.rs` — PyO3 per-backend classes (`python` feature; abi3)
+- `scalar/` — the `Scalar` trait + an exact `Rational`/`Integer`, and the
+  game-backed coefficient worlds: `nimber` (On₂ in `u64`, nim-add = XOR, nim-mul
+  via Fermat-power recursion), `surreal` (Conway normal form with recursive
+  exponents), `surcomplex` (adjoin `i`), `omnific` (`Oz`), `onag` (ordinal
+  nimbers), `fp` (odd-characteristic prime fields).
+- `clifford/` — the multivector engine (`engine`: independent `q`/`b`/`a`,
+  characteristic-faithful) with the geometry split out (`versor`), plus
+  outermorphisms, the exterior Hopf algebra, conformal/projective GA, and
+  spinor modules.
+- `forms/` — quadratic-form classifiers across the characteristic trichotomy:
+  `char0` (Cl(p,q) → matrix algebra), `oddchar` (discriminant/Hasse), `char2`
+  (the Arf invariant), plus the Witt group and the Springer decomposition.
+- `games/` — combinatorial game theory: `coin_turning` (nim-mult as Conway's
+  Turning-Corners game), normal- and misère-play outcomes, and short partizan
+  games with the exterior algebra of the game group.
+- `py/` — PyO3 per-backend classes (`python` feature; abi3), split per pillar.
 
 `experiments/` uses the shipped library for the research probe: Arf invariants
 of Gold forms over the nim-fields, and the demonstration that those forms are

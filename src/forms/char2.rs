@@ -17,7 +17,7 @@
 //! sum is pushed to F₂ by the field trace. `arf_invariant` uses the latter.
 
 use crate::clifford::{Metric, Multivector};
-use crate::nimber::{nim_add, nim_inv, nim_mul, nim_trace, Nimber};
+use crate::scalar::{nim_add, nim_inv, nim_mul, nim_trace, Nimber};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArfResult {

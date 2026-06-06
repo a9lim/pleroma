@@ -28,8 +28,8 @@
 
 use crate::clifford::Metric;
 use crate::scalar::{Rational, Scalar};
-use crate::surcomplex::Surcomplex;
-use crate::surreal::Surreal;
+use crate::scalar::Surcomplex;
+use crate::scalar::Surreal;
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

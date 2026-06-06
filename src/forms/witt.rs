@@ -14,9 +14,9 @@
 //! So `WittClass` makes the additivity executable as a group: `w(A) + w(A) = 0`
 //! is the same statement as `A ⊕ A ≅ H ⊕ H`, now a one-liner.
 
-use crate::arf::arf_invariant;
+use crate::forms::arf_invariant;
 use crate::clifford::Metric;
-use crate::nimber::Nimber;
+use crate::scalar::Nimber;
 
 /// A class in the Witt group `W_q(F) ≅ ℤ/2` of a finite nim-field: the Arf
 /// invariant of a form's anisotropic core (hyperbolic planes are the identity).

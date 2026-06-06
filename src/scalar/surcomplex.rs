@@ -98,7 +98,7 @@ impl<S: Scalar> Scalar for Surcomplex<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nimber::Nimber;
+    use crate::scalar::Nimber;
     use crate::scalar::Rational;
 
     type Gauss = Surcomplex<Rational>;

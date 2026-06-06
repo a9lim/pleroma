@@ -40,7 +40,7 @@
 //!   in successively larger finite fields. An ordinal with any CNF exponent
 //!   `≥ 3` returns `None`.
 
-use crate::nimber::nim_mul;
+use crate::scalar::nim_mul;
 use std::cmp::Ordering;
 use std::fmt;
 

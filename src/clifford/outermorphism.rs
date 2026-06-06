@@ -172,7 +172,7 @@ impl<S: Scalar> LinearMap<S> {
 mod tests {
     use super::*;
     use crate::clifford::Metric;
-    use crate::nimber::Nimber;
+    use crate::scalar::Nimber;
     use crate::scalar::Rational;
 
     fn r(n: i128) -> Rational {

@@ -25,7 +25,7 @@
 
 use crate::clifford::Metric;
 use crate::scalar::Scalar;
-use crate::surreal::Surreal;
+use crate::scalar::Surreal;
 use std::cmp::Ordering;
 
 /// One graded piece of a Springer decomposition: a residue ℝ-form at a fixed
@@ -113,7 +113,7 @@ pub fn springer_decompose(metric: &Metric<Surreal>) -> Option<SpringerDecomp> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::classify::classify_surreal;
+    use crate::forms::classify_surreal;
     use crate::scalar::Rational;
 
     fn w(n: i128) -> Surreal {

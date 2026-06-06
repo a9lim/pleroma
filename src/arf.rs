@@ -11,11 +11,13 @@
 //! a symplectic basis {a_k,b_k} for B (peeling hyperbolic pairs, leaving the
 //! radical) and return Arf = Σ_k Q(a_k) Q(b_k) ∈ F₂.
 //!
-//! Vectors are u32 bitmasks over the (≤32) generators. This is the F₂ case;
-//! a general nim-field form reduces to it via the field trace (not yet wired).
+//! `arf_f2` is the F₂ case (u32 bitmask vectors over ≤32 generators).
+//! `arf_nimber` handles a form over any nim-subfield F_{2^{2^k}}: symplectic
+//! reduction over the field (normalising pairs with `nim_inv`), then the Arf
+//! sum is pushed to F₂ by the field trace. `arf_invariant` uses the latter.
 
 use crate::clifford::Metric;
-use crate::nimber::Nimber;
+use crate::nimber::{nim_add, nim_inv, nim_mul, Nimber};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArfResult {
@@ -114,34 +116,143 @@ pub fn arf_f2(n: usize, qd: &[bool], bmat: &[u32]) -> ArfResult {
     }
 }
 
-/// Arf invariant of a nimber Clifford metric, provided every q/b entry is in
-/// F₂ = {*0, *1}. Returns `None` if any entry is a higher nimber (that form
-/// lives over a larger nim-field and reduces to F₂ only via the trace).
-pub fn arf_invariant(metric: &Metric<Nimber>) -> Option<ArfResult> {
-    let n = metric.q.len();
-    if n > 32 {
-        return None;
+// ---------------------------------------------------------------------------
+// General nim-field version (any On₂ entries, reduced to F₂ via the trace)
+// ---------------------------------------------------------------------------
+
+/// Smallest extension degree m = 2^k over F₂ such that the nim-subfield
+/// F_{2^m} (the nimbers below 2^m) contains `max_val`.
+fn min_field_degree(max_val: u64) -> u32 {
+    let mut m = 1u32; // 2^k, starting k = 0  (F_2)
+    loop {
+        if m >= 64 {
+            return 64;
+        }
+        if max_val < (1u64 << m) {
+            return m;
+        }
+        m <<= 1;
     }
-    let mut qd = vec![false; n];
-    for (i, slot) in qd.iter_mut().enumerate() {
-        *slot = match metric.q[i].0 {
-            0 => false,
-            1 => true,
-            _ => return None,
-        };
+}
+
+/// Field trace F_{2^m} → F₂:  Tr(x) = x + x² + x⁴ + … + x^{2^{m-1}} ∈ {0,1}.
+/// The Arf invariant lives in k/℘(k); for a finite field this trace realises
+/// the canonical isomorphism k/℘(k) ≅ F₂.
+fn nim_trace(x: u64, m: u32) -> u64 {
+    let mut acc = x;
+    let mut t = x;
+    for _ in 1..m {
+        t = nim_mul(t, t);
+        acc ^= t;
     }
-    let mut bmat = vec![0u32; n];
-    for (&(i, j), v) in &metric.b {
-        match v.0 {
-            0 => {}
-            1 => {
-                bmat[i] |= 1 << j;
-                bmat[j] |= 1 << i;
-            }
-            _ => return None,
+    acc
+}
+
+fn vscale(c: u64, v: &[u64]) -> Vec<u64> {
+    v.iter().map(|&x| nim_mul(c, x)).collect()
+}
+fn vadd(u: &[u64], v: &[u64]) -> Vec<u64> {
+    u.iter().zip(v).map(|(&a, &b)| nim_add(a, b)).collect()
+}
+
+/// Q(v) = Σ_i v_i² q_i + Σ_{i<j} v_i v_j b_{ij}, over the nim-field.
+fn qf(v: &[u64], q: &[u64], bmat: &[Vec<u64>]) -> u64 {
+    let n = v.len();
+    let mut acc = 0u64;
+    for i in 0..n {
+        acc ^= nim_mul(nim_mul(v[i], v[i]), q[i]);
+        for j in (i + 1)..n {
+            acc ^= nim_mul(nim_mul(v[i], v[j]), bmat[i][j]);
         }
     }
-    Some(arf_f2(n, &qd, &bmat))
+    acc
+}
+
+/// Polar form B(u,v) = Σ_{i<j} (u_i v_j + u_j v_i) b_{ij}, over the nim-field.
+fn bf(u: &[u64], v: &[u64], bmat: &[Vec<u64>]) -> u64 {
+    let n = u.len();
+    let mut acc = 0u64;
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let cross = nim_add(nim_mul(u[i], v[j]), nim_mul(u[j], v[i]));
+            acc ^= nim_mul(cross, bmat[i][j]);
+        }
+    }
+    acc
+}
+
+/// Arf invariant of a nimber Clifford metric over its field of definition (the
+/// smallest nim-subfield containing all entries), reduced to F₂ via the trace.
+/// Works for any nimber metric — F₂ is the special case where the trace is the
+/// identity. Symplectic reduction normalises each pair with `nim_inv`.
+pub fn arf_nimber(metric: &Metric<Nimber>) -> ArfResult {
+    let n = metric.q.len();
+    let q: Vec<u64> = metric.q.iter().map(|x| x.0).collect();
+    let mut bmat = vec![vec![0u64; n]; n];
+    for (&(i, j), v) in &metric.b {
+        bmat[i][j] = v.0;
+        bmat[j][i] = v.0;
+    }
+
+    let mut maxv = q.iter().copied().max().unwrap_or(0);
+    for row in &bmat {
+        maxv = maxv.max(row.iter().copied().max().unwrap_or(0));
+    }
+    let m = min_field_degree(maxv);
+
+    let mut vectors: Vec<Vec<u64>> = (0..n)
+        .map(|i| {
+            let mut e = vec![0u64; n];
+            e[i] = 1;
+            e
+        })
+        .collect();
+
+    let mut s = 0u64; // Σ Q(a_k) Q(b_k), a field element
+    let mut pairs = 0usize;
+    let mut radical_dim = 0usize;
+    let mut radical_anisotropic = false;
+
+    while let Some(a) = vectors.pop() {
+        if let Some(pos) = vectors.iter().position(|w| bf(&a, w, &bmat) != 0) {
+            let braw = vectors.swap_remove(pos);
+            let c = bf(&a, &braw, &bmat);
+            let b = vscale(nim_inv(c).unwrap(), &braw); // rescale so B(a,b) = 1
+            for w in vectors.iter_mut() {
+                let wb = bf(w, &b, &bmat);
+                let wa = bf(w, &a, &bmat);
+                let mut nw = w.clone();
+                if wb != 0 {
+                    nw = vadd(&nw, &vscale(wb, &a));
+                }
+                if wa != 0 {
+                    nw = vadd(&nw, &vscale(wa, &b));
+                }
+                *w = nw;
+            }
+            s ^= nim_mul(qf(&a, &q, &bmat), qf(&b, &q, &bmat));
+            pairs += 1;
+        } else {
+            radical_dim += 1;
+            if qf(&a, &q, &bmat) != 0 {
+                radical_anisotropic = true;
+            }
+        }
+    }
+
+    let arf = nim_trace(s, m) as u8;
+    ArfResult {
+        arf,
+        rank: 2 * pairs,
+        radical_dim,
+        radical_anisotropic,
+        o_type: if arf == 1 { "O-" } else { "O+" },
+    }
+}
+
+/// Arf invariant of a nimber Clifford metric (the char-2 Clifford classifier).
+pub fn arf_invariant(metric: &Metric<Nimber>) -> ArfResult {
+    arf_nimber(metric)
 }
 
 #[cfg(test)]
@@ -149,64 +260,89 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
 
-    fn metric(qs: &[u64], bs: &[(usize, usize)]) -> Metric<Nimber> {
+    fn metric(qs: &[u64], bs: &[((usize, usize), u64)]) -> Metric<Nimber> {
         let q = qs.iter().map(|&x| Nimber(x)).collect();
         let mut b = BTreeMap::new();
-        for &(i, j) in bs {
-            b.insert((i, j), Nimber(1));
+        for &((i, j), v) in bs {
+            b.insert((i, j), Nimber(v));
         }
         Metric { q, b }
+    }
+    fn b1(pairs: &[(usize, usize)]) -> Vec<((usize, usize), u64)> {
+        pairs.iter().map(|&p| (p, 1)).collect()
     }
 
     #[test]
     fn hyperbolic_plane_is_o_plus() {
         // Q = x0 x1: a single hyperbolic pair, Arf 0.
-        let r = arf_invariant(&metric(&[0, 0], &[(0, 1)])).unwrap();
-        assert_eq!(r.arf, 0);
-        assert_eq!(r.rank, 2);
-        assert_eq!(r.radical_dim, 0);
-        assert_eq!(r.o_type, "O+");
+        let r = arf_invariant(&metric(&[0, 0], &b1(&[(0, 1)])));
+        assert_eq!((r.arf, r.rank, r.radical_dim, r.o_type), (0, 2, 0, "O+"));
     }
 
     #[test]
     fn anisotropic_plane_is_o_minus() {
         // Q = x0² + x0 x1 + x1²: Arf 1.
-        let r = arf_invariant(&metric(&[1, 1], &[(0, 1)])).unwrap();
-        assert_eq!(r.arf, 1);
-        assert_eq!(r.rank, 2);
-        assert_eq!(r.o_type, "O-");
+        let r = arf_invariant(&metric(&[1, 1], &b1(&[(0, 1)])));
+        assert_eq!((r.arf, r.rank, r.o_type), (1, 2, "O-"));
     }
 
     #[test]
     fn the_two_planes_are_distinguished() {
-        let h = arf_invariant(&metric(&[0, 0], &[(0, 1)])).unwrap();
-        let a = arf_invariant(&metric(&[1, 1], &[(0, 1)])).unwrap();
+        let h = arf_invariant(&metric(&[0, 0], &b1(&[(0, 1)])));
+        let a = arf_invariant(&metric(&[1, 1], &b1(&[(0, 1)])));
         assert_ne!(h.arf, a.arf); // exactly what classifies them
     }
 
     #[test]
     fn arf_is_additive_over_orthogonal_sum() {
-        // H ⊕ H = O+,  H ⊕ A = O-,  A ⊕ A = O+  (two anisotropic planes ≅ two hyperbolic)
-        let hh = arf_invariant(&metric(&[0, 0, 0, 0], &[(0, 1), (2, 3)])).unwrap();
-        let ha = arf_invariant(&metric(&[0, 0, 1, 1], &[(0, 1), (2, 3)])).unwrap();
-        let aa = arf_invariant(&metric(&[1, 1, 1, 1], &[(0, 1), (2, 3)])).unwrap();
+        // H⊕H = O+,  H⊕A = O-,  A⊕A = O+  (two anisotropic planes ≅ two hyperbolic)
+        let hh = arf_invariant(&metric(&[0, 0, 0, 0], &b1(&[(0, 1), (2, 3)])));
+        let ha = arf_invariant(&metric(&[0, 0, 1, 1], &b1(&[(0, 1), (2, 3)])));
+        let aa = arf_invariant(&metric(&[1, 1, 1, 1], &b1(&[(0, 1), (2, 3)])));
         assert_eq!((hh.arf, hh.rank), (0, 4));
         assert_eq!((ha.arf, ha.rank), (1, 4));
-        assert_eq!((aa.arf, aa.rank), (0, 4)); // A ⊕ A ≅ H ⊕ H
+        assert_eq!((aa.arf, aa.rank), (0, 4)); // A⊕A ≅ H⊕H
     }
 
     #[test]
     fn radical_is_detected() {
         // Q = x0 x1 + x2²: rank-2 core ⊕ a defective radical direction.
-        let r = arf_invariant(&metric(&[0, 0, 1], &[(0, 1)])).unwrap();
-        assert_eq!(r.rank, 2);
-        assert_eq!(r.radical_dim, 1);
-        assert!(r.radical_anisotropic);
-        assert_eq!(r.arf, 0);
+        let r = arf_invariant(&metric(&[0, 0, 1], &b1(&[(0, 1)])));
+        assert_eq!((r.rank, r.radical_dim, r.radical_anisotropic, r.arf), (2, 1, true, 0));
     }
 
     #[test]
-    fn non_f2_entries_rejected() {
-        assert!(arf_invariant(&metric(&[2], &[])).is_none()); // q0 = *2 ∉ F₂
+    fn f4_forms_via_trace() {
+        // Genuine F₄ forms (entries up to *3), hand-computed via the trace:
+        //   q=[*2,*3], b01=*1:  S = *2⊗*3 = *1,  Tr_{F₄/F₂}(*1) = *1+*1 = 0  ⇒ O+
+        let r1 = arf_invariant(&metric(&[2, 3], &b1(&[(0, 1)])));
+        assert_eq!((r1.arf, r1.o_type, r1.rank), (0, "O+", 2));
+        //   q=[*2,*2], b01=*1:  S = *2⊗*2 = *3,  Tr(*3) = *3+*2 = *1       ⇒ O-
+        let r2 = arf_invariant(&metric(&[2, 2], &b1(&[(0, 1)])));
+        assert_eq!((r2.arf, r2.o_type, r2.rank), (1, "O-", 2));
+    }
+
+    #[test]
+    fn general_agrees_with_f2_bitmask() {
+        // The general nim-field path must match the F₂ bitmask version on every
+        // F₂ form (arf, rank, radical_dim, anisotropy, type all invariant).
+        let cases: &[(&[u64], &[(usize, usize)])] = &[
+            (&[0, 0], &[(0, 1)]),
+            (&[1, 1], &[(0, 1)]),
+            (&[0, 0, 1], &[(0, 1)]),
+            (&[1, 0, 1, 1], &[(0, 1), (2, 3)]),
+            (&[1, 1, 1, 1, 0], &[(0, 1), (2, 3)]),
+        ];
+        for (qs, ps) in cases {
+            let general = arf_nimber(&metric(qs, &b1(ps)));
+            let n = qs.len();
+            let qd: Vec<bool> = qs.iter().map(|&x| x == 1).collect();
+            let mut bmat = vec![0u32; n];
+            for &(i, j) in *ps {
+                bmat[i] |= 1 << j;
+                bmat[j] |= 1 << i;
+            }
+            assert_eq!(general, arf_f2(n, &qd, &bmat), "mismatch on q={:?}", qs);
+        }
     }
 }

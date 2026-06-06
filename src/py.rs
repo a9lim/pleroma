@@ -548,12 +548,8 @@ impl PyArfResult {
 /// Arf invariant (the char-2 Clifford classifier) of a nimber algebra whose
 /// metric has F₂ entries.
 #[pyfunction]
-fn arf_invariant(alg: &NimberAlgebra) -> PyResult<PyArfResult> {
-    crate::arf::arf_invariant(&alg.inner.metric)
-        .map(|inner| PyArfResult { inner })
-        .ok_or_else(|| {
-            PyValueError::new_err("Arf invariant requires F₂ metric entries (all q, b ∈ {*0, *1})")
-        })
+fn arf_invariant(alg: &NimberAlgebra) -> PyArfResult {
+    PyArfResult { inner: crate::arf::arf_invariant(&alg.inner.metric) }
 }
 
 #[pyfunction]

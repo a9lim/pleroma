@@ -39,6 +39,13 @@ toy — it returns the isomorphism class of the char-2 Clifford algebra.
 `A ⊕ A ≅ H ⊕ H` (two anisotropic planes ≅ two hyperbolic planes) is the
 additivity of Arf made executable, and the tool confirms it.
 
+The classifier works over any nim-subfield, not just F₂: a form with entries in
+F_{2^{2^k}} is symplectically reduced over that field (pairs normalised with the
+`nim_inv` from the versor layer), and the Arf sum is pushed down to F₂ by the
+field trace `Tr_{F/F₂}(x) = x + x² + … + x^{2^{m-1}}`, realising the canonical
+`k/℘(k) ≅ F₂`. Over F₄, e.g., `q=[*2,*2]` is anisotropic (O⁻) while `q=[*2,*3]`
+is hyperbolic (O⁺).
+
 ## The games bridge (solid as far as it goes)
 
 Games connect to the nim *field*, concretely:

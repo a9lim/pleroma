@@ -13,7 +13,7 @@ use std::sync::Arc;
 /// Nim-multiplication via Conway's Turning-Corners game recurrence (the
 /// game-theoretic definition; equals the algebraic nim-product).
 #[pyfunction]
-fn nim_mul_mex(x: u64, y: u64) -> u64 {
+fn nim_mul_mex(x: u128, y: u128) -> u128 {
     crate::games::nim_mul_mex(x, y)
 }
 // ---------------------------------------------------------------------------
@@ -45,13 +45,13 @@ impl PyGame {
         PyGame { inner: Game::up() }
     }
     #[staticmethod]
-    fn integer(n: i64) -> PyGame {
+    fn integer(n: i128) -> PyGame {
         PyGame {
             inner: Game::integer(n),
         }
     }
     #[staticmethod]
-    fn switch(a: i64, b: i64) -> PyGame {
+    fn switch(a: i128, b: i128) -> PyGame {
         PyGame {
             inner: Game::switch(a, b),
         }
@@ -80,13 +80,13 @@ impl PyGame {
     fn fuzzy(&self, other: &PyGame) -> bool {
         self.inner.fuzzy(&other.inner)
     }
-    fn birthday(&self) -> u32 {
+    fn birthday(&self) -> u128 {
         self.inner.birthday()
     }
     fn is_number(&self) -> bool {
         self.inner.is_number()
     }
-    fn times_int(&self, n: i64) -> PyGame {
+    fn times_int(&self, n: i128) -> PyGame {
         PyGame {
             inner: self.inner.times_int(n),
         }
@@ -115,7 +115,7 @@ impl PyGameExterior {
         PyGameExterior::from_inner(GameExterior::free(games))
     }
     #[staticmethod]
-    fn with_relation_bound(gens: Vec<PyGame>, bound: i64) -> Self {
+    fn with_relation_bound(gens: Vec<PyGame>, bound: i128) -> Self {
         let games: Vec<Game> = gens.iter().map(|g| g.inner.clone()).collect();
         PyGameExterior::from_inner(GameExterior::with_relation_search(games, bound))
     }
@@ -123,7 +123,7 @@ impl PyGameExterior {
     fn dim(&self) -> usize {
         self.inner.algebra().dim
     }
-    fn relations(&self) -> Vec<Vec<i64>> {
+    fn relations(&self) -> Vec<Vec<i128>> {
         self.inner
             .relations()
             .iter()

@@ -34,12 +34,12 @@ use std::collections::BTreeMap;
 pub fn tensor_square<S: Scalar>(alg: &CliffordAlgebra<S>) -> CliffordAlgebra<S> {
     assert!(
         alg.dim * 2 <= MAX_BASIS_DIM,
-        "tensor square needs 2*dim <= {MAX_BASIS_DIM} for u32 blade encoding"
+        "tensor square needs 2*dim <= {MAX_BASIS_DIM} for u128 blade encoding"
     );
     alg.graded_tensor(alg)
 }
 
-fn blade_of<S: Scalar>(alg: &CliffordAlgebra<S>, mask: u32) -> Multivector<S> {
+fn blade_of<S: Scalar>(alg: &CliffordAlgebra<S>, mask: u128) -> Multivector<S> {
     alg.blade(&bits(mask))
 }
 
@@ -51,7 +51,7 @@ pub fn coproduct<S: Scalar>(alg: &CliffordAlgebra<S>, mv: &Multivector<S>) -> Mu
         dim * 2 <= MAX_BASIS_DIM,
         "coproduct tensor encoding needs 2*dim <= {MAX_BASIS_DIM}"
     );
-    let mut out: BTreeMap<u32, S> = BTreeMap::new();
+    let mut out: BTreeMap<u128, S> = BTreeMap::new();
     for (&mask_s, coeff) in &mv.terms {
         // iterate every submask T of mask_s (including 0 and mask_s)
         let mut t = mask_s;
@@ -99,12 +99,12 @@ mod tests {
     }
 
     /// Split a tensor-square multivector into a (left-mask, right-mask) → coeff map.
-    fn pairs<S: Scalar>(alg: &CliffordAlgebra<S>, x: &Multivector<S>) -> BTreeMap<(u32, u32), S> {
+    fn pairs<S: Scalar>(alg: &CliffordAlgebra<S>, x: &Multivector<S>) -> BTreeMap<(u128, u128), S> {
         let dim = alg.dim;
-        let low = if dim >= 32 {
-            u32::MAX
+        let low = if dim >= MAX_BASIS_DIM {
+            u128::MAX
         } else {
-            (1u32 << dim) - 1
+            (1u128 << dim) - 1
         };
         let dtens = coproduct(alg, x);
         dtens
@@ -135,8 +135,8 @@ mod tests {
     /// Coassociativity: `(Δ⊗id)∘Δ = (id⊗Δ)∘Δ` as triple-tensor maps.
     fn check_coassociativity<S: Scalar>(alg: &CliffordAlgebra<S>, x: &Multivector<S>) {
         let p = pairs(alg, x);
-        let mut lhs: BTreeMap<(u32, u32, u32), S> = BTreeMap::new();
-        let mut rhs: BTreeMap<(u32, u32, u32), S> = BTreeMap::new();
+        let mut lhs: BTreeMap<(u128, u128, u128), S> = BTreeMap::new();
+        let mut rhs: BTreeMap<(u128, u128, u128), S> = BTreeMap::new();
         for (&(t, u), c) in &p {
             // (Δ⊗id): split the left leg
             for (&(t1, t2), d) in &pairs(alg, &alg.blade(&bits(t))) {
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn antipode_is_grade_involution_not_reversion_twist() {
         let alg = CliffordAlgebra::new(3, Metric::<Rational>::grassmann(3));
-        for mask in 0u32..8 {
+        for mask in 0u128..8 {
             let blade = alg.blade(&bits(mask));
             let k = grade(mask);
             let expect = if k & 1 == 1 {
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn antipode_is_identity_over_nimber() {
         let alg = CliffordAlgebra::new(3, Metric::<Nimber>::grassmann(3));
-        for mask in 0u32..8 {
+        for mask in 0u128..8 {
             let blade = alg.blade(&bits(mask));
             assert_eq!(antipode(&alg, &blade), blade);
         }

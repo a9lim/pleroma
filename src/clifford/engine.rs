@@ -2,7 +2,7 @@
 //!
 //! ## Metric data — characteristic-faithful by design
 //!
-//! A blade is a `u32` bitmask over basis generators e_0..e_31. The algebra is
+//! A blade is a `u128` bitmask over basis generators e_0..e_127. The algebra is
 //! defined by two independent pieces of data, *not* a single bilinear form:
 //!
 //!   * `q[i]`      = e_i²                      (the quadratic form / squares)
@@ -31,7 +31,7 @@ use crate::scalar::Scalar;
 use std::collections::BTreeMap;
 
 /// Ascending list of set-bit indices of a blade mask.
-pub fn bits(mask: u32) -> Vec<usize> {
+pub fn bits(mask: u128) -> Vec<usize> {
     let mut v = Vec::new();
     let mut m = mask;
     while m != 0 {
@@ -43,21 +43,21 @@ pub fn bits(mask: u32) -> Vec<usize> {
 }
 
 /// The grade (number of generators) of a blade mask.
-pub fn grade(mask: u32) -> u32 {
-    mask.count_ones()
+pub fn grade(mask: u128) -> usize {
+    mask.count_ones() as usize
 }
 
 /// Sign (+1/-1 as a Scalar) of reordering two disjoint ascending blades when
 /// concatenated — i.e. the number of (i in a, j in b) with i > j, mod 2.
-fn wedge_sign<S: Scalar>(a: u32, b: u32) -> S {
-    let mut swaps = 0u32;
+fn wedge_sign<S: Scalar>(a: u128, b: u128) -> S {
+    let mut swaps = 0usize;
     let mut aa = a;
     while aa != 0 {
-        let i = aa.trailing_zeros();
+        let i = aa.trailing_zeros() as usize;
         aa &= aa - 1;
         // count bits of b strictly below i
-        let below = b & ((1u32 << i) - 1);
-        swaps += below.count_ones();
+        let below = b & ((1u128 << i) - 1);
+        swaps += below.count_ones() as usize;
     }
     if swaps & 1 == 0 {
         S::one()
@@ -89,8 +89,8 @@ pub struct Metric<S: Scalar> {
     pub a: BTreeMap<(usize, usize), S>,
 }
 
-/// Blade masks are `u32`, so the basis has at most 32 named generators.
-pub const MAX_BASIS_DIM: usize = 32;
+/// Blade masks are `u128`, so the basis has at most 128 named generators.
+pub const MAX_BASIS_DIM: usize = 128;
 
 impl<S: Scalar> Metric<S> {
     /// Orthogonal metric from a list of squares (b = 0). `Cl(p,q,r)` style.
@@ -187,10 +187,10 @@ impl<S: Scalar> Metric<S> {
     /// The B-contraction `e_i ⌟_B W_T` only (no wedge term): the multivector
     /// `Σ_k (−1)^k B(e_i, e_{j_k}) W_{T∖j_k}` over the set bits `j_k` of `t` in
     /// ascending order. Used by the general (Chevalley) geometric product.
-    fn contract_vec_blade(&self, i: usize, t: u32) -> BTreeMap<u32, S> {
-        let mut out: BTreeMap<u32, S> = BTreeMap::new();
+    fn contract_vec_blade(&self, i: usize, t: u128) -> BTreeMap<u128, S> {
+        let mut out: BTreeMap<u128, S> = BTreeMap::new();
         let mut tt = t;
-        let mut k = 0u32;
+        let mut k = 0u128;
         while tt != 0 {
             let j = tt.trailing_zeros() as usize;
             tt &= tt - 1;
@@ -210,7 +210,7 @@ impl<S: Scalar> Metric<S> {
 
     /// `e_i · W_T` in the wedge basis (Chevalley): wedge part `e_i ∧ W_T` (when
     /// `i ∉ T`) plus the B-contraction `e_i ⌟_B W_T`.
-    fn vec_times_blade(&self, i: usize, t: u32) -> BTreeMap<u32, S> {
+    fn vec_times_blade(&self, i: usize, t: u128) -> BTreeMap<u128, S> {
         let mut out = self.contract_vec_blade(i, t);
         if t & (1 << i) == 0 {
             let sign = wedge_sign::<S>(1 << i, t);
@@ -223,8 +223,8 @@ impl<S: Scalar> Metric<S> {
         out
     }
 
-    fn vec_times_mv(&self, i: usize, mv: &BTreeMap<u32, S>) -> BTreeMap<u32, S> {
-        let mut out: BTreeMap<u32, S> = BTreeMap::new();
+    fn vec_times_mv(&self, i: usize, mv: &BTreeMap<u128, S>) -> BTreeMap<u128, S> {
+        let mut out: BTreeMap<u128, S> = BTreeMap::new();
         for (&t, c) in mv {
             merge(&mut out, scale(self.vec_times_blade(i, t), c));
         }
@@ -237,7 +237,7 @@ impl<S: Scalar> Metric<S> {
     /// peeling the minimum generator `i` of `S` (so `W_S = e_i ∧ W_{S∖i}` with no
     /// sign). Recurses on a strictly smaller leading blade ⇒ terminates. With `a`
     /// empty (`B` lower-triangular) this reproduces `reduce_word` exactly.
-    fn geom_product_blades(&self, s: u32, t: u32) -> BTreeMap<u32, S> {
+    fn geom_product_blades(&self, s: u128, t: u128) -> BTreeMap<u128, S> {
         if s == 0 {
             let mut m = BTreeMap::new();
             m.insert(t, S::one());
@@ -248,7 +248,7 @@ impl<S: Scalar> Metric<S> {
         let xy = self.geom_product_blades(s_rest, t);
         let part1 = self.vec_times_mv(i, &xy);
         let contraction = self.contract_vec_blade(i, s_rest);
-        let mut part2: BTreeMap<u32, S> = BTreeMap::new();
+        let mut part2: BTreeMap<u128, S> = BTreeMap::new();
         for (&u, cu) in &contraction {
             merge(&mut part2, scale(self.geom_product_blades(u, t), cu));
         }
@@ -295,7 +295,7 @@ impl<S: Scalar> Metric<S> {
     /// (`general_product_reproduces_reduce_word_when_a_empty`), so the production
     /// engine has a second, structurally different implementation to agree with.
     #[cfg(test)]
-    fn reduce_word(&self, word: &[usize]) -> BTreeMap<u32, S> {
+    fn reduce_word(&self, word: &[usize]) -> BTreeMap<u128, S> {
         for p in 0..word.len().saturating_sub(1) {
             let (a, c) = (word[p], word[p + 1]);
             if a == c {
@@ -321,7 +321,7 @@ impl<S: Scalar> Metric<S> {
             }
         }
         // strictly increasing & distinct → a single canonical blade
-        let mut mask = 0u32;
+        let mut mask = 0u128;
         for &g in word {
             mask |= 1 << g;
         }
@@ -331,7 +331,7 @@ impl<S: Scalar> Metric<S> {
     }
 }
 
-fn scale<S: Scalar>(mut terms: BTreeMap<u32, S>, s: &S) -> BTreeMap<u32, S> {
+fn scale<S: Scalar>(mut terms: BTreeMap<u128, S>, s: &S) -> BTreeMap<u128, S> {
     if s.is_zero() {
         return BTreeMap::new();
     }
@@ -342,7 +342,7 @@ fn scale<S: Scalar>(mut terms: BTreeMap<u32, S>, s: &S) -> BTreeMap<u32, S> {
     terms
 }
 
-fn merge<S: Scalar>(into: &mut BTreeMap<u32, S>, other: BTreeMap<u32, S>) {
+fn merge<S: Scalar>(into: &mut BTreeMap<u128, S>, other: BTreeMap<u128, S>) {
     for (blade, coeff) in other {
         let e = into.entry(blade).or_insert_with(S::zero);
         *e = e.add(&coeff);
@@ -355,7 +355,7 @@ fn merge<S: Scalar>(into: &mut BTreeMap<u32, S>, other: BTreeMap<u32, S>) {
 /// A multivector: blade-mask → coefficient (zeros never stored).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Multivector<S: Scalar> {
-    pub terms: BTreeMap<u32, S>,
+    pub terms: BTreeMap<u128, S>,
 }
 
 /// A Clifford algebra: dimension + metric. Produces and combines multivectors.
@@ -397,7 +397,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
             .iter()
             .map(|(&blade, c)| {
                 if blade != 0 {
-                    let highest = (u32::BITS - 1 - blade.leading_zeros()) as usize;
+                    let highest = (u128::BITS - 1 - blade.leading_zeros()) as usize;
                     assert!(
                         highest + shift < MAX_BASIS_DIM,
                         "embedded blade exceeds {MAX_BASIS_DIM} generators"
@@ -419,7 +419,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
     pub fn scalar(&self, s: S) -> Multivector<S> {
         let mut terms = BTreeMap::new();
         if !s.is_zero() {
-            terms.insert(0u32, s);
+            terms.insert(0u128, s);
         }
         Multivector { terms }
     }
@@ -429,18 +429,18 @@ impl<S: Scalar> CliffordAlgebra<S> {
         assert!(i < self.dim, "generator index {i} out of range");
         assert!(i < MAX_BASIS_DIM, "generator index {i} exceeds blade mask");
         let mut terms = BTreeMap::new();
-        terms.insert(1u32 << i, S::one());
+        terms.insert(1u128 << i, S::one());
         Multivector { terms }
     }
 
     /// A single basis blade from a set of generators, coefficient 1.
     pub fn blade(&self, gens: &[usize]) -> Multivector<S> {
-        let mut mask = 0u32;
+        let mut mask = 0u128;
         for &g in gens {
             assert!(g < self.dim, "blade generator index {g} out of range");
             assert!(g < MAX_BASIS_DIM, "blade generator index {g} exceeds mask");
             assert!(
-                mask & (1u32 << g) == 0,
+                mask & (1u128 << g) == 0,
                 "blade expects a set of distinct generators"
             );
             mask |= 1 << g;
@@ -467,7 +467,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
     /// arbitrary metric `(q, b, a)` — ordinary Clifford when `a` is empty, and
     /// the deformed quantum-Clifford / Weyl-interpolating product when it isn't.
     pub fn mul(&self, a: &Multivector<S>, b: &Multivector<S>) -> Multivector<S> {
-        let mut out: BTreeMap<u32, S> = BTreeMap::new();
+        let mut out: BTreeMap<u128, S> = BTreeMap::new();
         for (&ba, ca) in &a.terms {
             for (&bb, cb) in &b.terms {
                 let reduced = self.metric.geom_product_blades(ba, bb);
@@ -480,7 +480,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
 
     /// Exterior (wedge) product — metric-independent.
     pub fn wedge(&self, a: &Multivector<S>, b: &Multivector<S>) -> Multivector<S> {
-        let mut out: BTreeMap<u32, S> = BTreeMap::new();
+        let mut out: BTreeMap<u128, S> = BTreeMap::new();
         for (&ba, ca) in &a.terms {
             for (&bb, cb) in &b.terms {
                 if ba & bb != 0 {
@@ -520,7 +520,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
     }
 
     /// Grade-k projection.
-    pub fn grade_part(&self, a: &Multivector<S>, k: u32) -> Multivector<S> {
+    pub fn grade_part(&self, a: &Multivector<S>, k: usize) -> Multivector<S> {
         let terms = a
             .terms
             .iter()
@@ -579,9 +579,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "at most 32 generators")]
+    #[should_panic(expected = "at most 128 generators")]
     fn algebra_dimension_must_fit_blade_mask() {
-        let _ = CliffordAlgebra::new(33, Metric::<Rational>::grassmann(33));
+        let _ = CliffordAlgebra::new(129, Metric::<Rational>::grassmann(129));
     }
 
     #[test]
@@ -866,8 +866,8 @@ mod tests {
         b.insert((1usize, 2usize), r(-1));
         b.insert((0usize, 2usize), r(2));
         let m = Metric::new(vec![r(1), r(-1), r(2)], b);
-        for ba in 0u32..8 {
-            for bb in 0u32..8 {
+        for ba in 0u128..8 {
+            for bb in 0u128..8 {
                 let word: Vec<usize> = bits(ba).into_iter().chain(bits(bb)).collect();
                 assert_eq!(
                     m.geom_product_blades(ba, bb),

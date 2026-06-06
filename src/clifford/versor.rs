@@ -113,7 +113,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
     /// Left contraction a ⌟ b = Σ_{r≤s} ⟨⟨a⟩_r ⟨b⟩_s⟩_{s−r}.
     pub fn left_contract(&self, a: &Multivector<S>, b: &Multivector<S>) -> Multivector<S> {
         let mut out = self.zero();
-        let d = self.dim as u32;
+        let d = self.dim;
         for r in 0..=d {
             let ar = self.grade_part(a, r);
             if ar.is_zero() {
@@ -134,7 +134,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
     /// Right contraction a ⌞ b = Σ_{r≥s} ⟨⟨a⟩_r ⟨b⟩_s⟩_{r−s}.
     pub fn right_contract(&self, a: &Multivector<S>, b: &Multivector<S>) -> Multivector<S> {
         let mut out = self.zero();
-        let d = self.dim as u32;
+        let d = self.dim;
         for s in 0..=d {
             let bs = self.grade_part(b, s);
             if bs.is_zero() {
@@ -154,10 +154,10 @@ impl<S: Scalar> CliffordAlgebra<S> {
 
     /// The unit pseudoscalar I = e₀e₁…e_{dim−1}.
     pub fn pseudoscalar(&self) -> Multivector<S> {
-        let mask = if self.dim >= 32 {
-            u32::MAX
+        let mask = if self.dim >= MAX_BASIS_DIM {
+            u128::MAX
         } else {
-            (1u32 << self.dim) - 1
+            (1u128 << self.dim) - 1
         };
         let mut terms = BTreeMap::new();
         terms.insert(mask, S::one());

@@ -124,7 +124,7 @@ impl<S: Scalar> Cga<S> {
             (0..self.n)
                 .map(|i| {
                     norm.terms
-                        .get(&(1u32 << i))
+                        .get(&(1u128 << i))
                         .cloned()
                         .unwrap_or_else(S::zero)
                 })

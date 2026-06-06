@@ -15,11 +15,11 @@ use pleroma::games::{octal_misere_quotient, Quotient};
 
 /// If the quotient on atoms `1..=k` is a full-rank `(ℤ/2)^k` (the `2^k` squarefree
 /// subsets hit all `2^k` classes bijectively), return its P-set as `F₂^k` masks.
-fn p_set_as_f2(q: &Quotient, k: usize) -> Option<Vec<u32>> {
+fn p_set_as_f2(q: &Quotient, k: usize) -> Option<Vec<u128>> {
     if q.num_classes != (1 << k) {
         return None;
     }
-    let class_of_subset = |mask: u32| -> Option<usize> {
+    let class_of_subset = |mask: u128| -> Option<usize> {
         let mut ms: Vec<usize> = (0..k)
             .filter(|&i| mask & (1 << i) != 0)
             .map(|i| i + 1)
@@ -32,7 +32,7 @@ fn p_set_as_f2(q: &Quotient, k: usize) -> Option<Vec<u32>> {
     };
     let mut hit = std::collections::HashSet::new();
     let mut pset = Vec::new();
-    for v in 0u32..(1 << k) {
+    for v in 0u128..(1 << k) {
         let c = class_of_subset(v)?;
         hit.insert(c);
         if q.class_is_p[c] {

@@ -98,14 +98,14 @@ pub fn p_positions(succ: &[Vec<usize>]) -> Vec<usize> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScoreInterval {
     /// Optimal score with Left (the maximizer) to move.
-    pub left: i64,
+    pub left: i128,
     /// Optimal score with Right (the minimizer) to move.
-    pub right: i64,
+    pub right: i128,
 }
 
 fn score_dfs(
     succ: &[Vec<usize>],
-    terminal_score: &[i64],
+    terminal_score: &[i128],
     v: usize,
     state: &mut [u8],
     memo: &mut [Option<ScoreInterval>],
@@ -125,8 +125,8 @@ fn score_dfs(
         // Left to move picks the move maximizing the *opponent-to-move* value of the
         // successor (after Left moves, it is Right's turn there): left = max_w R(w).
         // Symmetrically right = min_w L(w).
-        let mut best_left = i64::MIN;
-        let mut best_right = i64::MAX;
+        let mut best_left = i128::MIN;
+        let mut best_right = i128::MAX;
         for &w in &succ[v] {
             let cw = score_dfs(succ, terminal_score, w, state, memo)?;
             best_left = best_left.max(cw.right);
@@ -152,7 +152,7 @@ fn score_dfs(
 /// single Win/Loss bit, the scoring value is an integer, rich enough to *carry* a
 /// quadratic form's value `Q(v)` at a position rather than only its zero set — the
 /// extra structure a quadratic play rule would need.
-pub fn scoring_values(succ: &[Vec<usize>], terminal_score: &[i64]) -> Option<Vec<ScoreInterval>> {
+pub fn scoring_values(succ: &[Vec<usize>], terminal_score: &[i128]) -> Option<Vec<ScoreInterval>> {
     let n = succ.len();
     assert_eq!(n, terminal_score.len(), "one score per position");
     let mut state = vec![0u8; n];

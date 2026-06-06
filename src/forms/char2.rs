@@ -11,12 +11,12 @@
 //! a symplectic basis {a_k,b_k} for B (peeling hyperbolic pairs, leaving the
 //! radical) and return Arf = Σ_k Q(a_k) Q(b_k) ∈ F₂.
 //!
-//! `arf_f2` is the F₂ case (u32 bitmask vectors over ≤32 generators).
+//! `arf_f2` is the F₂ case (u128 bitmask vectors over ≤128 generators).
 //! `arf_nimber` handles a form over any nim-subfield F_{2^{2^k}}: symplectic
 //! reduction over the field (normalising pairs with `nim_inv`), then the Arf
 //! sum is pushed to F₂ by the field trace. `arf_invariant` uses the latter.
 
-use crate::clifford::{Metric, Multivector};
+use crate::clifford::{CliffordAlgebra, Metric, Multivector};
 use crate::scalar::{nim_add, nim_inv, nim_mul, nim_trace, Nimber};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,16 +34,16 @@ pub struct ArfResult {
 }
 
 /// Bits of `mask` strictly above position `i`.
-fn above(i: usize) -> u32 {
-    if i >= 31 {
+fn above(i: usize) -> u128 {
+    if i >= 127 {
         0
     } else {
-        (!0u32) << (i + 1)
+        (!0u128) << (i + 1)
     }
 }
 
 /// Q(v) for a bitmask vector v.
-fn q_of(v: u32, qd: &[bool], bmat: &[u32]) -> bool {
+fn q_of(v: u128, qd: &[bool], bmat: &[u128]) -> bool {
     let mut acc = false;
     let mut vv = v;
     while vv != 0 {
@@ -62,7 +62,7 @@ fn q_of(v: u32, qd: &[bool], bmat: &[u32]) -> bool {
 }
 
 /// Polar form B(u, v) = Σ_{i≠j} u_i v_j b_{ij}.
-fn b_of(u: u32, v: u32, bmat: &[u32]) -> bool {
+fn b_of(u: u128, v: u128, bmat: &[u128]) -> bool {
     let mut acc = false;
     let mut uu = u;
     while uu != 0 {
@@ -77,11 +77,11 @@ fn b_of(u: u32, v: u32, bmat: &[u32]) -> bool {
 
 /// Arf invariant of an F₂ quadratic form given by diagonal `qd` (the squares)
 /// and symmetric adjacency `bmat` (the polar form; bmat[i] bit j ⇔ b_{ij}=1).
-pub fn arf_f2(n: usize, qd: &[bool], bmat: &[u32]) -> ArfResult {
-    let mut vectors: Vec<u32> = (0..n).map(|i| 1u32 << i).collect();
+pub fn arf_f2(n: usize, qd: &[bool], bmat: &[u128]) -> ArfResult {
+    let mut vectors: Vec<u128> = (0..n).map(|i| 1u128 << i).collect();
     let mut arf = false;
     let mut pairs = 0usize;
-    let mut radical: Vec<u32> = Vec::new();
+    let mut radical: Vec<u128> = Vec::new();
 
     while let Some(a) = vectors.pop() {
         if let Some(pos) = vectors.iter().position(|&w| b_of(a, w, bmat)) {
@@ -122,30 +122,30 @@ pub fn arf_f2(n: usize, qd: &[bool], bmat: &[u32]) -> ArfResult {
 
 /// Smallest extension degree m = 2^k over F₂ such that the nim-subfield
 /// F_{2^m} (the nimbers below 2^m) contains `max_val`.
-fn min_field_degree(max_val: u64) -> u32 {
-    let mut m = 1u32; // 2^k, starting k = 0  (F_2)
+fn min_field_degree(max_val: u128) -> u128 {
+    let mut m = 1u128; // 2^k, starting k = 0  (F_2)
     loop {
-        if m >= 64 {
-            return 64;
+        if m >= 128 {
+            return 128;
         }
-        if max_val < (1u64 << m) {
+        if max_val < (1u128 << m) {
             return m;
         }
         m <<= 1;
     }
 }
 
-fn vscale(c: u64, v: &[u64]) -> Vec<u64> {
+fn vscale(c: u128, v: &[u128]) -> Vec<u128> {
     v.iter().map(|&x| nim_mul(c, x)).collect()
 }
-fn vadd(u: &[u64], v: &[u64]) -> Vec<u64> {
+fn vadd(u: &[u128], v: &[u128]) -> Vec<u128> {
     u.iter().zip(v).map(|(&a, &b)| nim_add(a, b)).collect()
 }
 
 /// Q(v) = Σ_i v_i² q_i + Σ_{i<j} v_i v_j b_{ij}, over the nim-field.
-fn qf(v: &[u64], q: &[u64], bmat: &[Vec<u64>]) -> u64 {
+fn qf(v: &[u128], q: &[u128], bmat: &[Vec<u128>]) -> u128 {
     let n = v.len();
-    let mut acc = 0u64;
+    let mut acc = 0u128;
     for i in 0..n {
         acc ^= nim_mul(nim_mul(v[i], v[i]), q[i]);
         for j in (i + 1)..n {
@@ -156,9 +156,9 @@ fn qf(v: &[u64], q: &[u64], bmat: &[Vec<u64>]) -> u64 {
 }
 
 /// Polar form B(u,v) = Σ_{i<j} (u_i v_j + u_j v_i) b_{ij}, over the nim-field.
-fn bf(u: &[u64], v: &[u64], bmat: &[Vec<u64>]) -> u64 {
+fn bf(u: &[u128], v: &[u128], bmat: &[Vec<u128>]) -> u128 {
     let n = u.len();
-    let mut acc = 0u64;
+    let mut acc = 0u128;
     for i in 0..n {
         for j in (i + 1)..n {
             let cross = nim_add(nim_mul(u[i], v[j]), nim_mul(u[j], v[i]));
@@ -172,10 +172,13 @@ fn bf(u: &[u64], v: &[u64], bmat: &[Vec<u64>]) -> u64 {
 /// smallest nim-subfield containing all entries), reduced to F₂ via the trace.
 /// Works for any nimber metric — F₂ is the special case where the trace is the
 /// identity. Symplectic reduction normalises each pair with `nim_inv`.
-pub fn arf_nimber(metric: &Metric<Nimber>) -> ArfResult {
+pub fn arf_nimber(metric: &Metric<Nimber>) -> Option<ArfResult> {
+    if !metric.a.is_empty() {
+        return None;
+    }
     let n = metric.q.len();
-    let q: Vec<u64> = metric.q.iter().map(|x| x.0).collect();
-    let mut bmat = vec![vec![0u64; n]; n];
+    let q: Vec<u128> = metric.q.iter().map(|x| x.0).collect();
+    let mut bmat = vec![vec![0u128; n]; n];
     for (&(i, j), v) in &metric.b {
         bmat[i][j] = v.0;
         bmat[j][i] = v.0;
@@ -187,15 +190,15 @@ pub fn arf_nimber(metric: &Metric<Nimber>) -> ArfResult {
     }
     let m = min_field_degree(maxv);
 
-    let mut vectors: Vec<Vec<u64>> = (0..n)
+    let mut vectors: Vec<Vec<u128>> = (0..n)
         .map(|i| {
-            let mut e = vec![0u64; n];
+            let mut e = vec![0u128; n];
             e[i] = 1;
             e
         })
         .collect();
 
-    let mut s = 0u64; // Σ Q(a_k) Q(b_k), a field element
+    let mut s = 0u128; // Σ Q(a_k) Q(b_k), a field element
     let mut pairs = 0usize;
     let mut radical_dim = 0usize;
     let mut radical_anisotropic = false;
@@ -228,17 +231,17 @@ pub fn arf_nimber(metric: &Metric<Nimber>) -> ArfResult {
     }
 
     let arf = nim_trace(s, m) as u8;
-    ArfResult {
+    Some(ArfResult {
         arf,
         rank: 2 * pairs,
         radical_dim,
         radical_anisotropic,
         o_type: if arf == 1 { "O-" } else { "O+" },
-    }
+    })
 }
 
 /// Arf invariant of a nimber Clifford metric (the char-2 Clifford classifier).
-pub fn arf_invariant(metric: &Metric<Nimber>) -> ArfResult {
+pub fn arf_invariant(metric: &Metric<Nimber>) -> Option<ArfResult> {
     arf_nimber(metric)
 }
 
@@ -246,9 +249,9 @@ pub fn arf_invariant(metric: &Metric<Nimber>) -> ArfResult {
 // The Dickson invariant — the characteristic-2 determinant replacement
 // ---------------------------------------------------------------------------
 
-/// Rank of a matrix over the nim-field F_{2^64}, by Gaussian elimination with nim
-/// arithmetic. Rows are dense u64 vectors (all the same length).
-fn nim_matrix_rank(mut rows: Vec<Vec<u64>>) -> usize {
+/// Rank of a matrix over the nim-field F_{2^128}, by Gaussian elimination with nim
+/// arithmetic. Rows are dense u128 vectors (all the same length).
+fn nim_matrix_rank(mut rows: Vec<Vec<u128>>) -> usize {
     let nrows = rows.len();
     if nrows == 0 {
         return 0;
@@ -289,9 +292,9 @@ fn nim_matrix_rank(mut rows: Vec<Vec<u64>>) -> usize {
 /// replacement, with `SO(Q) = ker D`. A single reflection has `D = 1`; a product
 /// of `k` reflections has `D = k mod 2`. It is the companion to the Arf
 /// invariant: **Arf classifies the form, Dickson classifies `O(Q)`.**
-pub fn dickson_matrix(g: &[Vec<u64>]) -> u8 {
+pub fn dickson_matrix(g: &[Vec<u128>]) -> u8 {
     let n = g.len();
-    let mut m: Vec<Vec<u64>> = g.to_vec();
+    let mut m: Vec<Vec<u128>> = g.to_vec();
     for i in 0..n {
         m[i][i] = nim_add(m[i][i], 1); // g − I  (= g + I in char 2)
     }
@@ -303,11 +306,13 @@ pub fn dickson_matrix(g: &[Vec<u64>]) -> u8 {
 /// versor (rotor) lies in `SO` with `D = 0`, an odd versor (e.g. a single vector,
 /// a reflection) has `D = 1`. Returns `None` if the multivector is not of
 /// homogeneous grade parity (hence not a versor) or is zero.
-pub fn dickson_of_versor(v: &Multivector<Nimber>) -> Option<u8> {
+pub fn dickson_of_versor(alg: &CliffordAlgebra<Nimber>, v: &Multivector<Nimber>) -> Option<u8> {
     // The Dickson invariant of a versor is its grade parity, a fact independent of
     // the scalar field — so this is the char-2 specialisation of the generic
     // `clifford::versor_grade_parity`.
-    crate::clifford::versor_grade_parity(v)
+    let dickson = crate::clifford::versor_grade_parity(v)?;
+    alg.versor_inverse(v)?;
+    Some(dickson)
 }
 
 // ---------------------------------------------------------------------------
@@ -323,7 +328,7 @@ pub struct QuadricFit {
     /// Diagonal q_i (the linear/`x_i` coefficients = squares over F₂).
     pub qd: Vec<bool>,
     /// Polar form bmat (the `x_i x_j` coefficients), as adjacency rows.
-    pub bmat: Vec<u32>,
+    pub bmat: Vec<u128>,
     /// Arf classification of the homogeneous quadratic part.
     pub arf: ArfResult,
 }
@@ -351,7 +356,7 @@ fn f2_dot(a: u128, b: u128) -> bool {
 /// "is this P-set a quadric, and if so what is its Arf (win-bias)?", and
 /// distinguishes a genuine quadric (`is_genuinely_quadratic`) from a mere affine
 /// subspace (the XOR-linear case normal play already produces).
-pub fn fit_f2_quadratic(set: &[u32], k: usize) -> Option<QuadricFit> {
+pub fn fit_f2_quadratic(set: &[u128], k: usize) -> Option<QuadricFit> {
     assert!(k <= 12, "fit_f2_quadratic is exponential in k");
     // Coefficient layout: bit 0 = constant; bits 1..=k = linear x_i;
     // then one bit per pair (i<j) for the quadratic terms.
@@ -368,7 +373,7 @@ pub fn fit_f2_quadratic(set: &[u32], k: usize) -> Option<QuadricFit> {
         "coefficient layout must fit in u128"
     );
     // Feature vector φ(v) over the coefficient layout (as a u128 bitmask).
-    let phi = |v: u32| -> u128 {
+    let phi = |v: u128| -> u128 {
         let mut f = 1u128; // constant
         for i in 0..k {
             if v & (1 << i) != 0 {
@@ -384,10 +389,10 @@ pub fn fit_f2_quadratic(set: &[u32], k: usize) -> Option<QuadricFit> {
         }
         f
     };
-    let in_set: std::collections::HashSet<u32> = set.iter().copied().collect();
+    let in_set: std::collections::HashSet<u128> = set.iter().copied().collect();
 
     // Build the augmented system: rows (φ(v) | target), target = 0 iff v ∈ set.
-    let mut rows: Vec<(u128, bool)> = (0..(1u32 << k))
+    let mut rows: Vec<(u128, bool)> = (0..(1u128 << k))
         .map(|v| (phi(v), !in_set.contains(&v)))
         .collect();
 
@@ -424,7 +429,7 @@ pub fn fit_f2_quadratic(set: &[u32], k: usize) -> Option<QuadricFit> {
 
     let constant = sol & 1 != 0;
     let qd: Vec<bool> = (0..k).map(|i| sol & (1u128 << (1 + i)) != 0).collect();
-    let mut bmat = vec![0u32; k];
+    let mut bmat = vec![0u128; k];
     for i in 0..k {
         for j in (i + 1)..k {
             if sol & (1u128 << pair_index[i][j]) != 0 {
@@ -447,7 +452,7 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
 
-    fn metric(qs: &[u64], bs: &[((usize, usize), u64)]) -> Metric<Nimber> {
+    fn metric(qs: &[u128], bs: &[((usize, usize), u128)]) -> Metric<Nimber> {
         let q = qs.iter().map(|&x| Nimber(x)).collect();
         let mut b = BTreeMap::new();
         for &((i, j), v) in bs {
@@ -455,37 +460,37 @@ mod tests {
         }
         Metric::new(q, b)
     }
-    fn b1(pairs: &[(usize, usize)]) -> Vec<((usize, usize), u64)> {
+    fn b1(pairs: &[(usize, usize)]) -> Vec<((usize, usize), u128)> {
         pairs.iter().map(|&p| (p, 1)).collect()
     }
 
     #[test]
     fn hyperbolic_plane_is_o_plus() {
         // Q = x0 x1: a single hyperbolic pair, Arf 0.
-        let r = arf_invariant(&metric(&[0, 0], &b1(&[(0, 1)])));
+        let r = arf_invariant(&metric(&[0, 0], &b1(&[(0, 1)]))).unwrap();
         assert_eq!((r.arf, r.rank, r.radical_dim, r.o_type), (0, 2, 0, "O+"));
     }
 
     #[test]
     fn anisotropic_plane_is_o_minus() {
         // Q = x0² + x0 x1 + x1²: Arf 1.
-        let r = arf_invariant(&metric(&[1, 1], &b1(&[(0, 1)])));
+        let r = arf_invariant(&metric(&[1, 1], &b1(&[(0, 1)]))).unwrap();
         assert_eq!((r.arf, r.rank, r.o_type), (1, 2, "O-"));
     }
 
     #[test]
     fn the_two_planes_are_distinguished() {
-        let h = arf_invariant(&metric(&[0, 0], &b1(&[(0, 1)])));
-        let a = arf_invariant(&metric(&[1, 1], &b1(&[(0, 1)])));
+        let h = arf_invariant(&metric(&[0, 0], &b1(&[(0, 1)]))).unwrap();
+        let a = arf_invariant(&metric(&[1, 1], &b1(&[(0, 1)]))).unwrap();
         assert_ne!(h.arf, a.arf); // exactly what classifies them
     }
 
     #[test]
     fn arf_is_additive_over_orthogonal_sum() {
         // H⊕H = O+,  H⊕A = O-,  A⊕A = O+  (two anisotropic planes ≅ two hyperbolic)
-        let hh = arf_invariant(&metric(&[0, 0, 0, 0], &b1(&[(0, 1), (2, 3)])));
-        let ha = arf_invariant(&metric(&[0, 0, 1, 1], &b1(&[(0, 1), (2, 3)])));
-        let aa = arf_invariant(&metric(&[1, 1, 1, 1], &b1(&[(0, 1), (2, 3)])));
+        let hh = arf_invariant(&metric(&[0, 0, 0, 0], &b1(&[(0, 1), (2, 3)]))).unwrap();
+        let ha = arf_invariant(&metric(&[0, 0, 1, 1], &b1(&[(0, 1), (2, 3)]))).unwrap();
+        let aa = arf_invariant(&metric(&[1, 1, 1, 1], &b1(&[(0, 1), (2, 3)]))).unwrap();
         assert_eq!((hh.arf, hh.rank), (0, 4));
         assert_eq!((ha.arf, ha.rank), (1, 4));
         assert_eq!((aa.arf, aa.rank), (0, 4)); // A⊕A ≅ H⊕H
@@ -497,9 +502,9 @@ mod tests {
         // rather than a hand-written 4-generator metric: arf is additive over ⟂.
         let a = metric(&[1, 1], &b1(&[(0, 1)])); // anisotropic plane, Arf 1
         let h = metric(&[0, 0], &b1(&[(0, 1)])); // hyperbolic plane,  Arf 0
-        let aa = arf_invariant(&a.direct_sum(&a));
-        let hh = arf_invariant(&h.direct_sum(&h));
-        let ah = arf_invariant(&a.direct_sum(&h));
+        let aa = arf_invariant(&a.direct_sum(&a)).unwrap();
+        let hh = arf_invariant(&h.direct_sum(&h)).unwrap();
+        let ah = arf_invariant(&a.direct_sum(&h)).unwrap();
         assert_eq!(aa.arf, 0); // 1 + 1 = 0
         assert_eq!(hh.arf, 0); // 0 + 0 = 0  ⇒  A⊕A ≅ H⊕H
         assert_eq!(ah.arf, 1); // 1 + 0 = 1
@@ -509,7 +514,7 @@ mod tests {
     #[test]
     fn radical_is_detected() {
         // Q = x0 x1 + x2²: rank-2 core ⊕ a defective radical direction.
-        let r = arf_invariant(&metric(&[0, 0, 1], &b1(&[(0, 1)])));
+        let r = arf_invariant(&metric(&[0, 0, 1], &b1(&[(0, 1)]))).unwrap();
         assert_eq!(
             (r.rank, r.radical_dim, r.radical_anisotropic, r.arf),
             (2, 1, true, 0)
@@ -520,11 +525,19 @@ mod tests {
     fn f4_forms_via_trace() {
         // Genuine F₄ forms (entries up to *3), hand-computed via the trace:
         //   q=[*2,*3], b01=*1:  S = *2⊗*3 = *1,  Tr_{F₄/F₂}(*1) = *1+*1 = 0  ⇒ O+
-        let r1 = arf_invariant(&metric(&[2, 3], &b1(&[(0, 1)])));
+        let r1 = arf_invariant(&metric(&[2, 3], &b1(&[(0, 1)]))).unwrap();
         assert_eq!((r1.arf, r1.o_type, r1.rank), (0, "O+", 2));
         //   q=[*2,*2], b01=*1:  S = *2⊗*2 = *3,  Tr(*3) = *3+*2 = *1       ⇒ O-
-        let r2 = arf_invariant(&metric(&[2, 2], &b1(&[(0, 1)])));
+        let r2 = arf_invariant(&metric(&[2, 2], &b1(&[(0, 1)]))).unwrap();
         assert_eq!((r2.arf, r2.o_type, r2.rank), (1, "O-", 2));
+    }
+
+    #[test]
+    fn arf_rejects_general_bilinear_metrics() {
+        let mut a = BTreeMap::new();
+        a.insert((0, 1), Nimber(1));
+        let m = Metric::general(vec![Nimber(1), Nimber(1)], BTreeMap::new(), a);
+        assert_eq!(arf_invariant(&m), None);
     }
 
     #[test]
@@ -538,11 +551,11 @@ mod tests {
         // t⁻¹ = *3, so g = diag(*2,*3): D = 0 (in SO).
         assert_eq!(dickson_matrix(&[vec![2, 0], vec![0, 3]]), 0);
         // composing two reflections (here swap∘swap = identity) gives D = 0.
-        let swap = [[0u64, 1], [1, 0]];
-        let mut comp = vec![vec![0u64; 2]; 2];
+        let swap = [[0u128, 1], [1, 0]];
+        let mut comp = vec![vec![0u128; 2]; 2];
         for i in 0..2 {
             for j in 0..2 {
-                let mut acc = 0u64;
+                let mut acc = 0u128;
                 for k in 0..2 {
                     acc ^= nim_mul(swap[i][k], swap[k][j]);
                 }
@@ -555,27 +568,23 @@ mod tests {
     #[test]
     fn dickson_of_versor_is_grade_parity() {
         use crate::clifford::{CliffordAlgebra, Metric};
-        let alg = CliffordAlgebra::new(
-            2,
-            Metric::new(vec![Nimber(1), Nimber(1)], {
-                let mut b = BTreeMap::new();
-                b.insert((0, 1), Nimber(1));
-                b
-            }),
-        );
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![Nimber(1), Nimber(1)]));
         let scalar_one = alg.scalar(Nimber(1));
         let e0 = alg.gen(0);
         let e0e1 = alg.mul(&alg.gen(0), &alg.gen(1));
-        assert_eq!(dickson_of_versor(&scalar_one), Some(0)); // identity rotor
-        assert_eq!(dickson_of_versor(&e0), Some(1)); // a vector = a reflection
-        assert_eq!(dickson_of_versor(&e0e1), Some(0)); // a bivector = a rotor
-                                                       // mixed parity ⇒ not a versor
+        assert_eq!(dickson_of_versor(&alg, &scalar_one), Some(0)); // identity rotor
+        assert_eq!(dickson_of_versor(&alg, &e0), Some(1)); // a vector = a reflection
+        assert_eq!(dickson_of_versor(&alg, &e0e1), Some(0)); // a bivector = a rotor
+                                                             // mixed parity ⇒ not a versor
         let mixed = alg.add(&e0, &e0e1);
-        assert_eq!(dickson_of_versor(&mixed), None);
+        assert_eq!(dickson_of_versor(&alg, &mixed), None);
+
+        let null_alg = CliffordAlgebra::new(1, Metric::grassmann(1));
+        assert_eq!(dickson_of_versor(&null_alg, &null_alg.gen(0)), None);
     }
 
     // Evaluate a fitted form Q at v and return Q(v) ∈ {false,true}.
-    fn eval_fit(fit: &QuadricFit, v: u32) -> bool {
+    fn eval_fit(fit: &QuadricFit, v: u128) -> bool {
         let mut acc = fit.constant;
         for i in 0..fit.qd.len() {
             if fit.qd[i] && v & (1 << i) != 0 {
@@ -612,7 +621,7 @@ mod tests {
 
     #[test]
     fn fit_supports_the_documented_k12_bound() {
-        let set: Vec<u32> = (0..(1u32 << 12)).collect();
+        let set: Vec<u128> = (0..(1u128 << 12)).collect();
         let fit = fit_f2_quadratic(&set, 12).unwrap();
         assert_eq!(fit.qd.len(), 12);
         assert_eq!(fit.arf.rank, 0);
@@ -624,11 +633,11 @@ mod tests {
         // Over F₂³ there are 2^(1+3+3) = 128 quadratic forms but 2^8 = 256 subsets,
         // so exactly 128 subsets are quadrics — and each fit must reproduce its set.
         let mut count = 0;
-        for s in 0u32..(1 << 8) {
-            let set: Vec<u32> = (0..8u32).filter(|&v| s & (1 << v) != 0).collect();
+        for s in 0u128..(1 << 8) {
+            let set: Vec<u128> = (0..8u128).filter(|&v| s & (1 << v) != 0).collect();
             if let Some(fit) = fit_f2_quadratic(&set, 3) {
                 count += 1;
-                let recovered: Vec<u32> = (0..8u32).filter(|&v| !eval_fit(&fit, v)).collect();
+                let recovered: Vec<u128> = (0..8u128).filter(|&v| !eval_fit(&fit, v)).collect();
                 assert_eq!(recovered, set, "fit did not reproduce its own set");
             }
         }
@@ -639,7 +648,7 @@ mod tests {
     fn general_agrees_with_f2_bitmask() {
         // The general nim-field path must match the F₂ bitmask version on every
         // F₂ form (arf, rank, radical_dim, anisotropy, type all invariant).
-        let cases: &[(&[u64], &[(usize, usize)])] = &[
+        let cases: &[(&[u128], &[(usize, usize)])] = &[
             (&[0, 0], &[(0, 1)]),
             (&[1, 1], &[(0, 1)]),
             (&[0, 0, 1], &[(0, 1)]),
@@ -647,10 +656,10 @@ mod tests {
             (&[1, 1, 1, 1, 0], &[(0, 1), (2, 3)]),
         ];
         for (qs, ps) in cases {
-            let general = arf_nimber(&metric(qs, &b1(ps)));
+            let general = arf_nimber(&metric(qs, &b1(ps))).unwrap();
             let n = qs.len();
             let qd: Vec<bool> = qs.iter().map(|&x| x == 1).collect();
-            let mut bmat = vec![0u32; n];
+            let mut bmat = vec![0u128; n];
             for &(i, j) in *ps {
                 bmat[i] |= 1 << j;
                 bmat[j] |= 1 << i;

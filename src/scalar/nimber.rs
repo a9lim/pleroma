@@ -1,7 +1,7 @@
 //! Nimbers: the ordinals under nim-addition and nim-multiplication, Conway's
-//! Field On_2 of characteristic 2. Restricted here to `u64`, i.e. nimbers
-//! below 2^64 — which *is* exactly the finite nim-field F_{2^64}, and contains
-//! every smaller F_{2^{2^k}} (k <= 5: F_4, F_16, F_256, ... F_{2^32}).
+//! Field On_2 of characteristic 2. Restricted here to `u128`, i.e. nimbers
+//! below 2^128 — which *is* exactly the finite nim-field F_{2^128}, and contains
+//! every smaller F_{2^{2^k}} (k <= 7: F_4, F_16, F_256, ... F_{2^128}).
 //!
 //! nim-addition is XOR (trivially correct).
 //!
@@ -23,17 +23,17 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 #[inline]
-pub fn nim_add(a: u64, b: u64) -> u64 {
+pub fn nim_add(a: u128, b: u128) -> u128 {
     a ^ b
 }
 
 thread_local! {
-    // memo for 2^i (x) 2^j, keyed (min(i,j), max(i,j)); bounded 64x64.
-    static POW2_MEMO: RefCell<HashMap<(u32, u32), u64>> = RefCell::new(HashMap::new());
+    // memo for 2^i (x) 2^j, keyed (min(i,j), max(i,j)); bounded 128x128.
+    static POW2_MEMO: RefCell<HashMap<(usize, usize), u128>> = RefCell::new(HashMap::new());
 }
 
 /// 2^i (x) 2^j.
-fn nim_mul_pow2(i: u32, j: u32) -> u64 {
+fn nim_mul_pow2(i: usize, j: usize) -> u128 {
     let key = if i <= j { (i, j) } else { (j, i) };
     if let Some(v) = POW2_MEMO.with(|m| m.borrow().get(&key).copied()) {
         return v;
@@ -44,18 +44,18 @@ fn nim_mul_pow2(i: u32, j: u32) -> u64 {
     let common = i & j;
 
     // distinct Fermat powers nim-multiply to their ordinary product = 2^single
-    let clean: u64 = 1u64 << single;
+    let clean: u128 = 1u128 << single;
 
     let result = if common == 0 {
         clean
     } else {
         // fold the squared Fermat powers together, then multiply by `clean`
-        let mut squared: u64 = 1; // nim multiplicative identity
+        let mut squared: u128 = 1; // nim multiplicative identity
         let mut c = common;
         while c != 0 {
-            let n = c.trailing_zeros();
+            let n = c.trailing_zeros() as usize;
             c &= c - 1;
-            let f = 1u64 << (1u64 << n); // F_n = 2^(2^n)
+            let f = 1u128 << (1u128 << n); // F_n = 2^(2^n)
             let factor = f ^ (f >> 1); // F_n (x) F_n = (3/2) F_n
             squared = nim_mul(squared, factor);
         }
@@ -67,15 +67,15 @@ fn nim_mul_pow2(i: u32, j: u32) -> u64 {
 }
 
 /// nim-multiplication, by distributing over the bits of both arguments.
-pub fn nim_mul(a: u64, b: u64) -> u64 {
-    let mut acc = 0u64;
+pub fn nim_mul(a: u128, b: u128) -> u128 {
+    let mut acc = 0u128;
     let mut aa = a;
     while aa != 0 {
-        let i = aa.trailing_zeros();
+        let i = aa.trailing_zeros() as usize;
         aa &= aa - 1;
         let mut bb = b;
         while bb != 0 {
-            let j = bb.trailing_zeros();
+            let j = bb.trailing_zeros() as usize;
             bb &= bb - 1;
             acc ^= nim_mul_pow2(i, j);
         }
@@ -85,8 +85,8 @@ pub fn nim_mul(a: u64, b: u64) -> u64 {
 
 /// Nim-exponentiation by an ordinary integer exponent (square-and-multiply
 /// in the multiplicative group, using nim-multiplication).
-pub fn nim_pow(mut base: u64, mut exp: u64) -> u64 {
-    let mut acc = 1u64; // nim multiplicative identity
+pub fn nim_pow(mut base: u128, mut exp: u128) -> u128 {
+    let mut acc = 1u128; // nim multiplicative identity
     while exp > 0 {
         if exp & 1 == 1 {
             acc = nim_mul(acc, base);
@@ -100,17 +100,17 @@ pub fn nim_pow(mut base: u64, mut exp: u64) -> u64 {
 /// Nim-square (the Frobenius endomorphism x ↦ x² of On₂). F₂-linear, and a
 /// *bijection* on every finite nim-field F_{2^m} — char-2 squaring has no kernel.
 #[inline]
-pub fn nim_square(x: u64) -> u64 {
+pub fn nim_square(x: u128) -> u128 {
     nim_mul(x, x)
 }
 
-/// Nim-square-root: the inverse Frobenius. In F_{2^64} every element is a unique
-/// square, and `√x = x^{2^{63}}` because `x^{2^{64}} = x` there, so
-/// `(x^{2^{63}})² = x`. The root lands in whatever subfield `x` lives in (the
+/// Nim-square-root: the inverse Frobenius. In F_{2^128} every element is a unique
+/// square, and `√x = x^{2^127}` because `x^{2^128} = x` there, so
+/// `(x^{2^127})² = x`. The root lands in whatever subfield `x` lives in (the
 /// global Frobenius restricts to each subfield), so this is also the square root
-/// in any F_{2^{2^k}} ⊆ F_{2^64}. Always defined — no `Option`.
-pub fn nim_sqrt(x: u64) -> u64 {
-    nim_pow(x, 1u64 << 63)
+/// in any F_{2^{2^k}} ⊆ F_{2^128}. Always defined — no `Option`.
+pub fn nim_sqrt(x: u128) -> u128 {
+    nim_pow(x, 1u128 << 127)
 }
 
 /// Field trace F_{2^m} → F₂:  `Tr(x) = x + x² + x⁴ + … + x^{2^{m-1}} ∈ {0,1}`.
@@ -118,8 +118,8 @@ pub fn nim_sqrt(x: u64) -> u64 {
 /// through (see `arf.rs`); it is *also* the obstruction to solving the
 /// Artin–Schreier equation `y² + y = c` (solvable iff `Tr(c) = 0`). One trace,
 /// both roles — that is the unification. `m` must be the degree of a nim-subfield
-/// (a power of two: 1, 2, 4, …, 64).
-pub fn nim_trace(x: u64, m: u32) -> u64 {
+/// (a power of two: 1, 2, 4, …, 128).
+pub fn nim_trace(x: u128, m: u128) -> u128 {
     let mut acc = x;
     let mut t = x;
     for _ in 1..m {
@@ -131,9 +131,9 @@ pub fn nim_trace(x: u64, m: u32) -> u64 {
 
 /// Insert `val` (with its associated y-combination `yc`) into an XOR pivot table
 /// keyed by highest set bit. Used by the Artin–Schreier solver.
-fn xor_basis_insert(table: &mut [Option<(u64, u64)>; 64], mut val: u64, mut yc: u64) {
+fn xor_basis_insert(table: &mut [Option<(u128, u128)>; 128], mut val: u128, mut yc: u128) {
     while val != 0 {
-        let h = (63 - val.leading_zeros()) as usize;
+        let h = (127 - val.leading_zeros()) as usize;
         match table[h] {
             Some((pv, pc)) => {
                 val ^= pv;
@@ -153,15 +153,15 @@ fn xor_basis_insert(table: &mut [Option<(u64, u64)>; 64], mut val: u64, mut yc: 
 /// when it does there are exactly two (`y` and `y+1`). Returns one solution, or
 /// `None` when `c` is not in the image. Solved by Gaussian elimination over F₂ on
 /// the bit-basis of F_{2^m} (exact; no fragile closed-form).
-pub fn nim_solve_artin_schreier(c: u64, m: u32) -> Option<u64> {
-    let mut table: [Option<(u64, u64)>; 64] = [None; 64];
+pub fn nim_solve_artin_schreier(c: u128, m: u128) -> Option<u128> {
+    let mut table: [Option<(u128, u128)>; 128] = [None; 128];
     for k in 0..m {
-        let e = 1u64 << k;
+        let e = 1u128 << k;
         xor_basis_insert(&mut table, nim_square(e) ^ e, e);
     }
-    let (mut val, mut yc) = (c, 0u64);
+    let (mut val, mut yc) = (c, 0u128);
     while val != 0 {
-        let h = (63 - val.leading_zeros()) as usize;
+        let h = (127 - val.leading_zeros()) as usize;
         match table[h] {
             Some((pv, pc)) => {
                 val ^= pv;
@@ -175,24 +175,24 @@ pub fn nim_solve_artin_schreier(c: u64, m: u32) -> Option<u64> {
 
 /// Whether `y² + y = c` is solvable in F_{2^m} — i.e. `Tr(c) = 0`. The same
 /// trace, hence the same answer, as the Arf-reduction path.
-pub fn nim_is_artin_schreier_solvable(c: u64, m: u32) -> bool {
+pub fn nim_is_artin_schreier_solvable(c: u128, m: u128) -> bool {
     nim_trace(c, m) == 0
 }
 
-/// Nim-multiplicative inverse in F_{2^64}. The group F_{2^64}^* is cyclic of
-/// order 2^64 − 1, so x^(2^64 − 2) = x^{-1}; and the inverse in the big field
+/// Nim-multiplicative inverse in F_{2^128}. The group F_{2^128}^* is cyclic of
+/// order 2^128 − 1, so x^(2^128 − 2) = x^{-1}; and the inverse in the big field
 /// agrees with the inverse in whatever subfield x actually lives in.
-pub fn nim_inv(x: u64) -> Option<u64> {
+pub fn nim_inv(x: u128) -> Option<u128> {
     if x == 0 {
         None
     } else {
-        Some(nim_pow(x, u64::MAX - 1)) // u64::MAX - 1 = 2^64 - 2
+        Some(nim_pow(x, u128::MAX - 1)) // u128::MAX - 1 = 2^128 - 2
     }
 }
 
-/// A nimber, i.e. an element of On_2 truncated to F_{2^64}.
+/// A nimber, i.e. an element of On_2 truncated to F_{2^128}.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Nimber(pub u64);
+pub struct Nimber(pub u128);
 
 impl std::fmt::Debug for Nimber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -231,8 +231,8 @@ mod tests {
 
     #[test]
     fn add_is_xor_and_self_inverse() {
-        for a in 0u64..64 {
-            for b in 0u64..64 {
+        for a in 0u128..64 {
+            for b in 0u128..64 {
                 assert_eq!(nim_add(a, b), a ^ b);
             }
             assert_eq!(nim_add(a, a), 0); // own inverse
@@ -257,13 +257,13 @@ mod tests {
     #[test]
     fn field_axioms_over_f16() {
         // {0..15} = F_16 should be a field under nim ops.
-        for a in 0u64..16 {
-            for b in 0u64..16 {
+        for a in 0u128..16 {
+            for b in 0u128..16 {
                 // commutativity
                 assert_eq!(nim_mul(a, b), nim_mul(b, a));
                 // closure within F_16
                 assert!(nim_mul(a, b) < 16, "{a} (x) {b} left F_16");
-                for c in 0u64..16 {
+                for c in 0u128..16 {
                     // associativity
                     assert_eq!(
                         nim_mul(nim_mul(a, b), c),
@@ -283,8 +283,8 @@ mod tests {
 
     #[test]
     fn every_nonzero_has_inverse_in_f16() {
-        for a in 1u64..16 {
-            let inv = (1u64..16).find(|&x| nim_mul(a, x) == 1);
+        for a in 1u128..16 {
+            let inv = (1u128..16).find(|&x| nim_mul(a, x) == 1);
             assert!(inv.is_some(), "no inverse for {a} in F_16");
         }
     }
@@ -293,7 +293,7 @@ mod tests {
     fn inverse_round_trips() {
         // x ⊗ x^{-1} = 1 for a spread of nonzero nimbers across several fields.
         for x in [
-            1u64,
+            1u128,
             2,
             3,
             4,
@@ -305,15 +305,15 @@ mod tests {
             65535,
             65536,
             1_000_000,
-            u64::MAX,
+            u128::MAX,
         ] {
             let inv = nim_inv(x).unwrap();
             assert_eq!(nim_mul(x, inv), 1, "inverse of {x}");
         }
         assert_eq!(nim_inv(0), None);
         // matches the brute-forced inverses inside F_16
-        for x in 1u64..16 {
-            let brute = (1u64..16).find(|&y| nim_mul(x, y) == 1).unwrap();
+        for x in 1u128..16 {
+            let brute = (1u128..16).find(|&y| nim_mul(x, y) == 1).unwrap();
             assert_eq!(nim_inv(x).unwrap(), brute, "F_16 inverse of {x}");
         }
     }
@@ -322,7 +322,7 @@ mod tests {
     fn sqrt_is_inverse_frobenius() {
         // √ is the unique inverse of squaring in char 2: (√x)² = x and √(x²) = x.
         for x in [
-            0u64,
+            0u128,
             1,
             2,
             3,
@@ -334,13 +334,13 @@ mod tests {
             65535,
             65536,
             1 << 40,
-            u64::MAX,
+            u128::MAX,
         ] {
             assert_eq!(nim_square(nim_sqrt(x)), x, "(√{x})² ≠ {x}");
             assert_eq!(nim_sqrt(nim_square(x)), x, "√({x}²) ≠ {x}");
         }
         // a square root stays inside the subfield its argument lives in (F_16).
-        for x in 0u64..16 {
+        for x in 0u128..16 {
             assert!(nim_sqrt(x) < 16, "√{x} left F_16");
         }
     }
@@ -348,9 +348,9 @@ mod tests {
     #[test]
     fn trace_is_in_f2_and_is_additive() {
         // Tr lands in {0,1} and is F₂-linear (additive) over F_16.
-        for x in 0u64..16 {
+        for x in 0u128..16 {
             assert!(nim_trace(x, 4) <= 1);
-            for y in 0u64..16 {
+            for y in 0u128..16 {
                 assert_eq!(nim_trace(x ^ y, 4), nim_trace(x, 4) ^ nim_trace(y, 4));
             }
         }
@@ -361,7 +361,7 @@ mod tests {
         // The unification: y²+y=c is solvable exactly when Tr(c)=0, and the solver
         // returns a genuine root when it is. Checked exhaustively on F_16.
         let m = 4;
-        for c in 0u64..16 {
+        for c in 0u128..16 {
             let solvable = nim_trace(c, m) == 0;
             assert_eq!(nim_is_artin_schreier_solvable(c, m), solvable);
             match nim_solve_artin_schreier(c, m) {
@@ -374,7 +374,7 @@ mod tests {
             }
         }
         // Exactly half of F_16 is trace-zero (the image is a hyperplane).
-        let solvable_count = (0u64..16).filter(|&c| nim_trace(c, m) == 0).count();
+        let solvable_count = (0u128..16).filter(|&c| nim_trace(c, m) == 0).count();
         assert_eq!(solvable_count, 8);
     }
 
@@ -382,7 +382,7 @@ mod tests {
     fn artin_schreier_over_f256() {
         // larger field: solver agrees with the trace obstruction on a sample.
         let m = 8;
-        for c in (0u64..256).step_by(7) {
+        for c in (0u128..256).step_by(7) {
             let y = nim_solve_artin_schreier(c, m);
             assert_eq!(y.is_some(), nim_trace(c, m) == 0, "c={c}");
             if let Some(y) = y {
@@ -394,7 +394,7 @@ mod tests {
     #[test]
     fn associativity_spot_check_large() {
         // a few larger triples to exercise multi-Fermat recursion
-        for &(a, b, c) in &[(255u64, 256, 257), (1000, 999, 7), (65535, 65536, 3)] {
+        for &(a, b, c) in &[(255u128, 256, 257), (1000, 999, 7), (65535, 65536, 3)] {
             assert_eq!(nim_mul(nim_mul(a, b), c), nim_mul(a, nim_mul(b, c)));
         }
     }

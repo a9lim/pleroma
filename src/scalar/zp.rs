@@ -16,7 +16,7 @@
 //! ## The const-generic modulus, two parameters
 //!
 //! Like `Fp`/`Fpn`, both the prime `p` and the precision `k` live in the **type**
-//! (`Scalar::zero()/one()` take no `self`): `Zp<const P: u64, const K: u32>` is
+//! (`Scalar::zero()/one()` take no `self`): `Zp<const P: u128, const K: u128>` is
 //! `Z/p^k`, carried as the residue in `[0, p^k)`. Its characteristic is the
 //! modulus `p^k` (the additive order of `1`), even though it is a truncation of
 //! the characteristic-0 ring `Z_p` and not a field of characteristic `p`.
@@ -27,23 +27,27 @@ use std::fmt;
 /// An element of `Z/p^k` (the `p`-adic integers to precision `k`): the residue in
 /// `[0, p^k)`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Zp<const P: u64, const K: u32>(pub u64);
+pub struct Zp<const P: u128, const K: u128>(pub u128);
 
-impl<const P: u64, const K: u32> Zp<P, K> {
+impl<const P: u128, const K: u128> Zp<P, K> {
     /// The modulus `p^k`.
     pub fn modulus() -> u128 {
-        (P as u128).pow(K)
+        let mut acc = 1u128;
+        for _ in 0..K {
+            acc = acc.checked_mul(P).expect("Zp modulus exceeds u128");
+        }
+        acc
     }
 
     /// Reduce an integer (possibly negative) into `Z/p^k`.
     pub fn new(n: i128) -> Self {
         let m = Self::modulus() as i128;
-        Zp((((n % m) + m) % m) as u64)
+        Zp((((n % m) + m) % m) as u128)
     }
 
     /// The `p`-adic valuation of this element, capped at the precision `k`
     /// (`v_p(0)` reads as `k`, the precision floor).
-    pub fn valuation(&self) -> u32 {
+    pub fn valuation(&self) -> u128 {
         if self.0 == 0 {
             return K;
         }
@@ -62,37 +66,37 @@ impl<const P: u64, const K: u32> Zp<P, K> {
     }
 }
 
-impl<const P: u64, const K: u32> fmt::Debug for Zp<P, K> {
+impl<const P: u128, const K: u128> fmt::Debug for Zp<P, K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} (mod {}^{})", self.0, P, K)
     }
 }
 
-impl<const P: u64, const K: u32> Scalar for Zp<P, K> {
+impl<const P: u128, const K: u128> Scalar for Zp<P, K> {
     fn zero() -> Self {
         Zp(0)
     }
 
     fn one() -> Self {
-        Zp((1 % Self::modulus()) as u64)
+        Zp((1 % Self::modulus()) as u128)
     }
 
     fn add(&self, rhs: &Self) -> Self {
         let m = Self::modulus();
-        Zp(((self.0 as u128 + rhs.0 as u128) % m) as u64)
+        Zp(((self.0 as u128 + rhs.0 as u128) % m) as u128)
     }
 
     fn neg(&self) -> Self {
         if self.0 == 0 {
             Zp(0)
         } else {
-            Zp((Self::modulus() - self.0 as u128) as u64)
+            Zp((Self::modulus() - self.0 as u128) as u128)
         }
     }
 
     fn mul(&self, rhs: &Self) -> Self {
         let m = Self::modulus();
-        Zp(((self.0 as u128 * rhs.0 as u128) % m) as u64)
+        Zp(((self.0 as u128 * rhs.0 as u128) % m) as u128)
     }
 
     fn characteristic() -> u128 {
@@ -119,7 +123,7 @@ impl<const P: u64, const K: u32> Scalar for Zp<P, K> {
             std::mem::swap(&mut r, &mut newr);
         }
         // r = gcd = 1 for a unit; t is the inverse.
-        Some(Zp((((t % m) + m) % m) as u64))
+        Some(Zp((((t % m) + m) % m) as u128))
     }
 }
 
@@ -128,11 +132,11 @@ mod tests {
     use super::*;
     use crate::clifford::{CliffordAlgebra, Metric};
 
-    fn elems<const P: u64, const K: u32>() -> Vec<Zp<P, K>> {
-        (0..Zp::<P, K>::modulus() as u64).map(Zp::<P, K>).collect()
+    fn elems<const P: u128, const K: u128>() -> Vec<Zp<P, K>> {
+        (0..Zp::<P, K>::modulus() as u128).map(Zp::<P, K>).collect()
     }
 
-    fn check_ring_axioms<const P: u64, const K: u32>() {
+    fn check_ring_axioms<const P: u128, const K: u128>() {
         let es = elems::<P, K>();
         let zero = Zp::<P, K>::zero();
         let one = Zp::<P, K>::one();

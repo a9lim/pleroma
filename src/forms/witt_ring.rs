@@ -118,7 +118,7 @@ pub struct EnStaircase {
 /// The `(e₀, e₁, e₂)` staircase of a diagonal form over `F_p`. `None` if
 /// non-diagonal. Over a finite field `I² = 0`, so `stabilizes_at = 2` and `e₂` is
 /// always `+1`; the genuine content is `(e₀, e₁)`.
-pub fn e_staircase_oddchar<const P: u64>(metric: &Metric<Fp<P>>) -> Option<EnStaircase> {
+pub fn e_staircase_oddchar<const P: u128>(metric: &Metric<Fp<P>>) -> Option<EnStaircase> {
     let (e0, e1) = match oddchar_witt(metric)? {
         WittClassG::OddChar { e0, sclass, .. } => (e0, sclass),
         _ => unreachable!("oddchar_witt over Fp returns the OddChar variant"),
@@ -137,8 +137,11 @@ pub fn e_staircase_oddchar<const P: u64>(metric: &Metric<Fp<P>>) -> Option<EnSta
 /// `eₙ = (σ / 2ⁿ) mod 2` — the staircase reads the 2-adic expansion of the
 /// signature. Returns `None` when the form is **not** in `Iⁿ` (so `eₙ` is undefined).
 /// This is the infinite tower the finite-field and `Q_p` legs truncate.
-pub fn e_real(signature: i64, n: usize) -> Option<u8> {
-    let modulus = 1i64.checked_shl(n as u32)?;
+pub fn e_real(signature: i128, n: usize) -> Option<u8> {
+    if n >= 128 {
+        return None;
+    }
+    let modulus = 1i128 << n;
     if signature % modulus != 0 {
         return None;
     }
@@ -151,7 +154,7 @@ mod tests {
     use crate::forms::WittClassG;
     use crate::scalar::Fpn;
 
-    fn diag<const P: u64>(qs: &[u64]) -> Metric<Fp<P>> {
+    fn diag<const P: u128>(qs: &[u128]) -> Metric<Fp<P>> {
         Metric::diagonal(qs.iter().map(|&x| Fp::<P>(x)).collect())
     }
 
@@ -185,8 +188,8 @@ mod tests {
         // THE I²=0 ORACLE: every 2-fold Pfister form over a finite field is
         // Witt-trivial (a 4-dim form over F_q is isotropic ⇒ the Pfister form is
         // hyperbolic). So I² = 0 and the odd-char staircase stops at (e₀, e₁).
-        for a in 1..5u64 {
-            for b in 1..5u64 {
+        for a in 1..5u128 {
+            for b in 1..5u128 {
                 let p = pfister(&[Fp::<5>(a), Fp::<5>(b)]);
                 assert_eq!(
                     oddchar_witt(&p).unwrap(),
@@ -195,8 +198,8 @@ mod tests {
                 );
             }
         }
-        for a in 1..3u64 {
-            for b in 1..3u64 {
+        for a in 1..3u128 {
+            for b in 1..3u128 {
                 let p = pfister(&[Fp::<3>(a), Fp::<3>(b)]);
                 assert_eq!(oddchar_witt(&p).unwrap(), WittClassG::oddchar_zero(1));
             }
@@ -212,9 +215,9 @@ mod tests {
         let elems: Vec<Fpn<3, 2>> = (1..9u128)
             .map(|code| {
                 let mut c = code;
-                let mut coeffs = [0u64; 2];
+                let mut coeffs = [0u128; 2];
                 for slot in coeffs.iter_mut() {
-                    *slot = (c % 3) as u64;
+                    *slot = (c % 3) as u128;
                     c /= 3;
                 }
                 Fpn(coeffs)
@@ -256,7 +259,7 @@ mod tests {
         // agree with classifying the actual tensor product of forms, for every pair
         // of small nondegenerate forms. Verifies both the ℤ/4 (F_3) and F₂[ℤ/2] (F_5)
         // ring laws against ground truth, and that they are well-defined on classes.
-        fn check<const P: u64>() {
+        fn check<const P: u128>() {
             // all 1- and 2-dimensional nondegenerate diagonal forms
             let mut forms: Vec<Metric<Fp<P>>> = Vec::new();
             for e in 1..P {

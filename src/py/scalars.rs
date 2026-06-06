@@ -23,13 +23,13 @@ pub(crate) struct PyNimber {
 #[pymethods]
 impl PyNimber {
     #[new]
-    fn new(value: u64) -> Self {
+    fn new(value: u128) -> Self {
         PyNimber {
             inner: Nimber(value),
         }
     }
     #[getter]
-    fn value(&self) -> u64 {
+    fn value(&self) -> u128 {
         self.inner.0
     }
     fn __add__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyNimber> {
@@ -73,8 +73,8 @@ impl PyNimber {
     fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
         matches!(parse_nimber(other), Ok(n) if n == self.inner)
     }
-    fn __hash__(&self) -> u64 {
-        self.inner.0
+    fn __hash__(&self) -> isize {
+        self.inner.0 as isize
     }
     fn __repr__(&self) -> String {
         format!("{:?}", self.inner)
@@ -85,7 +85,7 @@ pub(crate) fn parse_nimber(obj: &Bound<'_, PyAny>) -> PyResult<Nimber> {
     if let Ok(n) = obj.cast::<PyNimber>() {
         return Ok(n.borrow().inner);
     }
-    if let Ok(v) = obj.extract::<u64>() {
+    if let Ok(v) = obj.extract::<u128>() {
         return Ok(Nimber(v));
     }
     Err(PyTypeError::new_err("expected Nimber or non-negative int"))
@@ -155,7 +155,7 @@ impl PySurreal {
             inner: self.inner.mul(&oi),
         })
     }
-    fn __pow__(&self, n: u32, _modulo: Option<&Bound<'_, PyAny>>) -> PySurreal {
+    fn __pow__(&self, n: u128, _modulo: Option<&Bound<'_, PyAny>>) -> PySurreal {
         let mut acc = Surreal::one();
         for _ in 0..n {
             acc = acc.mul(&self.inner);
@@ -272,7 +272,7 @@ impl PySurcomplex {
             inner: self.inner.mul(&oi),
         })
     }
-    fn __pow__(&self, n: u32, _modulo: Option<&Bound<'_, PyAny>>) -> PySurcomplex {
+    fn __pow__(&self, n: u128, _modulo: Option<&Bound<'_, PyAny>>) -> PySurcomplex {
         let mut acc = Surcomplex::<Surreal>::one();
         for _ in 0..n {
             acc = acc.mul(&self.inner);
@@ -313,13 +313,13 @@ pub(crate) struct PyInteger {
 #[pymethods]
 impl PyInteger {
     #[new]
-    fn new(value: i64) -> Self {
+    fn new(value: i128) -> Self {
         PyInteger {
             inner: Integer(value),
         }
     }
     #[getter]
-    fn value(&self) -> i64 {
+    fn value(&self) -> i128 {
         self.inner.0
     }
     fn __add__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyInteger> {
@@ -366,7 +366,7 @@ pub(crate) fn parse_integer(obj: &Bound<'_, PyAny>) -> PyResult<Integer> {
     if let Ok(n) = obj.cast::<PyInteger>() {
         return Ok(n.borrow().inner);
     }
-    if let Ok(v) = obj.extract::<i64>() {
+    if let Ok(v) = obj.extract::<i128>() {
         return Ok(Integer(v));
     }
     Err(PyTypeError::new_err("expected Integer or int"))
@@ -537,26 +537,26 @@ fn surreal(n: i128) -> PySurreal {
 
 /// Nim square root (inverse Frobenius); always defined in char 2.
 #[pyfunction]
-fn nim_sqrt(x: u64) -> u64 {
+fn nim_sqrt(x: u128) -> u128 {
     crate::scalar::nim_sqrt(x)
 }
 
 /// Field trace F_{2^m} → F₂ — the map the Arf invariant is read through and the
 /// obstruction to solving `y²+y=c`.
 #[pyfunction]
-fn nim_trace(x: u64, m: u32) -> u64 {
+fn nim_trace(x: u128, m: u128) -> u128 {
     crate::scalar::nim_trace(x, m)
 }
 
 /// Solve the Artin–Schreier equation `y²+y=c` in F_{2^m} (`None` iff Tr(c)≠0).
 #[pyfunction]
-fn nim_solve_artin_schreier(c: u64, m: u32) -> Option<u64> {
+fn nim_solve_artin_schreier(c: u128, m: u128) -> Option<u128> {
     crate::scalar::nim_solve_artin_schreier(c, m)
 }
 
 /// Whether `y²+y=c` is solvable in F_{2^m} — i.e. `Tr(c)=0`.
 #[pyfunction]
-fn nim_is_artin_schreier_solvable(c: u64, m: u32) -> bool {
+fn nim_is_artin_schreier_solvable(c: u128, m: u128) -> bool {
     crate::scalar::nim_is_artin_schreier_solvable(c, m)
 }
 // ---------------------------------------------------------------------------
@@ -572,9 +572,9 @@ struct PyOrdinal {
 #[pymethods]
 impl PyOrdinal {
     #[new]
-    fn new(n: u64) -> Self {
+    fn new(n: u128) -> Self {
         PyOrdinal {
-            inner: Ordinal::from_u64(n),
+            inner: Ordinal::from_u128(n),
         }
     }
     /// `ω`, the first infinite ordinal nimber.
@@ -593,7 +593,7 @@ impl PyOrdinal {
     }
     /// `ω^exp · coeff`.
     #[staticmethod]
-    fn monomial(exp: &PyOrdinal, coeff: u64) -> PyOrdinal {
+    fn monomial(exp: &PyOrdinal, coeff: u128) -> PyOrdinal {
         PyOrdinal {
             inner: Ordinal::monomial(exp.inner.clone(), coeff),
         }
@@ -615,7 +615,7 @@ impl PyOrdinal {
         self.inner.is_zero()
     }
     /// The finite nimber value, if this ordinal is finite.
-    fn as_finite(&self) -> Option<u64> {
+    fn as_finite(&self) -> Option<u128> {
         self.inner.as_finite()
     }
     fn __richcmp__(&self, other: &PyOrdinal, op: CompareOp) -> bool {

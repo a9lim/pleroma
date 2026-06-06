@@ -1,5 +1,5 @@
 //! Transfinite (ordinal) nimbers — the char-2 mirror of the surreal backend,
-//! and the closure the shipped `Nimber(u64)` backend cannot reach.
+//! and the closure the shipped `Nimber(u128)` backend cannot reach.
 //!
 //! The finite nimbers form `⋃ₙ F_{2^{2^n}}` — the quadratic closure of `F₂` — but
 //! this is **not** algebraically closed: it contains `F_{2^d}` only for `d` a
@@ -48,12 +48,12 @@ use std::fmt;
 /// strictly descending, coefficients nonzero finite naturals.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Ordinal {
-    terms: Vec<(Ordinal, u64)>,
+    terms: Vec<(Ordinal, u128)>,
 }
 
-fn canonicalize(mut raw: Vec<(Ordinal, u64)>) -> Vec<(Ordinal, u64)> {
+fn canonicalize(mut raw: Vec<(Ordinal, u128)>) -> Vec<(Ordinal, u128)> {
     raw.sort_by(|a, b| b.0.cmp(&a.0)); // descending by exponent
-    let mut out: Vec<(Ordinal, u64)> = Vec::new();
+    let mut out: Vec<(Ordinal, u128)> = Vec::new();
     for (exp, coeff) in raw {
         if let Some(last) = out.last_mut() {
             if last.0 == exp {
@@ -74,7 +74,7 @@ impl Ordinal {
     }
 
     /// A finite ordinal / nimber `n`.
-    pub fn from_u64(n: u64) -> Self {
+    pub fn from_u128(n: u128) -> Self {
         if n == 0 {
             Ordinal::zero()
         } else {
@@ -85,7 +85,7 @@ impl Ordinal {
     }
 
     /// A single monomial `ω^exp · coeff`.
-    pub fn monomial(exp: Ordinal, coeff: u64) -> Self {
+    pub fn monomial(exp: Ordinal, coeff: u128) -> Self {
         if coeff == 0 {
             Ordinal::zero()
         } else {
@@ -102,14 +102,14 @@ impl Ordinal {
 
     /// `ω`, the first infinite ordinal.
     pub fn omega() -> Self {
-        Ordinal::omega_pow(Ordinal::from_u64(1))
+        Ordinal::omega_pow(Ordinal::from_u128(1))
     }
 
     pub fn is_zero(&self) -> bool {
         self.terms.is_empty()
     }
 
-    pub fn terms(&self) -> &[(Ordinal, u64)] {
+    pub fn terms(&self) -> &[(Ordinal, u128)] {
         &self.terms
     }
 
@@ -140,7 +140,7 @@ impl Ordinal {
 
     /// True iff this ordinal is finite (a single `ω^0` term, or zero), returning
     /// the finite nimber value.
-    pub fn as_finite(&self) -> Option<u64> {
+    pub fn as_finite(&self) -> Option<u128> {
         match self.terms.as_slice() {
             [] => Some(0),
             [(exp, c)] if exp.is_zero() => Some(*c),
@@ -152,8 +152,8 @@ impl Ordinal {
     /// Cantor) — i.e. `ω²·c₂ + ω·c₁ + c₀` with each `cᵢ` finite. Returns the
     /// coefficient vector `[c₀, c₁, c₂]`, or `None` if any CNF exponent is `≥ 3`
     /// (the ordinal lives in a higher, still-staged field).
-    pub fn as_below_omega3(&self) -> Option<[u64; 3]> {
-        let mut coeffs = [0u64; 3];
+    pub fn as_below_omega3(&self) -> Option<[u128; 3]> {
+        let mut coeffs = [0u128; 3];
         for (exp, c) in &self.terms {
             let e = exp.as_finite()?;
             if e >= 3 {
@@ -165,11 +165,11 @@ impl Ordinal {
     }
 
     /// Build the ordinal `ω²·c₂ + ω·c₁ + c₀` from its `φ_{ω+1}` coefficients.
-    pub fn from_omega3_coeffs(c: [u64; 3]) -> Self {
+    pub fn from_omega3_coeffs(c: [u128; 3]) -> Self {
         let mut raw = Vec::new();
         for (i, &v) in c.iter().enumerate() {
             if v != 0 {
-                raw.push((Ordinal::from_u64(i as u64), v));
+                raw.push((Ordinal::from_u128(i as u128), v));
             }
         }
         Ordinal {
@@ -189,12 +189,12 @@ impl Ordinal {
         }
         // Fast path: finite × finite is the proven `nimber::nim_mul`.
         if let (Some(a), Some(b)) = (self.as_finite(), other.as_finite()) {
-            return Some(Ordinal::from_u64(nim_mul(a, b)));
+            return Some(Ordinal::from_u128(nim_mul(a, b)));
         }
         // Field path: both ordinals live in `φ_{ω+1}` (below ω³ Cantor).
         if let (Some(a), Some(b)) = (self.as_below_omega3(), other.as_below_omega3()) {
             // Polynomial product in ω over the finite nimbers, degree ≤ 4.
-            let mut p = [0u64; 5];
+            let mut p = [0u128; 5];
             for (i, &ai) in a.iter().enumerate() {
                 if ai == 0 {
                     continue;
@@ -219,7 +219,7 @@ impl Ordinal {
 fn fmt_exp(e: &Ordinal) -> String {
     if e.is_zero() {
         String::new()
-    } else if *e == Ordinal::from_u64(1) {
+    } else if *e == Ordinal::from_u128(1) {
         "ω".to_string()
     } else if e.terms.len() == 1 && e.terms[0].0.is_zero() {
         format!("ω^{}", e.terms[0].1) // ω^k for a finite exponent k
@@ -255,8 +255,8 @@ impl fmt::Debug for Ordinal {
 mod tests {
     use super::*;
 
-    fn fin(n: u64) -> Ordinal {
-        Ordinal::from_u64(n)
+    fn fin(n: u128) -> Ordinal {
+        Ordinal::from_u128(n)
     }
 
     #[test]
@@ -279,8 +279,8 @@ mod tests {
 
     #[test]
     fn nim_add_is_xor_below_omega() {
-        for a in 0..16u64 {
-            for b in 0..16u64 {
+        for a in 0..16u128 {
+            for b in 0..16u128 {
                 assert_eq!(fin(a).nim_add(&fin(b)), fin(a ^ b));
             }
         }
@@ -317,8 +317,8 @@ mod tests {
 
     #[test]
     fn finite_nim_mul_agrees_with_nimber() {
-        for a in 0..16u64 {
-            for b in 0..16u64 {
+        for a in 0..16u128 {
+            for b in 0..16u128 {
                 assert_eq!(fin(a).nim_mul(&fin(b)), Some(fin(nim_mul(a, b))));
             }
         }
@@ -366,7 +366,7 @@ mod tests {
         // The decisive check: F_4(ω) = F_64 (a genuine degree-3 extension of F_4
         // by ω, with ω³ = 2) is closed under the new nim-multiplication and
         // satisfies every field axiom. 64 elements ⇒ 64² × associativity, etc.
-        let elems: Vec<Ordinal> = (0..64u64)
+        let elems: Vec<Ordinal> = (0..64u128)
             .map(|i| Ordinal::from_omega3_coeffs([i & 3, (i >> 2) & 3, (i >> 4) & 3]))
             .collect();
         let zero = Ordinal::zero();

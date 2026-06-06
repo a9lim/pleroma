@@ -24,7 +24,7 @@ use pleroma::games::{outcomes, Outcome};
 use pleroma::scalar::{nim_add, nim_mul, nim_square, nim_trace};
 
 /// Gold form Q_a(v) = Tr(v^{1+2^a}) over F_{2^m}, valued in {0,1}.
-fn gold(v: u64, a: u32, m: u32) -> u64 {
+fn gold(v: u128, a: u128, m: u128) -> u128 {
     let mut g = v;
     for _ in 0..a {
         g = nim_square(g);
@@ -33,35 +33,35 @@ fn gold(v: u64, a: u32, m: u32) -> u64 {
 }
 
 /// Polar form B(u,v) = Q(u⊕v) ⊕ Q(u) ⊕ Q(v) ∈ {0,1}.
-fn polar(u: u64, v: u64, a: u32, m: u32) -> u64 {
+fn polar(u: u128, v: u128, a: u128, m: u128) -> u128 {
     gold(nim_add(u, v), a, m) ^ gold(u, a, m) ^ gold(v, a, m)
 }
 
-fn p_set(succ: &[Vec<usize>]) -> (Vec<u32>, usize) {
+fn p_set(succ: &[Vec<usize>]) -> (Vec<u128>, usize) {
     let out = outcomes(succ);
     let draws = out.iter().filter(|&&o| o == Outcome::Draw).count();
     let p = out
         .iter()
         .enumerate()
         .filter(|(_, o)| **o == Outcome::Loss)
-        .map(|(i, _)| i as u32)
+        .map(|(i, _)| i as u128)
         .collect();
     (p, draws)
 }
 
-fn agreement(p: &[u32], zero: &[u32], n: usize) -> usize {
-    let ps: std::collections::HashSet<u32> = p.iter().copied().collect();
-    let zs: std::collections::HashSet<u32> = zero.iter().copied().collect();
-    (0..n as u32)
+fn agreement(p: &[u128], zero: &[u128], n: usize) -> usize {
+    let ps: std::collections::HashSet<u128> = p.iter().copied().collect();
+    let zs: std::collections::HashSet<u128> = zero.iter().copied().collect();
+    (0..n as u128)
         .filter(|v| ps.contains(v) == zs.contains(v))
         .count()
 }
 
-fn describe_pset(label: &str, p: &[u32], zero: &[u32], draws: usize, m: u32) {
+fn describe_pset(label: &str, p: &[u128], zero: &[u128], draws: usize, m: u128) {
     let n = 1usize << m;
     let agree = agreement(p, zero, n);
     let plen = p.len();
-    let bias = plen as i64 - (n as i64 / 2);
+    let bias = plen as i128 - (n as i128 / 2);
     print!(
         "  {label:<26} |P|={plen:<3} draws={draws:<3} agree {agree}/{n} with {{Q=0}}  bias={bias:+}"
     );
@@ -82,11 +82,11 @@ fn describe_pset(label: &str, p: &[u32], zero: &[u32], draws: usize, m: u32) {
 }
 
 fn main() {
-    let (m, a) = (4u32, 1u32);
+    let (m, a) = (4u128, 1u128);
     let n = 1usize << m;
-    let zero: Vec<u32> = (0..n as u64)
+    let zero: Vec<u128> = (0..n as u128)
         .filter(|&v| gold(v, a, m) == 0)
-        .map(|v| v as u32)
+        .map(|v| v as u128)
         .collect();
     println!(
         "Gold form Q_{a} on F_2^{m}:  |{{Q=0}}| = {} of {n}",
@@ -94,13 +94,13 @@ fn main() {
     );
 
     // (a) existence is trivial: hand-build an acyclic game with P-set = {Q=0}.
-    let zset: std::collections::HashSet<u32> = zero.iter().copied().collect();
+    let zset: std::collections::HashSet<u128> = zero.iter().copied().collect();
     let adhoc: Vec<Vec<usize>> = (0..n)
         .map(|v| {
-            let vv = v as u32;
+            let vv = v as u128;
             if zset.contains(&vv) {
                 // a target loss: move only to non-{Q=0} (wins)
-                (0..v).filter(|&w| !zset.contains(&(w as u32))).collect()
+                (0..v).filter(|&w| !zset.contains(&(w as u128))).collect()
             } else {
                 vec![0] // a win: move to 0 ∈ {Q=0} (a loss)
             }
@@ -120,7 +120,7 @@ fn main() {
     let r1: Vec<Vec<usize>> = (0..n)
         .map(|v| {
             (0..v)
-                .filter(|&w| polar(v as u64, nim_add(v as u64, w as u64), a, m) == 1)
+                .filter(|&w| polar(v as u128, nim_add(v as u128, w as u128), a, m) == 1)
                 .collect()
         })
         .collect();
@@ -131,7 +131,7 @@ fn main() {
     let r2: Vec<Vec<usize>> = (0..n)
         .map(|v| {
             (0..v)
-                .filter(|&w| gold(w as u64, a, m) != gold(v as u64, a, m))
+                .filter(|&w| gold(w as u128, a, m) != gold(v as u128, a, m))
                 .collect()
         })
         .collect();
@@ -142,9 +142,9 @@ fn main() {
     let r3: Vec<Vec<usize>> = (0..n)
         .map(|v| {
             (0..m)
-                .filter(|&i| v as u64 & (1 << i) != 0)
-                .map(|i| (v as u64 ^ (1 << i)) as usize)
-                .filter(|&w| polar(v as u64, nim_add(v as u64, w as u64), a, m) == 1)
+                .filter(|&i| v as u128 & (1 << i) != 0)
+                .map(|i| (v as u128 ^ (1 << i)) as usize)
+                .filter(|&w| polar(v as u128, nim_add(v as u128, w as u128), a, m) == 1)
                 .collect()
         })
         .collect();

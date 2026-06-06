@@ -101,7 +101,7 @@ Four pillars under `src/`, each re-exported flat (`scalar::Nimber`,
 
 - `scalar/` — the `Scalar` trait, two exact non-game rings as sibling modules
   (`rational` = ℚ for engine validation, `integer` = ℤ for game coefficients),
-  and the game-backed coefficient worlds: `nimber` (On₂ in `u64`, nim-add = XOR,
+  and the game-backed coefficient worlds: `nimber` (On₂ in `u128`, nim-add = XOR,
   nim-mul via Fermat-power recursion), `surreal` (Conway normal form with
   recursive exponents), `surcomplex` (adjoin `i`), `omnific` (`Oz`), `onag`
   (ordinal nimbers), `fp` (odd-characteristic prime fields).
@@ -162,7 +162,8 @@ question (a *natural* game realizing those forms' P-positions).
   inverts to an infinite Hahn series this finite representation can't hold, so
   `inv()` returns `None`/raises. Versor inverse needs the scalar norm to invert,
   so it works whenever that norm is a monomial (e.g. metrics like `[ω, ε]`).
-- **Nimbers cap at `u64`** (the field F_{2^64}); widening to `u128` is mechanical.
+- **Nimbers cap at `u128`** (the field F_{2^128}); going beyond that needs a
+  wider/storage-generic field representation rather than another scalar rename.
 - **Ordinal nim-multiplication is complete inside `φ_{ω+1}`** (every ordinal
   `< ω³` Cantor) but **staged above**: the next field would adjoin a degree-5
   root over `φ_{ω+1}`, and the general construction climbs the Lenstra/DiMuro

@@ -90,7 +90,7 @@ fn main() {
     );
 
     rule("char-0 classifier — Cl(p,q) as a matrix algebra (companion to Arf)");
-    let cl = |qs: &[i64]| {
+    let cl = |qs: &[i128]| {
         let q = qs.iter().map(|&x| Surreal::from_int(x as i128)).collect();
         classify_surreal(&Metric::diagonal(q)).unwrap().display()
     };
@@ -130,7 +130,7 @@ fn main() {
         nim_sqrt(2),
         nim_mul_sq(nim_sqrt(2))
     );
-    for c in 0u64..4 {
+    for c in 0u128..4 {
         let tr = nim_trace(c, 2);
         match nim_solve_artin_schreier(c, 2) {
             Some(y) => println!("  y²+y=*{c} in F₄: Tr=*{tr} ⇒ y=*{y}"),
@@ -153,9 +153,10 @@ fn main() {
         dickson_matrix(&[vec![0, 1], vec![1, 0]])
     );
     let nb = CliffordAlgebra::new(2, aplane);
+    let rotor = nb.mul(&nb.gen(0), &nb.gen(1));
     println!(
         "  Dickson(versor e0e1) = {:?}   (a rotor ⇒ SO)",
-        dickson_of_versor(&nb.mul(&nb.gen(0), &nb.gen(1)))
+        dickson_of_versor(&nb, &rotor)
     );
 
     rule("exterior algebra of the GAME group — lives where Clifford can't");
@@ -182,6 +183,6 @@ fn main() {
 }
 
 /// (helper) nim-square, for the tour's √ check.
-fn nim_mul_sq(x: u64) -> u64 {
+fn nim_mul_sq(x: u128) -> u128 {
     pleroma::scalar::nim_square(x)
 }

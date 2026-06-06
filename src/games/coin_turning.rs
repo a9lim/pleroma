@@ -24,29 +24,29 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
 thread_local! {
-    static MEX_MEMO: RefCell<HashMap<(u64, u64), u64>> = RefCell::new(HashMap::new());
+    static MEX_MEMO: RefCell<HashMap<(u128, u128), u128>> = RefCell::new(HashMap::new());
 }
 
-fn mex(seen: &HashSet<u64>) -> u64 {
-    let mut m = 0u64;
+fn mex(seen: &HashSet<u128>) -> u128 {
+    let mut m = 0u128;
     while seen.contains(&m) {
         m += 1;
     }
     m
 }
 
-fn lower_mask(n: u64) -> u64 {
-    assert!(n < 64, "coin bitmask positions must be < 64");
+fn lower_mask(n: u128) -> u128 {
+    assert!(n < 128, "coin bitmask positions must be < 128");
     if n == 0 {
         0
     } else {
-        (1u64 << n) - 1
+        (1u128 << n) - 1
     }
 }
 
 /// Nim-multiplication via Conway's Turning-Corners excludant recurrence — the
 /// *game* definition of the product.
-pub fn nim_mul_mex(x: u64, y: u64) -> u64 {
+pub fn nim_mul_mex(x: u128, y: u128) -> u128 {
     if x == 0 || y == 0 {
         return 0;
     }
@@ -91,27 +91,27 @@ pub fn nim_mul_mex(x: u64, y: u64) -> u64 {
 
 /// "Turn coin `n` and exactly one strictly-lower coin." Single-coin Grundy
 /// `g(n) = n`; its tartan square is Turning Corners.
-pub fn singleton_companions(n: u64) -> Vec<u64> {
-    assert!(n < 64, "coin bitmask positions must be < 64");
-    (0..n).map(|i| 1u64 << i).collect()
+pub fn singleton_companions(n: u128) -> Vec<u128> {
+    assert!(n < 128, "coin bitmask positions must be < 128");
+    (0..n).map(|i| 1u128 << i).collect()
 }
 
 /// Turning Turtles: "turn coin `n` and optionally one strictly-lower coin."
 /// Single-coin Grundy `g(n) = n + 1`.
-pub fn turtles_companions(n: u64) -> Vec<u64> {
-    assert!(n < 64, "coin bitmask positions must be < 64");
-    let mut v = vec![0u64]; // the empty companion set (turn n alone)
-    v.extend((0..n).map(|i| 1u64 << i));
+pub fn turtles_companions(n: u128) -> Vec<u128> {
+    assert!(n < 128, "coin bitmask positions must be < 128");
+    let mut v = vec![0u128]; // the empty companion set (turn n alone)
+    v.extend((0..n).map(|i| 1u128 << i));
     v
 }
 
 /// Single-coin Grundy value of a 1-D coin-turning game (memoised). `companions`
 /// returns the legal companion sets (bitmasks ⊆ {0..n-1}) for a coin at `n`.
-pub fn grundy_1d<F: Fn(u64) -> Vec<u64>>(
+pub fn grundy_1d<F: Fn(u128) -> Vec<u128>>(
     companions: &F,
-    n: u64,
-    memo: &mut HashMap<u64, u64>,
-) -> u64 {
+    n: u128,
+    memo: &mut HashMap<u128, u128>,
+) -> u128 {
     let allowed = lower_mask(n);
     if let Some(&v) = memo.get(&n) {
         return v;
@@ -122,10 +122,10 @@ pub fn grundy_1d<F: Fn(u64) -> Vec<u64>>(
             s & !allowed == 0,
             "companion mask contains a coin that is not strictly lower than n"
         );
-        let mut acc = 0u64;
+        let mut acc = 0u128;
         let mut ss = s;
         while ss != 0 {
-            let i = ss.trailing_zeros() as u64;
+            let i = ss.trailing_zeros() as u128;
             ss &= ss - 1;
             acc ^= grundy_1d(companions, i, memo);
         }
@@ -142,15 +142,15 @@ pub fn grundy_1d<F: Fn(u64) -> Vec<u64>>(
 pub fn tartan_grundy<A, B>(
     comp_a: &A,
     comp_b: &B,
-    x: u64,
-    y: u64,
-    memo: &mut HashMap<(u64, u64), u64>,
-) -> u64
+    x: u128,
+    y: u128,
+    memo: &mut HashMap<(u128, u128), u128>,
+) -> u128
 where
-    A: Fn(u64) -> Vec<u64>,
-    B: Fn(u64) -> Vec<u64>,
+    A: Fn(u128) -> Vec<u128>,
+    B: Fn(u128) -> Vec<u128>,
 {
-    assert!(x < 64 && y < 64, "tartan bitmask positions must be < 64");
+    assert!(x < 128 && y < 128, "tartan bitmask positions must be < 128");
     let allowed_x = lower_mask(x);
     let allowed_y = lower_mask(y);
     if let Some(&v) = memo.get(&(x, y)) {
@@ -162,22 +162,22 @@ where
             ta & !allowed_x == 0,
             "row companion mask contains a coin that is not strictly lower than x"
         );
-        let acells = ta | (1u64 << x); // rows turned (rightmost = x)
+        let acells = ta | (1u128 << x); // rows turned (rightmost = x)
         for tb in comp_b(y) {
             assert!(
                 tb & !allowed_y == 0,
                 "column companion mask contains a coin that is not strictly lower than y"
             );
-            let bcells = tb | (1u64 << y); // cols turned (rightmost = y)
-                                           // XOR the values of every turned cell except (x,y) itself.
-            let mut acc = 0u64;
+            let bcells = tb | (1u128 << y); // cols turned (rightmost = y)
+                                            // XOR the values of every turned cell except (x,y) itself.
+            let mut acc = 0u128;
             let mut aa = acells;
             while aa != 0 {
-                let a = aa.trailing_zeros() as u64;
+                let a = aa.trailing_zeros() as u128;
                 aa &= aa - 1;
                 let mut bb = bcells;
                 while bb != 0 {
-                    let b = bb.trailing_zeros() as u64;
+                    let b = bb.trailing_zeros() as u128;
                     bb &= bb - 1;
                     if a == x && b == y {
                         continue;
@@ -201,8 +201,8 @@ mod tests {
     #[test]
     fn game_definition_equals_algebraic_nim_mul() {
         // Turning-Corners Grundy values == Fermat-power nim-multiplication.
-        for x in 0u64..48 {
-            for y in 0u64..48 {
+        for x in 0u128..48 {
+            for y in 0u128..48 {
                 assert_eq!(nim_mul_mex(x, y), nim_mul(x, y), "mismatch at ({x}, {y})");
             }
         }
@@ -230,15 +230,15 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "positions must be < 64")]
-    fn companion_bitmasks_are_bounded_by_u64_width() {
-        let _ = singleton_companions(64);
+    #[should_panic(expected = "positions must be < 128")]
+    fn companion_bitmasks_are_bounded_by_u128_width() {
+        let _ = singleton_companions(128);
     }
 
     #[test]
     #[should_panic(expected = "not strictly lower than n")]
     fn custom_companion_masks_must_use_lower_coins() {
-        let bad = |n| vec![1u64 << n];
+        let bad = |n| vec![1u128 << n];
         let mut memo = HashMap::new();
         let _ = grundy_1d(&bad, 3, &mut memo);
     }
@@ -247,8 +247,8 @@ mod tests {
     fn tartan_square_of_singleton_game_is_turning_corners() {
         // tartan(g(n)=n, itself) at (x,y) = x ⊗ y = Turning Corners = nim_mul_mex.
         let mut tm = HashMap::new();
-        for x in 0u64..6 {
-            for y in 0u64..6 {
+        for x in 0u128..6 {
+            for y in 0u128..6 {
                 assert_eq!(
                     tartan_grundy(&singleton_companions, &singleton_companions, x, y, &mut tm),
                     nim_mul_mex(x, y),
@@ -262,10 +262,10 @@ mod tests {
     fn tartan_product_theorem() {
         // The Tartan/Product theorem on mixed component games: the 2-D Grundy
         // (from the excludant) equals the nim-product of the 1-D Grundy values.
-        fn check<A: Fn(u64) -> Vec<u64>, B: Fn(u64) -> Vec<u64>>(ga: &A, gb: &B) {
+        fn check<A: Fn(u128) -> Vec<u128>, B: Fn(u128) -> Vec<u128>>(ga: &A, gb: &B) {
             let (mut ma, mut mb, mut tm) = (HashMap::new(), HashMap::new(), HashMap::new());
-            for x in 0u64..5 {
-                for y in 0u64..5 {
+            for x in 0u128..5 {
+                for y in 0u128..5 {
                     let direct = tartan_grundy(ga, gb, x, y, &mut tm);
                     let factored = nim_mul(grundy_1d(ga, x, &mut ma), grundy_1d(gb, y, &mut mb));
                     assert_eq!(direct, factored, "Tartan theorem failed at ({x},{y})");

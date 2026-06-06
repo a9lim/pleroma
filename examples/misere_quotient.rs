@@ -28,13 +28,13 @@ fn nim_game(max: usize) -> AbstractGame {
 
 /// If the quotient is `(ℤ/2)^k` on the given atoms (each atom an involution, and
 /// the subset→class map a bijection), return the P-set as `F₂^k` bitmasks.
-fn p_set_as_f2(q: &Quotient, atoms: &[usize]) -> Option<Vec<u32>> {
+fn p_set_as_f2(q: &Quotient, atoms: &[usize]) -> Option<Vec<u128>> {
     let k = atoms.len();
     if k > 12 {
         return None;
     }
     // map a subset bitmask to its class via the enumerated elements
-    let class_of_subset = |mask: u32| -> Option<usize> {
+    let class_of_subset = |mask: u128| -> Option<usize> {
         let mut ms: Vec<usize> = (0..k)
             .filter(|&i| mask & (1 << i) != 0)
             .map(|i| atoms[i])
@@ -47,7 +47,7 @@ fn p_set_as_f2(q: &Quotient, atoms: &[usize]) -> Option<Vec<u32>> {
     };
     let mut seen = std::collections::HashSet::new();
     let mut pset = Vec::new();
-    for v in 0u32..(1 << k) {
+    for v in 0u128..(1 << k) {
         let c = class_of_subset(v)?;
         if !seen.insert(c) && v.count_ones() <= 1 {
             // a generator coincided with an earlier class ⇒ not full-rank (ℤ/2)^k

@@ -48,14 +48,14 @@ where
 
 /// A Nim position: heap sizes, kept sorted ascending with empty heaps dropped so
 /// equal positions share a memo key.
-pub fn nim_canonical(mut heaps: Vec<u32>) -> Vec<u32> {
+pub fn nim_canonical(mut heaps: Vec<u128>) -> Vec<u128> {
     heaps.retain(|&h| h != 0);
     heaps.sort_unstable();
     heaps
 }
 
 /// The moves of Nim: reduce any one heap to any strictly smaller size.
-pub fn nim_moves(pos: &Vec<u32>) -> Vec<Vec<u32>> {
+pub fn nim_moves(pos: &Vec<u128>) -> Vec<Vec<u128>> {
     let mut out = Vec::new();
     for i in 0..pos.len() {
         for v in 0..pos[i] {
@@ -70,8 +70,8 @@ pub fn nim_moves(pos: &Vec<u32>) -> Vec<Vec<u32>> {
 /// The misère-Nim theorem (Bouton): a position is a misère P-position iff either
 /// every heap is ≤ 1 and there is an *odd* number of heaps, or some heap is ≥ 2
 /// and the nim-sum (XOR) of the heaps is 0. (The empty position is N.)
-pub fn misere_nim_p_predicted(heaps: &[u32]) -> bool {
-    let xor = heaps.iter().fold(0u32, |a, &h| a ^ h);
+pub fn misere_nim_p_predicted(heaps: &[u128]) -> bool {
+    let xor = heaps.iter().fold(0u128, |a, &h| a ^ h);
     let max = heaps.iter().copied().max().unwrap_or(0);
     if max <= 1 {
         heaps.len() % 2 == 1
@@ -241,11 +241,11 @@ pub fn misere_quotient(
 /// heap of size n, remove k tokens (1 ≤ k ≤ n): leaving the heap empty needs
 /// `dₖ & 1`; leaving one nonempty heap `n−k` needs `dₖ & 2`; splitting `n−k` into
 /// two nonempty heaps needs `dₖ & 4`. (Nim is `0.333…`, Dawson's chess `0.137`.)
-pub fn octal_moves(code: &[u8], pos: &[u32]) -> Vec<Vec<u32>> {
+pub fn octal_moves(code: &[u8], pos: &[u128]) -> Vec<Vec<u128>> {
     let mut out = Vec::new();
     for idx in 0..pos.len() {
         let n = pos[idx];
-        let base: Vec<u32> = pos
+        let base: Vec<u128> = pos
             .iter()
             .enumerate()
             .filter(|&(i, _)| i != idx)
@@ -294,10 +294,10 @@ pub fn octal_misere_quotient(
     let atoms: Vec<usize> = (1..=max_heap).collect();
     let elements = multisets(&atoms, elem_bound);
     let tests = multisets(&atoms, test_bound);
-    let mut memo: HashMap<Vec<u32>, bool> = HashMap::new();
-    let moves = |p: &Vec<u32>| octal_moves(code, p);
+    let mut memo: HashMap<Vec<u128>, bool> = HashMap::new();
+    let moves = |p: &Vec<u128>| octal_moves(code, p);
     build_quotient(elements, &tests, |g| {
-        let mut pos: Vec<u32> = g.iter().map(|&x| x as u32).collect();
+        let mut pos: Vec<u128> = g.iter().map(|&x| x as u128).collect();
         pos.sort_unstable();
         misere_is_n(&pos, &moves, &mut memo)
     })
@@ -311,8 +311,8 @@ mod tests {
     fn misere_nim_matches_boutons_theorem() {
         // Verify the tree evaluator against the closed-form theorem over all Nim
         // positions with up to 4 heaps of size ≤ 4.
-        let mut memo: HashMap<Vec<u32>, bool> = HashMap::new();
-        fn rec(prefix: &mut Vec<u32>, depth: usize, memo: &mut HashMap<Vec<u32>, bool>) {
+        let mut memo: HashMap<Vec<u128>, bool> = HashMap::new();
+        fn rec(prefix: &mut Vec<u128>, depth: usize, memo: &mut HashMap<Vec<u128>, bool>) {
             if depth == 0 {
                 let pos = nim_canonical(prefix.clone());
                 let is_p = misere_is_p(&pos, &nim_moves, memo);
@@ -323,7 +323,7 @@ mod tests {
                 );
                 return;
             }
-            for h in 0..=4u32 {
+            for h in 0..=4u128 {
                 prefix.push(h);
                 rec(prefix, depth - 1, memo);
                 prefix.pop();
@@ -357,9 +357,9 @@ mod tests {
     fn octal_nim_matches_misere_nim() {
         // 0.333… is Nim: octal moves' misère outcomes match Bouton's theorem.
         let code = [3u8, 3, 3, 3];
-        let mut memo: HashMap<Vec<u32>, bool> = HashMap::new();
+        let mut memo: HashMap<Vec<u128>, bool> = HashMap::new();
         for heaps in [
-            vec![1u32],
+            vec![1u128],
             vec![1, 1],
             vec![2],
             vec![2, 1],
@@ -391,7 +391,7 @@ mod tests {
         // P-set is NOT: it contains a XOR≠0 point and excludes a XOR=0 point, so
         // it is neither {XOR=0} nor a coset of any subspace. This is precisely the
         // non-linearity normal-play sums lack (and that a quadratic P-set needs).
-        let mut memo: HashMap<Vec<u32>, bool> = HashMap::new();
+        let mut memo: HashMap<Vec<u128>, bool> = HashMap::new();
         let one = nim_canonical(vec![1]); // XOR = 1, but misère-P (you must take the last coin)
         let oneone = nim_canonical(vec![1, 1]); // XOR = 0, but misère-N
         assert!(misere_is_p(&one, &nim_moves, &mut memo));

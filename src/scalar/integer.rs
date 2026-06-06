@@ -10,7 +10,7 @@ use crate::scalar::Scalar;
 use std::fmt;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Integer(pub i64);
+pub struct Integer(pub i128);
 
 impl fmt::Debug for Integer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

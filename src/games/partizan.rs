@@ -62,7 +62,7 @@ impl Game {
     }
 
     /// The integer game `n`: `{ n−1 | }` for n>0, `{ | n+1 }` for n<0, `0` for 0.
-    pub fn integer(n: i64) -> Game {
+    pub fn integer(n: i128) -> Game {
         if n == 0 {
             Game::zero()
         } else if n > 0 {
@@ -79,7 +79,7 @@ impl Game {
     }
 
     /// The switch `{ a | b }` (e.g. `{1 | -1}` is `±1`). A non-number when a ≥ b.
-    pub fn switch(a: i64, b: i64) -> Game {
+    pub fn switch(a: i128, b: i128) -> Game {
         Game::new(vec![Game::integer(a)], vec![Game::integer(b)])
     }
 
@@ -128,7 +128,7 @@ impl Game {
     }
 
     /// The birthday (formation day): `0` for `{|}`, else `1 + max` over options.
-    pub fn birthday(&self) -> u32 {
+    pub fn birthday(&self) -> u128 {
         self.left()
             .iter()
             .chain(self.right())
@@ -138,7 +138,7 @@ impl Game {
     }
 
     /// The integer multiple `n · G` in the game group (repeated sum / negation).
-    pub fn times_int(&self, n: i64) -> Game {
+    pub fn times_int(&self, n: i128) -> Game {
         if n == 0 {
             Game::zero()
         } else if n > 0 {
@@ -175,14 +175,14 @@ impl Game {
     }
 }
 
-const DEFAULT_RELATION_BOUND: i64 = 3;
+const DEFAULT_RELATION_BOUND: i128 = 3;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GameRelation {
-    pub coeffs: Vec<i64>,
+    pub coeffs: Vec<i128>,
 }
 
 impl GameRelation {
-    pub fn new(coeffs: Vec<i64>) -> Self {
+    pub fn new(coeffs: Vec<i128>) -> Self {
         assert!(
             coeffs.iter().any(|&c| c != 0),
             "game relation must be nonzero"
@@ -223,7 +223,7 @@ impl GameExterior {
     /// coefficient searches only for two-generator presentations; larger
     /// presentations should use [`with_relations`](Self::with_relations) for
     /// known cross-generator relations.
-    pub fn with_relation_search(gens: Vec<Game>, bound: i64) -> GameExterior {
+    pub fn with_relation_search(gens: Vec<Game>, bound: i128) -> GameExterior {
         let relations = discover_relations(&gens, bound);
         GameExterior::with_relations(gens, relations)
     }
@@ -294,7 +294,7 @@ impl GameExterior {
         self.reduce(&self.alg.add(a, b))
     }
 
-    pub fn scalar_mul(&self, s: i64, a: &Multivector<Integer>) -> Multivector<Integer> {
+    pub fn scalar_mul(&self, s: i128, a: &Multivector<Integer>) -> Multivector<Integer> {
         self.reduce(&self.alg.scalar_mul(&Integer(s), a))
     }
 
@@ -317,7 +317,7 @@ impl GameExterior {
             return mv.clone();
         }
         let mut out = self.alg.zero();
-        let mut by_grade: BTreeMap<usize, BTreeMap<u32, i64>> = BTreeMap::new();
+        let mut by_grade: BTreeMap<usize, BTreeMap<u128, i128>> = BTreeMap::new();
         for (&blade, coeff) in &mv.terms {
             by_grade
                 .entry(blade.count_ones() as usize)
@@ -335,7 +335,7 @@ impl GameExterior {
         out
     }
 
-    fn reduce_grade(&self, grade: usize, terms: &BTreeMap<u32, i64>) -> BTreeMap<u32, i64> {
+    fn reduce_grade(&self, grade: usize, terms: &BTreeMap<u128, i128>) -> BTreeMap<u128, i128> {
         if grade == 0 {
             return terms.clone();
         }
@@ -343,8 +343,8 @@ impl GameExterior {
         if basis.is_empty() {
             return BTreeMap::new();
         }
-        let index: BTreeMap<u32, usize> = basis.iter().enumerate().map(|(i, &m)| (m, i)).collect();
-        let mut v = vec![0i64; basis.len()];
+        let index: BTreeMap<u128, usize> = basis.iter().enumerate().map(|(i, &m)| (m, i)).collect();
+        let mut v = vec![0i128; basis.len()];
         for (&blade, &coeff) in terms {
             if let Some(&i) = index.get(&blade) {
                 v[i] += coeff;
@@ -358,9 +358,9 @@ impl GameExterior {
     fn relation_rows_for_grade(
         &self,
         grade: usize,
-        basis: &[u32],
-        index: &BTreeMap<u32, usize>,
-    ) -> Vec<Vec<i64>> {
+        basis: &[u128],
+        index: &BTreeMap<u128, usize>,
+    ) -> Vec<Vec<i128>> {
         let mut rows = Vec::new();
         let lower_basis = grade_masks(self.gens.len(), grade - 1);
         for rel in &self.relations {
@@ -368,7 +368,7 @@ impl GameExterior {
             for mask in &lower_basis {
                 let blade = self.alg.blade(&bits(*mask));
                 let wedged = self.alg.wedge(&rel_mv, &blade);
-                let mut row = vec![0i64; basis.len()];
+                let mut row = vec![0i128; basis.len()];
                 for (&b, coeff) in &wedged.terms {
                     if let Some(&i) = index.get(&b) {
                         row[i] += coeff.0;
@@ -387,13 +387,13 @@ fn relation_multivector(rel: &GameRelation) -> Multivector<Integer> {
     let mut terms = BTreeMap::new();
     for (i, &coeff) in rel.coeffs.iter().enumerate() {
         if coeff != 0 {
-            terms.insert(1u32 << i, Integer(coeff));
+            terms.insert(1u128 << i, Integer(coeff));
         }
     }
     Multivector { terms }
 }
 
-fn eval_relation(gens: &[Game], coeffs: &[i64]) -> Game {
+fn eval_relation(gens: &[Game], coeffs: &[i128]) -> Game {
     let mut acc = Game::zero();
     for (g, &c) in gens.iter().zip(coeffs) {
         acc = acc.add(&g.times_int(c));
@@ -401,7 +401,7 @@ fn eval_relation(gens: &[Game], coeffs: &[i64]) -> Game {
     acc
 }
 
-fn canonical_relation(mut coeffs: Vec<i64>) -> Option<Vec<i64>> {
+fn canonical_relation(mut coeffs: Vec<i128>) -> Option<Vec<i128>> {
     let first = coeffs.iter().position(|&c| c != 0)?;
     if coeffs[first] < 0 {
         for c in &mut coeffs {
@@ -411,7 +411,7 @@ fn canonical_relation(mut coeffs: Vec<i64>) -> Option<Vec<i64>> {
     Some(coeffs)
 }
 
-fn discover_relations(gens: &[Game], bound: i64) -> Vec<GameRelation> {
+fn discover_relations(gens: &[Game], bound: i128) -> Vec<GameRelation> {
     if gens.is_empty() || bound <= 0 {
         return Vec::new();
     }
@@ -421,7 +421,7 @@ fn discover_relations(gens: &[Game], bound: i64) -> Vec<GameRelation> {
 
     for i in 0..n {
         for c in 1..=bound {
-            let mut coeffs = vec![0i64; n];
+            let mut coeffs = vec![0i128; n];
             coeffs[i] = c;
             if push_relation_if_independent(gens, coeffs, &mut seen, &mut out) {
                 break;
@@ -441,7 +441,7 @@ fn discover_relations(gens: &[Game], bound: i64) -> Vec<GameRelation> {
                     if a == 0 && b == 0 {
                         continue;
                     }
-                    let mut coeffs = vec![0i64; n];
+                    let mut coeffs = vec![0i128; n];
                     coeffs[i] = a;
                     coeffs[j] = b;
                     let Some(key) = canonical_relation(coeffs) else {
@@ -452,7 +452,7 @@ fn discover_relations(gens: &[Game], bound: i64) -> Vec<GameRelation> {
             }
         }
     }
-    candidates.sort_by_key(|v| (v.iter().map(|c| c.abs()).sum::<i64>(), v.clone()));
+    candidates.sort_by_key(|v| (v.iter().map(|c| c.abs()).sum::<i128>(), v.clone()));
     for coeffs in candidates {
         push_relation_if_independent(gens, coeffs, &mut seen, &mut out);
     }
@@ -461,8 +461,8 @@ fn discover_relations(gens: &[Game], bound: i64) -> Vec<GameRelation> {
 
 fn push_relation_if_independent(
     gens: &[Game],
-    coeffs: Vec<i64>,
-    seen: &mut BTreeSet<Vec<i64>>,
+    coeffs: Vec<i128>,
+    seen: &mut BTreeSet<Vec<i128>>,
     out: &mut Vec<GameRelation>,
 ) -> bool {
     let Some(key) = canonical_relation(coeffs) else {
@@ -475,7 +475,7 @@ fn push_relation_if_independent(
         return false;
     }
     let mut reduced = key.clone();
-    let rows: Vec<Vec<i64>> = out.iter().map(|r| r.coeffs.clone()).collect();
+    let rows: Vec<Vec<i128>> = out.iter().map(|r| r.coeffs.clone()).collect();
     reduce_integer_vector(&mut reduced, rows);
     if reduced.iter().all(|&c| c == 0) {
         return false;
@@ -484,17 +484,17 @@ fn push_relation_if_independent(
     true
 }
 
-fn grade_masks(n: usize, grade: usize) -> Vec<u32> {
+fn grade_masks(n: usize, grade: usize) -> Vec<u128> {
     if grade > n {
         return Vec::new();
     }
-    fn rec(n: usize, grade: usize, start: usize, mask: u32, out: &mut Vec<u32>) {
+    fn rec(n: usize, grade: usize, start: usize, mask: u128, out: &mut Vec<u128>) {
         if grade == 0 {
             out.push(mask);
             return;
         }
         for i in start..=n - grade {
-            rec(n, grade - 1, i + 1, mask | (1u32 << i), out);
+            rec(n, grade - 1, i + 1, mask | (1u128 << i), out);
         }
     }
     let mut out = Vec::new();
@@ -502,71 +502,98 @@ fn grade_masks(n: usize, grade: usize) -> Vec<u32> {
     out
 }
 
-fn leading(row: &[i64]) -> Option<usize> {
+fn leading(row: &[i128]) -> Option<usize> {
     row.iter().position(|&x| x != 0)
 }
 
-fn row_is_zero(row: &[i64]) -> bool {
+fn row_is_zero(row: &[i128]) -> bool {
     row.iter().all(|&x| x == 0)
 }
 
-fn normalize_relation_rows(mut rows: Vec<Vec<i64>>) -> Vec<Vec<i64>> {
-    rows.retain(|r| !row_is_zero(r));
-    let mut changed = true;
-    while changed {
-        changed = false;
-        rows.sort_by_key(|r| {
-            let lead = leading(r).unwrap_or(usize::MAX);
-            let val = if lead == usize::MAX { 0 } else { r[lead].abs() };
-            (lead, val)
-        });
-        'pairs: for i in 0..rows.len() {
-            let Some(lead_i) = leading(&rows[i]) else {
-                continue;
-            };
-            for j in (i + 1)..rows.len() {
-                if leading(&rows[j]) != Some(lead_i) {
-                    continue;
-                }
-                let q = rows[j][lead_i] / rows[i][lead_i];
-                if q == 0 {
-                    continue;
-                }
-                for c in 0..rows[j].len() {
-                    rows[j][c] -= q * rows[i][c];
-                }
-                rows.retain(|r| !row_is_zero(r));
-                changed = true;
-                break 'pairs;
-            }
-        }
+fn checked_abs(x: i128) -> i128 {
+    x.checked_abs()
+        .expect("integer relation coefficient magnitude exceeds i128")
+}
+
+fn negate_row(row: &mut [i128]) {
+    for x in row {
+        *x = x
+            .checked_neg()
+            .expect("integer relation coefficient magnitude exceeds i128");
     }
-    rows.sort_by_key(|r| leading(r).unwrap_or(usize::MAX));
-    for i in 0..rows.len() {
-        let Some(lead_i) = leading(&rows[i]) else {
+}
+
+fn sub_row_multiple(target: &mut [i128], source: &[i128], q: i128) {
+    for (t, &s) in target.iter_mut().zip(source) {
+        let delta = q
+            .checked_mul(s)
+            .expect("integer relation row operation exceeds i128");
+        *t = t
+            .checked_sub(delta)
+            .expect("integer relation row operation exceeds i128");
+    }
+}
+
+/// Row Hermite normal form for an integer row lattice.
+///
+/// The returned rows generate exactly the same submodule as the input rows, have
+/// increasing leading columns, positive pivots, zeros below each pivot, and
+/// residues above pivots reduced modulo the pivot. This gives
+/// [`reduce_integer_vector`] a canonical quotient representative for
+/// `Z^n / <rows>`.
+fn normalize_relation_rows(mut rows: Vec<Vec<i128>>) -> Vec<Vec<i128>> {
+    let width = rows.first().map_or(0, Vec::len);
+    assert!(
+        rows.iter().all(|r| r.len() == width),
+        "integer relation rows must have equal width"
+    );
+    rows.retain(|r| !row_is_zero(r));
+    let mut rank = 0usize;
+    for col in 0..width {
+        let Some(pivot) = (rank..rows.len()).find(|&r| rows[r][col] != 0) else {
             continue;
         };
-        if rows[i][lead_i] < 0 {
-            for c in &mut rows[i] {
-                *c = -*c;
+        rows.swap(rank, pivot);
+        if rows[rank][col] < 0 {
+            negate_row(&mut rows[rank]);
+        }
+
+        loop {
+            let Some(r) = ((rank + 1)..rows.len()).find(|&r| rows[r][col] != 0) else {
+                break;
+            };
+            let pivot_val = rows[rank][col];
+            let q = rows[r][col].div_euclid(pivot_val);
+            let source = rows[rank].clone();
+            sub_row_multiple(&mut rows[r], &source, q);
+            if rows[r][col] != 0 && checked_abs(rows[r][col]) < checked_abs(rows[rank][col]) {
+                rows.swap(rank, r);
+                if rows[rank][col] < 0 {
+                    negate_row(&mut rows[rank]);
+                }
             }
         }
-        let pivot = rows[i][lead_i];
-        for j in 0..rows.len() {
-            if i == j || rows[j][lead_i] == 0 {
+
+        if rows[rank][col] < 0 {
+            negate_row(&mut rows[rank]);
+        }
+        let pivot_val = rows[rank][col];
+        let source = rows[rank].clone();
+        for r in 0..rows.len() {
+            if r == rank || rows[r][col] == 0 {
                 continue;
             }
-            let q = rows[j][lead_i].div_euclid(pivot);
-            for c in 0..rows[j].len() {
-                rows[j][c] -= q * rows[i][c];
-            }
+            let q = rows[r][col].div_euclid(pivot_val);
+            sub_row_multiple(&mut rows[r], &source, q);
         }
+        rank += 1;
     }
     rows.retain(|r| !row_is_zero(r));
+    rows.sort_by_key(|r| leading(r).unwrap_or(usize::MAX));
     rows
 }
 
-fn reduce_integer_vector(v: &mut [i64], rows: Vec<Vec<i64>>) {
+fn reduce_integer_vector(v: &mut [i128], rows: Vec<Vec<i128>>) {
     for row in normalize_relation_rows(rows) {
         let Some(lead) = leading(&row) else {
             continue;
@@ -664,5 +691,27 @@ mod tests {
         let e1 = ext.generator(1);
         assert_eq!(ext.reduce(&e0), ext.reduce(&e1));
         assert!(ext.is_zero(&ext.wedge(&e0, &e1)));
+    }
+
+    #[test]
+    fn integer_relation_reduction_uses_the_full_row_lattice() {
+        let rows = vec![vec![2, 0], vec![3, 0]];
+        assert_eq!(normalize_relation_rows(rows.clone()), vec![vec![1, 0]]);
+
+        let mut v = vec![5, 7];
+        reduce_integer_vector(&mut v, rows);
+        assert_eq!(v, vec![0, 7]);
+    }
+
+    #[test]
+    fn integer_relation_reduction_handles_coupled_relations() {
+        let rows = vec![vec![2, 4], vec![6, 10]];
+        let mut v = vec![8, 14]; // one copy of each relation
+        reduce_integer_vector(&mut v, rows.clone());
+        assert_eq!(v, vec![0, 0]);
+
+        let mut shifted = vec![9, 14];
+        reduce_integer_vector(&mut shifted, rows);
+        assert_ne!(shifted, vec![0, 0]);
     }
 }

@@ -12,7 +12,7 @@
 //! ## The const-generic modulus, two parameters
 //!
 //! Like `Fp<P>`, the modulus lives in the **type** (`Scalar::zero()/one()` take no
-//! `self`). A field is `Fpn<const P: u64, const N: usize>` = `F_{p^N}`, carried as the
+//! `self`). A field is `Fpn<const P: u128, const N: usize>` = `F_{p^N}`, carried as the
 //! `N` coefficients of `c_0 + c_1 x + … + c_{N-1} x^{N-1}` with each `c_i ∈ [0, P)`.
 //! A different `(P, N)` is a different type — the same no-mixing discipline the rest
 //! of the crate uses. `Fpn<2, 2>` is "the polynomial-basis `F_4`", a *different type*
@@ -36,7 +36,7 @@ use std::fmt;
 /// An element of `F_{p^N}`: the coefficients of `c_0 + c_1 x + … + c_{N-1} x^{N-1}`,
 /// each reduced into `[0, P)`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Fpn<const P: u64, const N: usize>(pub [u64; N]);
+pub struct Fpn<const P: u128, const N: usize>(pub [u128; N]);
 
 /// Low coefficients `r` of the reduction rule `x^N = Σ_i r_i x^i` for the supported
 /// `(P, N)` fields. Each returned slice has length `N`. Unsupported pairs are a
@@ -49,7 +49,7 @@ pub struct Fpn<const P: u64, const N: usize>(pub [u64; N]);
 ///   * `F_9  = F_3[x]/(x²+1)`     → `x² = 2`
 ///   * `F_25 = F_5[x]/(x²−2)`     → `x² = 2`
 ///   * `F_27 = F_3[x]/(x³−x+1)`   → `x³ = x + 2`
-pub(crate) const fn reduction<const P: u64, const N: usize>() -> &'static [u64] {
+pub(crate) const fn reduction<const P: u128, const N: usize>() -> &'static [u128] {
     match (P, N) {
         (_, 1) => &[0],       // degree 1: F_p itself, no reduction needed
         (2, 2) => &[1, 1],    // x² = 1 + x
@@ -61,15 +61,19 @@ pub(crate) const fn reduction<const P: u64, const N: usize>() -> &'static [u64] 
     }
 }
 
-impl<const P: u64, const N: usize> Fpn<P, N> {
+impl<const P: u128, const N: usize> Fpn<P, N> {
     /// The field order `p^N`.
     pub fn order() -> u128 {
-        (P as u128).pow(N as u32)
+        let mut acc = 1u128;
+        for _ in 0..N {
+            acc = acc.checked_mul(P).expect("Fpn order exceeds u128");
+        }
+        acc
     }
 
     /// Embed a base-field constant `c ∈ F_p` as the degree-0 element.
-    pub fn constant(c: u64) -> Self {
-        let mut out = [0u64; N];
+    pub fn constant(c: u128) -> Self {
+        let mut out = [0u128; N];
         if N > 0 {
             out[0] = c % P;
         }
@@ -79,8 +83,8 @@ impl<const P: u64, const N: usize> Fpn<P, N> {
     /// Build from a coefficient slice (low-to-high), reducing each entry mod `P`.
     /// Extra trailing coefficients beyond `N` must be zero (else it is not an
     /// element of this field); they are ignored here, so prefer length `≤ N`.
-    pub fn from_coeffs(cs: &[u64]) -> Self {
-        let mut out = [0u64; N];
+    pub fn from_coeffs(cs: &[u128]) -> Self {
+        let mut out = [0u128; N];
         for (i, slot) in out.iter_mut().enumerate() {
             if i < cs.len() {
                 *slot = cs[i] % P;
@@ -118,7 +122,7 @@ impl<const P: u64, const N: usize> Fpn<P, N> {
 
     /// The generator `x` (the class of the indeterminate), i.e. `[0, 1, 0, …]`.
     pub fn generator() -> Self {
-        let mut out = [0u64; N];
+        let mut out = [0u128; N];
         if N > 1 {
             out[1] = 1 % P;
         } else if N == 1 {
@@ -129,7 +133,7 @@ impl<const P: u64, const N: usize> Fpn<P, N> {
     }
 }
 
-impl<const P: u64, const N: usize> fmt::Debug for Fpn<P, N> {
+impl<const P: u128, const N: usize> fmt::Debug for Fpn<P, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut parts: Vec<String> = Vec::new();
         for i in (0..N).rev() {
@@ -154,13 +158,13 @@ impl<const P: u64, const N: usize> fmt::Debug for Fpn<P, N> {
     }
 }
 
-impl<const P: u64, const N: usize> Scalar for Fpn<P, N> {
+impl<const P: u128, const N: usize> Scalar for Fpn<P, N> {
     fn zero() -> Self {
-        Fpn([0u64; N])
+        Fpn([0u128; N])
     }
 
     fn one() -> Self {
-        let mut out = [0u64; N];
+        let mut out = [0u128; N];
         if N > 0 {
             out[0] = 1 % P;
         }
@@ -168,15 +172,15 @@ impl<const P: u64, const N: usize> Scalar for Fpn<P, N> {
     }
 
     fn add(&self, rhs: &Self) -> Self {
-        let mut out = [0u64; N];
+        let mut out = [0u128; N];
         for i in 0..N {
-            out[i] = ((self.0[i] as u128 + rhs.0[i] as u128) % P as u128) as u64;
+            out[i] = ((self.0[i] as u128 + rhs.0[i] as u128) % P as u128) as u128;
         }
         Fpn(out)
     }
 
     fn neg(&self) -> Self {
-        let mut out = [0u64; N];
+        let mut out = [0u128; N];
         for i in 0..N {
             out[i] = if self.0[i] == 0 { 0 } else { P - self.0[i] };
         }
@@ -211,9 +215,9 @@ impl<const P: u64, const N: usize> Scalar for Fpn<P, N> {
                 }
             }
         }
-        let mut out = [0u64; N];
+        let mut out = [0u128; N];
         for i in 0..N {
-            out[i] = scratch[i] as u64;
+            out[i] = scratch[i] as u128;
         }
         Fpn(out)
     }
@@ -248,13 +252,13 @@ mod tests {
     use crate::clifford::{CliffordAlgebra, Metric};
 
     /// Every element of `F_{p^N}`, enumerated by base-`P` digits.
-    fn elems<const P: u64, const N: usize>() -> Vec<Fpn<P, N>> {
+    fn elems<const P: u128, const N: usize>() -> Vec<Fpn<P, N>> {
         let order = Fpn::<P, N>::order();
         (0..order)
             .map(|mut code| {
-                let mut coeffs = [0u64; N];
+                let mut coeffs = [0u128; N];
                 for slot in coeffs.iter_mut() {
-                    *slot = (code % P as u128) as u64;
+                    *slot = (code % P as u128) as u128;
                     code /= P as u128;
                 }
                 Fpn(coeffs)
@@ -262,7 +266,7 @@ mod tests {
             .collect()
     }
 
-    fn check_field_axioms<const P: u64, const N: usize>() {
+    fn check_field_axioms<const P: u128, const N: usize>() {
         let es = elems::<P, N>();
         let zero = Fpn::<P, N>::zero();
         let one = Fpn::<P, N>::one();

@@ -121,7 +121,7 @@ pub fn bw_class_complex(metric: &Metric<Surcomplex<Surreal>>) -> Option<BrauerWa
 /// The Brauer–Wall class of `Cl(Q)` over a finite field `F_p`, carried as the
 /// order-4 `oddchar` Witt data (`BW(F_q) ≅ W(F_q)` over a finite field, since the
 /// Brauer group is trivial). `None` if non-diagonal.
-pub fn bw_class_oddchar<const P: u64>(metric: &Metric<Fp<P>>) -> Option<BrauerWallClass> {
+pub fn bw_class_oddchar<const P: u128>(metric: &Metric<Fp<P>>) -> Option<BrauerWallClass> {
     match oddchar_witt(metric)? {
         WittClassG::OddChar { kappa, e0, sclass } => {
             Some(BrauerWallClass::OddChar { kappa, e0, sclass })
@@ -228,7 +228,7 @@ mod tests {
         assert_eq!(subgroup_order(BrauerWallClass::Complex(1)), 2);
     }
 
-    fn oddchar_diag<const P: u64>(qs: &[u64]) -> Metric<Fp<P>> {
+    fn oddchar_diag<const P: u128>(qs: &[u128]) -> Metric<Fp<P>> {
         Metric::diagonal(qs.iter().map(|&x| Fp::<P>(x)).collect())
     }
 
@@ -237,7 +237,7 @@ mod tests {
         // The class is a homomorphism over direct_sum (= graded tensor of Cliffords),
         // and the group it generates has order 4 — discovered, with the q mod 4
         // dichotomy: ℤ/4 over F_3 (−1 nonsquare), (ℤ/2)² over F_5 (−1 square).
-        fn collect_group<const P: u64>() -> (BTreeSet<(u8, u8, u8)>, bool) {
+        fn collect_group<const P: u128>() -> (BTreeSet<(u8, u8, u8)>, bool) {
             // generate from ⟨1⟩ and ⟨nonsquare⟩, closing under add
             let gens: Vec<BrauerWallClass> = (1..P)
                 .map(|a| bw_class_oddchar(&oddchar_diag::<P>(&[a])).unwrap())

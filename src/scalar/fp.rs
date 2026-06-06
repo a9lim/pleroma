@@ -27,24 +27,24 @@ use std::fmt;
 
 /// An element of the prime field `F_P` (invariant: `0 ≤ .0 < P`).
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Fp<const P: u64>(pub u64);
+pub struct Fp<const P: u128>(pub u128);
 
-impl<const P: u64> Fp<P> {
+impl<const P: u128> Fp<P> {
     /// Reduce an integer (possibly negative) into `F_P`.
-    pub fn new(n: i64) -> Self {
+    pub fn new(n: i128) -> Self {
         let m = P as i128;
         let v = (((n as i128) % m) + m) % m;
-        Fp(v as u64)
+        Fp(v as u128)
     }
 }
 
-impl<const P: u64> fmt::Debug for Fp<P> {
+impl<const P: u128> fmt::Debug for Fp<P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl<const P: u64> Scalar for Fp<P> {
+impl<const P: u128> Scalar for Fp<P> {
     fn zero() -> Self {
         Fp(0)
     }
@@ -52,7 +52,7 @@ impl<const P: u64> Scalar for Fp<P> {
         Fp(1 % P)
     }
     fn add(&self, rhs: &Self) -> Self {
-        Fp(((self.0 as u128 + rhs.0 as u128) % P as u128) as u64)
+        Fp(((self.0 as u128 + rhs.0 as u128) % P as u128) as u128)
     }
     fn neg(&self) -> Self {
         if self.0 == 0 {
@@ -62,7 +62,7 @@ impl<const P: u64> Scalar for Fp<P> {
         }
     }
     fn mul(&self, rhs: &Self) -> Self {
-        Fp(((self.0 as u128 * rhs.0 as u128) % P as u128) as u64)
+        Fp(((self.0 as u128 * rhs.0 as u128) % P as u128) as u128)
     }
     fn characteristic() -> u128 {
         P as u128
@@ -85,7 +85,7 @@ impl<const P: u64> Scalar for Fp<P> {
             return None; // not invertible (only happens if P is not prime)
         }
         let m = P as i128;
-        Some(Fp((((t % m) + m) % m) as u64))
+        Some(Fp((((t % m) + m) % m) as u128))
     }
 }
 
@@ -94,11 +94,11 @@ mod tests {
     use super::*;
     use crate::clifford::{CliffordAlgebra, Metric};
 
-    fn elems<const P: u64>() -> Vec<Fp<P>> {
+    fn elems<const P: u128>() -> Vec<Fp<P>> {
         (0..P).map(Fp::<P>).collect()
     }
 
-    fn check_field_axioms<const P: u64>() {
+    fn check_field_axioms<const P: u128>() {
         let es = elems::<P>();
         for &a in &es {
             for &b in &es {

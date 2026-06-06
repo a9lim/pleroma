@@ -39,7 +39,7 @@ src/
                   # game group (games/partizan.rs): games are a ℤ-module, not a
                   # ring, so Λ over ℤ is the structure that lives on all of
                   # game-world. Only ±1 invertible (Grassmann never calls inv).
-    nimber.rs     # On₂ in u64 (= F_{2^64}): nim_add = XOR; nim_mul via Fermat-
+    nimber.rs     # On₂ in u128 (= F_{2^128}): nim_add = XOR; nim_mul via Fermat-
                   # power recursion, memoised on 2^i ⊗ 2^j. Also nim_square /
                   # nim_sqrt (Frobenius & its inverse), nim_trace, and the
                   # Artin–Schreier solver (y²+y=c, solvable ⇔ Tr(c)=0).
@@ -267,9 +267,9 @@ smoke-tested via `demo.py`. After touching `clifford/` or `scalar/surreal.rs`, r
 - **`scalar * multivector` works via the scalar's `__mul__` returning
   `NotImplemented`** so Python falls back to the MV's `__rmul__`. Don't make the
   scalar ops raise on a non-scalar operand — that breaks `omega() * e0`.
-- **`nim_mul`'s `1u64 << (1u64 << n)` looks overflow-prone.** It isn't for valid
-  u64 inputs: bit positions are < 64, so Fermat indices `n ≤ 5` and the shift is
-  ≤ 32.
+- **`nim_mul`'s `1u128 << (1u128 << n)` looks overflow-prone.** It isn't for valid
+  u128 inputs: bit positions are < 128, so Fermat indices `n ≤ 6` and the shift is
+  ≤ 64.
 - **`nim_mul_mex` is the slow *game* definition (the mex recurrence), for
   validation and small arguments only.** It's exponential in the argument size —
   fine up to ~48, infeasible over a whole field like F_{2^16}. For real

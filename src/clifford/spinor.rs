@@ -46,8 +46,8 @@ fn commutes<S: Scalar>(alg: &CliffordAlgebra<S>, x: &Multivector<S>, y: &Multive
 fn rref<S: Scalar>(
     alg: &CliffordAlgebra<S>,
     vectors: &[Multivector<S>],
-) -> Option<Vec<(u32, Multivector<S>)>> {
-    let mut basis: Vec<(u32, Multivector<S>)> = Vec::new();
+) -> Option<Vec<(u128, Multivector<S>)>> {
+    let mut basis: Vec<(u128, Multivector<S>)> = Vec::new();
     for v in vectors {
         let mut v = v.clone();
         // reduce by existing pivots
@@ -80,7 +80,7 @@ fn ideal_spanning_set<S: Scalar>(
     alg: &CliffordAlgebra<S>,
     f: &Multivector<S>,
 ) -> Vec<Multivector<S>> {
-    (0..(1u32 << alg.dim))
+    (0..(1u128 << alg.dim))
         .map(|mask| alg.mul(&alg.blade(&bits(mask)), f))
         .collect()
 }
@@ -92,7 +92,7 @@ fn ideal_dim<S: Scalar>(alg: &CliffordAlgebra<S>, f: &Multivector<S>) -> usize {
 }
 
 /// Coordinates of `target` in a reduced-echelon `basis` (pivot coefficients).
-fn coords<S: Scalar>(basis: &[(u32, Multivector<S>)], target: &Multivector<S>) -> Vec<S> {
+fn coords<S: Scalar>(basis: &[(u128, Multivector<S>)], target: &Multivector<S>) -> Vec<S> {
     basis
         .iter()
         .map(|(p, _)| target.terms.get(p).cloned().unwrap_or_else(S::zero))
@@ -118,7 +118,7 @@ pub fn spinor_rep<S: Scalar>(alg: &CliffordAlgebra<S>) -> Option<SpinorRep<S>> {
     let mut cur = ideal_dim(alg, &f);
     loop {
         let mut progressed = false;
-        for mask in 1..(1u32 << alg.dim) {
+        for mask in 1..(1u128 << alg.dim) {
             let w = alg.blade(&bits(mask));
             if alg.mul(&w, &w) != one {
                 continue; // need w² = +1

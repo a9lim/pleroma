@@ -24,7 +24,7 @@ use std::collections::BTreeSet;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Place {
     Real,
-    Prime(u64),
+    Prime(u128),
 }
 
 // --- elementary number theory (i128 internals; square-free keeps values tiny) ---
@@ -58,7 +58,7 @@ fn square_free(mut n: i128) -> i128 {
     sign * res
 }
 
-fn is_prime(p: u64) -> bool {
+fn is_prime(p: u128) -> bool {
     if p < 2 {
         return false;
     }
@@ -68,7 +68,7 @@ fn is_prime(p: u64) -> bool {
     if p % 2 == 0 {
         return false;
     }
-    let mut d = 3u64;
+    let mut d = 3u128;
     while d <= p / d {
         if p % d == 0 {
             return false;
@@ -79,7 +79,7 @@ fn is_prime(p: u64) -> bool {
 }
 
 /// `p`-adic valuation `v_p(n)` (for `n ≠ 0`).
-fn val_p(mut n: i128, p: i128) -> u32 {
+fn val_p(mut n: i128, p: i128) -> u128 {
     let mut k = 0;
     n = n.abs();
     while n % p == 0 {
@@ -123,7 +123,7 @@ fn legendre(a: i128, p: i128) -> i8 {
 
 /// Is the nonzero integer `n` a square in `Q_p`? `v_p(n)` even **and** the unit part
 /// is a square unit (`≡ □ mod p` for odd `p`; `≡ 1 mod 8` for `p = 2`).
-pub fn is_square_qp(n: i64, p: u64) -> bool {
+pub fn is_square_qp(n: i128, p: u128) -> bool {
     assert!(is_prime(p), "Q_p square test needs p prime");
     let n = n as i128;
     let p = p as i128;
@@ -144,7 +144,7 @@ pub fn is_square_qp(n: i64, p: u64) -> bool {
 // --- the Hilbert symbol ---
 
 /// The Hilbert symbol `(a, b)_∞` over `ℝ`: `−1` iff both `a, b < 0`, else `+1`.
-pub fn hilbert_symbol_real(a: i64, b: i64) -> i8 {
+pub fn hilbert_symbol_real(a: i128, b: i128) -> i8 {
     if a < 0 && b < 0 {
         -1
     } else {
@@ -173,7 +173,7 @@ fn omega2(u: i128) -> i128 {
 /// explicit formulas (Serre III.1): for odd `p`, with `a = p^α u`, `b = p^β v`,
 /// `(a,b)_p = (−1)^{αβ ε(p)} (u|p)^β (v|p)^α`; for `p = 2`,
 /// `(a,b)_2 = (−1)^{ε(u)ε(v) + α ω(v) + β ω(u)}`.
-pub fn hilbert_symbol_qp(a: i64, b: i64, p: u64) -> i8 {
+pub fn hilbert_symbol_qp(a: i128, b: i128, p: u128) -> i8 {
     assert!(is_prime(p), "Hilbert symbol needs p prime");
     let a = square_free(a as i128);
     let b = square_free(b as i128);
@@ -208,7 +208,7 @@ pub fn hilbert_symbol_qp(a: i64, b: i64, p: u64) -> i8 {
 
 /// The Hilbert symbol at an arbitrary place of `Q` (named `_at` to avoid clashing
 /// with the finite-field [`oddchar::hilbert_symbol`](crate::forms::hilbert_symbol)).
-pub fn hilbert_symbol_at(a: i64, b: i64, place: Place) -> i8 {
+pub fn hilbert_symbol_at(a: i128, b: i128, place: Place) -> i8 {
     match place {
         Place::Real => hilbert_symbol_real(a, b),
         Place::Prime(p) => hilbert_symbol_qp(a, b, p),
@@ -219,7 +219,7 @@ pub fn hilbert_symbol_at(a: i64, b: i64, place: Place) -> i8 {
 
 /// The Hasse invariant `ε_v(⟨a_1,…,a_n⟩) = ∏_{i<j} (a_i, a_j)_v` at a place `v`
 /// (Serre's convention). Entries must be nonzero.
-pub fn hasse_at_place(entries: &[i64], place: Place) -> i8 {
+pub fn hasse_at_place(entries: &[i128], place: Place) -> i8 {
     let mut h = 1i8;
     for i in 0..entries.len() {
         for j in (i + 1)..entries.len() {
@@ -230,17 +230,17 @@ pub fn hasse_at_place(entries: &[i64], place: Place) -> i8 {
 }
 
 /// The square class of the discriminant `∏ a_i`, kept square-free / small.
-fn disc_class(entries: &[i64]) -> i64 {
+fn disc_class(entries: &[i128]) -> i128 {
     let mut d: i128 = 1;
     for &e in entries {
         d = square_free(d * square_free(e as i128));
     }
-    d as i64
+    d as i128
 }
 
 /// The primes that can carry a nontrivial local condition: `2` together with every
 /// prime dividing some entry.
-fn relevant_primes(entries: &[i64]) -> BTreeSet<u64> {
+fn relevant_primes(entries: &[i128]) -> BTreeSet<u128> {
     let mut ps = BTreeSet::new();
     ps.insert(2);
     for &e in entries {
@@ -248,7 +248,7 @@ fn relevant_primes(entries: &[i64]) -> BTreeSet<u64> {
         let mut d: i128 = 2;
         while d * d <= n {
             if n % d == 0 {
-                ps.insert(d as u64);
+                ps.insert(d as u128);
                 while n % d == 0 {
                     n /= d;
                 }
@@ -256,7 +256,7 @@ fn relevant_primes(entries: &[i64]) -> BTreeSet<u64> {
             d += 1;
         }
         if n > 1 {
-            ps.insert(n as u64);
+            ps.insert(n as u128);
         }
     }
     ps
@@ -283,12 +283,12 @@ fn is_perfect_square(n: i128) -> bool {
 /// Local isotropy of a nondegenerate integer diagonal form over `Q_p`, by rank
 /// (Serre IV.2.2): n=1 never; n=2 iff `−d` is a square; n=3 iff `(−1,−d)_p = ε_p`;
 /// n=4 iff `d` is a nonsquare or `ε_p = (−1,−1)_p`; n≥5 always.
-fn is_isotropic_at_p(entries: &[i64], p: u64) -> bool {
+fn is_isotropic_at_p(entries: &[i128], p: u128) -> bool {
     let n = entries.len();
     let d = disc_class(entries);
     match n {
         0 | 1 => false,
-        2 => is_square_qp((-(entries[0] as i128 * entries[1] as i128)) as i64, p),
+        2 => is_square_qp((-(entries[0] as i128 * entries[1] as i128)) as i128, p),
         3 => hilbert_symbol_qp(-1, -d, p) == hasse_at_place(entries, Place::Prime(p)),
         4 => {
             !is_square_qp(d, p)
@@ -304,7 +304,7 @@ fn is_isotropic_at_p(entries: &[i64], p: u64) -> bool {
 /// otherwise rank 1 is anisotropic, rank 2 needs `−a_1 a_2` a global square, and
 /// rank ≥ 3 needs `ℝ`-indefiniteness plus the local condition at each prime dividing
 /// `2·∏a_i` (all other primes are automatically isotropic for rank ≥ 3).
-pub fn is_isotropic_q(entries: &[i64]) -> bool {
+pub fn is_isotropic_q(entries: &[i128]) -> bool {
     if entries.iter().any(|&e| e == 0) {
         return true; // a null coordinate direction
     }
@@ -335,9 +335,9 @@ mod tests {
     #[test]
     fn hilbert_symbol_is_symmetric_and_bimultiplicative_seed() {
         // symmetry
-        for &p in &[2u64, 3, 5, 7] {
-            for a in [-3i64, -1, 1, 2, 3, 5, 6] {
-                for b in [-3i64, -1, 1, 2, 3, 5, 6] {
+        for &p in &[2u128, 3, 5, 7] {
+            for a in [-3i128, -1, 1, 2, 3, 5, 6] {
+                for b in [-3i128, -1, 1, 2, 3, 5, 6] {
                     assert_eq!(
                         hilbert_symbol_qp(a, b, p),
                         hilbert_symbol_qp(b, a, p),
@@ -348,15 +348,15 @@ mod tests {
         }
         // (a, -a)_v = 1 and (a, 1-a) = 1 are the defining Steinberg relations; check
         // (a,-a): z² = a x² − a y² has (x,y,z)=(1,1,0).
-        for &p in &[2u64, 3, 5] {
-            for a in [-3i64, -1, 1, 2, 3, 5] {
+        for &p in &[2u128, 3, 5] {
+            for a in [-3i128, -1, 1, 2, 3, 5] {
                 assert_eq!(hilbert_symbol_qp(a, -a, p), 1, "(a,−a)_{p} = 1");
             }
         }
     }
 
     /// The Hilbert reciprocity oracle: ∏ over all places = +1.
-    fn reciprocity_holds(a: i64, b: i64) -> bool {
+    fn reciprocity_holds(a: i128, b: i128) -> bool {
         let mut prod = hilbert_symbol_real(a, b);
         // nontrivial only at primes dividing 2ab
         let mut primes = relevant_primes(&[a, b]);
@@ -370,8 +370,8 @@ mod tests {
     #[test]
     fn hilbert_reciprocity() {
         // THE GOLD ORACLE: ∏_v (a,b)_v = +1 for all a,b — Hilbert's reciprocity law.
-        for a in -12i64..=12 {
-            for b in -12i64..=12 {
+        for a in -12i128..=12 {
+            for b in -12i128..=12 {
                 if a == 0 || b == 0 {
                     continue;
                 }
@@ -387,7 +387,7 @@ mod tests {
         assert_eq!(hilbert_symbol_qp(-1, -1, 2), -1);
         assert_eq!(hilbert_symbol_real(-1, -1), -1);
         // … and (−1,−1) is trivial at every odd prime.
-        for &p in &[3u64, 5, 7, 11] {
+        for &p in &[3u128, 5, 7, 11] {
             assert_eq!(hilbert_symbol_qp(-1, -1, p), 1);
         }
         // (2,3)_? : ∏ must still be +1 (reciprocity), with some nontrivial local one.
@@ -448,8 +448,8 @@ mod tests {
     }
 
     #[test]
-    fn rank_two_square_test_is_exact_near_i64_limit() {
-        let a = 3_037_000_499i64;
+    fn rank_two_square_test_is_exact_near_i128_limit() {
+        let a = 3_037_000_499i128;
         assert!(is_isotropic_q(&[a, -a])); // −a·(−a) = a², exactly.
         assert!(!is_isotropic_q(&[a, -(a - 1)]));
     }

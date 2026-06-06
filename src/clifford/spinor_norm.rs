@@ -58,11 +58,11 @@ pub struct VersorClass<S: Scalar> {
 
 impl<S: Scalar> CliffordAlgebra<S> {
     /// The **raw spinor norm** `N(v) = ⟨v ṽ⟩₀` of a versor `v`, returned as a field
-    /// element. `Some(N)` iff `v ṽ` is a pure scalar (the versor condition — same
-    /// check as [`versor_inverse`](CliffordAlgebra::versor_inverse)); `None` if `v`
-    /// is not a simple versor. For `v = v₁⋯v_k` this equals `∏ q(vᵢ)`; reduce it
-    /// modulo squares (char ≠ 2) or modulo `℘` (char 2) to get the invariant in the
-    /// appropriate quotient.
+    /// element. `Some(N)` iff `v ṽ` is a pure invertible scalar (the same
+    /// invertibility gate as [`versor_inverse`](CliffordAlgebra::versor_inverse));
+    /// `None` if `v` is not a simple invertible versor. For `v = v₁⋯v_k` this
+    /// equals `∏ q(vᵢ)`; reduce it modulo squares (char ≠ 2) or modulo `℘` (char 2)
+    /// to get the invariant in the appropriate quotient.
     pub fn spinor_norm(&self, v: &Multivector<S>) -> Option<S> {
         let rev = self.reverse(v);
         let vrev = self.mul(v, &rev);
@@ -70,6 +70,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
         if self.scalar(n.clone()) != vrev {
             return None; // v ṽ is not a pure scalar ⇒ not a simple versor
         }
+        n.inv()?;
         Some(n)
     }
 
@@ -148,22 +149,28 @@ mod tests {
     }
 
     #[test]
+    fn null_homogeneous_elements_are_not_versors() {
+        let alg = CliffordAlgebra::<Rational>::new(1, Metric::grassmann(1));
+        let e0 = alg.gen(0);
+        assert_eq!(versor_grade_parity(&e0), Some(1));
+        assert_eq!(alg.spinor_norm(&e0), None);
+        assert_eq!(alg.classify_versor(&e0), None);
+    }
+
+    #[test]
     fn generic_parity_agrees_with_char2_dickson() {
         // The generic versor_grade_parity reproduces forms::dickson_of_versor on the
         // Nimber backend — the char-2 Dickson is this same grade parity.
-        use std::collections::BTreeMap;
-        let mut b = BTreeMap::new();
-        b.insert((0, 1), Nimber(1));
-        let alg = CliffordAlgebra::new(2, Metric::new(vec![Nimber(1), Nimber(1)], b));
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![Nimber(1), Nimber(1)]));
         let e0 = alg.gen(0);
         let e0e1 = alg.mul(&alg.gen(0), &alg.gen(1));
         assert_eq!(
             versor_grade_parity(&e0),
-            crate::forms::dickson_of_versor(&e0)
+            crate::forms::dickson_of_versor(&alg, &e0)
         );
         assert_eq!(
             versor_grade_parity(&e0e1),
-            crate::forms::dickson_of_versor(&e0e1)
+            crate::forms::dickson_of_versor(&alg, &e0e1)
         );
     }
 }

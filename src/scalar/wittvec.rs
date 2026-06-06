@@ -46,32 +46,42 @@ use std::fmt;
 /// unramified-ring coordinates: the `F` coefficients of a polynomial over `Z/p^N`,
 /// each a residue in `[0, p^N)`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct WittVec<const P: u64, const N: usize, const F: usize>(pub [u64; F]);
+pub struct WittVec<const P: u128, const N: usize, const F: usize>(pub [u128; F]);
 
-impl<const P: u64, const N: usize, const F: usize> WittVec<P, N, F> {
+impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
     /// The coefficient-ring modulus `p^N` (the precision).
     pub fn modulus() -> u128 {
-        (P as u128).pow(N as u32)
+        let mut acc = 1u128;
+        for _ in 0..N {
+            acc = acc.checked_mul(P).expect("WittVec modulus exceeds u128");
+        }
+        acc
     }
 
     /// The residue field order `q = p^F`.
     pub fn residue_order() -> u128 {
-        (P as u128).pow(F as u32)
+        let mut acc = 1u128;
+        for _ in 0..F {
+            acc = acc
+                .checked_mul(P)
+                .expect("WittVec residue order exceeds u128");
+        }
+        acc
     }
 
     /// Embed a `Z/p^N` integer as the degree-0 (constant) Witt vector.
     pub fn from_int(n: i128) -> Self {
         let m = Self::modulus() as i128;
-        let mut out = [0u64; F];
+        let mut out = [0u128; F];
         if F > 0 {
-            out[0] = (((n % m) + m) % m) as u64;
+            out[0] = (((n % m) + m) % m) as u128;
         }
         WittVec(out)
     }
 
     /// Reduce mod `p`: the **residue** in `F_q` (the ghost/Teichmüller bottom layer).
     pub fn residue(&self) -> Fpn<P, F> {
-        let mut c = [0u64; F];
+        let mut c = [0u128; F];
         for i in 0..F {
             c[i] = self.0[i] % P;
         }
@@ -79,7 +89,7 @@ impl<const P: u64, const N: usize, const F: usize> WittVec<P, N, F> {
     }
 
     /// Multiply two ring elements (polynomials over `Z/p^N` mod the lifted `f̃`).
-    fn ring_mul(a: &[u64; F], b: &[u64; F]) -> [u64; F] {
+    fn ring_mul(a: &[u128; F], b: &[u128; F]) -> [u128; F] {
         let m = Self::modulus();
         let mut scratch = vec![0u128; 2 * F - 1];
         for i in 0..F {
@@ -105,9 +115,9 @@ impl<const P: u64, const N: usize, const F: usize> WittVec<P, N, F> {
                 }
             }
         }
-        let mut out = [0u64; F];
+        let mut out = [0u128; F];
         for i in 0..F {
-            out[i] = scratch[i] as u64;
+            out[i] = scratch[i] as u128;
         }
         out
     }
@@ -155,7 +165,7 @@ impl<const P: u64, const N: usize, const F: usize> WittVec<P, N, F> {
 
     /// Divide by `p` an element all of whose coefficients are `≡ 0 mod p`.
     fn divide_by_p(&self) -> Self {
-        let mut out = [0u64; F];
+        let mut out = [0u128; F];
         for i in 0..F {
             debug_assert_eq!(self.0[i] % P, 0, "divide_by_p on a non-divisible element");
             out[i] = self.0[i] / P;
@@ -178,43 +188,43 @@ impl<const P: u64, const N: usize, const F: usize> WittVec<P, N, F> {
     }
 }
 
-impl<const P: u64, const N: usize, const F: usize> fmt::Debug for WittVec<P, N, F> {
+impl<const P: u128, const N: usize, const F: usize> fmt::Debug for WittVec<P, N, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // unramified-ring coordinates: coefficients of 1, t, …, t^{F-1} over Z/p^N
         write!(f, "W_{}(F_{}^{}){:?}", N, P, F, self.0)
     }
 }
 
-impl<const P: u64, const N: usize, const F: usize> Scalar for WittVec<P, N, F> {
+impl<const P: u128, const N: usize, const F: usize> Scalar for WittVec<P, N, F> {
     fn zero() -> Self {
-        WittVec([0u64; F])
+        WittVec([0u128; F])
     }
 
     fn one() -> Self {
-        let mut out = [0u64; F];
+        let mut out = [0u128; F];
         if F > 0 {
-            out[0] = (1 % Self::modulus()) as u64;
+            out[0] = (1 % Self::modulus()) as u128;
         }
         WittVec(out)
     }
 
     fn add(&self, rhs: &Self) -> Self {
         let m = Self::modulus();
-        let mut out = [0u64; F];
+        let mut out = [0u128; F];
         for i in 0..F {
-            out[i] = ((self.0[i] as u128 + rhs.0[i] as u128) % m) as u64;
+            out[i] = ((self.0[i] as u128 + rhs.0[i] as u128) % m) as u128;
         }
         WittVec(out)
     }
 
     fn neg(&self) -> Self {
         let m = Self::modulus();
-        let mut out = [0u64; F];
+        let mut out = [0u128; F];
         for i in 0..F {
             out[i] = if self.0[i] == 0 {
                 0
             } else {
-                (m - self.0[i] as u128) as u64
+                (m - self.0[i] as u128) as u128
             };
         }
         WittVec(out)
@@ -259,8 +269,8 @@ mod tests {
     fn q_equals_p_is_z_mod_pn() {
         // ORACLE: W_N(F_p) ≅ Z/p^N — ring ops must match the Zp backend exactly.
         // W_3(F_2) vs Z/8.
-        for a in 0..8u64 {
-            for b in 0..8u64 {
+        for a in 0..8u128 {
+            for b in 0..8u128 {
                 let (wa, wb) = (WittVec::<2, 3, 1>([a]), WittVec::<2, 3, 1>([b]));
                 let (za, zb) = (Zp::<2, 3>(a), Zp::<2, 3>(b));
                 assert_eq!(wa.add(&wb).0[0], za.add(&zb).0);
@@ -274,7 +284,7 @@ mod tests {
     #[test]
     fn ring_axioms_w2_f4() {
         // W_2(F_4): order 4² = 16, the truncated unramified quadratic extension of Z_2.
-        let elems: Vec<WittVec<2, 2, 2>> = (0..16u64)
+        let elems: Vec<WittVec<2, 2, 2>> = (0..16u128)
             .map(|code| WittVec([code & 3, (code >> 2) & 3]))
             .collect();
         let one = WittVec::<2, 2, 2>::one();
@@ -310,13 +320,13 @@ mod tests {
     #[test]
     fn witt_coordinate_roundtrip() {
         // from_witt_components ∘ witt_components = id, over W_3(F_2) = Z/8.
-        for code in 0..8u64 {
+        for code in 0..8u128 {
             let w = WittVec::<2, 3, 1>([code]);
             let comps = w.witt_components();
             assert_eq!(WittVec::<2, 3, 1>::from_witt_components(&comps), w);
         }
         // and over W_2(F_4).
-        for code in 0..16u64 {
+        for code in 0..16u128 {
             let w = WittVec::<2, 2, 2>([code & 3, (code >> 2) & 3]);
             let comps = w.witt_components();
             assert_eq!(WittVec::<2, 2, 2>::from_witt_components(&comps), w);
@@ -328,10 +338,10 @@ mod tests {
         // The classical p=2 Witt addition: z₀ = x₀+y₀, z₁ = x₁+y₁−x₀y₀ (in F₂,
         // −1=1 so z₁ = x₁+y₁+x₀y₀). Verified against the ring sum, pinning the
         // ghost-coordinate semantics without hand-deriving the polynomial.
-        for x0 in 0..2u64 {
-            for x1 in 0..2u64 {
-                for y0 in 0..2u64 {
-                    for y1 in 0..2u64 {
+        for x0 in 0..2u128 {
+            for x1 in 0..2u128 {
+                for y0 in 0..2u128 {
+                    for y1 in 0..2u128 {
                         let a = WittVec::<2, 2, 1>::from_witt_components(&[
                             Fpn::<2, 1>([x0]),
                             Fpn::<2, 1>([x1]),

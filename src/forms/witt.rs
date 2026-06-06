@@ -20,6 +20,7 @@ use crate::scalar::Nimber;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WittClassError {
+    GeneralBilinearMetric,
     Singular {
         radical_dim: usize,
         radical_anisotropic: bool,
@@ -44,7 +45,7 @@ impl WittClass {
     /// group of nonsingular quadratic forms, so a nonzero polar-form radical is
     /// rejected instead of being silently erased.
     pub fn try_from_metric(metric: &Metric<Nimber>) -> Result<Self, WittClassError> {
-        let arf = arf_invariant(metric);
+        let arf = arf_invariant(metric).ok_or(WittClassError::GeneralBilinearMetric)?;
         if arf.radical_dim != 0 {
             return Err(WittClassError::Singular {
                 radical_dim: arf.radical_dim,
@@ -276,7 +277,7 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
 
-    fn metric(qs: &[u64], bs: &[((usize, usize), u64)]) -> Metric<Nimber> {
+    fn metric(qs: &[u128], bs: &[((usize, usize), u128)]) -> Metric<Nimber> {
         let q = qs.iter().map(|&x| Nimber(x)).collect();
         let mut b = BTreeMap::new();
         for &((i, j), v) in bs {

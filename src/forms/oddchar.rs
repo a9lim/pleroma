@@ -23,7 +23,7 @@ use crate::scalar::Fp;
 use crate::scalar::Scalar;
 
 /// `base^e` in `F_P` by square-and-multiply.
-fn fp_pow<const P: u64>(mut base: Fp<P>, mut e: u64) -> Fp<P> {
+fn fp_pow<const P: u128>(mut base: Fp<P>, mut e: u128) -> Fp<P> {
     let mut acc = Fp::<P>::one();
     while e > 0 {
         if e & 1 == 1 {
@@ -36,7 +36,7 @@ fn fp_pow<const P: u64>(mut base: Fp<P>, mut e: u64) -> Fp<P> {
 }
 
 /// Euler's criterion: is `x` a square in `F_P`? (`0` counts as a square.)
-pub fn is_square<const P: u64>(x: Fp<P>) -> bool {
+pub fn is_square<const P: u128>(x: Fp<P>) -> bool {
     if x.is_zero() {
         return true;
     }
@@ -46,7 +46,7 @@ pub fn is_square<const P: u64>(x: Fp<P>) -> bool {
 /// The Hilbert symbol `(a, b)` over `F_P`: `+1` iff `z² = a x² + b y²` has a
 /// nontrivial solution. Over a finite field this is identically `+1` for nonzero
 /// `a, b` (computed by an honest search, which always succeeds).
-pub fn hilbert_symbol<const P: u64>(a: Fp<P>, b: Fp<P>) -> i8 {
+pub fn hilbert_symbol<const P: u128>(a: Fp<P>, b: Fp<P>) -> i8 {
     for x in 0..P {
         for y in 0..P {
             for z in 0..P {
@@ -67,7 +67,7 @@ pub fn hilbert_symbol<const P: u64>(a: Fp<P>, b: Fp<P>) -> i8 {
 /// The classification of a nondegenerate-plus-radical diagonal form over `F_P`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OddCharType {
-    pub p: u64,
+    pub p: u128,
     /// Nondegenerate dimension (number of nonzero diagonal entries).
     pub dim: usize,
     /// Radical (null) dimension.
@@ -96,7 +96,7 @@ impl OddCharType {
 
 /// The Hasse invariant `∏_{i<j} (q_i, q_j)` of a diagonal form (nonzero entries
 /// only). `None` if the metric is non-diagonal. Always `+1` over a finite field.
-pub fn hasse_invariant<const P: u64>(metric: &Metric<Fp<P>>) -> Option<i8> {
+pub fn hasse_invariant<const P: u128>(metric: &Metric<Fp<P>>) -> Option<i8> {
     if !metric.b.is_empty() || !metric.a.is_empty() {
         return None;
     }
@@ -112,7 +112,7 @@ pub fn hasse_invariant<const P: u64>(metric: &Metric<Fp<P>>) -> Option<i8> {
 
 /// The discriminant (product of the nonzero diagonal entries = det of the
 /// nondegenerate part). `None` if non-diagonal.
-pub fn discriminant<const P: u64>(metric: &Metric<Fp<P>>) -> Option<Fp<P>> {
+pub fn discriminant<const P: u128>(metric: &Metric<Fp<P>>) -> Option<Fp<P>> {
     if !metric.b.is_empty() || !metric.a.is_empty() {
         return None;
     }
@@ -126,7 +126,7 @@ pub fn discriminant<const P: u64>(metric: &Metric<Fp<P>>) -> Option<Fp<P>> {
 }
 
 /// Classify a diagonal odd-characteristic form. `None` if non-diagonal.
-pub fn classify_oddchar<const P: u64>(metric: &Metric<Fp<P>>) -> Option<OddCharType> {
+pub fn classify_oddchar<const P: u128>(metric: &Metric<Fp<P>>) -> Option<OddCharType> {
     if !metric.b.is_empty() || !metric.a.is_empty() {
         return None;
     }
@@ -146,7 +146,7 @@ pub fn classify_oddchar<const P: u64>(metric: &Metric<Fp<P>>) -> Option<OddCharT
 /// discriminant class)`, with `kappa` = nonsquareness of `−1`. `None` if
 /// non-diagonal. The signed discriminant `(−1)^{m(m−1)/2}·det` is the genuine
 /// Witt invariant; see `witt::WittClassG`.
-pub fn oddchar_witt<const P: u64>(metric: &Metric<Fp<P>>) -> Option<WittClassG> {
+pub fn oddchar_witt<const P: u128>(metric: &Metric<Fp<P>>) -> Option<WittClassG> {
     if !metric.b.is_empty() || !metric.a.is_empty() {
         return None;
     }
@@ -176,18 +176,18 @@ pub fn oddchar_witt<const P: u64>(metric: &Metric<Fp<P>>) -> Option<WittClassG> 
 mod tests {
     use super::*;
 
-    fn diag<const P: u64>(qs: &[u64]) -> Metric<Fp<P>> {
+    fn diag<const P: u128>(qs: &[u128]) -> Metric<Fp<P>> {
         Metric::diagonal(qs.iter().map(|&x| Fp::<P>(x)).collect())
     }
 
     #[test]
     fn euler_criterion_matches_brute_force() {
-        for p_elt in 0..7u64 {
+        for p_elt in 0..7u128 {
             let x = Fp::<7>(p_elt);
             let brute = (0..7).any(|y| Fp::<7>(y).mul(&Fp::<7>(y)) == x);
             assert_eq!(is_square::<7>(x), brute, "x = {p_elt} mod 7");
         }
-        for p_elt in 0..5u64 {
+        for p_elt in 0..5u128 {
             let x = Fp::<5>(p_elt);
             let brute = (0..5).any(|y| Fp::<5>(y).mul(&Fp::<5>(y)) == x);
             assert_eq!(is_square::<5>(x), brute, "x = {p_elt} mod 5");
@@ -212,13 +212,13 @@ mod tests {
     #[test]
     fn hasse_is_trivial_over_finite_fields() {
         // Every Hilbert symbol of nonzero pairs is +1, so every Hasse invariant is.
-        for a in 1..5u64 {
-            for b in 1..5u64 {
+        for a in 1..5u128 {
+            for b in 1..5u128 {
                 assert_eq!(hilbert_symbol::<5>(Fp::<5>(a), Fp::<5>(b)), 1);
             }
         }
-        for a in 1..7u64 {
-            for b in 1..7u64 {
+        for a in 1..7u128 {
+            for b in 1..7u128 {
                 assert_eq!(hilbert_symbol::<7>(Fp::<7>(a), Fp::<7>(b)), 1);
             }
         }
@@ -228,7 +228,7 @@ mod tests {
 
     // Independent isometry oracle: brute-force search for a congruence
     // M^T diag(d1) M = diag(d2) with M invertible over F_P.
-    fn det_small<const P: u64>(m: &[Vec<Fp<P>>]) -> Fp<P> {
+    fn det_small<const P: u128>(m: &[Vec<Fp<P>>]) -> Fp<P> {
         match m.len() {
             1 => m[0][0],
             2 => m[0][0].mul(&m[1][1]).sub(&m[0][1].mul(&m[1][0])),
@@ -236,10 +236,13 @@ mod tests {
         }
     }
 
-    fn is_isometric<const P: u64>(d1: &[Fp<P>], d2: &[Fp<P>]) -> bool {
+    fn is_isometric<const P: u128>(d1: &[Fp<P>], d2: &[Fp<P>]) -> bool {
         let n = d1.len();
         assert_eq!(n, d2.len());
-        let total = (P as u64).pow((n * n) as u32);
+        let mut total = 1u128;
+        for _ in 0..(n * n) {
+            total *= P;
+        }
         for code in 0..total {
             // decode an n×n matrix in base P
             let mut m = vec![vec![Fp::<P>(0); n]; n];
@@ -280,7 +283,7 @@ mod tests {
         // The odd-char analogue of Arf-completeness: two nondegenerate forms are
         // isometric IFF (dim, disc-class) agree. Verified independently against a
         // brute-force congruence search, for dims 1 and 2 over F_3 and F_5.
-        fn check<const P: u64>(dim: usize) {
+        fn check<const P: u128>(dim: usize) {
             // all diagonal forms with nonzero entries
             let mut forms: Vec<Vec<Fp<P>>> = vec![vec![]];
             for _ in 0..dim {

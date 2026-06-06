@@ -318,7 +318,7 @@ macro_rules! backend {
                     mv: self.alg.scalar_mul(&s, &self.mv),
                 })
             }
-            fn __pow__(&self, n: u32, _modulo: Option<&Bound<'_, PyAny>>) -> $mv {
+            fn __pow__(&self, n: u128, _modulo: Option<&Bound<'_, PyAny>>) -> $mv {
                 let mut acc = self.alg.scalar(<$scalar as Scalar>::one());
                 for _ in 0..n {
                     acc = self.alg.mul(&acc, &self.mv);
@@ -349,7 +349,7 @@ macro_rules! backend {
             fn __invert__(&self) -> $mv {
                 self.reverse()
             }
-            fn grade(&self, k: u32) -> $mv {
+            fn grade(&self, k: usize) -> $mv {
                 $mv {
                     alg: self.alg.clone(),
                     mv: self.alg.grade_part(&self.mv, k),

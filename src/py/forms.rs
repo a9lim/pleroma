@@ -52,10 +52,11 @@ impl PyArfResult {
 /// Arf invariant (the char-2 Clifford classifier) of a nimber algebra whose
 /// metric has F₂ entries.
 #[pyfunction]
-fn arf_invariant(alg: &NimberAlgebra) -> PyArfResult {
-    PyArfResult {
-        inner: crate::forms::arf_invariant(&alg.inner.metric),
-    }
+fn arf_invariant(alg: &NimberAlgebra) -> PyResult<PyArfResult> {
+    let inner = crate::forms::arf_invariant(&alg.inner.metric).ok_or_else(|| {
+        PyValueError::new_err("Arf invariant is undefined for general-bilinear metrics")
+    })?;
+    Ok(PyArfResult { inner })
 }
 // ---------------------------------------------------------------------------
 // Char-0 classifier
@@ -160,21 +161,21 @@ fn witt_class(alg: &NimberAlgebra) -> PyWittClass {
 /// The Dickson invariant of an orthogonal matrix over the nim-field (the char-2
 /// determinant replacement; `0` ⇒ rotation/SO, `1` ⇒ reflection).
 #[pyfunction]
-fn dickson_matrix(g: Vec<Vec<u64>>) -> u8 {
+fn dickson_matrix(g: Vec<Vec<u128>>) -> u8 {
     crate::forms::dickson_matrix(&g)
 }
 
 /// The Dickson invariant of a nimber Clifford versor (= its grade parity).
 #[pyfunction]
 fn dickson_of_versor(v: &NimberMV) -> PyResult<u8> {
-    crate::forms::dickson_of_versor(&v.mv)
-        .ok_or_else(|| PyValueError::new_err("not a versor (mixed grade parity)"))
+    crate::forms::dickson_of_versor(&v.alg, &v.mv)
+        .ok_or_else(|| PyValueError::new_err("not an invertible homogeneous versor"))
 }
 // ---------------------------------------------------------------------------
 // Odd-characteristic classifier (the trichotomy's third leg)
 // ---------------------------------------------------------------------------
 
-fn fp_diag<const P: u64>(q: &[i64]) -> Metric<Fp<P>> {
+fn fp_diag<const P: u128>(q: &[i128]) -> Metric<Fp<P>> {
     Metric::diagonal(q.iter().map(|&x| Fp::<P>::new(x)).collect())
 }
 
@@ -186,7 +187,7 @@ struct PyOddCharType {
 #[pymethods]
 impl PyOddCharType {
     #[getter]
-    fn p(&self) -> u64 {
+    fn p(&self) -> u128 {
         self.inner.p
     }
     #[getter]
@@ -243,7 +244,7 @@ impl PyWittClassG {
 /// Classify a diagonal odd-characteristic form `q` over `F_p` (dimension +
 /// discriminant + Hasse). Supported primes: 3, 5, 7, 11, 13.
 #[pyfunction]
-fn classify_oddchar(p: u64, q: Vec<i64>) -> PyResult<PyOddCharType> {
+fn classify_oddchar(p: u128, q: Vec<i128>) -> PyResult<PyOddCharType> {
     let res = match p {
         3 => crate::forms::classify_oddchar(&fp_diag::<3>(&q)),
         5 => crate::forms::classify_oddchar(&fp_diag::<5>(&q)),
@@ -258,7 +259,7 @@ fn classify_oddchar(p: u64, q: Vec<i64>) -> PyResult<PyOddCharType> {
 
 /// The odd-characteristic Witt class of a diagonal form `q` over `F_p`.
 #[pyfunction]
-fn oddchar_witt(p: u64, q: Vec<i64>) -> PyResult<PyWittClassG> {
+fn oddchar_witt(p: u128, q: Vec<i128>) -> PyResult<PyWittClassG> {
     let res = match p {
         3 => crate::forms::oddchar_witt(&fp_diag::<3>(&q)),
         5 => crate::forms::oddchar_witt(&fp_diag::<5>(&q)),
@@ -273,7 +274,7 @@ fn oddchar_witt(p: u64, q: Vec<i64>) -> PyResult<PyWittClassG> {
 
 /// Is `x` a square mod `p`? (Euler's criterion.) Supported primes: 3, 5, 7, 11, 13.
 #[pyfunction]
-fn is_square_mod(p: u64, x: i64) -> PyResult<bool> {
+fn is_square_mod(p: u128, x: i128) -> PyResult<bool> {
     Ok(match p {
         3 => crate::forms::is_square(Fp::<3>::new(x)),
         5 => crate::forms::is_square(Fp::<5>::new(x)),
@@ -287,7 +288,7 @@ fn is_square_mod(p: u64, x: i64) -> PyResult<bool> {
 /// The Hasse–Witt invariant of a diagonal form `q` over `F_p` (always +1 over a
 /// finite field). Supported primes: 3, 5, 7, 11, 13.
 #[pyfunction]
-fn hasse_invariant(p: u64, q: Vec<i64>) -> PyResult<i8> {
+fn hasse_invariant(p: u128, q: Vec<i128>) -> PyResult<i8> {
     let res = match p {
         3 => crate::forms::hasse_invariant(&fp_diag::<3>(&q)),
         5 => crate::forms::hasse_invariant(&fp_diag::<5>(&q)),
@@ -350,7 +351,7 @@ fn springer_decompose(alg: &SurrealAlgebra) -> PyResult<PySpringerDecomp> {
 /// field ⇒ `stabilizes_at = 2`, `e₂ = +1`). Returns `(e0, e1, e2, stabilizes_at)`.
 /// Supported primes: 3, 5, 7, 11, 13.
 #[pyfunction]
-fn e_staircase_oddchar(p: u64, q: Vec<i64>) -> PyResult<(u8, u8, i8, usize)> {
+fn e_staircase_oddchar(p: u128, q: Vec<i128>) -> PyResult<(u8, u8, i8, usize)> {
     let s = match p {
         3 => crate::forms::e_staircase_oddchar(&fp_diag::<3>(&q)),
         5 => crate::forms::e_staircase_oddchar(&fp_diag::<5>(&q)),
@@ -367,7 +368,7 @@ fn e_staircase_oddchar(p: u64, q: Vec<i64>) -> PyResult<(u8, u8, i8, usize)> {
 /// `Some((σ/2ⁿ) mod 2)` if the form is in `Iⁿ` (i.e. `2ⁿ | σ`), else `None`. The
 /// staircase reads the 2-adic expansion of the signature (the infinite ℝ tower).
 #[pyfunction]
-fn e_real(signature: i64, n: usize) -> Option<u8> {
+fn e_real(signature: i128, n: usize) -> Option<u8> {
     crate::forms::e_real(signature, n)
 }
 
@@ -378,19 +379,19 @@ fn e_real(signature: i64, n: usize) -> Option<u8> {
 /// The Hilbert symbol `(a, b)_p` over `Q_p` (`p`-adic). Unlike the finite-field
 /// Hilbert symbol (always `+1`), this is genuinely nontrivial — e.g. `(−1,−1)_2 = −1`.
 #[pyfunction]
-fn hilbert_symbol_qp(a: i64, b: i64, p: u64) -> i8 {
+fn hilbert_symbol_qp(a: i128, b: i128, p: u128) -> i8 {
     crate::forms::hilbert_symbol_qp(a, b, p)
 }
 
 /// The Hilbert symbol `(a, b)_∞` over `ℝ` (`−1` iff both are negative).
 #[pyfunction]
-fn hilbert_symbol_real(a: i64, b: i64) -> i8 {
+fn hilbert_symbol_real(a: i128, b: i128) -> i8 {
     crate::forms::hilbert_symbol_real(a, b)
 }
 
 /// Is the integer `n` a square in `Q_p`?
 #[pyfunction]
-fn is_square_qp(n: i64, p: u64) -> bool {
+fn is_square_qp(n: i128, p: u128) -> bool {
     crate::forms::is_square_qp(n, p)
 }
 
@@ -398,7 +399,7 @@ fn is_square_qp(n: i64, p: u64) -> bool {
 /// **Hasse–Minkowski** principle (isotropic over `ℝ` and every `Q_p`). E.g.
 /// `⟨1,1,1⟩` is anisotropic, `⟨1,1,-1⟩` isotropic, `⟨1,1,-3⟩` anisotropic.
 #[pyfunction]
-fn is_isotropic_q(entries: Vec<i64>) -> bool {
+fn is_isotropic_q(entries: Vec<i128>) -> bool {
     crate::forms::is_isotropic_q(&entries)
 }
 
@@ -451,7 +452,7 @@ fn bw_class_complex(alg: &SurcomplexAlgebra) -> PyResult<PyBrauerWallClass> {
 /// The Brauer–Wall class of a diagonal odd-char form `q` over `F_p` (the order-4
 /// graded part, `BW(F_q) ≅ W(F_q)`). Supported primes: 3, 5, 7, 11, 13.
 #[pyfunction]
-fn bw_class_oddchar(p: u64, q: Vec<i64>) -> PyResult<PyBrauerWallClass> {
+fn bw_class_oddchar(p: u128, q: Vec<i128>) -> PyResult<PyBrauerWallClass> {
     let res = match p {
         3 => crate::forms::bw_class_oddchar(&fp_diag::<3>(&q)),
         5 => crate::forms::bw_class_oddchar(&fp_diag::<5>(&q)),

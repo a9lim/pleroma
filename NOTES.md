@@ -231,6 +231,45 @@ unchanged in kind — a *quadratic play rule* — but the surrounding scaffoldin
 testing candidates (Tartan couplings + misère outcomes + the Arf/win-bias check)
 is now all in place.
 
+### Two probes, and a shared test bench
+
+The instrument both probes feed into is `arf::fit_f2_quadratic`: given a set
+`S ⊆ F₂^k`, it solves over F₂ for a quadratic form with `{Q=0}=S` (constant +
+linear + quadratic terms by Gaussian elimination), returning `None` if `S` is no
+quadric, and otherwise the form's Arf — and crucially whether it is *genuinely*
+quadratic (nonzero polar-rank) or a mere affine flat. (Sanity: it finds exactly
+`2^7` of the `2^8` subsets of F₂³ are quadrics.) So any candidate game's P-set can
+be classified: not-a-quadric / linear / genuine quadric-with-Arf.
+
+*Misère route (`misere.rs`, `examples/misere_quotient.rs`).* A bounded
+indistinguishability-quotient computer (Plambeck–Siegel) over an abstract
+impartial game; verified to give `⋆ ↦ ℤ/2`. Applied to small games it finds:
+misère Nim heaps {1,2} has the order-6 quotient (matching the literature), {1,2,3}
+likewise small — but these are *not* elementary-abelian 2-groups, so they do not
+coordinatise as `F₂^k` and the quadric question doesn't even apply; and the one
+that does, `⋆ ↦ ℤ/2`, has a rank-0 (linear) P-set. So no genuine quadric P-set
+turns up among the tame games — consistent with tame ≈ linear. A *wild* quotient
+of shape `(ℤ/2)^k`, `k ≥ 2`, with Arf-rank ≥ 2 is what would be needed; the
+instrument is ready to test one.
+
+*Interactive route (`kernel.rs`, `examples/interactive_kernel.rs`).* A
+retrograde Win/Loss/Draw solver for any finite game graph (the P-positions are the
+Loss positions). Two findings. (i) *Existence is trivial*: a hand-built acyclic
+graph has P-set exactly `{Q=0}` (send every non-zero-of-`Q` to a fixed loss in the
+set) — so the open question is never about existence, only about a *natural* rule.
+(ii) Searching uniform downward (terminating) rules on `F₂^m`: the rule "move iff
+you flip `Q`" reproduces `{Q=0}` exactly — but tautologically, since it references
+`Q` itself in the move legality. The rules coupled only through `B` (the
+game-legitimate, coin-turning ingredient) do *not*: B-coupled descent gives an
+affine subspace, and a single-bit B-gated turn gives a *different* quadric (wrong
+Arf). So the open problem reaches its sharpest form yet:
+
+> a game whose moves are built from the combinatorial data (`B` / coin-turning)
+> **alone — not from `Q` itself** — whose kernel is the Gold quadric `{Q=0}`.
+
+Referencing `Q` is cheating; referencing only `B` does not (yet) integrate up to
+`Q`. The kernel solver + `fit_f2_quadratic` are the bench any candidate runs on.
+
 ## The char-0 companion: a matrix-algebra classifier (`classify.rs`)
 
 The Arf invariant returns the isomorphism class of a *char-2* Clifford algebra.

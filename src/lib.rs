@@ -11,6 +11,7 @@
 //!   - `arf`       : the Arf invariant (the char-2 Clifford classifier)
 //!   - `classify`  : the char-0 Clifford classifier (Cl(p,q) → matrix algebra)
 //!   - `games`     : nim-mult as Turning-Corners; general coin-turning + Tartan products
+//!   - `kernel`    : normal-play outcomes of any finite game graph (Win/Loss/Draw)
 //!   - `misere`    : misère-play outcomes — where disjunctive sums go non-linear
 //!   - `witt`      : the Witt group of quadratic forms over a nim-field (ℤ/2)
 //!   - `partizan`  : short partizan games + the exterior algebra of the game group
@@ -22,6 +23,7 @@ pub mod arf;
 pub mod classify;
 pub mod clifford;
 pub mod games;
+pub mod kernel;
 pub mod misere;
 pub mod nimber;
 pub mod partizan;

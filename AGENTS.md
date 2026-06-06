@@ -52,7 +52,9 @@ src/
                 # bitmask) + arf_nimber (any nim-field, via symplectic reduction
                 # + the field trace). arf_invariant routes to arf_nimber. Also
                 # the Dickson invariant: dickson_matrix (rank(g−I) mod 2, the
-                # char-2 determinant; ker = SO) + dickson_of_versor.
+                # char-2 determinant; ker = SO) + dickson_of_versor; and
+                # fit_f2_quadratic (is a set a quadric? its Arf?) — the shared
+                # test bench for the open-question probes.
   witt.rs       # WittClass: the Witt group W_q(F) ≅ ℤ/2 of a finite nim-field,
                 # Arf-classified. Makes A⊕A ≅ H⊕H a one-line group identity.
   games.rs      # nim_mul_mex: nim-multiplication as Conway's Turning-Corners
@@ -60,9 +62,13 @@ src/
                 # Also general 1-D coin-turning games (grundy_1d) and the 2-D
                 # Tartan product (tartan_grundy), with the Tartan/Product theorem
                 # (tartan == nim-product of component Grundy values) verified.
+  kernel.rs     # normal-play Win/Loss/Draw outcomes of any finite game graph
+                # (retrograde analysis); P-positions = Loss. The interactive-route
+                # instrument for the open question.
   misere.rs     # misère-play outcomes (misere_is_n/_is_p) for any finite
-                # impartial game; misère Nim vs Bouton's theorem. The instrument
-                # for the non-linear (misère) route to the open question.
+                # impartial game; misère Nim vs Bouton's theorem; plus the bounded
+                # indistinguishability quotient (misere_quotient). The non-linear
+                # (misère) route to the open question.
   partizan.rs   # short partizan games (sum/neg/order/birthday/is_number) + the
                 # exterior algebra of the GAME group: Λ over ℤ on game
                 # generators (Clifford-adjacent structure living on all of
@@ -74,6 +80,8 @@ src/
                 # bindings.
   lib.rs
 examples/tour.rs   # cargo run --example tour   (Rust-only demo)
+examples/misere_quotient.rs    # misère quotients + the quadric test on P-sets
+examples/interactive_kernel.rs # B-coupled interactive games vs {Q=0}
 demo.py            # the same tour from Python
 experiments/       # research probes ON TOP of the shipped lib: Arf of Gold
                    # forms, the game-built synthesis, the Arf win-bias,
@@ -85,7 +93,8 @@ experiments/       # research probes ON TOP of the shipped lib: Arf of Gold
 The math thread (Arf↔Clifford, the games bridge, the char-0/char-2 classifier
 symmetry, the Artin–Schreier ↔ Arf unification, the open play-semantics
 question) is written up in `NOTES.md` — read it before touching `arf.rs`,
-`classify.rs`, `games.rs`, `witt.rs`, or `experiments/`.
+`classify.rs`, `games.rs`, `kernel.rs`, `misere.rs`, `witt.rs`, `experiments/`,
+or the `misere_quotient` / `interactive_kernel` examples.
 
 ## Commands
 

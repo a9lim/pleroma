@@ -80,6 +80,152 @@ pub fn misere_nim_p_predicted(heaps: &[u32]) -> bool {
     }
 }
 
+// ---------------------------------------------------------------------------
+// The misère indistinguishability quotient (Plambeck–Siegel), bounded
+// ---------------------------------------------------------------------------
+//
+// Two positions G, H are *indistinguishable* if outcome(G+X) = outcome(H+X) for
+// every test X; the equivalence classes form a commutative monoid (the misère
+// quotient) carrying a distinguished P-set. We compute it *bounded*: positions
+// are sums of atoms up to `elem_bound`, tested against sums up to `test_bound`.
+// For a game with a finite quotient this is exact once the bounds exceed its
+// pretension; otherwise it is a sound under-approximation of the congruence (it
+// may merge fewer classes than the true quotient — never more). The point of the
+// instrument is to ask, of the resulting P-set, the question the project cares
+// about: is it a quadric, and what is its Arf (win-bias)?
+
+/// An abstract finite impartial game: position 0 is the empty game (the identity
+/// under disjunctive sum, with no moves); positions `1..moves.len()` carry option
+/// index-lists `moves[p]` (each option is a position index; 0 = move to empty).
+pub struct AbstractGame {
+    pub moves: Vec<Vec<usize>>,
+}
+
+impl AbstractGame {
+    /// Moves of a disjunctive sum (a multiset of nonzero component positions): in
+    /// any one component, replace it by one of its options (dropping the empty).
+    fn sum_moves(&self, pos: &Vec<usize>) -> Vec<Vec<usize>> {
+        let mut out = Vec::new();
+        for idx in 0..pos.len() {
+            for &q in &self.moves[pos[idx]] {
+                let mut np = pos.clone();
+                if q == 0 {
+                    np.remove(idx);
+                } else {
+                    np[idx] = q;
+                }
+                np.sort_unstable();
+                out.push(np);
+            }
+        }
+        out
+    }
+
+    fn canon(pos: &[usize]) -> Vec<usize> {
+        let mut v: Vec<usize> = pos.iter().copied().filter(|&p| p != 0).collect();
+        v.sort_unstable();
+        v
+    }
+
+    /// Misère outcome of a sum (multiset of component positions): `true` = N.
+    pub fn misere_outcome(&self, pos: &[usize], memo: &mut HashMap<Vec<usize>, bool>) -> bool {
+        let canon = Self::canon(pos);
+        misere_is_n(&canon, &|p| self.sum_moves(p), memo)
+    }
+}
+
+/// All sorted multisets of `atoms` (assumed sorted) with total length `0..=max`.
+fn multisets(atoms: &[usize], max: usize) -> Vec<Vec<usize>> {
+    let mut result = vec![vec![]];
+    let mut frontier = vec![vec![]];
+    for _ in 0..max {
+        let mut next = Vec::new();
+        for m in &frontier {
+            let last = m.last().copied().unwrap_or(0);
+            for &a in atoms.iter().filter(|&&a| a >= last) {
+                let mut nm = m.clone();
+                nm.push(a);
+                next.push(nm);
+            }
+        }
+        result.extend(next.iter().cloned());
+        frontier = next;
+    }
+    result
+}
+
+/// A bounded misère indistinguishability quotient.
+#[derive(Debug, Clone)]
+pub struct Quotient {
+    /// The enumerated elements (sorted multisets of atoms, up to `elem_bound`).
+    pub elements: Vec<Vec<usize>>,
+    /// Class id of each element (parallel to `elements`).
+    pub class_of: Vec<usize>,
+    /// Number of distinct classes found.
+    pub num_classes: usize,
+    /// A representative multiset for each class.
+    pub class_rep: Vec<Vec<usize>>,
+    /// P-status of each class (`true` = a misère P-position / second-player win).
+    pub class_is_p: Vec<bool>,
+}
+
+/// Compute the bounded misère quotient of `game` over the generating `atoms`,
+/// distinguishing elements (sums up to `elem_bound`) by their outcomes against
+/// tests (sums up to `test_bound`).
+pub fn misere_quotient(
+    game: &AbstractGame,
+    atoms: &[usize],
+    elem_bound: usize,
+    test_bound: usize,
+) -> Quotient {
+    let mut atoms_sorted = atoms.to_vec();
+    atoms_sorted.sort_unstable();
+    let elements = multisets(&atoms_sorted, elem_bound);
+    let tests = multisets(&atoms_sorted, test_bound);
+    let mut memo: HashMap<Vec<usize>, bool> = HashMap::new();
+
+    // signature(G) = outcomes of G+T across all tests T
+    let signatures: Vec<Vec<bool>> = elements
+        .iter()
+        .map(|g| {
+            tests
+                .iter()
+                .map(|t| {
+                    let mut gt = g.clone();
+                    gt.extend_from_slice(t);
+                    game.misere_outcome(&gt, &mut memo)
+                })
+                .collect()
+        })
+        .collect();
+
+    let mut class_of = vec![0usize; elements.len()];
+    let mut uniq: Vec<Vec<bool>> = Vec::new();
+    let mut class_rep: Vec<Vec<usize>> = Vec::new();
+    for (i, sig) in signatures.iter().enumerate() {
+        match uniq.iter().position(|s| s == sig) {
+            Some(c) => class_of[i] = c,
+            None => {
+                class_of[i] = uniq.len();
+                uniq.push(sig.clone());
+                class_rep.push(elements[i].clone());
+            }
+        }
+    }
+    let class_is_p: Vec<bool> = class_rep
+        .iter()
+        .map(|r| !game.misere_outcome(r, &mut memo))
+        .collect();
+
+    Quotient {
+        num_classes: uniq.len(),
+        elements,
+        class_of,
+        class_rep,
+        class_is_p,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,6 +253,27 @@ mod tests {
             }
         }
         rec(&mut Vec::new(), 4, &mut memo);
+    }
+
+    #[test]
+    fn star_misere_quotient_is_z2() {
+        // ⋆ = position 1, moving only to 0 (empty). Its misère quotient is the
+        // group ℤ/2 = {1, a | a²=1}, with P-set {a} (an odd number of ⋆'s).
+        let star = AbstractGame {
+            moves: vec![vec![], vec![0]],
+        };
+        let q = misere_quotient(&star, &[1], 5, 3);
+        assert_eq!(q.num_classes, 2, "⋆ quotient should be order 2 (ℤ/2)");
+        // the empty position is N (not P); a single ⋆ is P.
+        let empty_class = q.class_of[q.elements.iter().position(|e| e.is_empty()).unwrap()];
+        let star_class = q.class_of[q.elements.iter().position(|e| e == &vec![1]).unwrap()];
+        assert!(!q.class_is_p[empty_class]);
+        assert!(q.class_is_p[star_class]);
+        // a²=1: two ⋆'s fall in the identity (empty) class.
+        let two = q.class_of[q.elements.iter().position(|e| e == &vec![1, 1]).unwrap()];
+        assert_eq!(two, empty_class);
+        // exactly one P-class (the win-bias is a single coset)
+        assert_eq!(q.class_is_p.iter().filter(|&&p| p).count(), 1);
     }
 
     #[test]

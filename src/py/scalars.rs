@@ -165,8 +165,53 @@ impl PySurreal {
     fn __richcmp__(&self, other: &Bound<'_, PyAny>, op: CompareOp) -> PyResult<bool> {
         Ok(op.matches(self.inner.cmp(&parse_surreal(other)?)))
     }
+    /// True iff this surreal is a dyadic rational (a short-game number).
+    fn is_dyadic(&self) -> bool {
+        self.inner.is_dyadic()
+    }
+    /// The birthday of a dyadic rational; errors for non-dyadics (infinite
+    /// birthday, outside this finite-support representation).
+    fn dyadic_birthday(&self) -> PyResult<u128> {
+        self.inner
+            .dyadic_birthday()
+            .ok_or_else(|| PyValueError::new_err("birthday is only finite for dyadic rationals"))
+    }
+    /// The simplest surreal strictly greater than this one (`{self|}`), when
+    /// finite.
+    fn simplest_above(&self) -> PyResult<PySurreal> {
+        self.inner
+            .simplest_above()
+            .map(|inner| PySurreal { inner })
+            .ok_or_else(|| PyValueError::new_err("simplest_above needs a finite rational"))
+    }
+    /// The simplest surreal strictly less than this one (`{|self}`), when finite.
+    fn simplest_below(&self) -> PyResult<PySurreal> {
+        self.inner
+            .simplest_below()
+            .map(|inner| PySurreal { inner })
+            .ok_or_else(|| PyValueError::new_err("simplest_below needs a finite rational"))
+    }
+    /// The unique simplest surreal strictly between `a` and `b` (Conway's
+    /// simplicity theorem), when it is dyadic. Errors if the endpoints are not
+    /// finite rationals with `a < b`.
+    #[staticmethod]
+    fn simplest_between(a: &Bound<'_, PyAny>, b: &Bound<'_, PyAny>) -> PyResult<PySurreal> {
+        let (a, b) = (parse_surreal(a)?, parse_surreal(b)?);
+        Surreal::simplest_between(&a, &b)
+            .map(|inner| PySurreal { inner })
+            .ok_or_else(|| {
+                PyValueError::new_err("no dyadic between (need finite rationals with a < b)")
+            })
+    }
     fn __repr__(&self) -> String {
         format!("{:?}", self.inner)
+    }
+}
+
+impl PySurreal {
+    /// Wrap a core `Surreal` (used by the games↔surreal bridge).
+    pub(crate) fn from_inner(inner: Surreal) -> PySurreal {
+        PySurreal { inner }
     }
 }
 

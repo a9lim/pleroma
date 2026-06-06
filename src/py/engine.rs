@@ -163,6 +163,23 @@ macro_rules! backend {
                 Ok($wrap(crate::clifford::determinant(&self.inner, &lm)))
             }
 
+            /// The trace of a (column-major) linear map (`= tr Λ¹f`).
+            fn trace(&self, matrix: Vec<Vec<Bound<'_, PyAny>>>) -> PyResult<$scalar_py> {
+                let lm = self.parse_linear_map(matrix)?;
+                Ok($wrap(crate::clifford::trace(&self.inner, &lm)))
+            }
+
+            /// The characteristic polynomial `det(t·I − f)` via exterior-power
+            /// traces, as coefficients in descending degree `[1, −c₁, …, (−1)ⁿcₙ]`
+            /// (`cₖ = tr Λᵏf`). Char-faithful.
+            fn char_poly(&self, matrix: Vec<Vec<Bound<'_, PyAny>>>) -> PyResult<Vec<$scalar_py>> {
+                let lm = self.parse_linear_map(matrix)?;
+                Ok(crate::clifford::char_poly(&self.inner, &lm)
+                    .into_iter()
+                    .map($wrap)
+                    .collect())
+            }
+
             /// Apply the outermorphism of a (column-major) linear map to a
             /// multivector: `f(a∧b) = f(a)∧f(b)`.
             fn outermorphism(&self, matrix: Vec<Vec<Bound<'_, PyAny>>>, mv: &$mv) -> PyResult<$mv> {
@@ -483,6 +500,74 @@ macro_rules! backend {
                     .ok_or_else(|| {
                         PyValueError::new_err("pseudoscalar not invertible (degenerate metric)")
                     })
+            }
+            /// The undual v ↦ v·I (inverse of `dual`).
+            fn undual(&self) -> $mv {
+                $mv {
+                    alg: self.alg.clone(),
+                    mv: self.alg.undual(&self.mv),
+                }
+            }
+            /// The Clifford (main) conjugate: reversion ∘ grade involution.
+            fn clifford_conjugate(&self) -> $mv {
+                $mv {
+                    alg: self.alg.clone(),
+                    mv: self.alg.clifford_conjugate(&self.mv),
+                }
+            }
+            /// The scalar product ⟨a b⟩₀ (grade-0 part of the geometric product).
+            fn scalar_product(&self, other: &$mv) -> PyResult<$scalar_py> {
+                self.ensure_same_algebra(other)?;
+                Ok($wrap(self.alg.scalar_product(&self.mv, &other.mv)))
+            }
+            /// The commutator product [a,b] = ab − ba (no ½; char-faithful).
+            fn commutator(&self, other: &$mv) -> PyResult<$mv> {
+                self.ensure_same_algebra(other)?;
+                Ok($mv {
+                    alg: self.alg.clone(),
+                    mv: self.alg.commutator(&self.mv, &other.mv),
+                })
+            }
+            /// The anticommutator product {a,b} = ab + ba (no ½; char-faithful).
+            fn anticommutator(&self, other: &$mv) -> PyResult<$mv> {
+                self.ensure_same_algebra(other)?;
+                Ok($mv {
+                    alg: self.alg.clone(),
+                    mv: self.alg.anticommutator(&self.mv, &other.mv),
+                })
+            }
+            /// The regressive (meet) product a ∨ b — intersection dual to the
+            /// wedge. Errors if the pseudoscalar is not invertible.
+            fn meet(&self, other: &$mv) -> PyResult<$mv> {
+                self.ensure_same_algebra(other)?;
+                self.alg
+                    .meet(&self.mv, &other.mv)
+                    .map(|mv| $mv {
+                        alg: self.alg.clone(),
+                        mv,
+                    })
+                    .ok_or_else(|| {
+                        PyValueError::new_err("pseudoscalar not invertible (degenerate metric)")
+                    })
+            }
+            /// Whether this multivector is a blade (a decomposable homogeneous
+            /// element — a wedge of vectors).
+            fn is_blade(&self) -> bool {
+                crate::clifford::is_blade(&self.alg, &self.mv)
+            }
+            /// Factor a blade into the grade-1 vectors whose wedge is it; errors
+            /// if it is not a blade.
+            fn factor_blade(&self) -> PyResult<Vec<$mv>> {
+                crate::clifford::factor_blade(&self.alg, &self.mv)
+                    .map(|vs| {
+                        vs.into_iter()
+                            .map(|mv| $mv {
+                                alg: self.alg.clone(),
+                                mv,
+                            })
+                            .collect()
+                    })
+                    .ok_or_else(|| PyValueError::new_err("not a blade (not decomposable)"))
             }
             fn norm2(&self) -> $scalar_py {
                 $wrap(self.alg.norm2(&self.mv))

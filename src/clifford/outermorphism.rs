@@ -115,6 +115,76 @@ pub fn determinant<S: Scalar>(alg: &CliffordAlgebra<S>, f: &LinearMap<S>) -> S {
     image.terms.get(&mask).cloned().unwrap_or_else(S::zero)
 }
 
+/// The grade-`k` basis blade masks over `n` generators (the `C(n,k)` subsets),
+/// enumerated by Gosper's hack. Exponential in `n` summed over all grades, so
+/// the spectral routines below are for modest dimensions.
+fn grade_k_masks(n: usize, k: usize) -> Vec<u128> {
+    if k == 0 {
+        return vec![0];
+    }
+    if k > n {
+        return vec![];
+    }
+    let mut out = Vec::new();
+    let mut c: u128 = (1u128 << k) - 1;
+    let limit_bits = n; // masks must fit in the low `n` bits
+    while (c >> limit_bits) == 0 {
+        out.push(c);
+        let u = c & c.wrapping_neg();
+        let v = c.checked_add(u);
+        match v {
+            Some(v) if v != 0 => c = v + (((v ^ c) / u) >> 2),
+            _ => break,
+        }
+    }
+    out
+}
+
+/// The trace of the `k`-th exterior power `Λᵏf` — the `k`-th elementary
+/// symmetric function of the eigenvalues, equivalently the sum of the `k×k`
+/// principal minors. `Λ⁰f` has trace `1`, `Λ¹f` is the ordinary trace, and
+/// `Λⁿf` is the [`determinant`]. Computed straight from the outermorphism:
+/// `tr Λᵏf = Σ_{|S|=k} ⟨e_S , f(e_S)⟩`, so it is character-faithful for free.
+pub fn exterior_power_trace<S: Scalar>(alg: &CliffordAlgebra<S>, f: &LinearMap<S>, k: usize) -> S {
+    debug_assert_eq!(f.n, alg.dim, "LinearMap dimension must match the algebra");
+    let mut acc = S::zero();
+    for mask in grade_k_masks(alg.dim, k) {
+        let blade = alg.blade(&bits(mask));
+        let img = apply_outermorphism(alg, f, &blade);
+        // ⟨e_S , f(e_S)⟩ — the diagonal entry of Λᵏf at this blade.
+        if let Some(c) = img.terms.get(&mask) {
+            // `blade` may carry a ±1 from ordering; normalise by it.
+            let sign = blade.terms.get(&mask).cloned().unwrap_or_else(S::one);
+            acc = acc.add(&c.mul(&sign));
+        }
+    }
+    acc
+}
+
+/// The ordinary trace of `f` (`= tr Λ¹f = Σᵢ Mᵢᵢ`).
+pub fn trace<S: Scalar>(alg: &CliffordAlgebra<S>, f: &LinearMap<S>) -> S {
+    exterior_power_trace(alg, f, 1)
+}
+
+/// The characteristic polynomial `det(t·I − f)`, returned as coefficients in
+/// **descending** degree: `[1, −c₁, c₂, …, (−1)ⁿcₙ]`, where `cₖ = tr Λᵏf`. The
+/// leading coefficient is `1` (monic) and the constant term is `(−1)ⁿ det(f)`.
+/// Char-faithful — over the nimbers every sign collapses, giving the char-2
+/// characteristic polynomial with no special-casing.
+pub fn char_poly<S: Scalar>(alg: &CliffordAlgebra<S>, f: &LinearMap<S>) -> Vec<S> {
+    let n = alg.dim;
+    (0..=n)
+        .map(|k| {
+            let ck = exterior_power_trace(alg, f, k);
+            if k % 2 == 1 {
+                ck.neg()
+            } else {
+                ck
+            }
+        })
+        .collect()
+}
+
 /// The inverse outermorphism, if `f` is invertible over `S`: returns the
 /// `LinearMap` of `f⁻¹` (Gauss–Jordan over the scalar). `None` if any pivot is
 /// not invertible in the backend (e.g. a non-monomial surreal), which includes
@@ -299,6 +369,58 @@ mod tests {
         let d = determinant(&alg, &f);
         let dinv = determinant(&alg, &finv);
         assert_eq!(d.mul(&dinv), r(1));
+    }
+
+    #[test]
+    fn char_poly_of_identity_is_binomial() {
+        // char poly of I_3 is (t−1)³ = t³ − 3t² + 3t − 1.
+        let alg = euclid(3);
+        let id = LinearMap::identity(3);
+        assert_eq!(char_poly(&alg, &id), vec![r(1), r(-3), r(3), r(-1)]);
+        assert_eq!(trace(&alg, &id), r(3));
+    }
+
+    #[test]
+    fn char_poly_matches_trace_and_determinant() {
+        // M = [[2,1],[3,4]]: trace 6, det 5, char poly t² − 6t + 5.
+        let alg = euclid(2);
+        let f = LinearMap::from_columns(vec![vec![r(2), r(3)], vec![r(1), r(4)]]);
+        let p = char_poly(&alg, &f);
+        assert_eq!(p, vec![r(1), r(-6), r(5)]);
+        assert_eq!(trace(&alg, &f), r(6));
+        // constant term = (−1)² det = det.
+        assert_eq!(*p.last().unwrap(), determinant(&alg, &f));
+        // exterior-power traces are the elementary symmetric functions.
+        assert_eq!(exterior_power_trace(&alg, &f, 0), r(1));
+        assert_eq!(exterior_power_trace(&alg, &f, 1), r(6));
+        assert_eq!(exterior_power_trace(&alg, &f, 2), r(5));
+    }
+
+    #[test]
+    fn char_poly_constant_term_is_signed_determinant_3x3() {
+        let alg = euclid(3);
+        let f = LinearMap::from_columns(vec![
+            vec![r(1), r(0), r(4)],
+            vec![r(0), r(3), r(0)],
+            vec![r(2), r(0), r(5)],
+        ]);
+        let p = char_poly(&alg, &f);
+        // n=3 ⇒ constant term = (−1)³ det = −det = −(−9) = 9.
+        assert_eq!(*p.last().unwrap(), r(9));
+        assert_eq!(*p.last().unwrap(), determinant(&alg, &f).neg());
+    }
+
+    #[test]
+    fn char_poly_is_char_faithful_over_nimbers() {
+        // Over the nimbers neg = id, so every coefficient is the bare Λᵏ-trace
+        // (the char-2 characteristic polynomial), and trace is the XOR diagonal.
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![Nimber(1); 2]));
+        let f =
+            LinearMap::from_columns(vec![vec![Nimber(2), Nimber(3)], vec![Nimber(1), Nimber(4)]]);
+        assert_eq!(trace(&alg, &f), Nimber(2 ^ 4));
+        let p = char_poly(&alg, &f);
+        assert_eq!(p[0], Nimber(1));
+        assert_eq!(*p.last().unwrap(), determinant(&alg, &f)); // (−1)²=1 anyway
     }
 
     #[test]

@@ -16,6 +16,8 @@
 pub mod brauer_wall;
 pub mod char0;
 pub mod char2;
+pub mod diagonalize;
+pub mod equivalence;
 pub mod oddchar;
 pub mod padic;
 pub mod springer;
@@ -25,6 +27,8 @@ pub mod witt_ring;
 pub use brauer_wall::*;
 pub use char0::*;
 pub use char2::*;
+pub use diagonalize::*;
+pub use equivalence::*;
 pub use oddchar::*;
 pub use padic::*;
 pub use springer::*;

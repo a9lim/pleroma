@@ -52,6 +52,26 @@ impl Rational {
     pub fn is_integer(&self) -> bool {
         self.den == 1
     }
+
+    /// The numerator (in lowest terms; carries the sign).
+    pub fn numer(&self) -> i128 {
+        self.num
+    }
+
+    /// The denominator (in lowest terms; always > 0).
+    pub fn denom(&self) -> i128 {
+        self.den
+    }
+
+    /// Total order on values (denominator is always positive).
+    pub fn cmp(&self, other: &Self) -> Ordering {
+        self.sub(other).sign()
+    }
+
+    /// The greatest integer ≤ this rational.
+    pub fn floor(&self) -> i128 {
+        self.num.div_euclid(self.den)
+    }
 }
 
 impl fmt::Debug for Rational {

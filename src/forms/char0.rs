@@ -141,15 +141,18 @@ pub fn classify_complex(n: usize, r: usize) -> CliffordType {
     }
 }
 
-/// Extract `(p, q, r)` from a *diagonal* metric using a sign function. Returns
-/// `None` if the metric is non-orthogonal (`b`/`a` nonempty) — diagonalization
-/// is not attempted here.
-fn signature<S: crate::scalar::Scalar>(
+/// Extract `(p, q, r)` from a metric using a sign function: positive squares,
+/// negative squares, and null (radical) directions. A non-orthogonal metric
+/// (`b`/`a` nonempty) is first [diagonalized](crate::forms::diagonalize) by
+/// congruence — possible because char 0 has `½` — so any symmetric form is
+/// accepted, not only diagonal ones.
+pub(crate) fn signature<S: crate::scalar::Scalar>(
     metric: &Metric<S>,
     sign: impl Fn(&S) -> Ordering,
 ) -> Option<(usize, usize, usize)> {
     if !metric.b.is_empty() || !metric.a.is_empty() {
-        return None;
+        let diag = crate::forms::diagonalize(metric)?;
+        return signature(&diag, sign);
     }
     let (mut p, mut q, mut r) = (0, 0, 0);
     for x in &metric.q {
@@ -182,11 +185,9 @@ pub fn classify_surreal(metric: &Metric<Surreal>) -> Option<CliffordType> {
 /// closed, so only nondegenerate-dimension and radical matter (2-fold). Diagonal
 /// metrics only.
 pub fn classify_surcomplex(metric: &Metric<Surcomplex<Surreal>>) -> Option<CliffordType> {
-    if !metric.b.is_empty() || !metric.a.is_empty() {
-        return None;
-    }
-    let nonzero = metric.q.iter().filter(|z| !z.is_zero()).count();
-    let r = metric.q.len() - nonzero;
+    let diag = crate::forms::as_diagonal(metric)?;
+    let nonzero = diag.q.iter().filter(|z| !z.is_zero()).count();
+    let r = diag.q.len() - nonzero;
     Some(classify_complex(nonzero, r))
 }
 

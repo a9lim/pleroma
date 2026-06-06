@@ -20,6 +20,7 @@
 //! `clifford::sandwich`, `clifford::coproduct`, `clifford::up`, … regardless of
 //! which sub-module an item lives in.
 
+pub mod blade;
 pub mod cga;
 pub mod engine;
 pub mod hopf;
@@ -28,6 +29,7 @@ pub mod spinor;
 pub mod spinor_norm;
 pub mod versor;
 
+pub use blade::*;
 pub use cga::*;
 pub use engine::*;
 pub use hopf::*;

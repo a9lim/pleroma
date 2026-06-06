@@ -3,6 +3,7 @@
 //! Turning-Corners game recurrence.
 
 use super::engine::IntegerMV;
+use super::scalars::{parse_surreal, PySurreal};
 use crate::clifford::CliffordAlgebra;
 use crate::games::{Game, GameExterior};
 use crate::scalar::Integer;
@@ -15,6 +16,16 @@ use std::sync::Arc;
 #[pyfunction]
 fn nim_mul_mex(x: u128, y: u128) -> u128 {
     crate::games::nim_mul_mex(x, y)
+}
+
+/// Sprague–Grundy values of a finite **acyclic** impartial game graph given as
+/// adjacency lists (`succ[v]` = positions reachable from `v`). Errors on a cycle
+/// (Grundy values are undefined on loopy games). A position is a P-position iff
+/// its value is 0.
+#[pyfunction]
+fn grundy_graph(succ: Vec<Vec<usize>>) -> PyResult<Vec<u128>> {
+    crate::games::grundy_graph(&succ)
+        .ok_or_else(|| PyValueError::new_err("graph has a cycle — Grundy value is undefined"))
 }
 // ---------------------------------------------------------------------------
 // Partizan games + the exterior algebra of the game group
@@ -90,6 +101,35 @@ impl PyGame {
         PyGame {
             inner: self.inner.times_int(n),
         }
+    }
+    /// The canonical form: the unique simplest game equal in value (dominated
+    /// options removed, reversible options bypassed).
+    fn canonical(&self) -> PyGame {
+        PyGame {
+            inner: self.inner.canonical(),
+        }
+    }
+    /// Whether this game is already in canonical form.
+    fn is_canonical(&self) -> bool {
+        self.inner.is_canonical()
+    }
+    /// An order-independent canonical string `{L|R}` — equal iff the games are
+    /// equal in value.
+    fn canonical_string(&self) -> String {
+        self.inner.canonical_string()
+    }
+    /// The surreal value of a number-valued game (`None` for non-numbers like
+    /// `⋆`, `↑`, switches).
+    fn number_value(&self) -> Option<PySurreal> {
+        self.inner.number_value().map(PySurreal::from_inner)
+    }
+    /// The canonical game of a dyadic surreal (or int); errors for non-dyadics.
+    #[staticmethod]
+    fn from_surreal(s: &Bound<'_, PyAny>) -> PyResult<PyGame> {
+        let s = parse_surreal(s)?;
+        Game::from_surreal(&s)
+            .map(|inner| PyGame { inner })
+            .ok_or_else(|| PyValueError::new_err("surreal is not a dyadic rational"))
     }
     fn __repr__(&self) -> String {
         self.inner.display()
@@ -205,5 +245,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGame>()?;
     m.add_class::<PyGameExterior>()?;
     m.add_function(wrap_pyfunction!(nim_mul_mex, m)?)?;
+    m.add_function(wrap_pyfunction!(grundy_graph, m)?)?;
     Ok(())
 }

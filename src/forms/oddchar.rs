@@ -18,7 +18,7 @@
 //! is `witt::WittClassG`.
 
 use crate::clifford::Metric;
-use crate::forms::WittClassG;
+use crate::forms::{as_diagonal, WittClassG};
 use crate::scalar::Fp;
 use crate::scalar::Scalar;
 
@@ -94,12 +94,11 @@ impl OddCharType {
     }
 }
 
-/// The Hasse invariant `∏_{i<j} (q_i, q_j)` of a diagonal form (nonzero entries
-/// only). `None` if the metric is non-diagonal. Always `+1` over a finite field.
+/// The Hasse invariant `∏_{i<j} (q_i, q_j)` of a form (nonzero diagonal entries
+/// only; non-diagonal metrics are congruence-diagonalized first). Always `+1`
+/// over a finite field.
 pub fn hasse_invariant<const P: u128>(metric: &Metric<Fp<P>>) -> Option<i8> {
-    if !metric.b.is_empty() || !metric.a.is_empty() {
-        return None;
-    }
+    let metric = as_diagonal(metric)?;
     let qs: Vec<Fp<P>> = metric.q.iter().copied().filter(|x| !x.is_zero()).collect();
     let mut h = 1i8;
     for i in 0..qs.len() {
@@ -111,11 +110,9 @@ pub fn hasse_invariant<const P: u128>(metric: &Metric<Fp<P>>) -> Option<i8> {
 }
 
 /// The discriminant (product of the nonzero diagonal entries = det of the
-/// nondegenerate part). `None` if non-diagonal.
+/// nondegenerate part). Non-diagonal metrics are congruence-diagonalized first.
 pub fn discriminant<const P: u128>(metric: &Metric<Fp<P>>) -> Option<Fp<P>> {
-    if !metric.b.is_empty() || !metric.a.is_empty() {
-        return None;
-    }
+    let metric = as_diagonal(metric)?;
     let mut d = Fp::<P>::one();
     for x in &metric.q {
         if !x.is_zero() {
@@ -125,31 +122,29 @@ pub fn discriminant<const P: u128>(metric: &Metric<Fp<P>>) -> Option<Fp<P>> {
     Some(d)
 }
 
-/// Classify a diagonal odd-characteristic form. `None` if non-diagonal.
+/// Classify an odd-characteristic form. Non-diagonal metrics are
+/// congruence-diagonalized first (char ≠ 2 always has `½`), so any symmetric
+/// metric is accepted.
 pub fn classify_oddchar<const P: u128>(metric: &Metric<Fp<P>>) -> Option<OddCharType> {
-    if !metric.b.is_empty() || !metric.a.is_empty() {
-        return None;
-    }
+    let metric = as_diagonal(metric)?;
     let dim = metric.q.iter().filter(|x| !x.is_zero()).count();
     let radical_dim = metric.q.len() - dim;
-    let disc = discriminant(metric)?;
+    let disc = discriminant(&metric)?;
     Some(OddCharType {
         p: P,
         dim,
         radical_dim,
         disc_is_square: is_square(disc),
-        hasse: hasse_invariant(metric)?,
+        hasse: hasse_invariant(&metric)?,
     })
 }
 
-/// The odd-characteristic Witt class of a diagonal form: `(dim mod 2, signed
-/// discriminant class)`, with `kappa` = nonsquareness of `−1`. `None` if
-/// non-diagonal. The signed discriminant `(−1)^{m(m−1)/2}·det` is the genuine
-/// Witt invariant; see `witt::WittClassG`.
+/// The odd-characteristic Witt class: `(dim mod 2, signed discriminant class)`,
+/// with `kappa` = nonsquareness of `−1`. Non-diagonal metrics are
+/// congruence-diagonalized first. The signed discriminant `(−1)^{m(m−1)/2}·det`
+/// is the genuine Witt invariant; see `witt::WittClassG`.
 pub fn oddchar_witt<const P: u128>(metric: &Metric<Fp<P>>) -> Option<WittClassG> {
-    if !metric.b.is_empty() || !metric.a.is_empty() {
-        return None;
-    }
+    let metric = as_diagonal(metric)?;
     let mut det = Fp::<P>::one();
     let mut m = 0usize;
     for x in &metric.q {

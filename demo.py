@@ -241,3 +241,56 @@ for _ in range(8):
     walk.append(repr(cur)); cur = cur.add(g)
 print("  [Cl⟨−1⟩]ⁿ for n=1..8:", " ".join(w.replace("Real(", "").rstrip(")") for w in walk))
 print("  BW(F_3) of ⟨1⟩:", pl.bw_class_oddchar(3, [1]), "(order-4 graded part ≅ W(F_3))")
+
+
+# ===========================================================================
+# Arc IV: the CGT/surreal core, forms foundations, and GA depth
+# ===========================================================================
+
+section("partizan canonical form — Conway's simplicity theorem")
+# Value-preserving reduction: G − G = 0 for any G, so its canonical form is {|}.
+up = pl.Game.up()
+print("  ↑ − ↑ canonical = 0   :", (up - up).canonical_string() == pl.Game.zero().canonical_string())
+print("  ↑ is already canonical:", up.is_canonical())
+# A messy sum reduces to a single simple game (here ↑ + ⋆ + ⋆ = ↑, since ⋆+⋆=0).
+messy = pl.Game.up() + pl.Game.star() + pl.Game.star()
+print("  canonical(↑+⋆+⋆) == ↑ :", messy.canonical_string() == pl.Game.up().canonical_string())
+
+section("game ↔ surreal bridge — numbers carry a surreal value")
+half = pl.Game.from_surreal(pl.Surreal.simplest_between(0, 1))  # ½ = {0|1}
+print("  Game.from_surreal(½)  =", half, " value =", half.number_value(), " birthday =", half.birthday())
+print("  ⋆, ↑, ±1 are non-numbers (no value):",
+      pl.Game.star().number_value(), pl.Game.up().number_value(), pl.Game.switch(1, -1).number_value())
+print("  simplest_between(⅓,⅔) = ½:", pl.Surreal.simplest_between(pl.rational(1, 3), pl.rational(2, 3)))
+
+section("Sprague–Grundy — the impartial center (P-position ⟺ g = 0)")
+# Nim heap of size n as the path n → {n−1,…,0}: g(n) = n.
+heap = [[j for j in range(h)] for h in range(6)]
+print("  Grundy of nim-heap paths 0..5:", pl.grundy_graph(heap), " (g=0 ⟺ Loss/P)")
+
+section("forms now accept ARBITRARY (non-diagonal) metrics — diagonalization")
+# A skew hyperbolic plane: q=[0,0], off-diagonal {e0,e1}=2 ⇒ B(e0,e1)=1.
+H = pl.SurrealAlgebra(q=[0, 0], b={(0, 1): 2})
+print("  classify skew-H over the surreals:", pl.classify_surreal(H), " (= M₂(ℝ), as ⟨1,−1⟩)")
+print("  is_isometric ⟨1,1⟩≅⟨2,3⟩ over F₅ :", pl.is_isometric_oddchar(5, [1, 1], [2, 3]))
+
+section("Witt decomposition — k·H ⊥ anisotropic kernel")
+print("  ⟨1,1,1,−1,−1⟩/ℝ (idx,+,−,rad):", pl.witt_decompose_real(pl.SurrealAlgebra(q=[1, 1, 1, -1, -1])))
+print("  ⟨1,1⟩/F₅ = H (idx,aniso,□,rad):", pl.witt_decompose_oddchar(5, [1, 1]))
+print("  ⟨1,1⟩/F₃ anisotropic plane    :", pl.witt_decompose_oddchar(3, [1, 1]))
+
+section("characteristic polynomial via exterior powers (cₖ = tr Λᵏf)")
+R = pl.SurrealAlgebra(q=[1, 1])
+# columns f(e_i): M = [[2,1],[3,4]], trace 6, det 5, char poly t²−6t+5.
+print("  char_poly [[2,1],[3,4]] =", R.char_poly([[2, 3], [1, 4]]), " (t²−6t+5)")
+print("  trace =", R.trace([[2, 3], [1, 4]]), " det =", R.determinant([[2, 3], [1, 4]]))
+
+section("GA depth — conjugate, scalar/commutator products, meet, blade factoring")
+E = pl.SurrealAlgebra(q=[1, 1, 1])
+e0, e1, e2 = E.gen(0), E.gen(1), E.gen(2)
+print("  Clifford conjugate of e0∧e1   :", (e0 ^ e1).clifford_conjugate(), " (sign (−1)^{k(k+1)/2})")
+print("  scalar product ⟨e0 e0⟩₀       :", e0.scalar_product(e0))
+print("  commutator [e0,e1] = 2 e0e1   :", e0.commutator(e1))
+blade = (e0 + e1) ^ e2
+print("  factor the blade (e0+e1)∧e2   :", blade.factor_blade())
+print("  e0∧e1 + e1∧e2 ... meet(planes):", (e0 ^ e1).meet(e1 ^ e2), " (their common line, ±e1)")

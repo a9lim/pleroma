@@ -170,4 +170,111 @@ impl<S: Scalar> CliffordAlgebra<S> {
         let i_inv = self.versor_inverse(&self.pseudoscalar())?;
         Some(self.mul(v, &i_inv))
     }
+
+    /// The undual v ↦ v I — the inverse of [`dual`](Self::dual) (`dual` then
+    /// `undual` is the identity). Always defined (no inversion needed).
+    pub fn undual(&self, v: &Multivector<S>) -> Multivector<S> {
+        self.mul(v, &self.pseudoscalar())
+    }
+
+    /// The **Clifford (main) conjugate** `x̄ = α(x̃)` — reversion composed with
+    /// grade involution. The third standard involution alongside
+    /// [`reverse`](Self::reverse) and [`grade_involution`](Self::grade_involution);
+    /// on a grade-`k` blade it is the sign `(−1)^{k(k+1)/2}`.
+    pub fn clifford_conjugate(&self, v: &Multivector<S>) -> Multivector<S> {
+        self.grade_involution(&self.reverse(v))
+    }
+
+    /// The **scalar product** ⟨a b⟩₀ — the grade-0 part of the geometric product.
+    pub fn scalar_product(&self, a: &Multivector<S>, b: &Multivector<S>) -> S {
+        self.scalar_part(&self.mul(a, b))
+    }
+
+    /// The **commutator product** `[a,b] = ab − ba`. No `½` factor, so it is
+    /// char-faithful (in characteristic 2 it coincides with the anticommutator,
+    /// as it must — there is no sign to separate them).
+    pub fn commutator(&self, a: &Multivector<S>, b: &Multivector<S>) -> Multivector<S> {
+        let ab = self.mul(a, b);
+        let ba = self.mul(b, a);
+        self.add(&ab, &self.scalar_mul(&S::one().neg(), &ba))
+    }
+
+    /// The **anticommutator product** `{a,b} = ab + ba` (no `½` factor). On two
+    /// grade-1 vectors this is the polar form `2B(a,b)` carried by the metric.
+    pub fn anticommutator(&self, a: &Multivector<S>, b: &Multivector<S>) -> Multivector<S> {
+        self.add(&self.mul(a, b), &self.mul(b, a))
+    }
+
+    /// The **regressive (meet) product** `a ∨ b = J⁻¹(J(a) ∧ J(b))`, with `J` the
+    /// pseudoscalar dual — the geometric *intersection* of the subspaces `a` and
+    /// `b` represent (dual to the wedge, which is their join/span). `None` if the
+    /// pseudoscalar is not invertible (a degenerate metric).
+    pub fn meet(&self, a: &Multivector<S>, b: &Multivector<S>) -> Option<Multivector<S>> {
+        let da = self.dual(a)?;
+        let db = self.dual(b)?;
+        Some(self.undual(&self.wedge(&da, &db)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scalar::Rational;
+
+    fn r(n: i128) -> Rational {
+        Rational::int(n)
+    }
+    fn euclid(n: usize) -> CliffordAlgebra<Rational> {
+        CliffordAlgebra::new(n, Metric::diagonal(vec![r(1); n]))
+    }
+
+    #[test]
+    fn clifford_conjugate_signs_by_grade() {
+        // (−1)^{k(k+1)/2}: scalar +, vector −, bivector −, trivector +.
+        let alg = euclid(3);
+        let s = alg.scalar(r(1));
+        let e0 = alg.gen(0);
+        let e01 = alg.wedge(&alg.gen(0), &alg.gen(1));
+        let e012 = alg.pseudoscalar();
+        assert_eq!(alg.clifford_conjugate(&s), s);
+        assert_eq!(alg.clifford_conjugate(&e0), alg.scalar_mul(&r(-1), &e0));
+        assert_eq!(alg.clifford_conjugate(&e01), alg.scalar_mul(&r(-1), &e01));
+        assert_eq!(alg.clifford_conjugate(&e012), e012);
+    }
+
+    #[test]
+    fn scalar_and_commutator_products() {
+        let alg = euclid(3);
+        let (e0, e1) = (alg.gen(0), alg.gen(1));
+        // ⟨e0 e0⟩₀ = q0 = 1; ⟨e0 e1⟩₀ = 0 (orthogonal).
+        assert_eq!(alg.scalar_product(&e0, &e0), r(1));
+        assert_eq!(alg.scalar_product(&e0, &e1), r(0));
+        // orthogonal ⇒ {e0,e1} = 0 and [e0,e1] = 2 e0e1.
+        assert!(alg.anticommutator(&e0, &e1).is_zero());
+        let two_e01 = alg.scalar_mul(&r(2), &alg.wedge(&e0, &e1));
+        assert_eq!(alg.commutator(&e0, &e1), two_e01);
+    }
+
+    #[test]
+    fn meet_of_two_planes_is_their_common_line() {
+        // In Cl(3,0): the planes e0∧e1 and e1∧e2 meet in the line e1. The result
+        // must be a nonzero grade-1 vector contained in both planes.
+        let alg = euclid(3);
+        let p1 = alg.wedge(&alg.gen(0), &alg.gen(1));
+        let p2 = alg.wedge(&alg.gen(1), &alg.gen(2));
+        let line = alg.meet(&p1, &p2).unwrap();
+        assert!(!line.is_zero());
+        assert_eq!(alg.grade_part(&line, 1), line); // pure grade 1
+                                                    // contained in both planes ⇔ wedge with each vanishes
+        assert!(alg.wedge(&line, &p1).is_zero());
+        assert!(alg.wedge(&line, &p2).is_zero());
+    }
+
+    #[test]
+    fn dual_undual_round_trip() {
+        let alg = euclid(3);
+        let v = alg.add(&alg.gen(0), &alg.wedge(&alg.gen(1), &alg.gen(2)));
+        let back = alg.undual(&alg.dual(&v).unwrap());
+        assert_eq!(back, v);
+    }
 }

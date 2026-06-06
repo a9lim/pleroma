@@ -300,6 +300,57 @@ fn hasse_invariant(p: u128, q: Vec<i128>) -> PyResult<i8> {
     res.ok_or_else(|| PyValueError::new_err("non-diagonal metric"))
 }
 
+/// Witt decomposition of a diagonal odd-char form `q` over `F_p`: returns
+/// `(witt_index, anisotropic_dim, anisotropic_disc_is_square, radical_dim)`.
+/// Supported primes: 3, 5, 7, 11, 13.
+#[pyfunction]
+fn witt_decompose_oddchar(p: u128, q: Vec<i128>) -> PyResult<(usize, usize, bool, usize)> {
+    let d = match p {
+        3 => crate::forms::witt_decompose_oddchar(&fp_diag::<3>(&q)),
+        5 => crate::forms::witt_decompose_oddchar(&fp_diag::<5>(&q)),
+        7 => crate::forms::witt_decompose_oddchar(&fp_diag::<7>(&q)),
+        11 => crate::forms::witt_decompose_oddchar(&fp_diag::<11>(&q)),
+        13 => crate::forms::witt_decompose_oddchar(&fp_diag::<13>(&q)),
+        _ => return Err(PyValueError::new_err("supported primes: 3, 5, 7, 11, 13")),
+    }
+    .ok_or_else(|| PyValueError::new_err("non-diagonal metric"))?;
+    Ok((
+        d.witt_index,
+        d.anisotropic_dim,
+        d.anisotropic_disc_is_square,
+        d.radical_dim,
+    ))
+}
+
+/// Are two diagonal odd-char forms over `F_p` isometric? `(dim, discriminant)`
+/// is a complete invariant. Supported primes: 3, 5, 7, 11, 13.
+#[pyfunction]
+fn is_isometric_oddchar(p: u128, q1: Vec<i128>, q2: Vec<i128>) -> PyResult<bool> {
+    let res = match p {
+        3 => crate::forms::isometric_oddchar(&fp_diag::<3>(&q1), &fp_diag::<3>(&q2)),
+        5 => crate::forms::isometric_oddchar(&fp_diag::<5>(&q1), &fp_diag::<5>(&q2)),
+        7 => crate::forms::isometric_oddchar(&fp_diag::<7>(&q1), &fp_diag::<7>(&q2)),
+        11 => crate::forms::isometric_oddchar(&fp_diag::<11>(&q1), &fp_diag::<11>(&q2)),
+        13 => crate::forms::isometric_oddchar(&fp_diag::<13>(&q1), &fp_diag::<13>(&q2)),
+        _ => return Err(PyValueError::new_err("supported primes: 3, 5, 7, 11, 13")),
+    };
+    res.ok_or_else(|| PyValueError::new_err("non-diagonal metric"))
+}
+
+/// Witt decomposition of a real (surreal) form: returns `(witt_index,
+/// anisotropic_pos, anisotropic_neg, radical_dim)`.
+#[pyfunction]
+fn witt_decompose_real(alg: &SurrealAlgebra) -> PyResult<(usize, usize, usize, usize)> {
+    let d = crate::forms::witt_decompose_real(&alg.inner.metric)
+        .ok_or_else(|| PyValueError::new_err("could not diagonalize the metric"))?;
+    Ok((
+        d.witt_index,
+        d.anisotropic_pos,
+        d.anisotropic_neg,
+        d.radical_dim,
+    ))
+}
+
 // ---------------------------------------------------------------------------
 // Non-Archimedean Springer decomposition (surreal)
 // ---------------------------------------------------------------------------
@@ -481,6 +532,9 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dickson_of_versor, m)?)?;
     m.add_function(wrap_pyfunction!(classify_oddchar, m)?)?;
     m.add_function(wrap_pyfunction!(oddchar_witt, m)?)?;
+    m.add_function(wrap_pyfunction!(witt_decompose_oddchar, m)?)?;
+    m.add_function(wrap_pyfunction!(witt_decompose_real, m)?)?;
+    m.add_function(wrap_pyfunction!(is_isometric_oddchar, m)?)?;
     m.add_function(wrap_pyfunction!(is_square_mod, m)?)?;
     m.add_function(wrap_pyfunction!(hasse_invariant, m)?)?;
     m.add_function(wrap_pyfunction!(springer_decompose, m)?)?;

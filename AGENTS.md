@@ -45,6 +45,9 @@ src/
                   # Artin–Schreier solver (y²+y=c, solvable ⇔ Tr(c)=0).
     surreal.rs    # Conway normal form: Vec<(exponent: Surreal, coeff: Rational)>
                   # with recursive exponents. Hahn arithmetic: ω^a·ω^b = ω^{a+b}.
+                  # Plus the {L|R}/simplicity bridge (dyadic case): as_rational/
+                  # as_dyadic/is_dyadic/dyadic_birthday + simplest_above/_below/
+                  # simplest_between (the shallowest surreal-tree node in (a,b)).
     surcomplex.rs # Surcomplex<S> = adjoin i over any backend.
     omnific.rs    # the omnific integers Oz: Omnific(Surreal) newtype, a transfinite
                   # commutative RING (not field). Surreal mirror of Integer; the
@@ -76,11 +79,19 @@ src/
                   # cross-validated against), blade arithmetic, grade projection.
                   # (bits/grade are pub; q_val/has_upper are pub(crate).)
     versor.rs     # the GA layer on top: versor_inverse, sandwich, twisted_sandwich
-                  # (Pin action), reflect, left/right_contract, dual,
-                  # grade_involution, norm2, even_part / even_subalgebra.
+                  # (Pin action), reflect, left/right_contract, dual/undual,
+                  # grade_involution, norm2, even_part / even_subalgebra. Plus the
+                  # product/involution suite: clifford_conjugate, scalar_product
+                  # ⟨ab⟩₀, commutator/anticommutator (½-free, char-faithful), and
+                  # the regressive meet a∨b (intersection dual to wedge).
+    blade.rs      # blade analysis: blade_subspace {x:x∧A=0}, is_blade (dim⟨A⟩=grade),
+                  # factor_blade (decompose a blade into grade-1 vectors). Nullspace
+                  # over the field; char-faithful.
     outermorphism.rs # lift a grade-1 LinearMap<S> to all grades (f(a∧b)=f(a)∧f(b));
                   # determinant as the pseudoscalar action f(I)=det·I; compose,
-                  # inverse_outermorphism. Char-faithful (the char-2 determinant too).
+                  # inverse_outermorphism. Plus the char poly via exterior powers:
+                  # exterior_power_trace (cₖ=tr Λᵏf), trace, char_poly. Char-faithful
+                  # (the char-2 determinant/permanent too).
     hopf.rs       # the exterior Hopf algebra: unshuffle coproduct (sign read off
                   # wedge), counit, antipode = grade involution (NOT reversion-
                   # twist). Hopf axioms tested over Rational AND Nimber.
@@ -95,13 +106,22 @@ src/
                   # delegates here) + classify_versor. Char-2 codomain is F/℘(F).
 
   forms/          # PILLAR — quadratic forms & invariants, by the char trichotomy
-    mod.rs        # re-exports the legs + witt/witt_ring + brauer_wall + padic + springer.
+    mod.rs        # re-exports the legs + diagonalize/equivalence + witt/witt_ring
+                  # + brauer_wall + padic + springer.
+    diagonalize.rs # congruence diagonalization (char ≠ 2): gram, diagonalize,
+                  # as_diagonal. Returns None in char 2 (nonsingular forms aren't
+                  # diagonalizable there — use char2.rs's symplectic Arf reduction).
+                  # This is what lets char0/oddchar classify ARBITRARY metrics.
+    equivalence.rs # isometry (per backend, via the complete invariant) +
+                  # Witt decomposition (k·H ⊥ anisotropic kernel) over ℝ and F_q.
     char0.rs      # (was classify.rs) the char-0 Clifford classifier: Cl(p,q) →
                   # matrix algebra over ℝ/ℂ/ℍ via the 8-fold table (real-closed
-                  # surreal/rational) and the 2-fold table (surcomplex).
+                  # surreal/rational) and the 2-fold table (surcomplex). Non-diagonal
+                  # metrics are diagonalized first (signature is pub(crate)).
     oddchar.rs    # (was disc.rs) the odd-char classifier: discriminant + is_square
                   # (Euler) + hilbert_symbol/hasse_invariant (≡ +1 over finite
                   # fields) + classify_oddchar + oddchar_witt. dim+disc complete.
+                  # Non-diagonal metrics are diagonalized first (as_diagonal).
     char2.rs      # (was arf.rs) the Arf invariant (char-2 classifier): arf_f2 (F₂
                   # bitmask) + arf_nimber (any nim-field, symplectic reduction + the
                   # field trace). Also the Dickson invariant (dickson_matrix =
@@ -132,6 +152,9 @@ src/
                   # Corners mex recurrence (== algebraic nim_mul). Plus general 1-D
                   # coin-turning (grundy_1d) and the 2-D Tartan product
                   # (tartan_grundy), with the Tartan/Product theorem verified.
+    grundy.rs     # general Sprague–Grundy (normal-play impartial center): mex,
+                  # grundy_graph (DAG; None on a cycle), closure-based grundy.
+                  # P-position ⟺ g=0; SG theorem g(G+H)=g(G)⊕g(H) pinned vs Bouton.
     kernel.rs     # normal-play Win/Loss/Draw outcomes of any finite game graph
                   # (retrograde analysis); P-positions = Loss. The interactive route.
                   # Plus scoring_values: the Milnor minimax interval (left,right) on a
@@ -141,18 +164,29 @@ src/
                   # indistinguishability quotient (misere_quotient); octal games
                   # (octal_moves, octal_misere_quotient). The non-linear route.
     partizan.rs   # short partizan games (sum/neg/order/birthday/is_number) + the
-                  # exterior algebra of the GAME group: Λ over ℤ on game generators
-                  # (living on all of game-world, incl. non-numbers ⋆/↑). NB:
-                  # distinct from coin_turning.rs — that is coin-turning.
+                  # CANONICAL FORM (dominated/reversible reduction; structural_string
+                  # vs canonical_string — the latter canonicalizes, a value key) +
+                  # the game↔surreal bridge (number_value / from_surreal, numbers
+                  # only) + the exterior algebra of the GAME group: Λ over ℤ on game
+                  # generators (living on all of game-world, incl. non-numbers ⋆/↑).
+                  # NB: distinct from coin_turning.rs — that is coin-turning.
 
   py/             # PyO3 bindings (feature = "python"), split per pillar
     mod.rs        # the #[pymodule]; chains each submodule's pub(crate) register().
     scalars.rs    # the scalar pyclasses + constructors + nim-field fns; the
-                  # parse_*/wrap_* hooks the backend! macro threads in.
+                  # parse_*/wrap_* hooks the backend! macro threads in. Surreal also
+                  # exposes the simplicity bridge (simplest_between/above/below,
+                  # dyadic_birthday, is_dyadic).
     engine.rs     # the backend! macro → <World>Algebra + <World>MV pairs (incl.
-                  # the Integer backend) + conformal GA (Cga).
-    forms.rs      # classify / witt / dickson / odd-char / springer bindings.
-    games.rs      # Game / GameExterior + nim_mul_mex.
+                  # the Integer backend) + conformal GA (Cga). MV methods include the
+                  # Arc-C suite (clifford_conjugate, scalar_product, commutator,
+                  # anticommutator, undual, meet, is_blade, factor_blade); algebra
+                  # methods add trace / char_poly alongside determinant.
+    forms.rs      # classify / witt / dickson / odd-char / springer bindings, plus
+                  # witt_decompose_real / witt_decompose_oddchar / is_isometric_oddchar.
+    games.rs      # Game (incl. canonical/is_canonical/canonical_string/
+                  # number_value/from_surreal) / GameExterior + nim_mul_mex +
+                  # grundy_graph.
 
 examples/tour.rs   # cargo run --example tour   (Rust-only demo)
 examples/misere_quotient.rs    # misère quotients + the quadric test on P-sets
@@ -281,6 +315,15 @@ smoke-tested via `demo.py`. After touching `clifford/` or `scalar/surreal.rs`, r
 - **The `neg_one` branch in `Multivector::display` never fires for nimbers.**
   `neg(one)=one` in char 2, so the `coeff==one` branch catches it first.
   Harmless.
+- **`Game::canonical_string` canonicalizes; `structural_string` does not.**
+  `structural_string` is an order-independent fingerprint of the tree *as given*
+  (so `(↑−↑).structural_string() ≠ 0`); `canonical_string` reduces first, so it
+  *is* a value key. `structural_eq` compares the as-given structures — use it as
+  `a.canonical().structural_eq(&b.canonical())`, or just compare `canonical_string`s.
+- **`forms::diagonalize`/`as_diagonal` return `None` in characteristic 2.** Not a
+  bug: a nonsingular char-2 form has an alternating polar form and is *not*
+  diagonalizable. The char-2 leg classifies via the symplectic Arf reduction
+  (`char2.rs`) instead, which takes the full (q, b) metric directly.
 
 ## Math facts worth not re-deriving
 

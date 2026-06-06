@@ -506,6 +506,56 @@ fn surreal(n: i128) -> PySurreal {
     PySurreal { inner: Surreal::from_int(n) }
 }
 
+#[pyclass(name = "ArfResult", module = "pleroma")]
+struct PyArfResult {
+    inner: crate::arf::ArfResult,
+}
+
+#[pymethods]
+impl PyArfResult {
+    #[getter]
+    fn arf(&self) -> u8 {
+        self.inner.arf
+    }
+    #[getter]
+    fn rank(&self) -> usize {
+        self.inner.rank
+    }
+    #[getter]
+    fn radical_dim(&self) -> usize {
+        self.inner.radical_dim
+    }
+    #[getter]
+    fn radical_anisotropic(&self) -> bool {
+        self.inner.radical_anisotropic
+    }
+    #[getter]
+    fn o_type(&self) -> &'static str {
+        self.inner.o_type
+    }
+    fn __repr__(&self) -> String {
+        format!(
+            "ArfResult(arf={}, type={}, rank={}, radical_dim={}, radical_anisotropic={})",
+            self.inner.arf,
+            self.inner.o_type,
+            self.inner.rank,
+            self.inner.radical_dim,
+            self.inner.radical_anisotropic,
+        )
+    }
+}
+
+/// Arf invariant (the char-2 Clifford classifier) of a nimber algebra whose
+/// metric has F₂ entries.
+#[pyfunction]
+fn arf_invariant(alg: &NimberAlgebra) -> PyResult<PyArfResult> {
+    crate::arf::arf_invariant(&alg.inner.metric)
+        .map(|inner| PyArfResult { inner })
+        .ok_or_else(|| {
+            PyValueError::new_err("Arf invariant requires F₂ metric entries (all q, b ∈ {*0, *1})")
+        })
+}
+
 #[pyfunction]
 fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
@@ -527,6 +577,8 @@ fn pleroma(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(omega_pow, m)?)?;
     m.add_function(wrap_pyfunction!(rational, m)?)?;
     m.add_function(wrap_pyfunction!(surreal, m)?)?;
+    m.add_class::<PyArfResult>()?;
+    m.add_function(wrap_pyfunction!(arf_invariant, m)?)?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
     Ok(())
 }

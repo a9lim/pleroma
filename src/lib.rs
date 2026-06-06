@@ -10,6 +10,7 @@
 //!
 //! Stage 2: PyO3 bindings + maturin packaging (abi3, robust on Python 3.14).
 
+pub mod arf;
 pub mod clifford;
 pub mod nimber;
 pub mod scalar;

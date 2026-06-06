@@ -92,20 +92,24 @@ Pure-Rust math core (`cargo test`, no Python in the loop), Python layer on top.
 - `clifford.rs` — the multivector engine, generic over `Scalar`, with independent `q`/`b` (characteristic-faithful)
 - `surreal.rs` — Conway normal form with recursive surreal exponents (ℚ coefficients)
 - `surcomplex.rs` — adjoin `i` over any backend
+- `arf.rs` — Arf invariant of an F₂ form = the char-2 Clifford classifier
 - `py.rs` — PyO3 per-backend classes (`python` feature; abi3)
+
+See [`NOTES.md`](NOTES.md) for the math thread: the Arf↔Clifford classification,
+the coin-turning↔nim-multiplication bridge to games, and the open question.
 
 Run the Rust tour without Python: `cargo run --example tour`.
 
 ## status
 
-**Core + bindings + versor/GA layer complete and verified.** 34 `cargo test`
-checks green — nim-field axioms and inverses, Cl(0,1)≅ℂ, Cl(2,0), Grassmann
-nilpotents, char-2 commutativity *and* the faithful non-commutative char-2 case,
-associativity over non-orthogonal metrics in both characteristics, recursive-
-exponent surreal arithmetic (`ω^ω`, `ω·ε=1`, `√ω`), a Clifford metric with
-`e0²=ω, e1²=ε`, versor inverse / reflection / rotor / contraction / dual, and
-the surcomplex char-2 degeneracy theorem. Python bindings build as an abi3 wheel
-and import on CPython 3.14.
+**Core + bindings + versor/GA layer + Arf classifier complete and verified.**
+40 `cargo test` checks green — nim-field axioms and inverses, Cl(0,1)≅ℂ, Cl(2,0),
+Grassmann nilpotents, char-2 commutativity *and* the faithful non-commutative
+char-2 case, associativity over non-orthogonal metrics in both characteristics,
+recursive-exponent surreal arithmetic (`ω^ω`, `ω·ε=1`, `√ω`), a Clifford metric
+with `e0²=ω, e1²=ε`, versor inverse / reflection / rotor / contraction / dual,
+the Arf invariant (`A⊕A ≅ H⊕H`), and the surcomplex char-2 degeneracy theorem.
+Python bindings build as an abi3 wheel and import on CPython 3.14.
 
 ## honest limitations / future directions
 

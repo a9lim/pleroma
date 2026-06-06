@@ -59,3 +59,11 @@ print("  norm² preserved       =", x.norm2(), "->", R.sandwich(x).norm2())
 print("  ~(e0 e1)  (reversion) =", ~R)
 print("  e0 ⌟ (e0∧e1)          =", e0 << (e0 ^ e1))
 print("  dual(e0) in 3D        =", e0.dual(), "  (a bivector)")
+
+section("Arf invariant — the char-2 Clifford classifier (see NOTES.md)")
+def arf(qs, bs):
+    A = pl.NimberAlgebra(q=[pl.Nimber(x) for x in qs], b={k: 1 for k in bs})
+    return pl.arf_invariant(A)
+print("  Q = x0·x1        (hyperbolic) :", arf([0, 0], [(0, 1)]))
+print("  Q = x0²+x0x1+x1² (anisotropic):", arf([1, 1], [(0, 1)]))
+print("  A⊕A ≅ H⊕H (Arf additive)      :", arf([1, 1, 1, 1], [(0, 1), (2, 3)]).o_type)

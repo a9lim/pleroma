@@ -15,6 +15,7 @@ use pyo3::basic::CompareOp;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3::IntoPyObjectExt;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -44,11 +45,26 @@ impl PyNimber {
     fn __radd__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyNimber> {
         self.__add__(other)
     }
-    fn __mul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyNimber> {
-        Ok(PyNimber { inner: self.inner.mul(&parse_nimber(other)?) })
+    fn __mul__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        // defer to the other operand (e.g. a multivector's __rmul__) if it isn't a scalar
+        match parse_nimber(other) {
+            Ok(o) => PyNimber { inner: self.inner.mul(&o) }.into_py_any(py),
+            Err(_) => Ok(py.NotImplemented()),
+        }
     }
     fn __rmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyNimber> {
-        self.__mul__(other)
+        Ok(PyNimber { inner: self.inner.mul(&parse_nimber(other)?) })
+    }
+    fn inv(&self) -> PyResult<PyNimber> {
+        self.inner
+            .inv()
+            .map(|n| PyNimber { inner: n })
+            .ok_or_else(|| PyValueError::new_err("*0 has no inverse"))
+    }
+    fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyNimber> {
+        let o = parse_nimber(other)?;
+        let oi = o.inv().ok_or_else(|| PyValueError::new_err("division by *0"))?;
+        Ok(PyNimber { inner: self.inner.mul(&oi) })
     }
     fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
         matches!(parse_nimber(other), Ok(n) if n == self.inner)
@@ -91,14 +107,29 @@ impl PySurreal {
     fn __rsub__(&self, other: &Bound<'_, PyAny>) -> PyResult<PySurreal> {
         Ok(PySurreal { inner: parse_surreal(other)?.sub(&self.inner) })
     }
-    fn __mul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PySurreal> {
-        Ok(PySurreal { inner: self.inner.mul(&parse_surreal(other)?) })
+    fn __mul__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        match parse_surreal(other) {
+            Ok(o) => PySurreal { inner: self.inner.mul(&o) }.into_py_any(py),
+            Err(_) => Ok(py.NotImplemented()),
+        }
     }
     fn __rmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PySurreal> {
-        self.__mul__(other)
+        Ok(PySurreal { inner: self.inner.mul(&parse_surreal(other)?) })
     }
     fn __neg__(&self) -> PySurreal {
         PySurreal { inner: self.inner.neg() }
+    }
+    fn inv(&self) -> PyResult<PySurreal> {
+        self.inner.inv().map(|s| PySurreal { inner: s }).ok_or_else(|| {
+            PyValueError::new_err("only monomials (coeff·ω^e) have a finite-support surreal inverse")
+        })
+    }
+    fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<PySurreal> {
+        let o = parse_surreal(other)?;
+        let oi = o
+            .inv()
+            .ok_or_else(|| PyValueError::new_err("divisor has no finite-support inverse"))?;
+        Ok(PySurreal { inner: self.inner.mul(&oi) })
     }
     fn __pow__(&self, n: u32, _modulo: Option<&Bound<'_, PyAny>>) -> PySurreal {
         let mut acc = Surreal::one();
@@ -167,14 +198,29 @@ impl PySurcomplex {
     fn __sub__(&self, other: &Bound<'_, PyAny>) -> PyResult<PySurcomplex> {
         Ok(PySurcomplex { inner: self.inner.sub(&parse_surcomplex(other)?) })
     }
-    fn __mul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PySurcomplex> {
-        Ok(PySurcomplex { inner: self.inner.mul(&parse_surcomplex(other)?) })
+    fn __mul__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        match parse_surcomplex(other) {
+            Ok(o) => PySurcomplex { inner: self.inner.mul(&o) }.into_py_any(py),
+            Err(_) => Ok(py.NotImplemented()),
+        }
     }
     fn __rmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PySurcomplex> {
-        self.__mul__(other)
+        Ok(PySurcomplex { inner: self.inner.mul(&parse_surcomplex(other)?) })
     }
     fn __neg__(&self) -> PySurcomplex {
         PySurcomplex { inner: self.inner.neg() }
+    }
+    fn inv(&self) -> PyResult<PySurcomplex> {
+        self.inner.inv().map(|s| PySurcomplex { inner: s }).ok_or_else(|| {
+            PyValueError::new_err("inverse needs an invertible norm a²+b² (a monomial surreal)")
+        })
+    }
+    fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<PySurcomplex> {
+        let o = parse_surcomplex(other)?;
+        let oi = o
+            .inv()
+            .ok_or_else(|| PyValueError::new_err("divisor has no representable inverse"))?;
+        Ok(PySurcomplex { inner: self.inner.mul(&oi) })
     }
     fn __pow__(&self, n: u32, _modulo: Option<&Bound<'_, PyAny>>) -> PySurcomplex {
         let mut acc = Surcomplex::<Surreal>::one();
@@ -208,12 +254,22 @@ fn parse_surcomplex(obj: &Bound<'_, PyAny>) -> PyResult<Surcomplex<Surreal>> {
     Err(PyTypeError::new_err("expected Surcomplex, Surreal, or int"))
 }
 
+fn wrap_nimber(n: Nimber) -> PyNimber {
+    PyNimber { inner: n }
+}
+fn wrap_surreal(s: Surreal) -> PySurreal {
+    PySurreal { inner: s }
+}
+fn wrap_surcomplex(s: Surcomplex<Surreal>) -> PySurcomplex {
+    PySurcomplex { inner: s }
+}
+
 // ---------------------------------------------------------------------------
 // Algebra + multivector, one pair per backend
 // ---------------------------------------------------------------------------
 
 macro_rules! backend {
-    ($alg:ident, $alg_name:literal, $mv:ident, $mv_name:literal, $scalar:ty, $parse:path) => {
+    ($alg:ident, $alg_name:literal, $mv:ident, $mv_name:literal, $scalar:ty, $parse:path, $scalar_py:ty, $wrap:path) => {
         #[pyclass(name = $alg_name, module = "pleroma", from_py_object)]
         #[derive(Clone)]
         struct $alg {
@@ -257,6 +313,9 @@ macro_rules! backend {
             }
             fn zero(&self) -> $mv {
                 $mv { alg: self.inner.clone(), mv: self.inner.zero() }
+            }
+            fn pseudoscalar(&self) -> $mv {
+                $mv { alg: self.inner.clone(), mv: self.inner.pseudoscalar() }
             }
             fn __repr__(&self) -> String {
                 format!("{}(dim={})", $alg_name, self.inner.dim)
@@ -315,8 +374,75 @@ macro_rules! backend {
             fn reverse(&self) -> $mv {
                 $mv { alg: self.alg.clone(), mv: self.alg.reverse(&self.mv) }
             }
+            /// `~v` is reversion.
+            fn __invert__(&self) -> $mv {
+                self.reverse()
+            }
             fn grade(&self, k: u32) -> $mv {
                 $mv { alg: self.alg.clone(), mv: self.alg.grade_part(&self.mv, k) }
+            }
+            fn grade_involution(&self) -> $mv {
+                $mv { alg: self.alg.clone(), mv: self.alg.grade_involution(&self.mv) }
+            }
+            /// Versor inverse v⁻¹ = ṽ/(v ṽ); errors if v isn't an invertible versor.
+            fn inverse(&self) -> PyResult<$mv> {
+                self.alg
+                    .versor_inverse(&self.mv)
+                    .map(|mv| $mv { alg: self.alg.clone(), mv })
+                    .ok_or_else(|| PyValueError::new_err("not an invertible versor"))
+            }
+            /// Sandwich self · x · self⁻¹ (rotor/versor action).
+            fn sandwich(&self, x: &$mv) -> PyResult<$mv> {
+                self.alg
+                    .sandwich(&self.mv, &x.mv)
+                    .map(|mv| $mv { alg: self.alg.clone(), mv })
+                    .ok_or_else(|| PyValueError::new_err("not an invertible versor"))
+            }
+            /// Reflect x in the hyperplane ⊥ self (self must be an invertible vector).
+            fn reflect(&self, x: &$mv) -> PyResult<$mv> {
+                self.alg
+                    .reflect(&self.mv, &x.mv)
+                    .map(|mv| $mv { alg: self.alg.clone(), mv })
+                    .ok_or_else(|| PyValueError::new_err("not an invertible vector"))
+            }
+            fn left_contract(&self, other: &$mv) -> $mv {
+                $mv { alg: self.alg.clone(), mv: self.alg.left_contract(&self.mv, &other.mv) }
+            }
+            fn right_contract(&self, other: &$mv) -> $mv {
+                $mv { alg: self.alg.clone(), mv: self.alg.right_contract(&self.mv, &other.mv) }
+            }
+            /// `<<` is left contraction, `>>` is right contraction.
+            fn __lshift__(&self, other: &$mv) -> $mv {
+                self.left_contract(other)
+            }
+            fn __rshift__(&self, other: &$mv) -> $mv {
+                self.right_contract(other)
+            }
+            fn dual(&self) -> PyResult<$mv> {
+                self.alg
+                    .dual(&self.mv)
+                    .map(|mv| $mv { alg: self.alg.clone(), mv })
+                    .ok_or_else(|| PyValueError::new_err("pseudoscalar not invertible (degenerate metric)"))
+            }
+            fn norm2(&self) -> $scalar_py {
+                $wrap(self.alg.norm2(&self.mv))
+            }
+            fn scalar_part(&self) -> $scalar_py {
+                $wrap(self.alg.scalar_part(&self.mv))
+            }
+            /// Division: by a scalar, or by a versor (multiply by its inverse).
+            fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<$mv> {
+                if let Ok(o) = other.cast::<$mv>() {
+                    let oinv = self
+                        .alg
+                        .versor_inverse(&o.borrow().mv)
+                        .ok_or_else(|| PyValueError::new_err("divisor not an invertible versor"))?;
+                    return Ok($mv { alg: self.alg.clone(), mv: self.alg.mul(&self.mv, &oinv) });
+                }
+                let s = $parse(other)?;
+                let sinv = <$scalar as Scalar>::inv(&s)
+                    .ok_or_else(|| PyValueError::new_err("scalar has no representable inverse"))?;
+                Ok($mv { alg: self.alg.clone(), mv: self.alg.scalar_mul(&sinv, &self.mv) })
             }
             fn is_zero(&self) -> bool {
                 self.mv.is_zero()
@@ -335,15 +461,17 @@ macro_rules! backend {
     };
 }
 
-backend!(NimberAlgebra, "NimberAlgebra", NimberMV, "NimberMV", Nimber, parse_nimber);
-backend!(SurrealAlgebra, "SurrealAlgebra", SurrealMV, "SurrealMV", Surreal, parse_surreal);
 backend!(
-    SurcomplexAlgebra,
-    "SurcomplexAlgebra",
-    SurcomplexMV,
-    "SurcomplexMV",
-    Surcomplex<Surreal>,
-    parse_surcomplex
+    NimberAlgebra, "NimberAlgebra", NimberMV, "NimberMV",
+    Nimber, parse_nimber, PyNimber, wrap_nimber
+);
+backend!(
+    SurrealAlgebra, "SurrealAlgebra", SurrealMV, "SurrealMV",
+    Surreal, parse_surreal, PySurreal, wrap_surreal
+);
+backend!(
+    SurcomplexAlgebra, "SurcomplexAlgebra", SurcomplexMV, "SurcomplexMV",
+    Surcomplex<Surreal>, parse_surcomplex, PySurcomplex, wrap_surcomplex
 );
 
 // ---------------------------------------------------------------------------

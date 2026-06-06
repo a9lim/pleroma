@@ -83,6 +83,31 @@ pub fn nim_mul(a: u64, b: u64) -> u64 {
     acc
 }
 
+/// Nim-exponentiation by an ordinary integer exponent (square-and-multiply
+/// in the multiplicative group, using nim-multiplication).
+pub fn nim_pow(mut base: u64, mut exp: u64) -> u64 {
+    let mut acc = 1u64; // nim multiplicative identity
+    while exp > 0 {
+        if exp & 1 == 1 {
+            acc = nim_mul(acc, base);
+        }
+        base = nim_mul(base, base);
+        exp >>= 1;
+    }
+    acc
+}
+
+/// Nim-multiplicative inverse in F_{2^64}. The group F_{2^64}^* is cyclic of
+/// order 2^64 − 1, so x^(2^64 − 2) = x^{-1}; and the inverse in the big field
+/// agrees with the inverse in whatever subfield x actually lives in.
+pub fn nim_inv(x: u64) -> Option<u64> {
+    if x == 0 {
+        None
+    } else {
+        Some(nim_pow(x, u64::MAX - 1)) // u64::MAX - 1 = 2^64 - 2
+    }
+}
+
 /// A nimber, i.e. an element of On_2 truncated to F_{2^64}.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Nimber(pub u64);
@@ -112,6 +137,9 @@ impl Scalar for Nimber {
     }
     fn characteristic() -> u32 {
         2
+    }
+    fn inv(&self) -> Option<Self> {
+        nim_inv(self.0).map(Nimber)
     }
 }
 
@@ -176,6 +204,21 @@ mod tests {
         for a in 1u64..16 {
             let inv = (1u64..16).find(|&x| nim_mul(a, x) == 1);
             assert!(inv.is_some(), "no inverse for {a} in F_16");
+        }
+    }
+
+    #[test]
+    fn inverse_round_trips() {
+        // x ⊗ x^{-1} = 1 for a spread of nonzero nimbers across several fields.
+        for x in [1u64, 2, 3, 4, 5, 15, 16, 255, 256, 65535, 65536, 1_000_000, u64::MAX] {
+            let inv = nim_inv(x).unwrap();
+            assert_eq!(nim_mul(x, inv), 1, "inverse of {x}");
+        }
+        assert_eq!(nim_inv(0), None);
+        // matches the brute-forced inverses inside F_16
+        for x in 1u64..16 {
+            let brute = (1u64..16).find(|&y| nim_mul(x, y) == 1).unwrap();
+            assert_eq!(nim_inv(x).unwrap(), brute, "F_16 inverse of {x}");
         }
     }
 

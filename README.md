@@ -63,9 +63,24 @@ pl.omega_pow(pl.omega())           # ω^(ω)
 w > 1_000_000                       # True
 ```
 
-Operators: `*` geometric product, `^` wedge, `**` power, `+`/`-`, and `==`.
-`.wedge()`, `.reverse()`, `.grade(k)`, `.is_zero()` on multivectors. Scalar
-builders: `omega()`, `epsilon()`, `omega_pow(x)`, `rational(p, q)`, `surreal(n)`,
+```python
+# versors: reflections and rotations (Cl(3,0))
+E = pl.SurrealAlgebra(q=[1, 1, 1])
+e0, e1 = E.gen(0), E.gen(1)
+e1.reflect(e0)                      # e0   (reflection in the hyperplane ⊥ e1)
+(e0 * e1).sandwich(3*e0 + 4*e1)    # rotor action; norm² preserved
+e0.inverse()                        # versor inverse
+~(e0 * e1)                          # reversion (~ = reverse)
+e0 << (e0 ^ e1)                     # left contraction  (e1)
+e0.dual()                           # Hodge dual
+```
+
+Operators: `*` geometric, `^` wedge, `<<`/`>>` left/right contraction, `**`
+power, `/` divide (by scalar or versor), `~` reverse, `+`/`-`, `==`. Multivector
+methods: `.inverse()`, `.sandwich(x)`, `.reflect(x)`, `.dual()`, `.norm2()`,
+`.grade(k)`, `.grade_involution()`, `.reverse()`, `.scalar_part()`,
+`.is_zero()`; algebra has `.pseudoscalar()`. Scalars have `.inv()` and `/`.
+Builders: `omega()`, `epsilon()`, `omega_pow(x)`, `rational(p, q)`, `surreal(n)`,
 `Nimber(n)`, `Surcomplex(re, im)`.
 
 ## architecture
@@ -83,11 +98,12 @@ Run the Rust tour without Python: `cargo run --example tour`.
 
 ## status
 
-**Both stages complete and verified.** 24 `cargo test` checks green —
-nim-field axioms, Cl(0,1)≅ℂ, Cl(2,0), Grassmann nilpotents, char-2
-commutativity *and* the faithful non-commutative char-2 case, associativity
-over non-orthogonal metrics in both characteristics, recursive-exponent surreal
-arithmetic (`ω^ω`, `ω·ε=1`, `√ω`), a Clifford metric with `e0²=ω, e1²=ε`, and
+**Core + bindings + versor/GA layer complete and verified.** 34 `cargo test`
+checks green — nim-field axioms and inverses, Cl(0,1)≅ℂ, Cl(2,0), Grassmann
+nilpotents, char-2 commutativity *and* the faithful non-commutative char-2 case,
+associativity over non-orthogonal metrics in both characteristics, recursive-
+exponent surreal arithmetic (`ω^ω`, `ω·ε=1`, `√ω`), a Clifford metric with
+`e0²=ω, e1²=ε`, versor inverse / reflection / rotor / contraction / dual, and
 the surcomplex char-2 degeneracy theorem. Python bindings build as an abi3 wheel
 and import on CPython 3.14.
 
@@ -95,6 +111,10 @@ and import on CPython 3.14.
 
 - **Surreal coefficients are ℚ**, the exact finite stand-in for ℝ (true CNF
   allows any real). Exponents *are* fully recursive surreals.
+- **Surreal inverse is exact only for monomials** (`coeff·ω^e`). A genuine sum
+  inverts to an infinite Hahn series this finite representation can't hold, so
+  `inv()` returns `None`/raises. Versor inverse needs the scalar norm to invert,
+  so it works whenever that norm is a monomial (e.g. metrics like `[ω, ε]`).
 - **Nimbers cap at `u64`** (the field F_{2^64}); widening to `u128` is mechanical.
 - The general char-2 product reduces blade words directly; fine for a playground,
   not optimized for large algebras.

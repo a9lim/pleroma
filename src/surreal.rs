@@ -146,6 +146,19 @@ impl Scalar for Surreal {
         0
     }
 
+    fn inv(&self) -> Option<Self> {
+        // A monomial coeff·ω^e inverts exactly to (1/coeff)·ω^{-e}. A genuine
+        // sum has an inverse of infinite Hahn support (e.g. 1/(ω+1) =
+        // ω⁻¹ − ω⁻² + ω⁻³ − …), which this finite representation can't hold.
+        if self.terms.len() == 1 {
+            let (e, c) = &self.terms[0];
+            let cinv = c.inv()?;
+            Some(Surreal { terms: vec![(e.neg(), cinv)] })
+        } else {
+            None
+        }
+    }
+
     fn is_zero(&self) -> bool {
         self.terms.is_empty()
     }
@@ -265,6 +278,19 @@ mod tests {
             w_to_w.mul(&w_to_w),
             Surreal::omega_pow(Surreal::omega().mul(&int(2)))
         );
+    }
+
+    #[test]
+    fn monomial_inverse() {
+        assert_eq!(Surreal::omega().inv().unwrap(), Surreal::epsilon()); // ω⁻¹ = ε
+        assert_eq!(Surreal::epsilon().inv().unwrap(), Surreal::omega()); // ε⁻¹ = ω
+        let three = int(3);
+        assert_eq!(three.mul(&three.inv().unwrap()), Surreal::one()); // 3·⅓ = 1
+        let w2 = Surreal::omega_pow(int(2));
+        assert_eq!(w2.mul(&w2.inv().unwrap()), Surreal::one()); // ω²·ω⁻² = 1
+        // a genuine sum has no finite-support inverse
+        assert!(Surreal::omega().add(&int(1)).inv().is_none());
+        assert!(Surreal::zero().inv().is_none());
     }
 
     #[test]

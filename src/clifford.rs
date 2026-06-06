@@ -274,6 +274,119 @@ impl<S: Scalar> CliffordAlgebra<S> {
             .collect();
         Multivector { terms }
     }
+
+    /// The grade-0 (scalar) coefficient.
+    pub fn scalar_part(&self, v: &Multivector<S>) -> S {
+        v.terms.get(&0).cloned().unwrap_or_else(S::zero)
+    }
+
+    /// The spinor norm ⟨v ṽ⟩₀ (scalar part of `v * reverse(v)`).
+    pub fn norm2(&self, v: &Multivector<S>) -> S {
+        let rev = self.reverse(v);
+        self.scalar_part(&self.mul(v, &rev))
+    }
+
+    /// Grade involution: negate every odd-grade blade.
+    pub fn grade_involution(&self, v: &Multivector<S>) -> Multivector<S> {
+        let mut terms = BTreeMap::new();
+        for (&blade, coeff) in &v.terms {
+            let c = if grade(blade) & 1 == 1 { coeff.neg() } else { coeff.clone() };
+            if !c.is_zero() {
+                terms.insert(blade, c);
+            }
+        }
+        Multivector { terms }
+    }
+
+    /// Inverse of a versor (a product of invertible vectors): v⁻¹ = ṽ / (v ṽ),
+    /// valid exactly when `v * reverse(v)` is a nonzero invertible scalar.
+    /// Returns `None` otherwise (null vector, non-versor, or scalar norm not
+    /// invertible in the backend).
+    pub fn versor_inverse(&self, v: &Multivector<S>) -> Option<Multivector<S>> {
+        let rev = self.reverse(v);
+        let vrev = self.mul(v, &rev);
+        let n = self.scalar_part(&vrev);
+        if self.scalar(n.clone()) != vrev {
+            return None; // v ṽ is not a pure scalar ⇒ not a simple versor
+        }
+        let ninv = n.inv()?;
+        Some(self.scalar_mul(&ninv, &rev))
+    }
+
+    /// The sandwich product v x v⁻¹ (rotor / versor action). `None` if v isn't
+    /// invertible as a versor.
+    pub fn sandwich(&self, v: &Multivector<S>, x: &Multivector<S>) -> Option<Multivector<S>> {
+        let vinv = self.versor_inverse(v)?;
+        Some(self.mul(&self.mul(v, x), &vinv))
+    }
+
+    /// Reflection of x in the hyperplane orthogonal to vector n: −(n x n⁻¹).
+    pub fn reflect(&self, n: &Multivector<S>, x: &Multivector<S>) -> Option<Multivector<S>> {
+        let ninv = self.versor_inverse(n)?;
+        let nxni = self.mul(&self.mul(n, x), &ninv);
+        Some(self.scalar_mul(&S::one().neg(), &nxni))
+    }
+
+    /// Left contraction a ⌟ b = Σ_{r≤s} ⟨⟨a⟩_r ⟨b⟩_s⟩_{s−r}.
+    pub fn left_contract(&self, a: &Multivector<S>, b: &Multivector<S>) -> Multivector<S> {
+        let mut out = self.zero();
+        let d = self.dim as u32;
+        for r in 0..=d {
+            let ar = self.grade_part(a, r);
+            if ar.is_zero() {
+                continue;
+            }
+            for s in r..=d {
+                let bs = self.grade_part(b, s);
+                if bs.is_zero() {
+                    continue;
+                }
+                let prod = self.mul(&ar, &bs);
+                out = self.add(&out, &self.grade_part(&prod, s - r));
+            }
+        }
+        out
+    }
+
+    /// Right contraction a ⌞ b = Σ_{r≥s} ⟨⟨a⟩_r ⟨b⟩_s⟩_{r−s}.
+    pub fn right_contract(&self, a: &Multivector<S>, b: &Multivector<S>) -> Multivector<S> {
+        let mut out = self.zero();
+        let d = self.dim as u32;
+        for s in 0..=d {
+            let bs = self.grade_part(b, s);
+            if bs.is_zero() {
+                continue;
+            }
+            for r in s..=d {
+                let ar = self.grade_part(a, r);
+                if ar.is_zero() {
+                    continue;
+                }
+                let prod = self.mul(&ar, &bs);
+                out = self.add(&out, &self.grade_part(&prod, r - s));
+            }
+        }
+        out
+    }
+
+    /// The unit pseudoscalar I = e₀e₁…e_{dim−1}.
+    pub fn pseudoscalar(&self) -> Multivector<S> {
+        let mask = if self.dim >= 32 {
+            u32::MAX
+        } else {
+            (1u32 << self.dim) - 1
+        };
+        let mut terms = BTreeMap::new();
+        terms.insert(mask, S::one());
+        Multivector { terms }
+    }
+
+    /// Hodge-style dual v ↦ v I⁻¹. `None` if the pseudoscalar isn't invertible
+    /// (a degenerate metric).
+    pub fn dual(&self, v: &Multivector<S>) -> Option<Multivector<S>> {
+        let i_inv = self.versor_inverse(&self.pseudoscalar())?;
+        Some(self.mul(v, &i_inv))
+    }
 }
 
 impl<S: Scalar> Multivector<S> {
@@ -312,6 +425,7 @@ mod tests {
     use super::*;
     use crate::nimber::Nimber;
     use crate::scalar::Rational;
+    use crate::surreal::Surreal;
 
     fn r(n: i128) -> Rational {
         Rational::int(n)
@@ -407,6 +521,87 @@ mod tests {
             alg.add(&alg.gen(0), &alg.scalar(r(3))),
         ];
         assert_associative(&alg, &gens);
+    }
+
+    #[test]
+    fn vector_inverse() {
+        // Cl(3,0): unit vector squares to 1, so v⁻¹ = v.
+        let alg = CliffordAlgebra::new(3, Metric::diagonal(vec![r(1), r(1), r(1)]));
+        let v = alg.gen(0);
+        let vi = alg.versor_inverse(&v).unwrap();
+        assert_eq!(alg.mul(&v, &vi), alg.scalar(r(1)));
+        assert_eq!(vi, v);
+        // q=2: e0⁻¹ = e0/2
+        let alg2 = CliffordAlgebra::new(1, Metric::diagonal(vec![r(2)]));
+        let e0 = alg2.gen(0);
+        assert_eq!(alg2.mul(&e0, &alg2.versor_inverse(&e0).unwrap()), alg2.scalar(r(1)));
+        // a null vector has no inverse
+        let alg0 = CliffordAlgebra::new(1, Metric::<Rational>::grassmann(1));
+        assert!(alg0.versor_inverse(&alg0.gen(0)).is_none());
+    }
+
+    #[test]
+    fn reflection_fixes_and_negates() {
+        // reflect in the hyperplane ⊥ e1: fixes e0, negates e1.
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![r(1), r(1)]));
+        let (e0, e1) = (alg.gen(0), alg.gen(1));
+        assert_eq!(alg.reflect(&e1, &e0).unwrap(), e0);
+        assert_eq!(alg.reflect(&e1, &e1).unwrap(), alg.scalar_mul(&r(-1), &e1));
+    }
+
+    #[test]
+    fn rotor_preserves_norm() {
+        // A rotor (product of two unit vectors) is norm-preserving.
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![r(1), r(1)]));
+        let rotor = alg.mul(&alg.gen(0), &alg.gen(1));
+        let x = alg.add(
+            &alg.scalar_mul(&r(3), &alg.gen(0)),
+            &alg.scalar_mul(&r(4), &alg.gen(1)),
+        );
+        let rx = alg.sandwich(&rotor, &x).unwrap();
+        assert_eq!(alg.norm2(&rx), alg.norm2(&x)); // 25 either way
+    }
+
+    #[test]
+    fn left_contraction_lowers_grade() {
+        let alg = CliffordAlgebra::new(3, Metric::diagonal(vec![r(1), r(1), r(1)]));
+        let e0 = alg.gen(0);
+        let e0e1 = alg.mul(&alg.gen(0), &alg.gen(1));
+        assert_eq!(alg.left_contract(&e0, &e0e1), alg.gen(1)); // e0 ⌟ (e0∧e1) = e1
+        let three = alg.scalar(r(3));
+        assert_eq!(alg.left_contract(&three, &e0e1), alg.scalar_mul(&r(3), &e0e1));
+    }
+
+    #[test]
+    fn dual_of_vector_is_bivector_in_3d() {
+        let alg = CliffordAlgebra::new(3, Metric::diagonal(vec![r(1), r(1), r(1)]));
+        let d = alg.dual(&alg.gen(0)).unwrap();
+        assert!(!d.is_zero());
+        assert_eq!(alg.grade_part(&d, 2), d); // purely grade 2
+    }
+
+    #[test]
+    fn grade_involution_signs() {
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![r(1), r(1)]));
+        // 5 + e0 + e0e1  ↦  5 − e0 + e0e1
+        let v = alg.add(
+            &alg.scalar(r(5)),
+            &alg.add(&alg.gen(0), &alg.mul(&alg.gen(0), &alg.gen(1))),
+        );
+        let expect = alg.add(
+            &alg.scalar(r(5)),
+            &alg.add(&alg.scalar_mul(&r(-1), &alg.gen(0)), &alg.mul(&alg.gen(0), &alg.gen(1))),
+        );
+        assert_eq!(alg.grade_involution(&v), expect);
+    }
+
+    #[test]
+    fn versor_over_surreal_metric() {
+        // e0² = ω (a monomial ⇒ invertible). e0⁻¹ = ε·e0, and sandwich works.
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![Surreal::omega(), Surreal::epsilon()]));
+        let e0 = alg.gen(0);
+        let inv = alg.versor_inverse(&e0).unwrap();
+        assert_eq!(alg.mul(&e0, &inv), alg.scalar(Surreal::one()));
     }
 
     #[test]

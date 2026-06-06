@@ -29,6 +29,11 @@ pub trait Scalar: Clone + PartialEq + Debug {
     /// off-diagonal bilinear form B — see the notes in `clifford.rs`.
     fn characteristic() -> u32;
 
+    /// Multiplicative inverse, or `None` if not invertible (zero) or not
+    /// finitely representable in this backend (e.g. a non-monomial surreal,
+    /// whose inverse is an infinite Hahn series).
+    fn inv(&self) -> Option<Self>;
+
     fn is_zero(&self) -> bool {
         *self == Self::zero()
     }
@@ -111,6 +116,13 @@ impl Scalar for Rational {
     }
     fn characteristic() -> u32 {
         0
+    }
+    fn inv(&self) -> Option<Self> {
+        if self.num == 0 {
+            None
+        } else {
+            Some(Rational::new(self.den, self.num))
+        }
     }
 }
 

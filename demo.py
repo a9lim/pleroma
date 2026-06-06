@@ -46,3 +46,16 @@ print("  0 < ε < 1e-9?", pl.surreal(0) < pl.epsilon() < pl.rational(1, 10**9))
 section("surcomplex — only a field over the surreals")
 z = pl.Surcomplex(pl.omega(), 1)  # ω + i
 print("  (ω+i)(ω-i)   =", z * z.conj(), "  (= ω²+1, a genuine norm)")
+
+section("versors — reflections & rotations in Cl(3,0)")
+E = pl.SurrealAlgebra(q=[1, 1, 1])
+e0, e1, e2 = E.gen(0), E.gen(1), E.gen(2)
+x = 3 * e0 + 4 * e1
+print("  reflect e0 in ⊥e1     =", e1.reflect(e0), "  (fixed)")
+print("  reflect e1 in ⊥e1     =", e1.reflect(e1), "  (negated)")
+R = e0 * e1  # rotor = product of two unit vectors
+print("  rotor (e0 e1) on x    =", R.sandwich(x))
+print("  norm² preserved       =", x.norm2(), "->", R.sandwich(x).norm2())
+print("  ~(e0 e1)  (reversion) =", ~R)
+print("  e0 ⌟ (e0∧e1)          =", e0 << (e0 ^ e1))
+print("  dual(e0) in 3D        =", e0.dual(), "  (a bivector)")

@@ -31,6 +31,8 @@ src/
                 # power recursion, memoised on 2^i ⊗ 2^j.
   clifford.rs   # Metric { q, b } + CliffordAlgebra<S> + Multivector<S>.
                 # The whole engine, generic over Scalar. reduce_word is the core.
+                # Also the versor/GA layer: versor_inverse, sandwich, reflect,
+                # left/right_contract, dual, grade_involution, norm2.
   surreal.rs    # Conway normal form: Vec<(exponent: Surreal, coeff: Rational)>
                 # with recursive exponents. Hahn arithmetic: ω^a·ω^b = ω^{a+b}.
   surcomplex.rs # Surcomplex<S> = adjoin i over any backend.
@@ -113,6 +115,12 @@ smoke-tested via `demo.py`. After touching `clifford.rs` or `surreal.rs`, run
 - **Surreal coefficients are ℚ, not ℝ** — the honest finite truncation of true
   CNF. Exponents *are* fully recursive surreals. Don't "fix" this expecting
   irrational coefficients.
+- **`Surreal::inv` returns `None` for any non-monomial.** `1/(ω+1)` is an
+  infinite Hahn series; finite-support can't hold it. So `versor_inverse`
+  succeeds iff the spinor norm `v ṽ` is a scalar *and* a monomial. Intended.
+- **`scalar * multivector` works via the scalar's `__mul__` returning
+  `NotImplemented`** so Python falls back to the MV's `__rmul__`. Don't make the
+  scalar ops raise on a non-scalar operand — that breaks `omega() * e0`.
 - **`nim_mul`'s `1u64 << (1u64 << n)` looks overflow-prone.** It isn't for valid
   u64 inputs: bit positions are < 64, so Fermat indices `n ≤ 5` and the shift is
   ≤ 32.

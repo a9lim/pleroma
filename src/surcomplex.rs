@@ -60,6 +60,12 @@ impl<S: Scalar> Scalar for Surcomplex<S> {
         // adjoining i does not change the characteristic
         S::characteristic()
     }
+    fn inv(&self) -> Option<Self> {
+        // (a+bi)^{-1} = (a − bi)/(a²+b²), valid when the norm a²+b² inverts in S.
+        let n = self.re.mul(&self.re).add(&self.im.mul(&self.im));
+        let ninv = n.inv()?;
+        Some(Surcomplex { re: self.re.mul(&ninv), im: self.im.neg().mul(&ninv) })
+    }
     fn is_zero(&self) -> bool {
         self.re.is_zero() && self.im.is_zero()
     }
@@ -84,6 +90,15 @@ mod tests {
         let one_plus_i = g(1, 1);
         assert_eq!(one_plus_i.mul(&one_plus_i), g(0, 2)); // (1+i)^2 = 2i
         assert_eq!(one_plus_i.mul(&one_plus_i.conj()), g(2, 0)); // |1+i|^2 = 2
+    }
+
+    #[test]
+    fn gaussian_inverse() {
+        let z = g(1, 1); // 1 + i
+        assert_eq!(z.mul(&z.inv().unwrap()), Gauss::one());
+        let z2 = g(3, -2);
+        assert_eq!(z2.mul(&z2.inv().unwrap()), Gauss::one());
+        assert!(Gauss::zero().inv().is_none());
     }
 
     #[test]

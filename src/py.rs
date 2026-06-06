@@ -552,6 +552,13 @@ fn arf_invariant(alg: &NimberAlgebra) -> PyArfResult {
     PyArfResult { inner: crate::arf::arf_invariant(&alg.inner.metric) }
 }
 
+/// Nim-multiplication via Conway's Turning-Corners game recurrence (the
+/// game-theoretic definition; equals the algebraic nim-product).
+#[pyfunction]
+fn nim_mul_mex(x: u64, y: u64) -> u64 {
+    crate::games::nim_mul_mex(x, y)
+}
+
 #[pyfunction]
 fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
@@ -575,6 +582,7 @@ fn pleroma(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(surreal, m)?)?;
     m.add_class::<PyArfResult>()?;
     m.add_function(wrap_pyfunction!(arf_invariant, m)?)?;
+    m.add_function(wrap_pyfunction!(nim_mul_mex, m)?)?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
     Ok(())
 }

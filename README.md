@@ -92,8 +92,13 @@ Pure-Rust math core (`cargo test`, no Python in the loop), Python layer on top.
 - `clifford.rs` — the multivector engine, generic over `Scalar`, with independent `q`/`b` (characteristic-faithful)
 - `surreal.rs` — Conway normal form with recursive surreal exponents (ℚ coefficients)
 - `surcomplex.rs` — adjoin `i` over any backend
-- `arf.rs` — Arf invariant of an F₂ form = the char-2 Clifford classifier
+- `arf.rs` — Arf invariant (the char-2 Clifford classifier), over any nim-field
+- `games.rs` — nim-multiplication as Conway's Turning-Corners game (= `nim_mul`)
 - `py.rs` — PyO3 per-backend classes (`python` feature; abi3)
+
+`experiments/` uses the shipped library for the research probe: Arf invariants
+of Gold forms over the nim-fields, and the demonstration that those forms are
+composites of game operations.
 
 See [`NOTES.md`](NOTES.md) for the math thread: the Arf↔Clifford classification,
 the coin-turning↔nim-multiplication bridge to games, and the open question.
@@ -108,8 +113,10 @@ Grassmann nilpotents, char-2 commutativity *and* the faithful non-commutative
 char-2 case, associativity over non-orthogonal metrics in both characteristics,
 recursive-exponent surreal arithmetic (`ω^ω`, `ω·ε=1`, `√ω`), a Clifford metric
 with `e0²=ω, e1²=ε`, versor inverse / reflection / rotor / contraction / dual,
-the Arf invariant (`A⊕A ≅ H⊕H`), and the surcomplex char-2 degeneracy theorem.
-Python bindings build as an abi3 wheel and import on CPython 3.14.
+the Arf invariant (`A⊕A ≅ H⊕H`, and Gold-function ranks `m−2·gcd(a,m)`), the
+game definition of nim-multiplication (Turning Corners) agreeing with the
+algebraic one, and the surcomplex char-2 degeneracy theorem. Python bindings
+build as an abi3 wheel and import on CPython 3.14. 43 checks total.
 
 ## honest limitations / future directions
 

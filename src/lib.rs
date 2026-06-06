@@ -12,6 +12,7 @@
 
 pub mod arf;
 pub mod clifford;
+pub mod games;
 pub mod nimber;
 pub mod scalar;
 pub mod surcomplex;

@@ -107,6 +107,43 @@ Findings:
    game to a specific quadratic form remains the open step; the instrument to
    test candidates now exists and is validated.
 
+## Chasing the bridge: the Gold form is game-built
+
+`src/games.rs` implements nim-multiplication a second way — Conway's
+Turning-Corners excludant recurrence,
+`x ⊗ y = mex{(i⊗y) ⊕ (x⊗j) ⊕ (i⊗j) : i<x, j<y}` — which is the *game*
+definition of the product. It agrees with the algebraic Fermat-power `nim_mul`
+on every pair tested (x,y < 48). So "coin-turning = nim-multiplication" is now
+realised and cross-validated in code, not just cited.
+
+That promotes three operations to *game-realizable*:
+
+- `⊗` nim-product = Turning-Corners Grundy value;
+- `□` Frobenius `v ↦ v²` = `v ⊗ v`, the diagonal of Turning Corners;
+- `⊕` XOR = disjunctive sum of single-coin positions;
+
+and the trace `Tr(x) = x ⊕ x² ⊕ … ⊕ x^{2^{m-1}}` is iterated `□` and `⊕`. The
+Gold form `Q_a(v) = Tr(v ⊗ v^{2^a})` is therefore a **composite of game
+operations** on a position's nimber value (and under the 1-D game with
+`g(n)=2ⁿ`, a position's value *is* a nimber). `experiments/gold_form_from_games.py`
+rebuilds `Q_a` from literal Turning-Corners products and checks it equals the
+algebraic form — so the Arf-bearing quadratic form really is *made of games*.
+
+## So where does it actually stop now
+
+The bridge closes at the level of **construction**: the Arf-bearing form is
+game-built, and its Arf invariant is computed and validated. What is *not*
+established is the **play-semantics**:
+
+> `Q_a` is a derived quadratic quantity, not the Grundy value of a single
+> position. Is its Arf invariant the answer to a *game* question — e.g. the
+> outcome (or some misère/loopy invariant) of a game canonically attached to
+> `Q_a`?
+
+That is the sharp residue: the form is made of games; whether its Arf invariant
+*means* something about play is open. The instrument to test a candidate game is
+here and validated end to end.
+
 ## References
 
 - C. Arf, *Untersuchungen über quadratische Formen in Körpern der

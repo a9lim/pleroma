@@ -1,15 +1,15 @@
 //! A quick tour of pleroma's verified core. Run with:
 //!   cargo run --example tour
 
-use pleroma::forms::{dickson_matrix, dickson_of_versor};
-use pleroma::forms::classify_surreal;
 use pleroma::clifford::{CliffordAlgebra, Metric};
-use pleroma::scalar::{nim_solve_artin_schreier, nim_sqrt, nim_trace, Nimber};
+use pleroma::forms::classify_surreal;
+use pleroma::forms::WittClass;
+use pleroma::forms::{dickson_matrix, dickson_of_versor};
 use pleroma::games::{Game, GameExterior};
-use pleroma::scalar::{Integer, Rational, Scalar};
 use pleroma::scalar::Surcomplex;
 use pleroma::scalar::Surreal;
-use pleroma::forms::WittClass;
+use pleroma::scalar::{nim_solve_artin_schreier, nim_sqrt, nim_trace, Nimber};
+use pleroma::scalar::{Integer, Rational, Scalar};
 use std::collections::BTreeMap;
 
 fn rule(title: &str) {

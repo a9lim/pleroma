@@ -15,6 +15,7 @@
 // The coefficient worlds, each a commutative-ring `Scalar` backend, re-exported
 // flat so call sites read `scalar::Nimber`, `scalar::Rational`, etc.
 pub mod fp;
+pub mod fpn;
 pub mod integer;
 pub mod nimber;
 pub mod omnific;
@@ -22,8 +23,11 @@ pub mod onag;
 pub mod rational;
 pub mod surcomplex;
 pub mod surreal;
+pub mod wittvec;
+pub mod zp;
 
 pub use fp::*;
+pub use fpn::*;
 pub use integer::*;
 pub use nimber::*;
 pub use omnific::*;
@@ -31,6 +35,8 @@ pub use onag::*;
 pub use rational::*;
 pub use surcomplex::*;
 pub use surreal::*;
+pub use wittvec::*;
+pub use zp::*;
 
 use std::fmt::Debug;
 

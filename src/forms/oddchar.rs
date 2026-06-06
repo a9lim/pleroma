@@ -18,9 +18,9 @@
 //! is `witt::WittClassG`.
 
 use crate::clifford::Metric;
+use crate::forms::WittClassG;
 use crate::scalar::Fp;
 use crate::scalar::Scalar;
-use crate::forms::WittClassG;
 
 /// `base^e` in `F_P` by square-and-multiply.
 fn fp_pow<const P: u64>(mut base: Fp<P>, mut e: u64) -> Fp<P> {

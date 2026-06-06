@@ -13,14 +13,20 @@
 //! and [`springer`] is the non-Archimedean valuation decomposition over the
 //! surreals.
 
+pub mod brauer_wall;
 pub mod char0;
 pub mod char2;
 pub mod oddchar;
+pub mod padic;
 pub mod springer;
 pub mod witt;
+pub mod witt_ring;
 
+pub use brauer_wall::*;
 pub use char0::*;
 pub use char2::*;
 pub use oddchar::*;
+pub use padic::*;
 pub use springer::*;
 pub use witt::*;
+pub use witt_ring::*;

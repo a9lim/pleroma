@@ -217,3 +217,25 @@ form = pl.SurrealAlgebra(q=[pl.omega(), pl.epsilon(), 1, -1])
 print("  valuation filtration of ⟨ω, ε, 1, −1⟩:")
 print("   ", pl.springer_decompose(form))
 print("  (W(No)=W(ℝ)=ℤ — the value group is 2-divisible; the filtration is the novelty)")
+
+section("eₙ staircase — discriminant & Hasse as one filtration")
+# Over a finite field I²=0, so the staircase is (e₀, e₁) and e₂ is trivial.
+e0, e1, e2, stab = pl.e_staircase_oddchar(5, [1, 2, 3])
+print(f"  ⟨1,2,3⟩/F5: e0={e0} (dim) e1={e1} (disc) e2={e2:+} (Hasse), I^{stab}=0")
+# Over ℝ the tower is infinite: eₙ reads the 2-adic expansion of the signature.
+print("  ⟨1,1,1,1⟩/ℝ (sig 4): eₙ for n=0..3 =", [pl.e_real(4, n) for n in range(4)])
+
+section("p-adic Hilbert symbol + Hasse–Minkowski over Q")
+print("  (−1,−1)_2 =", pl.hilbert_symbol_qp(-1, -1, 2),
+      " — Hamilton's quaternions ramify at 2 (finite fields can't show this)")
+for f in ([1, 1, 1], [1, 1, -1], [1, 1, -3], [1, 1, 1, 1, -1]):
+    print(f"  ⟨{','.join(map(str, f))}⟩ isotropic over Q:", pl.is_isotropic_q(f))
+
+section("Brauer–Wall group — BW(ℝ)=ℤ/8 is the Bott clock")
+# walk ⟨−1⟩⊗̂…⊗̂⟨−1⟩: the Bott index cycles mod 8.
+g = pl.bw_class_real(pl.SurrealAlgebra(q=[-1]))
+walk, cur = [], g
+for _ in range(8):
+    walk.append(repr(cur)); cur = cur.add(g)
+print("  [Cl⟨−1⟩]ⁿ for n=1..8:", " ".join(w.replace("Real(", "").rstrip(")") for w in walk))
+print("  BW(F_3) of ⟨1⟩:", pl.bw_class_oddchar(3, [1]), "(order-4 graded part ≅ W(F_3))")

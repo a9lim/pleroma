@@ -25,6 +25,7 @@ pub mod engine;
 pub mod hopf;
 pub mod outermorphism;
 pub mod spinor;
+pub mod spinor_norm;
 pub mod versor;
 
 pub use cga::*;
@@ -32,5 +33,6 @@ pub use engine::*;
 pub use hopf::*;
 pub use outermorphism::*;
 pub use spinor::*;
+pub use spinor_norm::*;
 // `versor` adds only inherent methods to `CliffordAlgebra` (reachable through
 // the type itself), so there is nothing to glob-re-export from it.

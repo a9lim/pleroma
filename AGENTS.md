@@ -56,6 +56,16 @@ src/
                   # ω⊗ω⊗ω=2; F₄(ω)≅F₆₄ verified. Above ω³ staged (Lenstra tower).
     fp.rs         # Fp<const P>: the prime field F_P (odd characteristic), a
                   # comparison backend completing the char trichotomy. Genuine neg.
+    fpn.rs        # Fpn<const P, const N>: finite extension fields F_{p^N} via a
+                  # (P,N)-keyed irreducible reduction poly. Completes the odd-char
+                  # tower AND the char-2 odd-DEGREE fields nimbers can't reach (F_8).
+                  # Schoolbook mul+reduce, Fermat inv, is_square (Euler/Frobenius).
+    zp.rs         # Zp<const P, const K>: the p-adic integers Z_p to precision k
+                  # (= Z/p^k). A LOCAL RING (p a non-unit), not Q_p — char()=0,
+                  # inv = Omnific pattern (units only). Cl over it is non-semisimple.
+    wittvec.rs    # WittVec<const P, const N, const F>: Witt vectors W_N(F_q), as the
+                  # truncated unramified ring (Z/p^N)[t]/(f̃) (NOT the forms Witt
+                  # group). Witt/Teichmüller coords + carry-formula oracle on top.
 
   clifford/       # PILLAR — the multivector engine + GA layer (generic Scalar)
     mod.rs        # thin hub: re-exports engine + versor + the structured-algebra
@@ -80,9 +90,12 @@ src/
     spinor.rs     # concrete minimal left ideals Cl·f from a primitive idempotent
                   # ∏½(1+w); basis + gen_matrices realizing M_d(K) on column
                   # spinors. Ideal dim matches classify; Clifford relations hold.
+    spinor_norm.rs # the spinor norm N:O(Q)→F*/F*² (= norm2 mod squares) + the
+                  # generic versor_grade_parity (Dickson; char2::dickson_of_versor
+                  # delegates here) + classify_versor. Char-2 codomain is F/℘(F).
 
   forms/          # PILLAR — quadratic forms & invariants, by the char trichotomy
-    mod.rs        # re-exports the three legs + witt + springer flat.
+    mod.rs        # re-exports the legs + witt/witt_ring + brauer_wall + padic + springer.
     char0.rs      # (was classify.rs) the char-0 Clifford classifier: Cl(p,q) →
                   # matrix algebra over ℝ/ℂ/ℍ via the 8-fold table (real-closed
                   # surreal/rational) and the 2-fold table (surcomplex).
@@ -96,7 +109,18 @@ src/
                   # fit_f2_quadratic (is a set a quadric? its Arf?).
     witt.rs       # WittClass: the Witt group W_q(F) ≅ ℤ/2 of a finite nim-field,
                   # Arf-classified. Plus WittClassG: the Char0/OddChar/Char2
-                  # trichotomy enum (odd-char is order-4: ℤ/4 or ℤ/2×ℤ/2).
+                  # trichotomy enum (odd-char is order-4: ℤ/4 or ℤ/2×ℤ/2) with the
+                  # ring `mul` (Char2 panics — W_q is a module, not a ring).
+    witt_ring.rs  # the Witt RING: tensor_form, Pfister forms, fundamental ideal Iⁿ,
+                  # and the eₙ staircase (e0=dim, e1=disc, e2=Hasse — reused from
+                  # oddchar). Stabilization per field (I²=0 over F_q; infinite ℝ tower
+                  # via e_real). DON'T claim Arf=e2 (char-2 indexing is Kato's, pinned).
+    brauer_wall.rs # the Brauer–Wall group BW(F): bw_class_real (= char0's Bott index
+                  # (q−p) mod 8 ⇒ BW(ℝ)=ℤ/8), bw_class_complex (ℤ/2), bw_class_oddchar
+                  # (order-4 ≅ W(F_q), DISCOVERED not asserted). Law = graded_tensor.
+    padic.rs      # the GENUINE Hilbert symbol over Q_p (odd-p + p=2 mod-8) — nontrivial
+                  # unlike oddchar's +1 — + Hasse–Minkowski is_isotropic_q over Q.
+                  # Oracle: Hilbert reciprocity ∏_v=+1. Where Hasse does real work.
     springer.rs   # non-Archimedean Springer decomposition over the surreals: a
                   # diagonal form's ω-adic valuation filtration into residue ℝ-forms.
                   # Honest: value group 2-divisible ⇒ W(No)=W(ℝ)=ℤ; the filtration
@@ -110,6 +134,8 @@ src/
                   # (tartan_grundy), with the Tartan/Product theorem verified.
     kernel.rs     # normal-play Win/Loss/Draw outcomes of any finite game graph
                   # (retrograde analysis); P-positions = Loss. The interactive route.
+                  # Plus scoring_values: the Milnor minimax interval (left,right) on a
+                  # DAG — the integer-valued scoring knob for the open question.
     misere.rs     # misère-play outcomes (misere_is_n/_is_p) for any finite
                   # impartial game; misère Nim vs Bouton; the bounded
                   # indistinguishability quotient (misere_quotient); octal games

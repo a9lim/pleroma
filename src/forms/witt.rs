@@ -14,8 +14,8 @@
 //! So `WittClass` makes the additivity executable as a group: `w(A) + w(A) = 0`
 //! is the same statement as `A ⊕ A ≅ H ⊕ H`, now a one-liner.
 
-use crate::forms::arf_invariant;
 use crate::clifford::Metric;
+use crate::forms::arf_invariant;
 use crate::scalar::Nimber;
 
 /// A class in the Witt group `W_q(F) ≅ ℤ/2` of a finite nim-field: the Arf
@@ -168,6 +168,80 @@ impl WittClassG {
                 }
             }
             _ => panic!("cannot add Witt classes across characteristics"),
+        }
+    }
+
+    /// The Witt **ring** multiplication (tensor product of forms, descended to
+    /// classes), making `W(F)` a ring with `⟨1⟩` as the unit. Defined for the two
+    /// legs where `W` is genuinely a ring:
+    ///
+    /// * `Char0`: `W(ℝ) ≅ ℤ`, signatures multiply.
+    /// * `OddChar`: `W(F_q)` is the order-4 ring — `ℤ/4` when `−1` is a nonsquare
+    ///   (`kappa = 1`), via `z = e0 + 2·sclass`; and `F₂[ℤ/2]` when `−1` is a square
+    ///   (`kappa = 0`), via `(a,b) = (e0 ⊕ sclass, sclass)` with `t² = 1`. (Both ring
+    ///   laws are pinned by `witt_ring`'s test against the concrete `tensor_form`.)
+    ///
+    /// **Panics on `Char2`:** in characteristic 2 the *quadratic* Witt group `W_q` is
+    /// a **module over** the bilinear Witt ring, not a ring — so there is no
+    /// quadratic-form ring product to return. (See `forms/witt_ring.rs` for why.)
+    pub fn mul(&self, other: &WittClassG) -> WittClassG {
+        match (*self, *other) {
+            (WittClassG::Char0 { signature: a }, WittClassG::Char0 { signature: b }) => {
+                WittClassG::Char0 { signature: a * b }
+            }
+            (
+                WittClassG::OddChar {
+                    kappa: ka,
+                    e0: e0a,
+                    sclass: sa,
+                },
+                WittClassG::OddChar {
+                    kappa: kb,
+                    e0: e0b,
+                    sclass: sb,
+                },
+            ) => {
+                assert_eq!(ka, kb, "odd-char Witt classes from different fields");
+                if ka == 1 {
+                    // ℤ/4 via z = e0 + 2·sclass; multiply mod 4.
+                    let za = (e0a + 2 * sa) as i32;
+                    let zb = (e0b + 2 * sb) as i32;
+                    let z = (za * zb).rem_euclid(4);
+                    WittClassG::OddChar {
+                        kappa: 1,
+                        e0: (z & 1) as u8,
+                        sclass: ((z >> 1) & 1) as u8,
+                    }
+                } else {
+                    // F₂[ℤ/2] = F₂[t]/(t²−1): (a,b) = (e0⊕sclass, sclass), t² = 1.
+                    let (a1, b1) = (e0a ^ sa, sa);
+                    let (a2, b2) = (e0b ^ sb, sb);
+                    let ar = (a1 & a2) ^ (b1 & b2);
+                    let br = (a1 & b2) ^ (a2 & b1);
+                    WittClassG::OddChar {
+                        kappa: 0,
+                        e0: ar ^ br,
+                        sclass: br,
+                    }
+                }
+            }
+            (WittClassG::Char2 { .. }, WittClassG::Char2 { .. }) => {
+                panic!(
+                    "char-2 quadratic Witt classes form a MODULE over the bilinear \
+                     Witt ring, not a ring — there is no quadratic ring product"
+                )
+            }
+            _ => panic!("cannot multiply Witt classes across characteristics"),
+        }
+    }
+
+    /// The ring unit `⟨1⟩` of the odd-char Witt ring with the given `kappa`
+    /// (`e0 = 1`, `sclass = 0`). The identity for [`mul`](Self::mul).
+    pub fn oddchar_one(kappa: u8) -> Self {
+        WittClassG::OddChar {
+            kappa,
+            e0: 1,
+            sclass: 0,
         }
     }
 }

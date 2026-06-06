@@ -341,6 +341,129 @@ fn springer_decompose(alg: &SurrealAlgebra) -> PyResult<PySpringerDecomp> {
     })
 }
 
+// ---------------------------------------------------------------------------
+// Witt ring + cohomological invariant staircase (eₙ)
+// ---------------------------------------------------------------------------
+
+/// The cohomological invariant staircase `(e₀, e₁, e₂)` of a diagonal odd-char
+/// form `q` over `F_p`, with the field's stabilization (`I² = 0` over a finite
+/// field ⇒ `stabilizes_at = 2`, `e₂ = +1`). Returns `(e0, e1, e2, stabilizes_at)`.
+/// Supported primes: 3, 5, 7, 11, 13.
+#[pyfunction]
+fn e_staircase_oddchar(p: u64, q: Vec<i64>) -> PyResult<(u8, u8, i8, usize)> {
+    let s = match p {
+        3 => crate::forms::e_staircase_oddchar(&fp_diag::<3>(&q)),
+        5 => crate::forms::e_staircase_oddchar(&fp_diag::<5>(&q)),
+        7 => crate::forms::e_staircase_oddchar(&fp_diag::<7>(&q)),
+        11 => crate::forms::e_staircase_oddchar(&fp_diag::<11>(&q)),
+        13 => crate::forms::e_staircase_oddchar(&fp_diag::<13>(&q)),
+        _ => return Err(PyValueError::new_err("supported primes: 3, 5, 7, 11, 13")),
+    }
+    .ok_or_else(|| PyValueError::new_err("non-diagonal metric"))?;
+    Ok((s.e0, s.e1, s.e2, s.stabilizes_at))
+}
+
+/// The real cohomological invariant `eₙ` of a form of signature `σ` over `ℝ`:
+/// `Some((σ/2ⁿ) mod 2)` if the form is in `Iⁿ` (i.e. `2ⁿ | σ`), else `None`. The
+/// staircase reads the 2-adic expansion of the signature (the infinite ℝ tower).
+#[pyfunction]
+fn e_real(signature: i64, n: usize) -> Option<u8> {
+    crate::forms::e_real(signature, n)
+}
+
+// ---------------------------------------------------------------------------
+// p-adic Hilbert symbol + Hasse–Minkowski over Q
+// ---------------------------------------------------------------------------
+
+/// The Hilbert symbol `(a, b)_p` over `Q_p` (`p`-adic). Unlike the finite-field
+/// Hilbert symbol (always `+1`), this is genuinely nontrivial — e.g. `(−1,−1)_2 = −1`.
+#[pyfunction]
+fn hilbert_symbol_qp(a: i64, b: i64, p: u64) -> i8 {
+    crate::forms::hilbert_symbol_qp(a, b, p)
+}
+
+/// The Hilbert symbol `(a, b)_∞` over `ℝ` (`−1` iff both are negative).
+#[pyfunction]
+fn hilbert_symbol_real(a: i64, b: i64) -> i8 {
+    crate::forms::hilbert_symbol_real(a, b)
+}
+
+/// Is the integer `n` a square in `Q_p`?
+#[pyfunction]
+fn is_square_qp(n: i64, p: u64) -> bool {
+    crate::forms::is_square_qp(n, p)
+}
+
+/// Is the diagonal rational/integer form `⟨a₁,…,aₙ⟩` isotropic over `Q`? By the
+/// **Hasse–Minkowski** principle (isotropic over `ℝ` and every `Q_p`). E.g.
+/// `⟨1,1,1⟩` is anisotropic, `⟨1,1,-1⟩` isotropic, `⟨1,1,-3⟩` anisotropic.
+#[pyfunction]
+fn is_isotropic_q(entries: Vec<i64>) -> bool {
+    crate::forms::is_isotropic_q(&entries)
+}
+
+// ---------------------------------------------------------------------------
+// Brauer–Wall group
+// ---------------------------------------------------------------------------
+
+#[pyclass(name = "BrauerWallClass", module = "pleroma", from_py_object)]
+#[derive(Clone)]
+struct PyBrauerWallClass {
+    inner: crate::forms::BrauerWallClass,
+}
+
+#[pymethods]
+impl PyBrauerWallClass {
+    fn add(&self, other: &PyBrauerWallClass) -> PyBrauerWallClass {
+        PyBrauerWallClass {
+            inner: self.inner.add(&other.inner),
+        }
+    }
+    fn __add__(&self, other: &PyBrauerWallClass) -> PyBrauerWallClass {
+        self.add(other)
+    }
+    fn __eq__(&self, other: &PyBrauerWallClass) -> bool {
+        self.inner == other.inner
+    }
+    fn __repr__(&self) -> String {
+        format!("{:?}", self.inner)
+    }
+}
+
+/// The Brauer–Wall class of a surreal (real) Clifford algebra: the Bott index
+/// `s = (q − p) mod 8` in `BW(ℝ) ≅ ℤ/8` — the periodicity table as a group element.
+#[pyfunction]
+fn bw_class_real(alg: &SurrealAlgebra) -> PyResult<PyBrauerWallClass> {
+    crate::forms::bw_class_real(&alg.inner.metric)
+        .map(|c| PyBrauerWallClass { inner: c })
+        .ok_or_else(|| PyValueError::new_err("Brauer–Wall class needs a diagonal metric"))
+}
+
+/// The Brauer–Wall class of a surcomplex (complex) Clifford algebra in
+/// `BW(ℂ) ≅ ℤ/2` (the dimension parity).
+#[pyfunction]
+fn bw_class_complex(alg: &SurcomplexAlgebra) -> PyResult<PyBrauerWallClass> {
+    crate::forms::bw_class_complex(&alg.inner.metric)
+        .map(|c| PyBrauerWallClass { inner: c })
+        .ok_or_else(|| PyValueError::new_err("Brauer–Wall class needs a diagonal metric"))
+}
+
+/// The Brauer–Wall class of a diagonal odd-char form `q` over `F_p` (the order-4
+/// graded part, `BW(F_q) ≅ W(F_q)`). Supported primes: 3, 5, 7, 11, 13.
+#[pyfunction]
+fn bw_class_oddchar(p: u64, q: Vec<i64>) -> PyResult<PyBrauerWallClass> {
+    let res = match p {
+        3 => crate::forms::bw_class_oddchar(&fp_diag::<3>(&q)),
+        5 => crate::forms::bw_class_oddchar(&fp_diag::<5>(&q)),
+        7 => crate::forms::bw_class_oddchar(&fp_diag::<7>(&q)),
+        11 => crate::forms::bw_class_oddchar(&fp_diag::<11>(&q)),
+        13 => crate::forms::bw_class_oddchar(&fp_diag::<13>(&q)),
+        _ => return Err(PyValueError::new_err("supported primes: 3, 5, 7, 11, 13")),
+    };
+    res.map(|c| PyBrauerWallClass { inner: c })
+        .ok_or_else(|| PyValueError::new_err("non-diagonal metric"))
+}
+
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyArfResult>()?;
     m.add_class::<PyCliffordType>()?;
@@ -348,6 +471,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyOddCharType>()?;
     m.add_class::<PyWittClassG>()?;
     m.add_class::<PySpringerDecomp>()?;
+    m.add_class::<PyBrauerWallClass>()?;
     m.add_function(wrap_pyfunction!(arf_invariant, m)?)?;
     m.add_function(wrap_pyfunction!(classify_surreal, m)?)?;
     m.add_function(wrap_pyfunction!(classify_surcomplex, m)?)?;
@@ -359,5 +483,14 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_square_mod, m)?)?;
     m.add_function(wrap_pyfunction!(hasse_invariant, m)?)?;
     m.add_function(wrap_pyfunction!(springer_decompose, m)?)?;
+    m.add_function(wrap_pyfunction!(e_staircase_oddchar, m)?)?;
+    m.add_function(wrap_pyfunction!(e_real, m)?)?;
+    m.add_function(wrap_pyfunction!(hilbert_symbol_qp, m)?)?;
+    m.add_function(wrap_pyfunction!(hilbert_symbol_real, m)?)?;
+    m.add_function(wrap_pyfunction!(is_square_qp, m)?)?;
+    m.add_function(wrap_pyfunction!(is_isotropic_q, m)?)?;
+    m.add_function(wrap_pyfunction!(bw_class_real, m)?)?;
+    m.add_function(wrap_pyfunction!(bw_class_complex, m)?)?;
+    m.add_function(wrap_pyfunction!(bw_class_oddchar, m)?)?;
     Ok(())
 }

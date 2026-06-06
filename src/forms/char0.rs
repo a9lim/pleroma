@@ -27,9 +27,9 @@
 //! `Cl(p,q,r) ≅ Cl(p,q) ⊗ Λ(F^r)` over the ground field `F ∈ {ℝ, ℂ}`.
 
 use crate::clifford::Metric;
-use crate::scalar::{Rational, Scalar};
 use crate::scalar::Surcomplex;
 use crate::scalar::Surreal;
+use crate::scalar::{Rational, Scalar};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

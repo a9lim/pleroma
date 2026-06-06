@@ -593,7 +593,6 @@ impl PyCga {
     }
 }
 
-
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<NimberAlgebra>()?;
     m.add_class::<NimberMV>()?;

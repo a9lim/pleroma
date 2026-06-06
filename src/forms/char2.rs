@@ -304,16 +304,10 @@ pub fn dickson_matrix(g: &[Vec<u64>]) -> u8 {
 /// a reflection) has `D = 1`. Returns `None` if the multivector is not of
 /// homogeneous grade parity (hence not a versor) or is zero.
 pub fn dickson_of_versor(v: &Multivector<Nimber>) -> Option<u8> {
-    let mut parity: Option<u8> = None;
-    for &blade in v.terms.keys() {
-        let p = (blade.count_ones() % 2) as u8;
-        match parity {
-            None => parity = Some(p),
-            Some(q) if q != p => return None,
-            _ => {}
-        }
-    }
-    parity
+    // The Dickson invariant of a versor is its grade parity, a fact independent of
+    // the scalar field — so this is the char-2 specialisation of the generic
+    // `clifford::versor_grade_parity`.
+    crate::clifford::versor_grade_parity(v)
 }
 
 // ---------------------------------------------------------------------------

@@ -30,7 +30,6 @@
 use crate::scalar::Scalar;
 use std::collections::BTreeMap;
 
-
 /// Ascending list of set-bit indices of a blade mask.
 pub fn bits(mask: u32) -> Vec<usize> {
     let mut v = Vec::new();

@@ -13,8 +13,8 @@
 //! | n | `eₙ` | reused from |
 //! |---|------|-------------|
 //! | 0 | `dim mod 2`            | here (trivial) |
-//! | 1 | signed **discriminant**| [`oddchar::oddchar_witt`] (the `sclass`) |
-//! | 2 | **Hasse**/Clifford     | [`oddchar::hasse_invariant`] |
+//! | 1 | signed **discriminant**| [`oddchar::finite_odd_witt`] (the `sclass`) |
+//! | 2 | **Hasse**/Clifford     | [`oddchar::hasse_invariant_finite_odd`] |
 //!
 //! So this module is the *retro-unification*: discriminant and Hasse stop being
 //! separate functions and become `e₁`, `e₂` — successive steps of one staircase.
@@ -49,7 +49,7 @@
 
 use crate::clifford::Metric;
 use crate::forms::{finite_odd_witt, hasse_invariant_finite_odd, FiniteOddField, WittClassG};
-use crate::scalar::{Fp, Scalar};
+use crate::scalar::Scalar;
 
 // ---------------------------------------------------------------------------
 // The ring multiplication on representatives: the tensor product of forms.
@@ -101,7 +101,7 @@ pub fn in_fundamental_ideal<S: Scalar>(metric: &Metric<S>) -> bool {
 
 /// The low cohomological invariants `(e₀, e₁, e₂)` of an odd-characteristic form,
 /// with the field's stabilization recorded. `e₀ = dim mod 2`, `e₁ =` signed-disc
-/// square-class (the genuine `H¹` invariant, reused from [`oddchar_witt`]), and
+/// square-class (the genuine `H¹` invariant, reused from [`finite_odd_witt`]), and
 /// `e₂ =` the Hasse invariant — `+1` over a finite field, where `I² = 0`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EnStaircase {
@@ -115,14 +115,9 @@ pub struct EnStaircase {
     pub stabilizes_at: usize,
 }
 
-/// The `(e₀, e₁, e₂)` staircase of a diagonal form over `F_p`. `None` if
-/// non-diagonal. Over a finite field `I² = 0`, so `stabilizes_at = 2` and `e₂` is
-/// always `+1`; the genuine content is `(e₀, e₁)`.
-pub fn e_staircase_oddchar<const P: u128>(metric: &Metric<Fp<P>>) -> Option<EnStaircase> {
-    e_staircase_finite_odd(metric)
-}
-
-/// The `(e₀, e₁, e₂)` staircase over any finite field of odd characteristic.
+/// The `(e₀, e₁, e₂)` staircase of a diagonal form over any finite field of odd
+/// characteristic. `None` if non-diagonal. Over a finite field `I² = 0`, so
+/// `stabilizes_at = 2` and `e₂` is always `+1`; the genuine content is `(e₀, e₁)`.
 pub fn e_staircase_finite_odd<F: FiniteOddField>(metric: &Metric<F>) -> Option<EnStaircase> {
     let (e0, e1) = match finite_odd_witt(metric)? {
         WittClassG::OddChar { e0, sclass, .. } => (e0, sclass),
@@ -156,8 +151,7 @@ pub fn e_real(signature: i128, n: usize) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::forms::{hasse_invariant, oddchar_witt, WittClassG};
-    use crate::scalar::Fpn;
+    use crate::scalar::{Fp, Fpn};
 
     fn diag<const P: u128>(qs: &[u128]) -> Metric<Fp<P>> {
         Metric::diagonal(qs.iter().map(|&x| Fp::<P>(x)).collect())
@@ -197,7 +191,7 @@ mod tests {
             for b in 1..5u128 {
                 let p = pfister(&[Fp::<5>(a), Fp::<5>(b)]);
                 assert_eq!(
-                    oddchar_witt(&p).unwrap(),
+                    finite_odd_witt(&p).unwrap(),
                     WittClassG::oddchar_zero(0), // F_5: −1 square, identity has kappa 0
                     "2-fold Pfister ⟨⟨{a},{b}⟩⟩ over F_5 must be hyperbolic"
                 );
@@ -206,7 +200,7 @@ mod tests {
         for a in 1..3u128 {
             for b in 1..3u128 {
                 let p = pfister(&[Fp::<3>(a), Fp::<3>(b)]);
-                assert_eq!(oddchar_witt(&p).unwrap(), WittClassG::oddchar_zero(1));
+                assert_eq!(finite_odd_witt(&p).unwrap(), WittClassG::oddchar_zero(1));
             }
         }
     }
@@ -247,13 +241,13 @@ mod tests {
         // e₁ is exactly oddchar's signed-disc class; e₂ is exactly the Hasse
         // invariant (+1 over a finite field).
         let m = diag::<5>(&[1, 2, 3]);
-        let s = e_staircase_oddchar(&m).unwrap();
+        let s = e_staircase_finite_odd(&m).unwrap();
         assert_eq!(s.e0, 1); // dim 3
-        assert_eq!(s.e2, hasse_invariant(&m).unwrap());
+        assert_eq!(s.e2, hasse_invariant_finite_odd(&m).unwrap());
         assert_eq!(s.e2, 1); // trivial over a finite field
         assert_eq!(s.stabilizes_at, 2);
         // e₁ matches the Witt class's sclass.
-        if let WittClassG::OddChar { sclass, .. } = oddchar_witt(&m).unwrap() {
+        if let WittClassG::OddChar { sclass, .. } = finite_odd_witt(&m).unwrap() {
             assert_eq!(s.e1, sclass);
         }
     }
@@ -277,8 +271,10 @@ mod tests {
             }
             for a in &forms {
                 for b in &forms {
-                    let lhs = oddchar_witt(&tensor_form(a, b).unwrap()).unwrap();
-                    let rhs = oddchar_witt(a).unwrap().mul(&oddchar_witt(b).unwrap());
+                    let lhs = finite_odd_witt(&tensor_form(a, b).unwrap()).unwrap();
+                    let rhs = finite_odd_witt(a)
+                        .unwrap()
+                        .mul(&finite_odd_witt(b).unwrap());
                     assert_eq!(lhs, rhs, "P={P}: ring law disagrees with tensor_form");
                 }
             }
@@ -293,11 +289,11 @@ mod tests {
         let one3 = WittClassG::oddchar_one(1);
         let one5 = WittClassG::oddchar_one(0);
         for m in [diag::<3>(&[1]), diag::<3>(&[2]), diag::<3>(&[1, 2])] {
-            let c = oddchar_witt(&m).unwrap();
+            let c = finite_odd_witt(&m).unwrap();
             assert_eq!(c.mul(&one3), c);
         }
         for m in [diag::<5>(&[1]), diag::<5>(&[2]), diag::<5>(&[1, 2])] {
-            let c = oddchar_witt(&m).unwrap();
+            let c = finite_odd_witt(&m).unwrap();
             assert_eq!(c.mul(&one5), c);
         }
         // and Char0: signatures multiply, ⟨1⟩ is unit 1.

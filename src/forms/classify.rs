@@ -3,7 +3,7 @@
 //! The three characteristic legs ([`char0`](crate::forms::char0),
 //! [`oddchar`](crate::forms::oddchar), [`char2`](crate::forms::char2)) each ship
 //! their own classifier with a leg-specific signature — `classify_surreal`,
-//! `classify_oddchar::<P>`, `arf_invariant`, … Choosing the right one is a fact
+//! `classify_finite_odd`, `arf_invariant`, … Choosing the right one is a fact
 //! about the field, not the form, so it can be resolved *at compile time* from
 //! the scalar type. [`ClassifyForm`] does exactly that: write
 //! `metric.classify()` (or `S::classify(metric)`) and the correct leg is
@@ -17,11 +17,10 @@
 
 use crate::clifford::{CliffordAlgebra, Metric};
 use crate::forms::{
-    arf_invariant, bw_class_complex, bw_class_finite_odd, bw_class_oddchar, bw_class_real,
-    classify_finite_odd, classify_oddchar, classify_rational, classify_surcomplex,
-    classify_surreal, finite_odd_witt, isometric_finite_odd, isometric_nimber, isometric_oddchar,
-    isometric_rational, isometric_real, isometric_surcomplex, oddchar_witt,
-    witt_decompose_finite_odd, witt_decompose_oddchar, witt_decompose_real, ArfResult,
+    arf_invariant, bw_class_complex, bw_class_finite_odd, bw_class_real, classify_finite_odd,
+    classify_rational, classify_surcomplex, classify_surreal, finite_odd_witt,
+    isometric_finite_odd, isometric_nimber, isometric_rational, isometric_real,
+    isometric_surcomplex, witt_decompose_finite_odd, witt_decompose_real, ArfResult,
     BrauerWallClass, CliffordType, OddCharType, OddWittDecomp, RationalCliffordType,
     RealWittDecomp, WittClassG,
 };
@@ -103,7 +102,7 @@ impl ClassifyForm for Rational {
 impl<const P: u128> ClassifyForm for Fp<P> {
     type Class = OddCharType;
     fn classify(metric: &Metric<Self>) -> Option<OddCharType> {
-        classify_oddchar(metric)
+        classify_finite_odd(metric)
     }
 }
 
@@ -130,7 +129,7 @@ impl WittClassify for Surreal {
 
 impl<const P: u128> WittClassify for Fp<P> {
     fn witt_class(metric: &Metric<Self>) -> Option<WittClassG> {
-        oddchar_witt(metric)
+        finite_odd_witt(metric)
     }
 }
 
@@ -166,7 +165,7 @@ impl IsometryClassify for Rational {
 
 impl<const P: u128> IsometryClassify for Fp<P> {
     fn isometric(m1: &Metric<Self>, m2: &Metric<Self>) -> Option<bool> {
-        isometric_oddchar(m1, m2)
+        isometric_finite_odd(m1, m2)
     }
 }
 
@@ -192,7 +191,7 @@ impl WittDecompose for Surreal {
 impl<const P: u128> WittDecompose for Fp<P> {
     type Decomp = OddWittDecomp;
     fn witt_decompose(metric: &Metric<Self>) -> Option<Self::Decomp> {
-        witt_decompose_oddchar(metric)
+        witt_decompose_finite_odd(metric)
     }
 }
 
@@ -217,7 +216,7 @@ impl BrauerWallClassify for Surcomplex<Surreal> {
 
 impl<const P: u128> BrauerWallClassify for Fp<P> {
     fn bw_class(metric: &Metric<Self>) -> Option<BrauerWallClass> {
-        bw_class_oddchar(metric)
+        bw_class_finite_odd(metric)
     }
 }
 
@@ -318,8 +317,8 @@ mod tests {
 
         // odd char: F_5 dispatch produces the odd-char datum.
         let f = Metric::diagonal(vec![Fp::<5>::new(1), Fp::<5>::new(2)]);
-        assert_eq!(f.classify(), classify_oddchar(&f));
-        assert_eq!(f.witt_class(), oddchar_witt(&f));
+        assert_eq!(f.classify(), classify_finite_odd(&f));
+        assert_eq!(f.witt_class(), finite_odd_witt(&f));
 
         // finite extension field: the same façade reaches the generic odd-field leg.
         let f9 = Metric::diagonal(vec![Fpn::<3, 2>::constant(1), Fpn::<3, 2>::generator()]);
@@ -343,9 +342,9 @@ mod tests {
     fn structural_facades_dispatch() {
         let f = Metric::diagonal(vec![Fp::<5>::new(1), Fp::<5>::new(1)]);
         let g = Metric::diagonal(vec![Fp::<5>::new(2), Fp::<5>::new(3)]);
-        assert_eq!(f.isometric_to(&g), isometric_oddchar(&f, &g));
-        assert_eq!(f.witt_decompose(), witt_decompose_oddchar(&f));
-        assert_eq!(f.bw_class(), bw_class_oddchar(&f));
+        assert_eq!(f.isometric_to(&g), isometric_finite_odd(&f, &g));
+        assert_eq!(f.witt_decompose(), witt_decompose_finite_odd(&f));
+        assert_eq!(f.bw_class(), bw_class_finite_odd(&f));
 
         let f9 = Metric::diagonal(vec![Fpn::<3, 2>::constant(1), Fpn::<3, 2>::constant(1)]);
         let g9 = Metric::diagonal(vec![Fpn::<3, 2>::constant(2), Fpn::<3, 2>::constant(2)]);

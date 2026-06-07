@@ -138,7 +138,7 @@ pub fn as_diagonal<S: Scalar>(m: &Metric<S>) -> Option<Metric<S>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::forms::{classify_oddchar, classify_rational, classify_surreal};
+    use crate::forms::{classify_finite_odd, classify_rational, classify_surreal};
     use crate::scalar::{Fp, Rational, Surreal, Zp};
     use std::collections::BTreeMap;
 
@@ -193,9 +193,9 @@ mod tests {
         let mut b = BTreeMap::new();
         b.insert((0, 1), Fp::<P>::new(2));
         let m = Metric::new(vec![Fp::<P>::new(0), Fp::<P>::new(0)], b);
-        let got = classify_oddchar(&m).unwrap();
-        let want =
-            classify_oddchar(&Metric::diagonal(vec![Fp::<P>::new(1), Fp::<P>::new(-1)])).unwrap();
+        let got = classify_finite_odd(&m).unwrap();
+        let want = classify_finite_odd(&Metric::diagonal(vec![Fp::<P>::new(1), Fp::<P>::new(-1)]))
+            .unwrap();
         assert_eq!(got.dim, want.dim);
         assert_eq!(got.disc_is_square, want.disc_is_square);
     }

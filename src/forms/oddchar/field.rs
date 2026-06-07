@@ -7,14 +7,6 @@ pub(super) fn assert_odd_prime<const P: u128>() {
     assert!(P != 2, "odd-characteristic form theory needs P odd");
 }
 
-pub(super) fn ensure_odd_prime<const P: u128>() -> Option<()> {
-    if Fp::<P>::modulus_is_prime() && P != 2 {
-        Some(())
-    } else {
-        None
-    }
-}
-
 /// Finite fields of odd characteristic, with the operations the form classifiers
 /// actually need: field-order metadata, base-field constants, and square classes.
 /// This is intentionally narrower than [`Scalar`]: it is a form-theory façade, not

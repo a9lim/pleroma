@@ -1,9 +1,8 @@
 //! Quadratic-form invariants over finite fields of odd characteristic.
 
-use super::{ensure_odd_prime, FiniteOddField};
+use super::FiniteOddField;
 use crate::clifford::Metric;
 use crate::forms::{as_diagonal, WittClassG};
-use crate::scalar::Fp;
 
 /// The classification of a nondegenerate-plus-radical diagonal form over `F_P`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,15 +44,11 @@ impl OddCharType {
 /// witness for tests and pedagogy.
 pub fn hasse_invariant_finite_odd<F: FiniteOddField>(metric: &Metric<F>) -> Option<i8> {
     F::ensure_supported()?;
-    let metric = as_diagonal(metric)?;
-    let qs: Vec<F> = metric.q.iter().copied().filter(|x| !x.is_zero()).collect();
-    let mut h = 1i8;
-    for i in 0..qs.len() {
-        for _j in (i + 1)..qs.len() {
-            h *= 1;
-        }
-    }
-    Some(h)
+    as_diagonal(metric)?;
+    // Trivial Brauer group: every Hilbert symbol of nonzero elements is `+1`, so
+    // their product — the Hasse invariant — is identically `+1`. The honest
+    // brute-force witness is `field::hilbert_symbol`, exercised in the tests.
+    Some(1)
 }
 
 /// The discriminant of the nondegenerate diagonal part over any finite odd field.
@@ -113,36 +108,4 @@ pub fn finite_odd_witt<F: FiniteOddField>(metric: &Metric<F>) -> Option<WittClas
         e0: (m & 1) as u8,
         sclass: if F::is_square_value(signed) { 0 } else { 1 },
     })
-}
-
-/// The Hasse invariant `∏_{i<j} (q_i, q_j)` of a form (nonzero diagonal entries
-/// only; non-diagonal metrics are congruence-diagonalized first). Always `+1`
-/// over a finite field.
-pub fn hasse_invariant<const P: u128>(metric: &Metric<Fp<P>>) -> Option<i8> {
-    ensure_odd_prime::<P>()?;
-    hasse_invariant_finite_odd(metric)
-}
-
-/// The discriminant (product of the nonzero diagonal entries = det of the
-/// nondegenerate part). Non-diagonal metrics are congruence-diagonalized first.
-pub fn discriminant<const P: u128>(metric: &Metric<Fp<P>>) -> Option<Fp<P>> {
-    ensure_odd_prime::<P>()?;
-    discriminant_finite_odd(metric)
-}
-
-/// Classify an odd-characteristic form. Non-diagonal metrics are
-/// congruence-diagonalized first (char ≠ 2 always has `½`), so any symmetric
-/// metric is accepted.
-pub fn classify_oddchar<const P: u128>(metric: &Metric<Fp<P>>) -> Option<OddCharType> {
-    ensure_odd_prime::<P>()?;
-    classify_finite_odd(metric)
-}
-
-/// The odd-characteristic Witt class: `(dim mod 2, signed discriminant class)`,
-/// with `kappa` = nonsquareness of `−1`. Non-diagonal metrics are
-/// congruence-diagonalized first. The signed discriminant `(−1)^{m(m−1)/2}·det`
-/// is the genuine Witt invariant; see `witt::WittClassG`.
-pub fn oddchar_witt<const P: u128>(metric: &Metric<Fp<P>>) -> Option<WittClassG> {
-    ensure_odd_prime::<P>()?;
-    finite_odd_witt(metric)
 }

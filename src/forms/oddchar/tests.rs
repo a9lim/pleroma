@@ -25,12 +25,12 @@ fn euler_criterion_matches_brute_force() {
 fn discriminant_distinguishes_planes_over_f3() {
     // <1,1> has disc 1 (square); <1,2> has disc 2 (nonsquare).
     assert!(
-        classify_oddchar(&diag::<3>(&[1, 1]))
+        classify_finite_odd(&diag::<3>(&[1, 1]))
             .unwrap()
             .disc_is_square
     );
     assert!(
-        !classify_oddchar(&diag::<3>(&[1, 2]))
+        !classify_finite_odd(&diag::<3>(&[1, 2]))
             .unwrap()
             .disc_is_square
     );
@@ -38,8 +38,8 @@ fn discriminant_distinguishes_planes_over_f3() {
 
 #[test]
 fn invalid_moduli_are_rejected() {
-    assert!(classify_oddchar(&diag::<2>(&[1, 1])).is_none());
-    assert!(classify_oddchar(&diag::<9>(&[1, 1])).is_none());
+    assert!(classify_finite_odd(&diag::<2>(&[1, 1])).is_none());
+    assert!(classify_finite_odd(&diag::<9>(&[1, 1])).is_none());
     assert!(std::panic::catch_unwind(|| is_square::<2>(Fp::<2>(1))).is_err());
     assert!(std::panic::catch_unwind(|| is_square::<9>(Fp::<9>(1))).is_err());
 }
@@ -57,8 +57,14 @@ fn hasse_is_trivial_over_finite_fields() {
             assert_eq!(hilbert_symbol::<7>(Fp::<7>(a), Fp::<7>(b)), 1);
         }
     }
-    assert_eq!(hasse_invariant(&diag::<5>(&[1, 2, 3, 4])).unwrap(), 1);
-    assert_eq!(hasse_invariant(&diag::<7>(&[1, 3, 5])).unwrap(), 1);
+    assert_eq!(
+        hasse_invariant_finite_odd(&diag::<5>(&[1, 2, 3, 4])).unwrap(),
+        1
+    );
+    assert_eq!(
+        hasse_invariant_finite_odd(&diag::<7>(&[1, 3, 5])).unwrap(),
+        1
+    );
 }
 
 // Independent isometry oracle: brute-force search for a congruence
@@ -149,7 +155,7 @@ fn dim_plus_disc_is_complete_over_finite_fields() {
 
 #[test]
 fn oddchar_witt_is_a_homomorphism() {
-    // oddchar_witt(A ⊥ B) = oddchar_witt(A) + oddchar_witt(B): the abstract
+    // finite_odd_witt(A ⊥ B) = finite_odd_witt(A) + finite_odd_witt(B): the abstract
     // group law agrees with actual orthogonal sums of forms.
     let forms = [
         diag::<3>(&[1]),
@@ -161,8 +167,10 @@ fn oddchar_witt_is_a_homomorphism() {
         for b in &forms {
             let sum = a.direct_sum(b);
             assert_eq!(
-                oddchar_witt(&sum).unwrap(),
-                oddchar_witt(a).unwrap().add(&oddchar_witt(b).unwrap()),
+                finite_odd_witt(&sum).unwrap(),
+                finite_odd_witt(a)
+                    .unwrap()
+                    .add(&finite_odd_witt(b).unwrap()),
                 "homomorphism failed"
             );
         }
@@ -172,7 +180,7 @@ fn oddchar_witt_is_a_homomorphism() {
 #[test]
 fn witt_group_is_z4_when_minus_one_nonsquare() {
     // F_3: −1 = 2 is a nonsquare (q ≡ 3 mod 4) ⇒ W(F_3) ≅ ℤ/4.
-    let g = oddchar_witt(&diag::<3>(&[1])).unwrap();
+    let g = finite_odd_witt(&diag::<3>(&[1])).unwrap();
     let id = WittClassG::oddchar_zero(1);
     let g2 = g.add(&g);
     let g3 = g2.add(&g);
@@ -187,9 +195,9 @@ fn witt_group_is_z4_when_minus_one_nonsquare() {
 fn witt_group_is_z2xz2_when_minus_one_square() {
     // F_5: −1 = 4 is a square (q ≡ 1 mod 4) ⇒ W(F_5) ≅ ℤ/2 × ℤ/2.
     let id = WittClassG::oddchar_zero(0);
-    let g = oddchar_witt(&diag::<5>(&[1])).unwrap(); // 1 is a square
-    let h = oddchar_witt(&diag::<5>(&[2])).unwrap(); // 2 is a nonsquare
-                                                     // every nonidentity element has order 2 (exponent 2)
+    let g = finite_odd_witt(&diag::<5>(&[1])).unwrap(); // 1 is a square
+    let h = finite_odd_witt(&diag::<5>(&[2])).unwrap(); // 2 is a nonsquare
+                                                        // every nonidentity element has order 2 (exponent 2)
     assert_eq!(g.add(&g), id);
     assert_eq!(h.add(&h), id);
     let gh = g.add(&h);

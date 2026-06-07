@@ -35,11 +35,6 @@ impl QuadricFit {
     }
 }
 
-/// F₂ scalar product of two coefficient vectors stored as `u128` bitmasks.
-fn f2_dot(a: u128, b: u128) -> bool {
-    (a & b).count_ones() & 1 == 1
-}
-
 /// Try to fit a quadratic form `Q(x) = c ⊕ Σ q_i x_i ⊕ Σ_{i<j} b_ij x_i x_j` over
 /// F₂ on `k` variables whose zero set is exactly `set` (a list of bitmask points
 /// of F₂^k). Returns `None` if no quadratic form has that zero set. Solved by
@@ -118,8 +113,6 @@ pub fn fit_f2_quadratic(set: &[u128], k: usize) -> Option<QuadricFit> {
         }
     }
     // (Sanity is guaranteed by construction; the form below reproduces `set`.)
-    let _ = f2_dot; // (kept for clarity of the dot-product convention)
-
     let constant = sol & 1 != 0;
     let qd: Vec<bool> = (0..k).map(|i| sol & (1u128 << (1 + i)) != 0).collect();
     let mut bmat = vec![0u128; k];

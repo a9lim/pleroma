@@ -15,8 +15,8 @@
 
 use crate::clifford::Metric;
 use crate::forms::FiniteOddField;
-use crate::forms::{arf_invariant, as_diagonal, classify_finite_odd, classify_oddchar};
-use crate::scalar::{Fp, Nimber, Rational, Scalar, Surcomplex, Surreal};
+use crate::forms::{arf_invariant, as_diagonal, classify_finite_odd};
+use crate::scalar::{Nimber, Rational, Scalar, Surcomplex, Surreal};
 
 // ----------------------------------------------------------------------------
 // Isometry
@@ -48,12 +48,6 @@ pub fn isometric_surcomplex(
         Some((nz, d.q.len() - nz))
     };
     Some(rank(m1)? == rank(m2)?)
-}
-
-/// Are two odd-characteristic forms isometric? Over a finite field `(dim,
-/// discriminant square-class)` is a complete invariant.
-pub fn isometric_oddchar<const P: u128>(m1: &Metric<Fp<P>>, m2: &Metric<Fp<P>>) -> Option<bool> {
-    Some(classify_oddchar(m1)? == classify_oddchar(m2)?)
 }
 
 /// Are two forms over the same finite odd field isometric? Over a finite field
@@ -120,15 +114,10 @@ pub struct OddWittDecomp {
     pub radical_dim: usize,
 }
 
-/// Witt decomposition over a finite field `F_q` (odd `q`): every form of odd
-/// dimension has anisotropic kernel `⟨d⟩` (dim 1); an even-dimensional form is
-/// hyperbolic (dim 0) iff its discriminant matches the hyperbolic one, else its
-/// anisotropic kernel is the unique anisotropic plane (dim 2).
-pub fn witt_decompose_oddchar<const P: u128>(m: &Metric<Fp<P>>) -> Option<OddWittDecomp> {
-    witt_decompose_finite_odd(m)
-}
-
-/// Witt decomposition over any finite field `F_q` of odd characteristic.
+/// Witt decomposition over any finite field `F_q` of odd characteristic: every
+/// form of odd dimension has anisotropic kernel `⟨d⟩` (dim 1); an even-dimensional
+/// form is hyperbolic (dim 0) iff its discriminant matches the hyperbolic one,
+/// else its anisotropic kernel is the unique anisotropic plane (dim 2).
 pub fn witt_decompose_finite_odd<F: FiniteOddField>(m: &Metric<F>) -> Option<OddWittDecomp> {
     F::ensure_supported()?;
     let d = as_diagonal(m)?;
@@ -173,6 +162,7 @@ pub fn witt_decompose_finite_odd<F: FiniteOddField>(m: &Metric<F>) -> Option<Odd
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scalar::Fp;
     use std::collections::BTreeMap;
 
     fn rsur(xs: &[i128]) -> Metric<Surreal> {
@@ -226,20 +216,20 @@ mod tests {
     fn oddchar_isometry_and_witt() {
         const P: u128 = 5;
         // ⟨1,1⟩ ≅ H over F_5 (−1 is a square), so it is hyperbolic, witt index 1.
-        let d = witt_decompose_oddchar(&ofp::<P>(&[1, 1])).unwrap();
+        let d = witt_decompose_finite_odd(&ofp::<P>(&[1, 1])).unwrap();
         assert_eq!(d.anisotropic_dim, 0);
         assert_eq!(d.witt_index, 1);
         // odd dim ⟨1,1,1⟩: anisotropic kernel dim 1.
-        let d = witt_decompose_oddchar(&ofp::<P>(&[1, 1, 1])).unwrap();
+        let d = witt_decompose_finite_odd(&ofp::<P>(&[1, 1, 1])).unwrap();
         assert_eq!(d.anisotropic_dim, 1);
         assert_eq!(d.witt_index, 1);
         // isometry by (dim, disc): ⟨1,1⟩ ≅ ⟨2,3⟩? det 1 vs 6=1, both square-class
         assert_eq!(
-            isometric_oddchar(&ofp::<P>(&[1, 1]), &ofp::<P>(&[2, 3])),
+            isometric_finite_odd(&ofp::<P>(&[1, 1]), &ofp::<P>(&[2, 3])),
             Some(true)
         );
         assert_eq!(
-            isometric_oddchar(&ofp::<P>(&[1, 1]), &ofp::<P>(&[1, 2])),
+            isometric_finite_odd(&ofp::<P>(&[1, 1]), &ofp::<P>(&[1, 2])),
             Some(false)
         );
     }
@@ -248,7 +238,7 @@ mod tests {
     fn oddchar_anisotropic_plane_over_f3() {
         const P: u128 = 3;
         // ⟨1,1⟩ over F_3 is anisotropic (−1 nonsquare): dim-2 kernel, witt index 0.
-        let d = witt_decompose_oddchar(&ofp::<P>(&[1, 1])).unwrap();
+        let d = witt_decompose_finite_odd(&ofp::<P>(&[1, 1])).unwrap();
         assert_eq!(d.anisotropic_dim, 2);
         assert_eq!(d.witt_index, 0);
     }

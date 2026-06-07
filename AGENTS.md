@@ -219,10 +219,11 @@ src/
     oddchar/      # odd-characteristic forms, re-exported flat:
       mod.rs      #   hub and trichotomy docs.
       field.rs    #   FiniteOddField unifies Fp and Fpn square classes + metadata.
-      invariants.rs # classify_finite_odd / finite_odd_witt are the generic
-                  #   implementation; classify_oddchar / oddchar_witt remain
-                  #   prime-field wrappers. discriminant + hasse_invariant (≡ +1
-                  #   over finite fields); dim+disc complete. Non-diagonal metrics
+      invariants.rs # classify_finite_odd / finite_odd_witt / discriminant_finite_odd
+                  #   / hasse_invariant_finite_odd (≡ +1 over finite fields): ONE
+                  #   generic FiniteOddField implementation keyed off the trait, so
+                  #   Fp and Fpn share the path (the const-P prime-field wrappers were
+                  #   folded away). dim+disc complete. Non-diagonal metrics
                   #   diagonalized first.
     char2/        # characteristic-2 invariants, re-exported flat:
       mod.rs      #   hub: forms::arf_invariant / forms::dickson_matrix stay shallow.

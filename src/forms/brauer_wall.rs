@@ -28,7 +28,7 @@ use crate::clifford::Metric;
 use crate::forms::{
     classify_surcomplex, classify_surreal, finite_odd_witt, FiniteOddField, WittClassG,
 };
-use crate::scalar::{Fp, Surcomplex, Surreal};
+use crate::scalar::{Surcomplex, Surreal};
 
 /// A class in the Brauer–Wall group, by characteristic leg. Each leg's `add` is the
 /// group law induced by the graded tensor product `⊗̂`.
@@ -120,14 +120,9 @@ pub fn bw_class_complex(metric: &Metric<Surcomplex<Surreal>>) -> Option<BrauerWa
     Some(BrauerWallClass::Complex(((p + q) % 2) as u8))
 }
 
-/// The Brauer–Wall class of `Cl(Q)` over a finite field `F_p`, carried as the
-/// order-4 `oddchar` Witt data (`BW(F_q) ≅ W(F_q)` over a finite field, since the
-/// Brauer group is trivial). `None` if non-diagonal.
-pub fn bw_class_oddchar<const P: u128>(metric: &Metric<Fp<P>>) -> Option<BrauerWallClass> {
-    bw_class_finite_odd(metric)
-}
-
-/// The Brauer-Wall class of `Cl(Q)` over any finite field of odd characteristic.
+/// The Brauer–Wall class of `Cl(Q)` over any finite field `F_q` of odd
+/// characteristic, carried as the order-4 `oddchar` Witt data (`BW(F_q) ≅ W(F_q)`
+/// over a finite field, since the Brauer group is trivial). `None` if non-diagonal.
 pub fn bw_class_finite_odd<F: FiniteOddField>(metric: &Metric<F>) -> Option<BrauerWallClass> {
     match finite_odd_witt(metric)? {
         WittClassG::OddChar { kappa, e0, sclass } => {
@@ -142,7 +137,7 @@ mod tests {
     use super::*;
     use crate::clifford::CliffordAlgebra;
     use crate::forms::classify_real;
-    use crate::scalar::{Scalar, Surcomplex};
+    use crate::scalar::{Fp, Scalar, Surcomplex};
     use std::collections::BTreeSet;
 
     fn real_diag(signs: &[i32]) -> Metric<Surreal> {
@@ -247,7 +242,7 @@ mod tests {
         fn collect_group<const P: u128>() -> (BTreeSet<(u8, u8, u8)>, bool) {
             // generate from ⟨1⟩ and ⟨nonsquare⟩, closing under add
             let gens: Vec<BrauerWallClass> = (1..P)
-                .map(|a| bw_class_oddchar(&oddchar_diag::<P>(&[a])).unwrap())
+                .map(|a| bw_class_finite_odd(&oddchar_diag::<P>(&[a])).unwrap())
                 .collect();
             let mut seen: BTreeSet<(u8, u8, u8)> = BTreeSet::new();
             let key = |c: &BrauerWallClass| match *c {
@@ -274,11 +269,11 @@ mod tests {
         let a = oddchar_diag::<3>(&[1, 2]);
         let b = oddchar_diag::<3>(&[2]);
         assert_eq!(
-            bw_class_oddchar(&a.direct_sum(&b)),
+            bw_class_finite_odd(&a.direct_sum(&b)),
             Some(
-                bw_class_oddchar(&a)
+                bw_class_finite_odd(&a)
                     .unwrap()
-                    .add(&bw_class_oddchar(&b).unwrap())
+                    .add(&bw_class_finite_odd(&b).unwrap())
             )
         );
 

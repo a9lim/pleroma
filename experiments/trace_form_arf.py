@@ -61,7 +61,7 @@ def trace_form(m: int, a: int):
 from math import gcd
 
 if __name__ == "__main__":
-    hdr = f"{'field':>7} {'a':>2} {'Q':>10} {'Arf':>3} {'type':>4} {'rank':>4} {'rad':>3} {'2·gcd':>5} {'ok?':>3}"
+    hdr = f"{'field':>7} {'a':>2} {'Q':>10} {'Arf':>3} {'type':>4} {'rank':>4} {'rad':>3} {'gcd2a':>5} {'ok?':>3}"
     print(hdr)
     print("-" * len(hdr))
     all_ok = True
@@ -70,10 +70,10 @@ if __name__ == "__main__":
         for a in range(1, k + 1):
             r = trace_form(m, a)
             exp = 1 + (1 << a)
-            predicted_rad = 2 * gcd(a, m)   # Gold-function rank: rank = m - 2·gcd(a,m)
+            predicted_rad = gcd(2 * a, m)   # Gold radical dim = gcd(2a, m); rank = m - gcd(2a, m)
             ok = (r.radical_dim == predicted_rad) and (r.rank == m - predicted_rad)
             all_ok = all_ok and ok
             print(f"  F2^{m:<3} {a:>2} {('Tr(x^%d)' % exp):>10} "
                   f"{r.arf:>3} {r.o_type:>4} {r.rank:>4} {r.radical_dim:>3} {predicted_rad:>5} {('✓' if ok else '✗'):>3}")
     print("-" * len(hdr))
-    print(f"rank formula rank = m - 2·gcd(a,m) matches the Arf classifier: {all_ok}")
+    print(f"rank formula rank = m - gcd(2a,m) matches the Arf classifier: {all_ok}")

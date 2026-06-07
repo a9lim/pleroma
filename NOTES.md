@@ -145,7 +145,9 @@ The experiments then check:
 
 - `experiments/trace_form_arf.py`: builds `Q_a` over the bit basis of
   `F_{2^m}` and checks the Gold rank formula
-  `rank = m - 2*gcd(a,m)` for `m = 2,4,8,16,32`.
+  `rank = m - gcd(2a, m)` for `m = 2,4,8,16,32` (radical `= F_{2^{gcd(2a,m)}}`;
+  the often-quoted `m - 2·gcd(a,m)` agrees only when `m/gcd(a,m)` is even — true
+  for these power-of-two `m`, not in general).
 - `experiments/gold_form_from_games.py`: rebuilds the form using literal
   Turning-Corners products on small fields.
 - `experiments/tartan_bilinear.py`: rebuilds the polar form using game products.
@@ -295,6 +297,63 @@ Caveat: do not state that every `B + frame` construction is split. Random
 nondegenerate alternating forms can give `Q_frame` of Arf 1. The supported claim
 is about the Gold polar forms tested here.
 
+## The naturality dichotomy: the open problem is a definition problem
+
+The probes (`open_question_probe.py`, `interactive_kernel.rs`,
+`framing_obstruction.py`) keep hitting the same wall from different angles, and
+together they show the wall is **definitional, not mathematical**: every concrete
+obstruction to `{Q_a=0}` being a P-set dissolves, and every concrete construction
+that reaches it is a tautological evaluator. What separates "tautological" from
+"natural" is the only thing doing real work. So the open problem is, precisely, to
+*define* that line.
+
+Organize candidate games by the symmetry group of their **encoding** — the map
+`x ↦ (initial configuration)` — as a subgroup `G ≤ GL(V)` under which the move
+relation is equivariant. Three tiers:
+
+**Tier 1 — frame-blind, `G ⊇ Sp(B)` — provably NO.** *(Theorem.)* If the move
+relation is invariant under the full symplectic group of the polar form, its P-set
+is a union of `Sp(B)`-orbits; `Sp(B)` is transitive on `V∖{0}`, so the only
+invariant sets are `∅, {0}, V∖{0}, V` — no nondegenerate quadric in dim ≥ 4 (the
+"Frame-blind no-go" above). Caveat (degeneracy): the Gold `B` has radical
+`R(B) = F_{2^{gcd(2a,m)}}`, so this literally constrains only the nondegenerate
+core `V/R(B)`; on `R(B)` the form is the linear `ℓ_diag` and the no-go is silent.
+
+**Tier 3 — `x`-evaluator circuit, `⟨Frobenius⟩ ⊆ O(Q)` — YES, but tautological.**
+*(Implemented-and-tested.)* Choosing the refinement `Q` drops the admissible
+symmetry to `O(Q) ⊊ Sp(B)`, which is *not* transitive (it preserves `Q`), and
+`{Q=0}` is an `O(Q)`-orbit union — so the Tier-1 engine is gone. Concretely
+`Q_a(x) = Tr(x ⊗ x^{2^a}) = ⊕_i (x^{2^i} ⊗ x^{2^{i+a}})` is a fixed **circuit of
+game operations** on `x` (`m−1` Frobenius squarings, `m` Turning-Corners products,
+an XOR fold — `gold_form_from_games.py::gold_literal`, verified over `F_4, F_{16}`
+against the algebraic product). Realized as the disjunctive sum of those `m`
+Turning-Corners subgames with inputs driven by `x`, its P-condition is exactly
+`{Q_a=0}`. The circuit is **Frobenius-symmetric** — the `m` summands form one
+Galois orbit, so `x ↦ x²` merely permutes them — hence the encoding is
+`⟨Frobenius⟩`-equivariant, and `⟨Frobenius⟩ ⊆ O(Q_a)` because Frobenius is itself
+an `F_2`-linear isometry of `Q_a` (`Q_a(x²)=Q_a(x)`). So this is a *Galois-natural*
+evaluator, not an arbitrary lookup table. What keeps it tautological: the inputs
+are *driven by `x`* — the form's structure is fed in, not produced by autonomous
+play (the same gap `open_question_probe.py` flags: "a rule that directly references
+`Q` is tautological").
+
+**Tier 2 — the genuine open core.** *(Open.)* Between the two: a *single
+fixed-rule* game, positions indexed by field elements, whose **single-position**
+Grundy-zero (or interactive-kernel) set is `{Q_a=0}` with **no per-`x`
+scaffolding**. `open_question_probe.py` localizes the one missing ingredient — the
+linear part is Grundy/XOR (game-realizable), the XOR-closure obstruction is exactly
+`B` (game-realizable via coin-turning products), and what remains is a *play rule*
+that reads the bilinear coupling `B` out as the quadratic outcome `Q`, necessarily
+interactive or misère (normal-play sums give XOR-linear subspace P-sets).
+
+So the honest open problem is a **dichotomy with a definitional gap**: frame-blind
+rules provably cannot; per-`x` Galois-natural evaluators can; the question is
+whether anything *in the gap* — a fixed-rule game more constrained than an
+evaluator but not frame-blind — realizes the quadric. Resolving it requires first
+*defining* the gap (an encoding-complexity / equivariance condition admitting the
+Frobenius-diagonal symmetry but forbidding per-`x` lookup), at which point the
+question becomes decidable rather than a matter of taste.
+
 ## What should be in the writeup
 
 The draft paper should stay narrow:
@@ -304,7 +363,8 @@ The draft paper should stay narrow:
 3. Build the Gold forms from nim/game operations.
 4. Validate ranks and zero-counts.
 5. State the conditional win-bias interpretation.
-6. State the remaining open problem and the current obstructions.
+6. State the open problem as the naturality dichotomy: frame-blind (`Sp(B)`)
+   no-go, Galois-natural `x`-evaluator yes, the fixed-rule middle open.
 
 Do not make the paper a catalogue of every module. The odd-characteristic,
 p-adic, Witt, Brauer-Wall, CGA, spinor, Hopf, and transfinite-onag modules are

@@ -425,7 +425,7 @@ impl Scalar for Nimber {
 /// `Nimber` plugs into the shared [`FiniteField`] engine: the Frobenius is
 /// nim-squaring, the field is `F_{2^128}` (`ext_degree = 128`), and the
 /// multiplicative group has order `2^128 − 1` with the known squarefree
-/// factorization [`ORDER_FACTORS`]. Two methods are overridden with the sharper
+/// factorization `ORDER_FACTORS`. Two methods are overridden with the sharper
 /// char-2 / large-field algorithms: [`is_primitive`](FiniteField::is_primitive)
 /// (a direct subgroup check, avoiding a full order computation) and
 /// [`discrete_log`](FiniteField::discrete_log) (Pohlig–Hellman, vs the trait's

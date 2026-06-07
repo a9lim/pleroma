@@ -22,6 +22,7 @@
 
 pub mod atomic_weight;
 pub mod coin_turning;
+pub mod game_exterior;
 pub mod grundy;
 pub mod hackenbush;
 pub mod kernel;
@@ -31,6 +32,7 @@ pub mod thermography;
 
 pub use atomic_weight::*;
 pub use coin_turning::*;
+pub use game_exterior::*;
 pub use grundy::*;
 pub use hackenbush::*;
 pub use kernel::*;

@@ -26,11 +26,11 @@
 //! the ring/field arithmetic ([`Scalar`]). Three companion files carry the
 //! theory built on top, all as further `impl Surreal` blocks:
 //!
-//!   * [`simplicity`] — the `{L|R}` / simplicity bridge (dyadic recognition,
+//!   * `simplicity` — the `{L|R}` / simplicity bridge (dyadic recognition,
 //!     birthdays, `simplest_*`) and `floor`/`frac` (the bridge to `Oz`).
-//!   * [`sign_expansion`] — the sign-expansion encoding, finite and (Gonshor)
+//!   * `sign_expansion` — the sign-expansion encoding, finite and (Gonshor)
 //!     transfinite, plus the [`SignExpansion`] type and `as_ordinal`.
-//!   * [`analytic`] — the lazy/truncated field layer: Neumann-series inverse and
+//!   * `analytic` — the lazy/truncated field layer: Neumann-series inverse and
 //!     real `k`-th roots of a non-monomial Hahn series.
 
 mod analytic;

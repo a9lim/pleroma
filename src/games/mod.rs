@@ -20,6 +20,7 @@
 //!                        reads out as surreal (blue–red), nimber (green), or a
 //!                        general partizan game (mixed) — the unifier.
 
+pub mod atomic_weight;
 pub mod coin_turning;
 pub mod grundy;
 pub mod hackenbush;
@@ -28,6 +29,7 @@ pub mod misere;
 pub mod partizan;
 pub mod thermography;
 
+pub use atomic_weight::*;
 pub use coin_turning::*;
 pub use grundy::*;
 pub use hackenbush::*;

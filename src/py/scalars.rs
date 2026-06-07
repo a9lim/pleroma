@@ -259,6 +259,42 @@ impl PySurreal {
             inner: Surreal::from_sign_expansion(&signs),
         }
     }
+    /// The **truncated inverse** `1/x` to `n` leading terms (Neumann series) —
+    /// works for non-monomials too, unlike [`inv`](Self::inv). Errors on `0`.
+    fn inv_to_terms(&self, n: usize) -> PyResult<PySurreal> {
+        self.inner
+            .inv_to_terms(n)
+            .map(|inner| PySurreal { inner })
+            .ok_or_else(|| PyValueError::new_err("0 has no inverse"))
+    }
+    /// The **truncated real square root** to `n` leading terms; `None` unless the
+    /// leading coefficient is a perfect ℚ-square and the value is ≥ 0 (so `√2`
+    /// and `√(2ω)` are `None`, while `√ω = ω^{1/2}` is exact).
+    fn sqrt(&self, n: usize) -> Option<PySurreal> {
+        self.inner.sqrt(n).map(|inner| PySurreal { inner })
+    }
+    /// The **truncated real `k`-th root** to `n` leading terms (same ℚ-power scope).
+    fn nth_root(&self, k: u32, n: usize) -> Option<PySurreal> {
+        self.inner.nth_root(k, n).map(|inner| PySurreal { inner })
+    }
+    /// The **birthday** as an `Ordinal` (transfinite-aware): `ω ↦ ω`, `ε ↦ ω`,
+    /// `ω^ω ↦ ω^ω`. `None` outside the representable subclass (`√ω`, …).
+    fn birthday_ordinal(&self) -> Option<PyOrdinal> {
+        self.inner
+            .birthday_ordinal()
+            .map(|inner| PyOrdinal { inner })
+    }
+    /// The (possibly transfinite) **sign expansion** as runs `(sign, length)`
+    /// (`True = +`, length an `Ordinal`); `None` outside the representable
+    /// subclass.
+    fn transfinite_sign_expansion(&self) -> Option<Vec<(bool, PyOrdinal)>> {
+        self.inner.transfinite_sign_expansion().map(|se| {
+            se.runs()
+                .iter()
+                .map(|(s, l)| (*s, PyOrdinal { inner: l.clone() }))
+                .collect()
+        })
+    }
     fn __repr__(&self) -> String {
         format!("{:?}", self.inner)
     }
@@ -770,6 +806,19 @@ impl PyOrdinal {
         self.inner
             .nim_mul(&other.inner)
             .map(|o| PyOrdinal { inner: o })
+    }
+    /// **Ordinary** (Cantor) ordinal addition — NOT nim: `1 + ω = ω` but
+    /// `ω + ω = ω·2` (coefficients add as naturals, not XOR).
+    fn ord_add(&self, other: &PyOrdinal) -> PyOrdinal {
+        PyOrdinal {
+            inner: self.inner.ord_add(&other.inner),
+        }
+    }
+    /// **Ordinary** (Cantor) ordinal multiplication — NOT nim (`2·ω = ω`).
+    fn ord_mul(&self, other: &PyOrdinal) -> PyOrdinal {
+        PyOrdinal {
+            inner: self.inner.ord_mul(&other.inner),
+        }
     }
     fn is_zero(&self) -> bool {
         self.inner.is_zero()

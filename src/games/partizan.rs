@@ -23,7 +23,7 @@
 //! the generators are genuine games, plus the `GameExterior` bridge.
 
 use crate::clifford::{bits, CliffordAlgebra, Metric, Multivector};
-use crate::scalar::{Integer, Scalar, Surreal};
+use crate::scalar::{Integer, Ordinal, Scalar, Surreal};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -60,6 +60,14 @@ impl Game {
     pub fn star() -> Game {
         let z = Game::zero();
         Game::new(vec![z.clone()], vec![z])
+    }
+
+    /// The Nim-heap `⋆n = { ⋆0, …, ⋆(n−1) | ⋆0, …, ⋆(n−1) }` (impartial, so the
+    /// Left and Right options coincide). `⋆0 = 0`, `⋆1 = ⋆`. Used as the **remote
+    /// (far) star** in the atomic-weight calculus.
+    pub fn nim_heap(n: u128) -> Game {
+        let opts: Vec<Game> = (0..n).map(Game::nim_heap).collect();
+        Game::new(opts.clone(), opts)
     }
 
     /// The integer game `n`: `{ n−1 | }` for n>0, `{ | n+1 }` for n<0, `0` for 0.
@@ -191,6 +199,20 @@ impl Game {
                 .left()
                 .iter()
                 .all(|gl| self.right().iter().all(|gr| gl.le(gr) && !gr.le(gl)))
+    }
+
+    /// Whether `G` is **all-small**: at every position, there is a Left option iff
+    /// there is a Right option. The all-small games are the infinitesimally-small
+    /// ones (built from `0`, `⋆`, `↑`, …) on which the atomic weight is defined;
+    /// numbers and switches are *not* all-small.
+    pub fn is_all_small(&self) -> bool {
+        if self.left().is_empty() != self.right().is_empty() {
+            return false;
+        }
+        self.left()
+            .iter()
+            .chain(self.right())
+            .all(|g| g.is_all_small())
     }
 
     // ---- Canonical form (Conway's simplicity theorem) ----
@@ -325,6 +347,64 @@ impl Game {
     pub fn from_surreal(s: &Surreal) -> Option<Game> {
         let (num, k) = s.as_dyadic()?;
         Some(game_of_dyadic(num, k))
+    }
+}
+
+/// A transfinite **number-valued** game, carried by its surreal value rather than
+/// a (necessarily infinite) option tree. Numbers are the one transfinite class
+/// needing no materialized options: value, birthday, and the group/order
+/// operations all come from [`Surreal`]. The finite [`Game`] engine is untouched
+/// — `NumberGame` is a parallel *view*, not a `Game`, the numbers-only honoring
+/// of "games of transfinite birthday" (`ω = {0,1,2,…|}` is a number).
+#[derive(Clone, Debug, PartialEq)]
+pub struct NumberGame {
+    value: Surreal,
+}
+
+impl NumberGame {
+    /// The number-game of a surreal value (always succeeds — no options built).
+    pub fn from_surreal(s: &Surreal) -> NumberGame {
+        NumberGame { value: s.clone() }
+    }
+
+    /// The exact surreal value.
+    pub fn value(&self) -> &Surreal {
+        &self.value
+    }
+
+    /// The birthday as an [`Ordinal`], via [`Surreal::birthday_ordinal`]. `None`
+    /// when the value is outside the representable sign-expansion subclass (e.g.
+    /// `√ω`).
+    pub fn birthday(&self) -> Option<Ordinal> {
+        self.value.birthday_ordinal()
+    }
+
+    /// Negation (additive inverse) — surreal negation.
+    pub fn neg(&self) -> NumberGame {
+        NumberGame {
+            value: self.value.neg(),
+        }
+    }
+
+    /// Disjunctive sum: for numbers this is exactly surreal addition (no options
+    /// materialized).
+    pub fn add(&self, other: &NumberGame) -> NumberGame {
+        NumberGame {
+            value: self.value.add(&other.value),
+        }
+    }
+
+    /// The game order = the surreal order on values.
+    pub fn cmp(&self, other: &NumberGame) -> Ordering {
+        self.value.cmp(&other.value)
+    }
+
+    /// Bridge to the finite engine: `Some(short Game)` iff the value is dyadic;
+    /// `None` for genuinely transfinite numbers (`ω`, `ε`, …), which have no
+    /// finite option tree. On dyadics this agrees with
+    /// [`Game::from_surreal`]/[`Game::number_value`].
+    pub fn to_finite_game(&self) -> Option<Game> {
+        Game::from_surreal(&self.value)
     }
 }
 
@@ -927,6 +1007,31 @@ mod tests {
         assert_eq!(Game::star().number_value(), None);
         assert_eq!(Game::up().number_value(), None);
         assert_eq!(Game::switch(1, -1).number_value(), None);
+    }
+
+    #[test]
+    fn number_game_transfinite_bridge() {
+        use crate::scalar::{Ordinal, Rational, Surreal};
+        let w = Surreal::omega();
+        let ng = NumberGame::from_surreal(&w);
+        assert_eq!(ng.value(), &w);
+        assert_eq!(ng.birthday(), Some(Ordinal::omega())); // birthday(ω) = ω
+        assert!(ng.to_finite_game().is_none()); // ω is not a short game
+                                                // ω + 1 by pure surreal delegation; order against a big finite number.
+        let one = NumberGame::from_surreal(&Surreal::from_int(1));
+        assert_eq!(ng.add(&one).value(), &w.add(&Surreal::from_int(1)));
+        assert_eq!(
+            ng.cmp(&NumberGame::from_surreal(&Surreal::from_int(1_000_000))),
+            Ordering::Greater
+        );
+        assert_eq!(ng.neg().value(), &w.neg());
+        // On the dyadic overlap the transfinite birthday matches the finite game's,
+        // and the downcast to a short game succeeds.
+        let d = Surreal::from_rational(Rational::new(3, 4));
+        let ngd = NumberGame::from_surreal(&d);
+        let fin = Game::from_surreal(&d).unwrap();
+        assert_eq!(ngd.birthday().unwrap().as_finite(), Some(fin.birthday()));
+        assert!(ngd.to_finite_game().is_some());
     }
 
     #[test]

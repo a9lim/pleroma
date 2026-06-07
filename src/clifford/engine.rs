@@ -534,6 +534,76 @@ impl<S: Scalar> CliffordAlgebra<S> {
     pub fn scalar_part(&self, v: &Multivector<S>) -> S {
         v.terms.get(&0).cloned().unwrap_or_else(S::zero)
     }
+
+    /// The **general multivector inverse** `v⁻¹` (two-sided), for *any* element —
+    /// not just a simple versor. Builds the `2^dim × 2^dim` matrix of left
+    /// multiplication by `v` (column `bm` = the blade coefficients of `v · e_bm`)
+    /// and solves `M x = 1` by Gaussian elimination over the scalar field. `None`
+    /// if `v` is a zero divisor / non-invertible (a column lacks an invertible
+    /// pivot), or `0`. Works over any field backend (char-0 and char-2 alike) —
+    /// unlike [`versor_inverse`](Self::versor_inverse), it does not require
+    /// `v reverse(v)` to be a scalar, so it inverts e.g. `1 + e0 + e1`.
+    ///
+    /// Exponential in `dim` (the matrix is `2^dim`-square); intended for the
+    /// modest dimensions Clifford work actually uses.
+    pub fn multivector_inverse(&self, v: &Multivector<S>) -> Option<Multivector<S>> {
+        if v.is_zero() {
+            return None;
+        }
+        let n = 1usize << self.dim;
+        // mat[row][col] = coeff of blade `row` in v · blade `col`.
+        let mut mat = vec![vec![S::zero(); n]; n];
+        for col in 0..n {
+            let mut t = BTreeMap::new();
+            t.insert(col as u128, S::one());
+            let prod = self.mul(v, &Multivector { terms: t });
+            for (&blade, c) in &prod.terms {
+                mat[blade as usize][col] = c.clone();
+            }
+        }
+        let mut rhs = vec![S::zero(); n];
+        rhs[0] = S::one(); // solve v · x = 1
+        let x = solve_linear(mat, rhs)?;
+        let mut terms = BTreeMap::new();
+        for (bm, c) in x.into_iter().enumerate() {
+            if !c.is_zero() {
+                terms.insert(bm as u128, c);
+            }
+        }
+        Some(Multivector { terms })
+    }
+}
+
+/// Solve `A x = b` over a scalar *field* by Gauss–Jordan elimination, choosing
+/// an invertible pivot in each column (so it is char-faithful — subtraction goes
+/// through `Scalar::sub`, which is `add` in char 2). `None` if some column has no
+/// invertible pivot (the matrix is singular over this backend).
+fn solve_linear<S: Scalar>(mut a: Vec<Vec<S>>, mut b: Vec<S>) -> Option<Vec<S>> {
+    let n = b.len();
+    for col in 0..n {
+        let piv = (col..n).find(|&r| a[r][col].inv().is_some())?;
+        a.swap(col, piv);
+        b.swap(col, piv);
+        let inv = a[col][col].inv().unwrap();
+        for k in col..n {
+            a[col][k] = a[col][k].mul(&inv);
+        }
+        b[col] = b[col].mul(&inv);
+        for r in 0..n {
+            if r == col {
+                continue;
+            }
+            let f = a[r][col].clone();
+            if f.is_zero() {
+                continue;
+            }
+            for k in col..n {
+                a[r][k] = a[r][k].sub(&f.mul(&a[col][k]));
+            }
+            b[r] = b[r].sub(&f.mul(&b[col]));
+        }
+    }
+    Some(b)
 }
 
 impl<S: Scalar> Multivector<S> {

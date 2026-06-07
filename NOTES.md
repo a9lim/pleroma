@@ -76,6 +76,7 @@ systems:
 | `Surcomplex` | algebraically closed characteristic-0 backend |
 | `Integer`, `Omnific` | coefficient rings for exterior/nilpotent structures |
 | `Fp`, `Fpn`, `Zp`, `WittVec` | comparison scalar worlds for the characteristic trichotomy |
+| `Qp` | the p-adic *field* `Q_p` (capped-relative precision model; Zp's field of fractions) — the empty cell in the "any number" table; feeds the p-adic Springer leg |
 | `Ordinal` in `onag.rs` | staged transfinite nimbers below `omega^3`, including `F_4(omega) ~= F_64` |
 
 The writeup should focus on `Nimber`, and mention the others only as context.
@@ -308,7 +309,13 @@ The draft paper should stay narrow:
 Do not make the paper a catalogue of every module. The odd-characteristic,
 p-adic, Witt, Brauer-Wall, CGA, spinor, Hopf, and transfinite-onag modules are
 useful infrastructure, but they belong in a separate implementation appendix or
-README section unless they are needed for the Arf/game thread.
+README section unless they are needed for the Arf/game thread. The same goes for
+the "completeness" round-out layer added later — `Qp` (p-adic field) + p-adic
+Springer, surreal lazy inversion / real roots / Gonshor transfinite birthdays,
+the `Fpn` Galois toolkit, field invariants (level/u/Pythagoras), Hermitian forms
+over surcomplex, the Cayley bivector↔rotor transform + general multivector
+inverse, and atomic weight (`atomic_weight.rs`, finishing thermography) — all
+appendix material, none of it changes the Arf/game claims.
 
 ## Useful commands
 

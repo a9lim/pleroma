@@ -214,6 +214,34 @@ impl<S: Scalar> CliffordAlgebra<S> {
         let db = self.dual(b)?;
         Some(self.undual(&self.wedge(&da, &db)))
     }
+
+    /// The **Cayley transform** of a bivector `B`: the rotor `(1−B)(1+B)⁻¹`. This
+    /// is the missing *exact* arrow between the Lie algebra (bivectors, with the
+    /// [`commutator`](Self::commutator)) and the Spin group (rotors): it is
+    /// **rational** — no `cos`/`sin`, no `½` — so it works over any char-0 field
+    /// backend (Rational/Surreal/Surcomplex), where [`cga::exp_nilpotent`] needs
+    /// a terminating series and a general `exp` needs transcendentals. The result
+    /// is an even, unit-spinor-norm versor. `None` if `1+B` is not invertible.
+    ///
+    /// The transform is an **involution** (`cayley∘cayley = id`) for `2`
+    /// invertible, so [`cayley_inverse`](Self::cayley_inverse) maps a rotor back
+    /// to its bivector generator by the same formula. Degenerate in char 2
+    /// (`1−B = 1+B`), where it is identically `1` — intended for char ≠ 2.
+    pub fn cayley(&self, b: &Multivector<S>) -> Option<Multivector<S>> {
+        let one = self.scalar(S::one());
+        let neg_b = self.scalar_mul(&S::one().neg(), b);
+        let one_minus_b = self.add(&one, &neg_b);
+        let one_plus_b = self.add(&one, b);
+        let inv = self.multivector_inverse(&one_plus_b)?;
+        Some(self.mul(&one_minus_b, &inv))
+    }
+
+    /// The inverse Cayley transform — a rotor `R` back to its bivector generator
+    /// `(1−R)(1+R)⁻¹`. Identical formula to [`cayley`](Self::cayley) (the map is
+    /// an involution); named for intent. `None` if `1+R` is not invertible.
+    pub fn cayley_inverse(&self, r: &Multivector<S>) -> Option<Multivector<S>> {
+        self.cayley(r)
+    }
 }
 
 #[cfg(test)]
@@ -276,5 +304,57 @@ mod tests {
         let v = alg.add(&alg.gen(0), &alg.wedge(&alg.gen(1), &alg.gen(2)));
         let back = alg.undual(&alg.dual(&v).unwrap());
         assert_eq!(back, v);
+    }
+
+    #[test]
+    fn general_multivector_inverse() {
+        let alg = euclid(3);
+        // A vector: the general inverse matches versor_inverse and v·v⁻¹ = 1.
+        let v = alg.add(&alg.gen(0), &alg.scalar_mul(&r(2), &alg.gen(1)));
+        let inv = alg.multivector_inverse(&v).unwrap();
+        assert_eq!(inv, alg.versor_inverse(&v).unwrap());
+        assert_eq!(alg.mul(&v, &inv), alg.scalar(r(1)));
+        // 1 + e0 + e1 : NOT a simple versor (v·ṽ = 3 + 2e0 + 2e1 is not scalar),
+        // so versor_inverse declines — but the general inverse succeeds two-sided.
+        let x = alg.add(&alg.add(&alg.scalar(r(1)), &alg.gen(0)), &alg.gen(1));
+        assert!(alg.versor_inverse(&x).is_none());
+        let xi = alg.multivector_inverse(&x).unwrap();
+        assert_eq!(alg.mul(&x, &xi), alg.scalar(r(1)));
+        assert_eq!(alg.mul(&xi, &x), alg.scalar(r(1)));
+        // Zero never inverts.
+        assert!(alg.multivector_inverse(&alg.zero()).is_none());
+    }
+
+    #[test]
+    fn multivector_inverse_in_char_two() {
+        use crate::scalar::Nimber;
+        // Over a nimber field (char 2, neg = id) the Gauss–Jordan pivots exercise
+        // Scalar::sub = add. NB `1+e0` is nilpotent here ((1+e0)² = 1+1 = 0), so it
+        // is correctly NON-invertible — use a genuine unit `1 + e0 + e1` (it has
+        // odd augmentation, so it inverts in this commutative char-2 algebra).
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![Nimber(1), Nimber(1)]));
+        assert!(alg
+            .multivector_inverse(&alg.add(&alg.scalar(Nimber(1)), &alg.gen(0)))
+            .is_none()); // 1 + e0 is nilpotent ⇒ no inverse
+        let x = alg.add(&alg.add(&alg.scalar(Nimber(1)), &alg.gen(0)), &alg.gen(1));
+        let xi = alg.multivector_inverse(&x).unwrap();
+        assert_eq!(alg.mul(&x, &xi), alg.scalar(Nimber(1)));
+        assert_eq!(alg.mul(&xi, &x), alg.scalar(Nimber(1)));
+    }
+
+    #[test]
+    fn cayley_bivector_to_rotor() {
+        let alg = euclid(3);
+        let b = alg.wedge(&alg.gen(0), &alg.gen(1)); // a bivector generator
+        let rotor = alg.cayley(&b).unwrap();
+        // The rotor is even and unit spinor norm (R ~R = 1).
+        assert_eq!(alg.even_part(&rotor), rotor);
+        assert_eq!(alg.norm2(&rotor), r(1));
+        // Involution: cayley back to the bivector.
+        assert_eq!(alg.cayley_inverse(&rotor).unwrap(), b);
+        // The rotor's sandwich preserves length.
+        let x = alg.gen(0);
+        let rx = alg.sandwich(&rotor, &x).unwrap();
+        assert_eq!(alg.norm2(&rx), alg.norm2(&x));
     }
 }

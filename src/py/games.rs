@@ -5,8 +5,9 @@
 use super::engine::IntegerMV;
 use super::scalars::{parse_surreal, PySurreal};
 use crate::clifford::CliffordAlgebra;
-use crate::games::{thermography, Color, Game, GameExterior, Hackenbush};
+use crate::games::{thermography, Color, Game, GameExterior, Hackenbush, NumberGame};
 use crate::scalar::{Integer, Rational, Surreal};
+use pyo3::basic::CompareOp;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::sync::Arc;
@@ -127,6 +128,27 @@ impl PyGame {
     }
     fn is_number(&self) -> bool {
         self.inner.is_number()
+    }
+    /// The Nim-heap `⋆n` (the remote/far star of the atomic-weight calculus).
+    #[staticmethod]
+    fn star_n(n: u128) -> PyGame {
+        PyGame {
+            inner: Game::nim_heap(n),
+        }
+    }
+    /// Whether this game is **all-small** (a Left move iff a Right move at every
+    /// position) — the domain of the atomic weight.
+    fn is_all_small(&self) -> bool {
+        self.inner.is_all_small()
+    }
+    /// The **atomic weight** as a `Game` (`None` if not all-small).
+    fn atomic_weight(&self) -> Option<PyGame> {
+        crate::games::atomic_weight(&self.inner).map(|inner| PyGame { inner })
+    }
+    /// The **atomic weight as an integer** (`None` if not all-small or its atomic
+    /// weight is a genuine non-integer game). `aw(↑)=1`, `aw(⋆)=0`, `aw(⇑)=2`.
+    fn atomic_weight_int(&self) -> Option<i128> {
+        crate::games::atomic_weight_int(&self.inner)
     }
     fn times_int(&self, n: i128) -> PyGame {
         PyGame {
@@ -378,8 +400,61 @@ impl PyGameExterior {
     }
 }
 
+/// A transfinite **number-valued** game, carried by its surreal value (e.g. the
+/// game `ω = {0,1,2,…|}`). The numbers-only honoring of transfinite birthdays —
+/// value/birthday/sum/order all delegate to the surreal.
+#[pyclass(name = "NumberGame", module = "pleroma", from_py_object)]
+#[derive(Clone)]
+struct PyNumberGame {
+    inner: NumberGame,
+}
+
+#[pymethods]
+impl PyNumberGame {
+    #[staticmethod]
+    fn from_surreal(s: &Bound<'_, PyAny>) -> PyResult<PyNumberGame> {
+        Ok(PyNumberGame {
+            inner: NumberGame::from_surreal(&parse_surreal(s)?),
+        })
+    }
+    /// The exact surreal value.
+    fn value(&self) -> PySurreal {
+        PySurreal::from_inner(self.inner.value().clone())
+    }
+    /// The birthday as a finite ordinal value, if finite.
+    fn birthday_finite(&self) -> Option<u128> {
+        self.inner.birthday().and_then(|o| o.as_finite())
+    }
+    /// The birthday as an ordinal string (`None` outside the representable
+    /// subclass, e.g. `√ω`).
+    fn birthday_repr(&self) -> Option<String> {
+        self.inner.birthday().map(|o| format!("{o:?}"))
+    }
+    /// The short `Game`, if the value is dyadic; `None` for transfinite numbers.
+    fn to_finite_game(&self) -> Option<PyGame> {
+        self.inner.to_finite_game().map(|inner| PyGame { inner })
+    }
+    fn __add__(&self, other: &PyNumberGame) -> PyNumberGame {
+        PyNumberGame {
+            inner: self.inner.add(&other.inner),
+        }
+    }
+    fn __neg__(&self) -> PyNumberGame {
+        PyNumberGame {
+            inner: self.inner.neg(),
+        }
+    }
+    fn __richcmp__(&self, other: &PyNumberGame, op: CompareOp) -> bool {
+        op.matches(self.inner.cmp(&other.inner))
+    }
+    fn __repr__(&self) -> String {
+        format!("NumberGame({:?})", self.inner.value())
+    }
+}
+
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGame>()?;
+    m.add_class::<PyNumberGame>()?;
     m.add_class::<PyGameExterior>()?;
     m.add_class::<PyHackenbush>()?;
     m.add_function(wrap_pyfunction!(nim_mul_mex, m)?)?;

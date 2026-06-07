@@ -131,6 +131,197 @@ impl<const P: u128, const N: usize> Fpn<P, N> {
         }
         Fpn(out)
     }
+
+    /// The element with index `code` in `[0, p^N)` (base-`P` digits = coefficients).
+    fn from_code(mut code: u128) -> Self {
+        let mut coeffs = [0u128; N];
+        for slot in coeffs.iter_mut() {
+            *slot = code % P;
+            code /= P;
+        }
+        Fpn(coeffs)
+    }
+
+    // ===== The finite-field analysis toolkit (mirror of `nimber.rs`) =====
+    //
+    // The char-2 leg (`Nimber`) shipped the deluxe Galois suite; this gives the
+    // odd-characteristic (and char-2 odd-degree) leg the same toolkit, so the
+    // characteristic trichotomy is symmetric.
+
+    /// Exponentiation `self^e` by square-and-multiply.
+    pub fn pow(&self, mut e: u128) -> Self {
+        let mut base = *self;
+        let mut acc = Self::one();
+        while e > 0 {
+            if e & 1 == 1 {
+                acc = acc.mul(&base);
+            }
+            base = base.mul(&base);
+            e >>= 1;
+        }
+        acc
+    }
+
+    /// The **Frobenius** automorphism `x ↦ x^p` (the generator of `Gal(F_{p^N}/F_p)`).
+    pub fn frobenius(&self) -> Self {
+        self.pow(P)
+    }
+
+    /// `self^{p^k}` — the Frobenius applied `k` times.
+    fn frobenius_iter(&self, k: usize) -> Self {
+        let mut x = *self;
+        for _ in 0..k {
+            x = x.frobenius();
+        }
+        x
+    }
+
+    /// The **degree** of `self` over `F_p`: the least `d | N` with `x^{p^d} = x`,
+    /// i.e. the dimension of the smallest subfield `F_{p^d}` containing it.
+    pub fn degree(&self) -> usize {
+        for d in 1..=N {
+            if N % d == 0 && self.frobenius_iter(d) == *self {
+                return d;
+            }
+        }
+        N
+    }
+
+    /// The distinct **Galois conjugates** `x, x^p, …, x^{p^{d-1}}` (`d = degree`) —
+    /// the roots of the minimal polynomial, each once.
+    pub fn conjugates(&self) -> Vec<Self> {
+        let d = self.degree();
+        let mut out = Vec::with_capacity(d);
+        let mut c = *self;
+        for _ in 0..d {
+            out.push(c);
+            c = c.frobenius();
+        }
+        out
+    }
+
+    /// The **minimal polynomial** over `F_p`, as coefficients in `[0, P)` from the
+    /// constant term up — monic of degree [`degree`](Self::degree). Formed as
+    /// `∏ (X − xᵢ)` over the conjugates in `F_{p^N}[X]`; the Galois-closed orbit
+    /// guarantees the result lands in `F_p`.
+    pub fn min_poly(&self) -> Vec<u128> {
+        let mut poly = vec![Self::one()]; // constant polynomial 1
+        for c in self.conjugates() {
+            let neg_c = c.neg();
+            let mut next = vec![Self::zero(); poly.len() + 1];
+            for (i, a) in poly.iter().enumerate() {
+                next[i + 1] = next[i + 1].add(a); // X · a
+                next[i] = next[i].add(&neg_c.mul(a)); // (−c) · a
+            }
+            poly = next;
+        }
+        poly.into_iter()
+            .map(|coeff| {
+                debug_assert!(
+                    coeff.0[1..].iter().all(|&c| c == 0),
+                    "minimal-polynomial coefficient left F_p"
+                );
+                coeff.0[0]
+            })
+            .collect()
+    }
+
+    /// The **relative trace** `Tr_{F_{p^N}/F_{p^e}}(x) = Σ_{i} x^{p^{e·i}}` — the
+    /// `F_{p^e}`-linear surjection onto the subfield. `e = 1` is the absolute
+    /// trace to `F_p`. Requires `e | N`.
+    pub fn relative_trace(&self, e: usize) -> Self {
+        assert!(e > 0 && N % e == 0, "relative trace needs e | N");
+        let mut acc = Self::zero();
+        let mut t = *self;
+        for _ in 0..(N / e) {
+            acc = acc.add(&t);
+            t = t.frobenius_iter(e);
+        }
+        acc
+    }
+
+    /// The **relative norm** `N_{F_{p^N}/F_{p^e}}(x) = ∏_{i} x^{p^{e·i}}` — the
+    /// multiplicative companion of the relative trace. Requires `e | N`.
+    pub fn relative_norm(&self, e: usize) -> Self {
+        assert!(e > 0 && N % e == 0, "relative norm needs e | N");
+        let mut acc = Self::one();
+        let mut t = *self;
+        for _ in 0..(N / e) {
+            acc = acc.mul(&t);
+            t = t.frobenius_iter(e);
+        }
+        acc
+    }
+
+    /// The **multiplicative order** of `self` in `F_{p^N}*` (least `k > 0` with
+    /// `self^k = 1`), or `None` for `0`. Divides `p^N − 1`.
+    pub fn multiplicative_order(&self) -> Option<u128> {
+        if self.is_zero() {
+            return None;
+        }
+        let mut ord = Self::order() - 1; // p^N − 1
+        for p in distinct_primes(Self::order() - 1) {
+            while ord % p == 0 && self.pow(ord / p) == Self::one() {
+                ord /= p;
+            }
+        }
+        Some(ord)
+    }
+
+    /// Whether `self` generates the whole multiplicative group `F_{p^N}*`.
+    pub fn is_primitive(&self) -> bool {
+        self.multiplicative_order() == Some(Self::order() - 1)
+    }
+
+    /// A **primitive element** (a generator of `F_{p^N}*`), found by scanning the
+    /// field — cheap for the modest orders in this tower.
+    pub fn primitive_element() -> Self {
+        let target = Self::order() - 1;
+        for code in 1..Self::order() {
+            let el = Self::from_code(code);
+            if el.multiplicative_order() == Some(target) {
+                return el;
+            }
+        }
+        panic!("Fpn: no primitive element found (unreachable for a field)");
+    }
+
+    /// **Discrete logarithm** to base `self`: the least `e ≥ 0` with
+    /// `self^e = x`, or `None` if `x ∉ ⟨self⟩`. Brute-forced over the (small)
+    /// cyclic subgroup `⟨self⟩`.
+    pub fn discrete_log(&self, x: Self) -> Option<u128> {
+        if self.is_zero() {
+            return None;
+        }
+        let n = self.multiplicative_order()?;
+        let mut cur = Self::one();
+        for e in 0..n {
+            if cur == x {
+                return Some(e);
+            }
+            cur = cur.mul(self);
+        }
+        None
+    }
+}
+
+/// The distinct prime factors of `n` by trial division (small `n = p^N − 1`).
+fn distinct_primes(mut n: u128) -> Vec<u128> {
+    let mut out = Vec::new();
+    let mut d = 2u128;
+    while d * d <= n {
+        if n % d == 0 {
+            out.push(d);
+            while n % d == 0 {
+                n /= d;
+            }
+        }
+        d += 1;
+    }
+    if n > 1 {
+        out.push(n);
+    }
+    out
 }
 
 impl<const P: u128, const N: usize> fmt::Debug for Fpn<P, N> {
@@ -341,6 +532,46 @@ mod tests {
                 assert_eq!(pow_p(a.add(&b)), pow_p(a).add(&pow_p(b)));
             }
         }
+    }
+
+    #[test]
+    fn galois_toolkit_f8_f9_f27() {
+        // F_8 = F_2[x]/(x³+x+1): the generator has degree 3 and minimal
+        // polynomial x³ + x + 1 = [1,1,0,1]; F_8* is cyclic of prime order 7.
+        let x = Fpn::<2, 3>::generator();
+        assert_eq!(x.degree(), 3);
+        assert_eq!(Fpn::<2, 3>::one().degree(), 1);
+        assert_eq!(x.conjugates().len(), 3);
+        assert_eq!(x.min_poly(), vec![1u128, 1, 0, 1]); // x³ + x + 1
+        assert_eq!(x.multiplicative_order(), Some(7));
+        assert!(x.is_primitive());
+        // primitive element generates the group; discrete log round-trips.
+        let g = Fpn::<2, 3>::primitive_element();
+        assert_eq!(g.multiplicative_order(), Some(7));
+        for e in 0..7u128 {
+            assert_eq!(g.discrete_log(g.pow(e)), Some(e % 7));
+        }
+        // Absolute trace/norm to F_2 land in the prime field (constant element).
+        let tr = x.relative_trace(1);
+        let nm = x.relative_norm(1);
+        assert!(tr.0[1..].iter().all(|&c| c == 0), "trace not in F_2");
+        assert!(nm.0[1..].iter().all(|&c| c == 0), "norm not in F_2");
+        // F_9: orders divide 8; the primitive element has order exactly 8.
+        let h = Fpn::<3, 2>::primitive_element();
+        assert_eq!(h.multiplicative_order(), Some(8));
+        assert!(h.is_primitive());
+        // F_27: the generator has degree 3 and its conjugate orbit closes.
+        let z = Fpn::<3, 3>::generator();
+        assert_eq!(z.degree(), 3);
+        assert_eq!(z.conjugates().len(), 3);
+        // every conjugate is a root of the same minimal polynomial.
+        let mp = z.min_poly();
+        assert_eq!(mp.len(), 4); // monic degree 3
+                                 // Frobenius is an automorphism fixing exactly F_p (degree-1 elements).
+        assert_eq!(
+            Fpn::<3, 3>::constant(2).frobenius(),
+            Fpn::<3, 3>::constant(2)
+        );
     }
 
     #[test]

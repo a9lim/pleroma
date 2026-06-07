@@ -322,3 +322,42 @@ print("  blue–red string  → sign-exp surreal    :", pl.Hackenbush.string(["b
       "(= sign expansion + −)")
 tri = pl.Hackenbush([(0, 1, "g"), (1, 2, "g"), (2, 0, "g")])
 print("  green triangle (fusion principle)      : *%d" % tri.grundy())
+
+section("ANY NUMBER, BIG OR SMALL — truncated surreal field arithmetic")
+w = pl.omega()
+print("  √ω = ω^{1/2}                 :", w.sqrt(4), "  (squares back to", w.sqrt(4) ** 2, ")")
+print("  √(ω²+2ω+1) = ω+1             :", (w * w + 2 * w + 1).sqrt(2))
+print("  √2 is not finite-CNF/ℚ       :", pl.surreal(2).sqrt(4))   # None — honest scope
+print("  1/(ω+1) Neumann to 3 terms   :", (w + 1).inv_to_terms(3))
+
+section("transfinite birthdays & Gonshor sign expansions")
+for s, name in [(w, "ω"), (pl.epsilon(), "ε"), (w + 1, "ω+1"),
+                (pl.omega_pow(pl.omega()), "ω^ω"), (w.sqrt(4), "√ω")]:
+    print(f"  birthday({name:3}) = {s.birthday_ordinal()!r:>5}   sign-exp = {s.transfinite_sign_expansion()!r}")
+
+section("ordinary (Cantor) ordinal arithmetic — NOT nim")
+o = pl.Ordinal.omega()
+print("  1 + ω = ω (absorption)       :", pl.Ordinal(1).ord_add(o))
+print("  ω + 1 ≠ ω                    :", o.ord_add(pl.Ordinal(1)))
+print("  ω + ω = ω·2 (nim would be 0) :", o.ord_add(o))
+
+section("NumberGame — games of transfinite birthday (numbers only)")
+ng = pl.NumberGame.from_surreal(w)
+print("  value =", ng.value(), " birthday =", ng.birthday_repr(),
+      " short game? =", ng.to_finite_game())
+print("  ω + 1 (delegated to surreal) :", (ng + pl.NumberGame.from_surreal(pl.surreal(1))).value())
+
+section("Cayley transform — bivector (Lie algebra) ↔ rotor (Spin group)")
+G = pl.SurrealAlgebra(q=[1, 1, 1])
+B = G.gen(0) ^ G.gen(1)
+R = B.cayley()
+print("  cayley(e0∧e1) = rotor        :", R, "  norm² =", R.norm2())
+print("  cayley_inverse(rotor) = B    :", R.cayley_inverse())
+x = G.scalar(1) + G.gen(0) + G.gen(1)            # NOT a simple versor
+print("  general inverse of 1+e0+e1   : x·x⁻¹ =", x * x.inverse_general())
+
+section("atomic weight — finishing thermography (all-small games)")
+for g, name in [(pl.Game.zero(), "0"), (pl.Game.star(), "⋆"), (pl.Game.star_n(2), "⋆2"),
+                (pl.Game.up(), "↑"), (pl.Game.up().times_int(2), "⇑"),
+                (pl.Game.up().times_int(-1), "↓"), (pl.Game.up() + pl.Game.star(), "↑*")]:
+    print(f"  aw({name:3}) = {g.atomic_weight_int()!r:>3}   all-small={g.is_all_small()}")

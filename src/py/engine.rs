@@ -388,6 +388,41 @@ macro_rules! backend {
                     })
                     .ok_or_else(|| PyValueError::new_err("not an invertible versor"))
             }
+            /// The **general multivector inverse** (any invertible element, not
+            /// just a versor) via the left-multiplication matrix. Errors if the
+            /// element is a zero divisor / non-invertible.
+            fn inverse_general(&self) -> PyResult<$mv> {
+                self.alg
+                    .multivector_inverse(&self.mv)
+                    .map(|mv| $mv {
+                        alg: self.alg.clone(),
+                        mv,
+                    })
+                    .ok_or_else(|| PyValueError::new_err("not invertible (zero divisor)"))
+            }
+            /// The **Cayley transform** `(1−B)(1+B)⁻¹` of this bivector — the exact
+            /// rational map from the Lie algebra (bivectors) to the Spin group
+            /// (rotors). Errors if `1+B` is not invertible.
+            fn cayley(&self) -> PyResult<$mv> {
+                self.alg
+                    .cayley(&self.mv)
+                    .map(|mv| $mv {
+                        alg: self.alg.clone(),
+                        mv,
+                    })
+                    .ok_or_else(|| PyValueError::new_err("1+B not invertible"))
+            }
+            /// The inverse Cayley transform — a rotor back to its bivector
+            /// generator (same involutive formula). Errors if `1+R` is singular.
+            fn cayley_inverse(&self) -> PyResult<$mv> {
+                self.alg
+                    .cayley_inverse(&self.mv)
+                    .map(|mv| $mv {
+                        alg: self.alg.clone(),
+                        mv,
+                    })
+                    .ok_or_else(|| PyValueError::new_err("1+R not invertible"))
+            }
             /// Sandwich self · x · self⁻¹ (rotor/versor action; untwisted).
             fn sandwich(&self, x: &$mv) -> PyResult<$mv> {
                 self.ensure_same_algebra(x)?;

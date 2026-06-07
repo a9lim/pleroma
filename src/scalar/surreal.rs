@@ -271,12 +271,208 @@ impl Surreal {
         Surreal::from_rational(simplest_in_cut(&lo, &hi))
     }
 
-    /// The **birthday** as an [`Ordinal`], for dyadics (a finite ordinal equal to
-    /// the sign-expansion length). `None` for non-dyadics, whose birthdays are
-    /// infinite ordinals not produced by this finite-support representation.
-    pub fn birthday_ordinal(&self) -> Option<Ordinal> {
-        self.dyadic_birthday().map(Ordinal::from_u128)
+    /// This surreal as a (non-negative) **ordinal**, if it is one: an ordinal is
+    /// exactly a surreal whose CNF has all non-negative ordinal exponents and
+    /// positive *integer* coefficients (so the surreal value equals the Cantor
+    /// normal form). Covers `0`, every natural, `ω`, `ω·n`, `ω^k`, and the
+    /// transfinite `ω^ω`, `ω^{ω^ω}`, …. `None` for anything with a negative or
+    /// fractional coefficient (`ω−1`, `½ω`) or a non-ordinal exponent (`√ω =
+    /// ω^{1/2}`). Recurses only on the strictly-simpler exponents.
+    pub fn as_ordinal(&self) -> Option<Ordinal> {
+        let mut result = Ordinal::zero();
+        for (e, c) in &self.terms {
+            if !c.is_integer() || c.sign() != Ordering::Greater {
+                return None; // coefficient must be a positive natural
+            }
+            if e.sign() == Ordering::Less {
+                return None; // exponent must be ≥ 0 to be an ordinal power
+            }
+            let eord = e.as_ordinal()?; // recursion: exponent is strictly simpler
+                                        // terms are descending, so ord_add appends in CNF order.
+            result = result.ord_add(&Ordinal::monomial(eord, c.numer() as u128));
+        }
+        Some(result)
     }
+
+    /// The **(possibly transfinite) sign expansion** over the *representable
+    /// subclass* — the run-length-encoded ±-sequence whose length is the
+    /// birthday. Confident Gonshor cases: `0` (empty); dyadics (the exact finite
+    /// path); every non-negative ordinal `α` ↦ `α` pluses, and its negative ↦
+    /// `α` minuses (covers `ω`, `ω·n`, `ω^ω`, …); and `ε = ω⁻¹ ↦ +(−)^ω`.
+    /// Returns `None` outside that subclass — the honest boundary: `√ω`,
+    /// `ω−1`, `½ω`, mixed ordinal+infinitesimal — rather than emitting an
+    /// unverified interleaving.
+    pub fn transfinite_sign_expansion(&self) -> Option<SignExpansion> {
+        if self.is_zero() {
+            return Some(SignExpansion { runs: Vec::new() });
+        }
+        // Dyadic / finite: the exact tree walk, run-length encoded.
+        if let Some(signs) = self.sign_expansion() {
+            return Some(SignExpansion::from_finite(&signs));
+        }
+        // A non-negative ordinal is α pluses; its negation, α minuses.
+        if let Some(alpha) = self.as_ordinal() {
+            if !alpha.is_zero() {
+                return Some(SignExpansion {
+                    runs: vec![(true, alpha)],
+                });
+            }
+        }
+        if let Some(alpha) = self.neg().as_ordinal() {
+            if !alpha.is_zero() {
+                return Some(SignExpansion {
+                    runs: vec![(false, alpha)],
+                });
+            }
+        }
+        // ε = ω⁻¹ : one plus, then ω minuses (Gonshor). The one confident
+        // infinitesimal; ω^{-k} for k ≥ 2 and rational multiples are out of scope.
+        if *self == Surreal::epsilon() {
+            return Some(SignExpansion {
+                runs: vec![(true, Ordinal::from_u128(1)), (false, Ordinal::omega())],
+            });
+        }
+        None
+    }
+
+    /// The **birthday** as an [`Ordinal`]. Dyadics use the fast finite path;
+    /// otherwise the birthday is the ordinal *length* of the
+    /// [transfinite sign expansion](Self::transfinite_sign_expansion) — so
+    /// `ω ↦ ω`, `ω+1 ↦ ω+1`, `ε ↦ ω`, `ω^ω ↦ ω^ω`. `None` outside the
+    /// representable subclass (`√ω`, …).
+    pub fn birthday_ordinal(&self) -> Option<Ordinal> {
+        if let Some(b) = self.dyadic_birthday() {
+            return Some(Ordinal::from_u128(b));
+        }
+        Some(self.transfinite_sign_expansion()?.length())
+    }
+
+    // -- lazy/truncated field arithmetic : Hahn-series inversion and roots --
+
+    /// Keep the `n` leading (largest-exponent) terms. Terms are stored strictly
+    /// descending, so this is the top-`n` of the Hahn series.
+    fn truncate(&self, n: usize) -> Surreal {
+        if self.terms.len() <= n {
+            self.clone()
+        } else {
+            Surreal {
+                terms: self.terms[..n].to_vec(),
+            }
+        }
+    }
+
+    /// The **truncated multiplicative inverse**: the `n` leading terms of `1/x`,
+    /// summed as the Neumann series of its infinite Hahn expansion. Where
+    /// [`Scalar::inv`] returns `None` for any non-monomial (the exact inverse has
+    /// infinite support), this returns that inverse to a chosen precision `n` —
+    /// the surreal analogue of the precision-`k` truncation in
+    /// [`Zp`](crate::scalar::Zp)/[`Qp`](crate::scalar::Qp). `None` only for `0`.
+    ///
+    /// Method: factor `x = m·(1+r)` with `m` the leading monomial and `r` an
+    /// infinitesimal (leading exponent `< 0`); then `1/x = m⁻¹·Σ_{k≥0}(−r)^k`,
+    /// which converges in the Hahn (valuation) sense because `(−r)^k` leads at
+    /// `k·deg(r) → −∞`. Example: `1/(ω+1) = ω⁻¹ − ω⁻² + ω⁻³ − …`.
+    pub fn inv_to_terms(&self, n: usize) -> Option<Surreal> {
+        if self.is_zero() {
+            return None;
+        }
+        if n == 0 {
+            return Some(Surreal::zero());
+        }
+        let (e0, c0) = self.terms[0].clone();
+        let m_inv = Surreal::monomial(e0.neg(), c0.inv()?); // ℚ unit: always Some
+        let r = m_inv.mul(self).sub(&Surreal::one()); // x = m·(1+r)
+        if r.is_zero() {
+            return Some(m_inv); // x was a monomial — exact inverse
+        }
+        let neg_r = r.neg();
+        let w = 2 * n + 8; // internal working width, final trimmed to n
+        let mut series = Surreal::one();
+        let mut power = Surreal::one();
+        for _ in 0..(4 * w + 16) {
+            power = power.mul(&neg_r).truncate(w);
+            if power.is_zero() {
+                break;
+            }
+            if series.terms.len() >= w
+                && power.terms[0].0.cmp(&series.terms[w - 1].0) == Ordering::Less
+            {
+                break; // this (and all smaller) powers no longer reach the window
+            }
+            series = series.add(&power).truncate(w);
+        }
+        Some(m_inv.mul(&series).truncate(n))
+    }
+
+    /// The **truncated real square root** to `n` leading terms, or `None`. `Some`
+    /// iff `self ≥ 0` **and** its leading coefficient is a perfect square in ℚ —
+    /// the deliberate ℚ-coefficient boundary: `√2` and `√(2ω)` are `None`
+    /// (`√2` is not a finite-CNF-with-ℚ-coeffs surreal), while `√ω = ω^{1/2}`
+    /// and `√(ω²+2ω+1) = ω+1` are exact in their leading terms.
+    pub fn sqrt(&self, n: usize) -> Option<Surreal> {
+        self.nth_root(2, n)
+    }
+
+    /// The **truncated real `k`-th root** to `n` leading terms (`k ≥ 1`), or
+    /// `None`. `Some` iff the leading coefficient is a perfect ℚ `k`-th power
+    /// (and, for even `k`, `self > 0`). See [`sqrt`](Self::sqrt) for the scope.
+    pub fn nth_root(&self, k: u32, n: usize) -> Option<Surreal> {
+        if k == 0 {
+            return None;
+        }
+        if self.is_zero() {
+            return Some(Surreal::zero());
+        }
+        if k % 2 == 0 && self.sign() == Ordering::Less {
+            return None; // no real even root of a negative
+        }
+        let (e0, c0) = self.terms[0].clone();
+        // leading root: ω^{e0/k} · c0^{1/k}, the latter exact-in-ℚ or None.
+        let root_c0 = c0.nth_root(k)?;
+        let e0_over_k = e0.mul(&Surreal::from_rational(Rational::new(1, k as i128)));
+        let root_m = Surreal::monomial(e0_over_k, root_c0);
+        // (1+r)^{1/k} via the binomial series; r infinitesimal.
+        let m_inv = Surreal::monomial(e0.neg(), c0.inv()?);
+        let r = m_inv.mul(self).sub(&Surreal::one());
+        if r.is_zero() {
+            return Some(root_m); // exact (monomial radicand)
+        }
+        let alpha = Rational::new(1, k as i128);
+        let series = binomial_series(&r, alpha, n);
+        Some(root_m.mul(&series).truncate(n))
+    }
+}
+
+/// `Σ_j binom(α, j) · r^j` truncated to (about) `n` leading terms, with `r` an
+/// infinitesimal (leading exponent `< 0`) so the series converges in the Hahn
+/// sense. `binom(α,j) = binom(α,j−1)·(α−(j−1))/j` accumulated over ℚ.
+fn binomial_series(r: &Surreal, alpha: Rational, n: usize) -> Surreal {
+    let w = 2 * n + 8;
+    let mut series = Surreal::one();
+    let mut power = Surreal::one(); // r^j
+    let mut coeff = Rational::one(); // binom(α, j)
+    for j in 1..=(4 * w + 16) {
+        let jm1 = Rational::int((j - 1) as i128);
+        let jr = Rational::int(j as i128);
+        coeff = coeff.mul(&alpha.sub(&jm1)).mul(&jr.inv().unwrap());
+        power = power.mul(r).truncate(w);
+        if power.is_zero() {
+            break;
+        }
+        if coeff.is_zero() {
+            continue; // α a nonneg integer ⇒ later binomials vanish, but keep marching
+        }
+        let contrib = Surreal::monomial(Surreal::zero(), coeff.clone())
+            .mul(&power)
+            .truncate(w);
+        if series.terms.len() >= w
+            && contrib.terms[0].0.cmp(&series.terms[w - 1].0) == Ordering::Less
+        {
+            break;
+        }
+        series = series.add(&contrib).truncate(w);
+    }
+    series
 }
 
 /// The simplest dyadic strictly **below** `h` (the value of the cut `{|h}`).
@@ -369,6 +565,59 @@ fn simplest_in_unit(a: Rational, b: Rational) -> Rational {
         } else {
             hi = mid; // mid ≥ b: search the lower half
         }
+    }
+}
+
+/// A (possibly transfinite) sign expansion as **runs**: `(sign, length)` pairs,
+/// `true = +`, lengths ordinals. A finite expansion is just runs with finite
+/// lengths; `ω`-many pluses is a single run `(true, ω)`. The total length (the
+/// ordinary ordinal sum of the run lengths) is the surreal's birthday.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SignExpansion {
+    runs: Vec<(bool, Ordinal)>,
+}
+
+impl SignExpansion {
+    /// The runs `(sign, length)`, left to right.
+    pub fn runs(&self) -> &[(bool, Ordinal)] {
+        &self.runs
+    }
+
+    /// The total ordinal length = the birthday (ordinary ordinal sum of runs).
+    pub fn length(&self) -> Ordinal {
+        let mut len = Ordinal::zero();
+        for (_, l) in &self.runs {
+            len = len.ord_add(l);
+        }
+        len
+    }
+
+    /// Run-length-encode a finite ±-sequence (`true = +`).
+    pub fn from_finite(signs: &[bool]) -> Self {
+        let mut runs: Vec<(bool, Ordinal)> = Vec::new();
+        for &s in signs {
+            if let Some(last) = runs.last_mut() {
+                if last.0 == s {
+                    last.1 = last.1.ord_add(&Ordinal::from_u128(1));
+                    continue;
+                }
+            }
+            runs.push((s, Ordinal::from_u128(1)));
+        }
+        SignExpansion { runs }
+    }
+
+    /// The flat ±-sequence, when every run length is finite; `None` if any run
+    /// is transfinite (e.g. `ω`-many signs).
+    pub fn as_finite(&self) -> Option<Vec<bool>> {
+        let mut out = Vec::new();
+        for (s, l) in &self.runs {
+            let n = l.as_finite()?;
+            for _ in 0..n {
+                out.push(*s);
+            }
+        }
+        Some(out)
     }
 }
 
@@ -730,6 +979,114 @@ mod tests {
             Some(3)
         );
         assert_eq!(int(0).birthday_ordinal().unwrap().as_finite(), Some(0));
-        assert!(Surreal::omega().birthday_ordinal().is_none());
+        // ω now has a transfinite birthday (was None before P3): birthday(ω) = ω.
+        assert_eq!(Surreal::omega().birthday_ordinal(), Some(Ordinal::omega()));
+    }
+
+    #[test]
+    fn transfinite_sign_expansions_and_birthdays() {
+        let w = Surreal::omega();
+        // Every ordinal is α-many pluses; its birthday is α.
+        assert_eq!(
+            w.transfinite_sign_expansion().unwrap().runs(),
+            &[(true, Ordinal::omega())]
+        );
+        assert_eq!(w.birthday_ordinal(), Some(Ordinal::omega()));
+        // ω + 1 is a (longer) ordinal, distinct from ε's length.
+        let w1 = w.add(&int(1));
+        assert_eq!(
+            w1.birthday_ordinal(),
+            Some(Ordinal::omega().ord_add(&Ordinal::from_u128(1)))
+        );
+        // ω^ω is an ordinal too — handled, not None.
+        let wtw = Surreal::omega_pow(Surreal::omega());
+        assert_eq!(
+            wtw.birthday_ordinal(),
+            Some(Ordinal::omega_pow(Ordinal::omega()))
+        );
+        // ε = ω⁻¹ : +(−)^ω, length 1 + ω = ω.
+        let eps = Surreal::epsilon();
+        assert_eq!(
+            eps.transfinite_sign_expansion().unwrap().runs(),
+            &[(true, Ordinal::from_u128(1)), (false, Ordinal::omega())]
+        );
+        assert_eq!(eps.birthday_ordinal(), Some(Ordinal::omega())); // 1 + ω = ω
+                                                                    // The honest boundary: √ω, ω−1, ½ω are outside the subclass ⇒ None.
+        assert!(w.sqrt(4).unwrap().birthday_ordinal().is_none()); // √ω = ω^{1/2}
+        assert!(w.sub(&int(1)).birthday_ordinal().is_none()); // ω − 1
+        assert!(Surreal::monomial(int(1), Rational::new(1, 2))
+            .birthday_ordinal()
+            .is_none()); // ½ω
+                         // Finite dyadics still agree with the flat sign expansion.
+        let s = dyadic(3, 4);
+        assert_eq!(
+            s.transfinite_sign_expansion().unwrap().as_finite(),
+            s.sign_expansion()
+        );
+        // as_ordinal round-trips a few ordinals.
+        assert_eq!(int(5).as_ordinal(), Some(Ordinal::from_u128(5)));
+        assert_eq!(w.as_ordinal(), Some(Ordinal::omega()));
+        assert_eq!(w.sub(&int(1)).as_ordinal(), None);
+    }
+
+    #[test]
+    fn truncated_inverse_neumann_series() {
+        let w = Surreal::omega();
+        let x = w.add(&int(1)); // ω + 1
+                                // 1/(ω+1) = ω⁻¹ − ω⁻² + ω⁻³ − … : the three leading terms.
+        let inv3 = x.inv_to_terms(3).unwrap();
+        let expected = Surreal::monomial(int(-1), Rational::one())
+            .add(&Surreal::monomial(int(-2), Rational::int(-1)))
+            .add(&Surreal::monomial(int(-3), Rational::one()));
+        assert_eq!(inv3, expected);
+        // x · (1/x) = 1 in the leading term (truncation error below it).
+        let prod = x.inv_to_terms(10).unwrap().mul(&x);
+        assert_eq!(prod.truncate(1), Surreal::one());
+        // a monomial inverts exactly and matches Scalar::inv.
+        assert_eq!(w.inv_to_terms(5).unwrap(), Surreal::epsilon());
+        // zero has no inverse, at any precision.
+        assert!(Surreal::zero().inv_to_terms(3).is_none());
+    }
+
+    #[test]
+    fn surreal_square_roots() {
+        let w = Surreal::omega();
+        // √ω = ω^{1/2}, exact (monomial radicand), and squares back to ω.
+        let root_w = w.sqrt(4).unwrap();
+        assert_eq!(
+            root_w,
+            Surreal::omega_pow(Surreal::from_rational(Rational::new(1, 2)))
+        );
+        assert_eq!(root_w.mul(&root_w), w);
+        // √4 = 2.
+        assert_eq!(int(4).sqrt(4).unwrap(), int(2));
+        // √(ω²+2ω+1) = ω+1 in the two leading terms (perfect square, square lead).
+        let perfect = Surreal::omega_pow(int(2))
+            .add(&Surreal::monomial(int(1), Rational::int(2)))
+            .add(&int(1)); // ω² + 2ω + 1
+        assert_eq!(perfect.sqrt(2).unwrap(), w.add(&int(1)));
+        // The honest ℚ-coefficient boundary: leading coeff not a perfect square
+        // ⇒ None (√2, √(2ω)); negative ⇒ None (√−ω). √0 = 0.
+        assert!(int(2).sqrt(4).is_none());
+        assert!(Surreal::monomial(int(1), Rational::int(2))
+            .sqrt(4)
+            .is_none());
+        assert!(w.neg().sqrt(4).is_none());
+        assert_eq!(Surreal::zero().sqrt(4).unwrap(), Surreal::zero());
+    }
+
+    #[test]
+    fn surreal_nth_roots() {
+        let w = Surreal::omega();
+        // ∛(ω³) = ω (monomial radicand, exact).
+        assert_eq!(Surreal::omega_pow(int(3)).nth_root(3, 4).unwrap(), w);
+        // ∛(−8) = −2 (odd root of a negative is allowed).
+        assert_eq!(int(-8).nth_root(3, 4).unwrap(), int(-2));
+        // ∛2 is irrational ⇒ None.
+        assert!(int(2).nth_root(3, 4).is_none());
+        // (1+ε)³ = 1 + 3ε + 3ε² + ε³ ; the cube root recovers 1+ε in 2 terms.
+        let base = Surreal::one().add(&Surreal::epsilon());
+        let cubed = base.mul(&base).mul(&base);
+        assert_eq!(cubed.nth_root(3, 2).unwrap(), base);
     }
 }

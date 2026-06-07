@@ -26,6 +26,61 @@ fn gcd(a: i128, b: i128) -> i128 {
     a
 }
 
+/// Exact integer square root of `n ≥ 0`, or `None` if `n` is not a perfect
+/// square.
+fn isqrt_exact(n: i128) -> Option<i128> {
+    if n < 0 {
+        return None;
+    }
+    if n == 0 {
+        return Some(0);
+    }
+    let mut x = (n as f64).sqrt() as i128;
+    while x > 0 && x.checked_mul(x).map_or(true, |v| v > n) {
+        x -= 1;
+    }
+    while (x + 1).checked_mul(x + 1).map_or(false, |v| v <= n) {
+        x += 1;
+    }
+    if x * x == n {
+        Some(x)
+    } else {
+        None
+    }
+}
+
+/// Exact integer `k`-th root of `n` (allowing negative `n` for odd `k`), or
+/// `None` if `n` is not a perfect `k`-th power.
+fn inth_root_exact(n: i128, k: u32) -> Option<i128> {
+    if k == 0 {
+        return None;
+    }
+    if k == 1 {
+        return Some(n);
+    }
+    if n == 0 {
+        return Some(0);
+    }
+    let neg = n < 0;
+    if neg && k % 2 == 0 {
+        return None; // no real even root of a negative
+    }
+    let a = n.abs();
+    let pw = |b: i128| -> Option<i128> { b.checked_pow(k) };
+    let mut x = (a as f64).powf(1.0 / k as f64) as i128;
+    while x > 0 && pw(x).map_or(true, |v| v > a) {
+        x -= 1;
+    }
+    while pw(x + 1).map_or(false, |v| v <= a) {
+        x += 1;
+    }
+    if pw(x) == Some(a) {
+        Some(if neg { -x } else { x })
+    } else {
+        None
+    }
+}
+
 impl Rational {
     pub fn new(num: i128, den: i128) -> Self {
         assert!(den != 0, "zero denominator");
@@ -71,6 +126,27 @@ impl Rational {
     /// The greatest integer ≤ this rational.
     pub fn floor(&self) -> i128 {
         self.num.div_euclid(self.den)
+    }
+
+    /// The exact rational square root, or `None` if it is not a perfect square
+    /// in ℚ (numerator and denominator both perfect squares, and `self ≥ 0`).
+    /// `√2` is `None` here on purpose: it is not rational. This is what bounds
+    /// the surreal `sqrt` to the ℚ-coefficient subclass.
+    pub fn sqrt(&self) -> Option<Rational> {
+        let sn = isqrt_exact(self.num)?;
+        let sd = isqrt_exact(self.den)?;
+        Some(Rational::new(sn, sd))
+    }
+
+    /// The exact rational `k`-th root, or `None` if it is not a perfect `k`-th
+    /// power in ℚ (even `k` requires `self ≥ 0`).
+    pub fn nth_root(&self, k: u32) -> Option<Rational> {
+        if k == 0 {
+            return None;
+        }
+        let rn = inth_root_exact(self.num, k)?;
+        let rd = inth_root_exact(self.den, k)?; // den > 0
+        Some(Rational::new(rn, rd))
     }
 }
 

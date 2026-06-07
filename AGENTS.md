@@ -57,9 +57,16 @@ src/
                   # Plus floor/frac (the Oz bridge — Omnific::floor wraps it) and
                   # the EXACT sign-expansion: sign_expansion/from_sign_expansion
                   # (dyadic, round-trips, length = birthday) + birthday_ordinal.
-                  # NB: transfinite sign expansions (ω, ε; Gonshor) are NOT done —
-                  # the finite/dyadic case only, on purpose (no ℝ-truncation).
-    surcomplex.rs # Surcomplex<S> = adjoin i over any backend.
+                  # Plus the LAZY FIELD layer: inv_to_terms (Neumann-series inverse
+                  # to n terms — non-monomials too, the Zp-style precision contract),
+                  # sqrt/nth_root (real-closed roots; Some iff the leading coeff is a
+                  # perfect ℚ-power, so √2/√(2ω) honestly return None, √ω exact).
+                  # Plus TRANSFINITE (Gonshor) sign expansions for the representable
+                  # subclass: SignExpansion{runs:(bool,Ordinal)} + as_ordinal +
+                  # transfinite_sign_expansion (every ordinal ↦ all-pluses incl ω^ω;
+                  # ε=+(−)^ω) + Ordinal-indexed birthday_ordinal. None outside the
+                  # subclass (√ω, ½ω, ω−1) — honest, not a ℝ-truncation.
+    surcomplex.rs # Surcomplex<S> = adjoin i over any backend (carries conj()).
     omnific.rs    # the omnific integers Oz: Omnific(Surreal) newtype, a transfinite
                   # commutative RING (not field). Surreal mirror of Integer; the
                   # exterior algebra with ω-scale coefficients.
@@ -68,15 +75,28 @@ src/
                   # COMPLETE across φ_{ω+1} (all ordinals < ω³ Cantor) via DiMuro
                   # Lemma 1.1: poly mult in (finite nimbers)[ω] mod ω³−2.
                   # ω⊗ω⊗ω=2; F₄(ω)≅F₆₄ verified. Above ω³ staged (Lenstra tower).
+                  # Also ORDINARY (Cantor) ord_add/ord_mul (NOT nim: ω+ω=ω·2, 1+ω=ω)
+                  # — the surreal birthday's run-length arithmetic lives here.
     fp.rs         # Fp<const P>: the prime field F_P (odd characteristic), a
                   # comparison backend completing the char trichotomy. Genuine neg.
     fpn.rs        # Fpn<const P, const N>: finite extension fields F_{p^N} via a
                   # (P,N)-keyed irreducible reduction poly. Completes the odd-char
                   # tower AND the char-2 odd-DEGREE fields nimbers can't reach (F_8).
                   # Schoolbook mul+reduce, Fermat inv, is_square (Euler/Frobenius).
+                  # Plus the GALOIS TOOLKIT mirroring nimber.rs: frobenius, degree,
+                  # conjugates, min_poly, relative_trace/_norm, multiplicative_order
+                  # (NB the static order()=field order p^N), is_primitive,
+                  # primitive_element, discrete_log — symmetrizing the char trichotomy.
     zp.rs         # Zp<const P, const K>: the p-adic integers Z_p to precision k
                   # (= Z/p^k). A LOCAL RING (p a non-unit), not Q_p — char()=0,
                   # inv = Omnific pattern (units only). Cl over it is non-semisimple.
+    qp.rs         # Qp<const P, const K>: the p-adic FIELD Q_p (field of fractions of
+                  # Zp; the empty cell in the "any number" table, the p-adic mirror
+                  # of Omnific⊂Surreal). p^val·unit, char()=0, inv TOTAL on nonzero
+                  # (1/p exists). CAPPED-RELATIVE precision: mul/inv exact, addition
+                  # NOT associative across precision boundaries (a precision model,
+                  # like float) — used at the forms layer (valuation/residue), and
+                  # deliberately EXCLUDED from the exact-ring fuzz suite.
     wittvec.rs    # WittVec<const P, const N, const F>: Witt vectors W_N(F_q), as the
                   # truncated unramified ring (Z/p^N)[t]/(f̃) (NOT the forms Witt
                   # group). Witt/Teichmüller coords + carry-formula oracle on top.
@@ -88,13 +108,19 @@ src/
                   # associative-algebra core: geom_product_blades (general-bilinear
                   # Chevalley product; reduce_word is a #[cfg(test)] oracle it is
                   # cross-validated against), blade arithmetic, grade projection.
-                  # (bits/grade are pub; q_val/has_upper are pub(crate).)
+                  # (bits/grade are pub; q_val/has_upper are pub(crate).) Also the
+                  # GENERAL multivector_inverse (any invertible element, not just a
+                  # versor): 2^dim left-mult matrix + Gauss-Jordan over the field
+                  # (solve_linear) — char-faithful (char 2 too).
     versor.rs     # the GA layer on top: versor_inverse, sandwich, twisted_sandwich
                   # (Pin action), reflect, left/right_contract, dual/undual,
                   # grade_involution, norm2, even_part / even_subalgebra. Plus the
                   # product/involution suite: clifford_conjugate, scalar_product
                   # ⟨ab⟩₀, commutator/anticommutator (½-free, char-faithful), and
-                  # the regressive meet a∨b (intersection dual to wedge).
+                  # the regressive meet a∨b (intersection dual to wedge). Plus the
+                  # CAYLEY transform cayley/cayley_inverse = (1−B)(1+B)⁻¹: the exact
+                  # RATIONAL bivector↔rotor map (Lie algebra ↔ Spin group, no cos/sin,
+                  # char≠2) — uses engine::multivector_inverse since 1+B isn't a versor.
     blade.rs      # blade analysis: blade_subspace {x:x∧A=0}, is_blade (dim⟨A⟩=grade),
                   # factor_blade (decompose a blade into grade-1 vectors). Nullspace
                   # over the field; char-faithful.
@@ -156,13 +182,32 @@ src/
                   # diagonal form's ω-adic valuation filtration into residue ℝ-forms.
                   # Honest: value group 2-divisible ⇒ W(No)=W(ℝ)=ℤ; the filtration
                   # itself is the novelty.
+    springer_padic.rs # the p-adic MIRROR of springer.rs over the Qp field: bucket a
+                  # diagonal form by p-adic valuation, residue F_p-forms (dim + disc
+                  # square-class). The novelty vs surreal: value group ℤ NOT 2-divisible
+                  # ⇒ TWO residue layers (val even/odd) survive (parity_layer) =
+                  # W(Q_p)=W(F_p)⊕W(F_p). Odd p, already-diagonal only.
+    invariants.rs # numeric FIELD INVARIANTS the Witt ring implies: level/Stufe s(F),
+                  # pythagoras_number, u_invariant, is_sum_of_n_squares — computed over
+                  # finite F_p (level≤2, u=2); ℝ/Q_p textbook constants documented.
+    hermitian.rs  # HERMITIAN forms over Surcomplex (the involution conj() the forms
+                  # pillar never used): HermitianForm (conj-symmetric Gram), unitary
+                  # (conjugate) congruence diagonalize → real diagonal, signature
+                  # (Sylvester, the complete invariant = U(p,q)). Generic sign closure.
 
   games/          # PILLAR — combinatorial game theory (mostly Scalar-free)
     mod.rs        # re-exports the modules below flat.
     thermography.rs # temperature theory: the piecewise-linear thermograph (Pl) of a
                   # short game — left/right scaffolds, stops, cooling (cooled_stops),
                   # temperature, and mean (mast) value. Switches/numbers/↑/⋆ pinned;
-                  # mean is additive. (Atomic weight is NOT done yet — deferred.)
+                  # mean is additive. (Atomic weight now lives in atomic_weight.rs.)
+    atomic_weight.rs # atomic weight of ALL-SMALL games (finishes thermography): the
+                  # two-ahead rule (Siegel Constructive Atomic Weight; Larsson–
+                  # Nowakowski arXiv:2007.03949 Thm 10). A={aw(G^L)−2|aw(G^R)+2};
+                  # non-integer ⇒ aw=A, else far-star ⋆N (N=birthday+1) max/min over
+                  # A's RAW option games (handles fractional option weights — a naive
+                  # 1+max_R aw is WRONG, Codex-caught). aw IS additive on all-small.
+                  # Game::is_all_small / Game::nim_heap live in partizan.rs.
     hackenbush.rs # red/blue/green Hackenbush: Hackenbush{edges, ground=0}, to_game()
                   # (the universal evaluator via move-and-prune), value() → surreal
                   # number (blue–red), grundy() → nimber (all-green = Nim). The
@@ -188,8 +233,12 @@ src/
                   # the game↔surreal bridge (number_value / from_surreal, numbers
                   # only) + the exterior algebra of the GAME group: Λ over ℤ on game
                   # generators (living on all of game-world, incl. non-numbers ⋆/↑).
-                  # Also Game::ordinal_sum (G:H — Hackenbush strings are these).
-                  # NB: distinct from coin_turning.rs — that is coin-turning.
+                  # Also Game::ordinal_sum (G:H — Hackenbush strings are these),
+                  # Game::nim_heap (⋆n, the far star) + Game::is_all_small (atomic-
+                  # weight domain), and NumberGame: transfinite NUMBER games (ω, ε)
+                  # carried by their Surreal value — value/birthday(Ordinal)/sum/cmp
+                  # delegate to surreal, no infinite option tree (the finite Game
+                  # engine is untouched). NB: distinct from coin_turning.rs.
 
   py/             # PyO3 bindings (feature = "python"), split per pillar
     mod.rs        # the #[pymodule]; chains each submodule's pub(crate) register().
@@ -353,6 +402,29 @@ need custom invariant-preserving deserialization, not a naive derive.)
   bug: a nonsingular char-2 form has an alternating polar form and is *not*
   diagonalizable. The char-2 leg classifies via the symplectic Arf reduction
   (`char2.rs`) instead, which takes the full (q, b) metric directly.
+- **`Qp` addition is not associative across precision boundaries.** Capped-relative
+  precision (the standard p-adic model, like float): mul/inv are exact, but
+  additive cancellation below the retained window reads as `0`. `Qp` is a *precision
+  model*, not an exact ring — that's why it's excluded from `tests/scalar_axioms.rs`
+  and used only at the forms layer (valuation/residue). Don't "fix" it to be exact;
+  no finite-memory exact `Q_p` exists (`1/(p+1)` has infinite support).
+- **`Surreal::sqrt`/`nth_root` return `None` for `√2`, `√(2ω)`, `½ω`'s roots, etc.**
+  Intended: the leading coefficient must be a perfect ℚ-power. `√2` is not a
+  finite-CNF-with-ℚ-coeffs surreal (it's born at ω), so we honestly decline — same
+  ethos as "coefficients are ℚ, not ℝ". `√ω = ω^{1/2}` IS exact (monomial).
+- **`Surreal::birthday_ordinal`/`transfinite_sign_expansion` are `None` outside the
+  representable subclass** (`√ω`, `ω−1`, `½ω`, mixed ordinal+infinitesimal). Every
+  *ordinal* (incl. `ω^ω`) is handled (all-pluses); `ε` is the one infinitesimal
+  pinned. Not a gap to close blindly — it's the honest Gonshor scope boundary.
+- **`Fpn::order()` is the field order `p^N` (static, no self); the element's
+  multiplicative order is `multiplicative_order(&self)`.** Different things; the name
+  split is deliberate (the static `order()` predates the Galois toolkit).
+- **Atomic weight's integer branch is NOT `1 + max_R aw(G^R)`.** It's a predicate
+  over `A`'s raw option *games* (`A^R = aw(G^R)+2`) comparing an integer `n` via
+  `le`/`fuzzy`, bounded by the *tightest* right option — so it stays correct when an
+  option's atomic weight is a fraction (e.g. `½`). The naive max-of-integers form
+  panics/misreads there (Codex-caught; see `integer_branch_handles_fractional_option_weights`).
+  And atomic weight IS additive on all-small games — don't reinstate a "not additive" claim.
 
 ## Math facts worth not re-deriving
 

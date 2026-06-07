@@ -12,10 +12,16 @@
 //! [`witt`] packages the Witt group across all three legs ([`WittClassG`]),
 //! and [`springer`] is the non-Archimedean valuation decomposition over the
 //! surreals.
+//!
+//! [`classify`] is the façade over the trichotomy: which leg classifies a form
+//! is a fact about the field, so [`ClassifyForm`] resolves it from the scalar
+//! type — call `metric.classify()` / `algebra.classify()` (and `witt_class()`)
+//! and the right leg is selected at compile time, no manual char-dispatch.
 
 pub mod brauer_wall;
 pub mod char0;
 pub mod char2;
+pub mod classify;
 pub mod diagonalize;
 pub mod equivalence;
 pub mod hermitian;
@@ -31,6 +37,7 @@ pub mod witt_ring;
 pub use brauer_wall::*;
 pub use char0::*;
 pub use char2::*;
+pub use classify::*;
 pub use diagonalize::*;
 pub use equivalence::*;
 pub use hermitian::*;

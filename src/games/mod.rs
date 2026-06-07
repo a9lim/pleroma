@@ -8,6 +8,9 @@
 //!                        (the normal-play impartial center; P-position ⟺ g = 0).
 //!   * [`kernel`]       — normal-play Win/Loss/Draw outcomes of a finite game
 //!                        graph (retrograde analysis); P-positions = Loss.
+//!   * [`loopy`]        — loopy (cyclic) games: the canonical stoppers
+//!                        (on/off/over/under/dud), impartial loopy nim-values, and
+//!                        the Loss-set/Draw-set quadric research instrument.
 //!   * [`misere`]       — misère-play outcomes, indistinguishability quotients,
 //!                        and octal games.
 //!   * [`partizan`]     — short partizan games (sum, order, canonical form, the
@@ -28,6 +31,7 @@ pub mod game_exterior;
 pub mod grundy;
 pub mod hackenbush;
 pub mod kernel;
+pub mod loopy;
 pub mod misere;
 pub mod number_game;
 pub mod partizan;
@@ -40,6 +44,7 @@ pub use game_exterior::*;
 pub use grundy::*;
 pub use hackenbush::*;
 pub use kernel::*;
+pub use loopy::*;
 pub use misere::*;
 pub use number_game::*;
 pub use partizan::*;

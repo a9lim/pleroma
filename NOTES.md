@@ -247,6 +247,27 @@ elementary-2-abelian octal quotient shape in that range.
 - Rules using the polar form `B` in the tested ways do not reproduce the Gold
   zero set.
 
+### Loopy route
+
+`examples/loopy_quadric.rs` (on `games/loopy.rs`, which lifts `kernel::outcomes`'
+Win/Loss/**Draw** retrograde analysis to a first-class Loss-set *and* Draw-set)
+adds the third non-normal-play escape beside interactive and misère. A cyclic move
+graph has a Draw outcome — a position from which neither player forces a win — and
+the Draw-set is not bound by the XOR-linearity that blocks normal-play sums, so it
+is a new place to look for `{Q = 0}`.
+
+What the symmetric B-coupling rule (move `v → v ⊕ d` whenever `B(v,d) = 1`) actually
+produces is instructive: since `B` is symmetric the move graph is *undirected*, so
+the only Losses are isolated vertices, and `v` is isolated exactly when `B(v,·) ≡ 0`
+— i.e. `v ∈ R(B)`. So **Loss-set = R(B)** (the radical) regardless of `Q`. At
+`(m,a) = (4,1)` this coincidentally equals `{Q=0}` (both 4 points), which breaks at
+`m = 8` (`|R(B)| = 4` vs `|{Q=0}| = 112`). And `R(B)` is precisely the degenerate
+part on which the Tier-1 `Sp(B)` no-go is *silent* (the no-go constrains the
+nondegenerate core `V/R(B)`). So the loopy B-only rule reproduces the obstruction
+from a new angle rather than escaping it. The instrument — a cyclic rule's Draw-set
+fed through `fit_f2_quadratic` — is what's new; a genuine Tier-2 witness must hit
+`{Q=0}` where it is not the radical.
+
 ### Frame-blind no-go
 
 For dimension at least 4, if a finite game on `V = F_2^(2r)` has a move relation

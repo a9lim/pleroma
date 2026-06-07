@@ -50,21 +50,13 @@ pub struct Surreal {
 }
 
 /// Sort raw (exponent, coeff) terms into canonical form: descending by
-/// exponent value, like exponents merged, zero coefficients dropped.
-fn canonicalize(mut raw: Vec<(Surreal, Rational)>) -> Vec<(Surreal, Rational)> {
-    raw.sort_by(|a, b| b.0.cmp(&a.0)); // descending by exponent
-    let mut out: Vec<(Surreal, Rational)> = Vec::new();
-    for (exp, coeff) in raw {
-        if let Some(last) = out.last_mut() {
-            if last.0.cmp(&exp) == Ordering::Equal {
-                last.1 = last.1.add(&coeff);
-                continue;
-            }
-        }
-        out.push((exp, coeff));
-    }
-    out.retain(|(_, c)| !c.is_zero());
-    out
+/// exponent **value** (the surreal order — a field operation, since `ω−1 < ω`
+/// despite being structurally longer), like exponents merged by ℚ-addition, zero
+/// coefficients dropped. The descending-merge recipe is shared with the ordinal
+/// backend via [`cnf::merge_descending`](super::cnf::merge_descending); only
+/// these three primitives are surreal-specific.
+fn canonicalize(raw: Vec<(Surreal, Rational)>) -> Vec<(Surreal, Rational)> {
+    super::cnf::merge_descending(raw, |a, b| a.cmp(b), |x, y| x.add(y), |c| c.is_zero())
 }
 
 impl Surreal {

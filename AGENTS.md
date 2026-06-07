@@ -37,7 +37,12 @@ src/
                   # this table — the two pillars are complementary views.)
     mod.rs        # the Scalar trait (add/neg/mul/zero/one/is_zero/inv/
                   # characteristic) + the "any number" table doc + the flat
-                  # re-export hub chaining the family subdirs below.
+                  # re-export hub chaining the family subdirs below. Also the
+                  # impl_scalar_ops! macro: every backend gets concrete-type
+                  # operators (+ - * and unary -) forwarding to the trait methods
+                  # (so `Surreal + Surreal`, `-nimber` work). NOT a Scalar
+                  # supertrait — see the operators note under "things that look
+                  # like bugs". `/` stays a method (inv is partial).
     surcomplex.rs # Surcomplex<S> = adjoin i over ANY backend (carries conj()). The
                   # one generic *functor*, not a concrete world — sits at the root,
                   # orthogonal to the table.
@@ -52,6 +57,12 @@ src/
                   # game-world. Only ±1 invertible (Grassmann never calls inv).
 
     big/          # FAMILY — the transfinite worlds (the number may be infinite)
+      cnf.rs      # the ONE thing surreal & onag genuinely share: merge_descending,
+                  # the descending-CNF canonicalizer parameterized by the 3 places
+                  # they differ (exponent order: No value-order vs ordinal lex;
+                  # coeff merge: + vs XOR; zero test). Deliberately a shared
+                  # FUNCTION, not a Cnf<C> TYPE — the orders/algebras diverge (No is
+                  # a field, On₂ isn't), so a shared type would be a false identity.
       surreal/    # No (real-closed char 0). SPLIT into a subdir, all impl Surreal:
         mod.rs    #   CNF core: Vec<(exponent: Surreal, coeff: Rational)>, recursive
                   #   exponents, Hahn arithmetic ω^a·ω^b = ω^{a+b}, Scalar, Debug,
@@ -72,13 +83,18 @@ src/
       omnific.rs  # the omnific integers Oz: Omnific(Surreal) newtype, a transfinite
                   # commutative RING (not field). Surreal mirror of Integer (the ring
                   # of integers of No); the exterior algebra with ω-scale coeffs.
-      onag.rs     # transfinite (ordinal) NIMBERS: Ordinal in CNF — the char-2 mirror
-                  # of surreal (coeff XOR). nim-add COMPLETE; nim-mul COMPLETE across
-                  # φ_{ω+1} (all ordinals < ω³ Cantor) via DiMuro Lemma 1.1: poly mult
-                  # in (finite nimbers)[ω] mod ω³−2. ω⊗ω⊗ω=2; F₄(ω)≅F₆₄ verified.
-                  # Above ω³ staged (Lenstra tower). Also ORDINARY (Cantor)
-                  # ord_add/ord_mul (NOT nim: ω+ω=ω·2, 1+ω=ω) — the surreal
-                  # birthday's run-length arithmetic lives here.
+      onag/       # transfinite (ordinal) NIMBERS — the char-2 mirror of surreal.
+                  # SPLIT into a subdir like surreal/, all impl Ordinal:
+        mod.rs    #   CNF core: Ordinal = Vec<(exponent: Ordinal, coeff: u128)>,
+                  #   constructors, the lexicographic cmp, as_finite, Debug.
+        nim.rs    #   char-2 NIM arithmetic: nim_add (coeff XOR) COMPLETE; nim_mul
+                  #   COMPLETE across φ_{ω+1} (all ordinals < ω³ Cantor) via DiMuro
+                  #   Lemma 1.1: poly mult in (finite nimbers)[ω] mod ω³−2. ω⊗ω⊗ω=2;
+                  #   F₄(ω)≅F₆₄ verified. Above ω³ staged (Lenstra tower). The XOR
+                  #   canonicalize (= the char-2 coeff merge) lives here.
+        ordinal.rs #  ORDINARY (Cantor) ord_add/ord_mul (NOT nim: ω+ω=ω·2, 1+ω=ω) —
+                  #   the surreal birthday's run-length arithmetic. A distinct
+                  #   algebra from nim, sharing only the CNF shape.
 
     small/        # FAMILY — the non-Archimedean (p-adic) local world
       qp.rs       # Qp<const P, const K>: the p-adic FIELD Q_p (field of fractions of
@@ -165,8 +181,15 @@ src/
                   # delegates here) + classify_versor. Char-2 codomain is F/℘(F).
 
   forms/          # PILLAR — quadratic forms & invariants, by the char trichotomy
-    mod.rs        # re-exports the legs + diagonalize/equivalence + witt/witt_ring
-                  # + brauer_wall + padic + springer.
+    mod.rs        # re-exports the legs + classify + diagonalize/equivalence +
+                  # witt/witt_ring + brauer_wall + padic + springer.
+    classify.rs   # the classifier FAÇADE: ClassifyForm (type Class; classify) +
+                  # WittClassify (witt_class → WittClassG), keyed on the scalar so
+                  # `metric.classify()` / `algebra.classify()` pick the right leg at
+                  # compile time (Surreal→CliffordType, Fp<P>→OddCharType,
+                  # Nimber→ArfResult, …) — no manual char-dispatch. Rational &
+                  # Surcomplex impl ClassifyForm but not WittClassify (their Witt
+                  # data isn't a single WittClassG — honest, not a gap).
     diagonalize.rs # congruence diagonalization (char ≠ 2): gram, diagonalize,
                   # as_diagonal. Returns None in char 2 (nonsingular forms aren't
                   # diagonalizable there — use char2.rs's symplectic Arf reduction).
@@ -379,13 +402,25 @@ PATH (`. "$HOME/.cargo/env"`).
   (`3ω^2 - ω + 5`, `ω^(ω)`, `ω^-1`). Keep `display()` / `Debug` matching this.
 - Python operators: `*` geometric, `^` wedge, `<<`/`>>` left/right contraction,
   `~` reverse, `/` divide (scalar or versor), `**` power, `+`/`-`, `==`.
+- Rust scalar operators: every backend has `+ - *` and unary `-` (via
+  `impl_scalar_ops!` in `scalar/mod.rs`), forwarding to the `Scalar` methods. Use
+  them on concrete-typed scalar code; generic engine code over `S: Scalar` still
+  calls `.add(&x)`/`.mul(&x)` (operators aren't a supertrait — see the note below).
 
 ## Testing
 
 `cargo test` is the source of truth and needs no Python. The Python layer is
-smoke-tested via `demo.py`. After touching `clifford/` or `scalar/surreal.rs`, run
-`cargo test` **and** rebuild + run `demo.py` — display changes don't surface in
-`cargo test`.
+smoke-tested via `demo.py`. After touching `clifford/` or `scalar/big/surreal/`,
+run `cargo test` **and** rebuild + run `demo.py` — display changes don't surface
+in `cargo test`.
+
+**`cargo test` does NOT compile the `python` feature** (it's gated, and that's
+deliberate — keeps the core libpython-free). So a green `cargo test` can hide a
+broken `py/` build: after touching `py/` *or any core API the bindings call*
+(e.g. renaming a `Scalar`/`FiniteField` method), run `cargo check --features
+python`. The Galois-trait unification once shipped a broken `py/scalars.rs` this
+way (the nim Galois methods moved to the trait; the bindings now call the
+`nim_*` u128 free fns instead).
 
 Beyond the per-module unit tests there are two **property-based** suites (dev-dep
 `proptest`, integration tests in `tests/`): `tests/scalar_axioms.rs` fuzzes the
@@ -398,6 +433,14 @@ need custom invariant-preserving deserialization, not a naive derive.)
 
 ## Things that look like bugs but are not
 
+- **Scalar `+ - *` operators are concrete-only, NOT a `Scalar` supertrait.** This
+  is deliberate: making `Scalar: Add+Sub+Mul+Neg` brings the ops into scope for
+  every generic `S`, where `Mul::mul(self, Self)` shadows `Scalar::mul(&self,
+  &Self)` at owned-receiver sites (`m[i][j].mul(&x)`) and forces clones the
+  borrow-based engine avoids (70+ generic sites broke when tried). Concrete-only
+  ops give users `Surreal + Surreal` with zero churn to the generic core. Don't
+  "promote" them to a supertrait, and don't migrate the engine's `.add()`/`.mul()`
+  to operators — the `&self` methods are the right tool there.
 - **Char-2 Clifford over an orthogonal basis is commutative.** `e0*e1 == e1*e0`
   when `b` is empty and the scalar is a nimber. Correct: `{e0,e1}=2B=0` and
   `-1=1`. Set an off-diagonal `b[(i,j)]` to get non-commutativity.

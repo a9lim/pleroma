@@ -160,6 +160,52 @@ that this repo makes the Gold forms into a concrete bridge object between:
 - Arf classification/counting,
 - and candidate P-set game semantics.
 
+## Broadening the form: the game-realizable quadratic family
+
+The thread above fixes one form (Gold, coefficient 1) and hunts for a game. The
+form side is much larger, and all of it is game-realizable. **Theorem (trace
+representation, e.g. Carlet; arXiv:1305.3700):** every quadratic Boolean function
+on `F_{2^m}` is
+
+```text
+Q_c(x) = Σ_{i=1}^{m/2-1} Tr_1^m(c_i · x^{1+2^i})   [ + a half-trace middle term ]
+```
+
+with `c_i ∈ F_{2^m}`. Each monomial `c_i·x^{1+2^i} = c_i ⊗ x ⊗ x^{2^i}` is
+nim-products of `x` with its `i`-fold Frobenius image, so **the whole space of
+quadratic forms is built from coin-turning operations**, not just the
+coefficient-1 Gold atom. Gold `Tr(x^{1+2^a})` is the single-monomial,
+coefficient-1 case.
+
+Why this matters for the open question: `{Q=0}` is farthest from any XOR-subspace
+exactly when `Q` is **bent** (nondegenerate polar form, rank `m`, trivial radical,
+`m` even) — the maximal-nonlinearity case, hardest for a normal-play sum and the
+cleanest Tier-2 target. **Implemented-and-tested** (`experiments/gold_family_survey.py`,
+exhaustive over `F_256`):
+
+- The **unscaled** Gold form `Tr(x^{1+2^a})` is **never bent** — radical
+  `F_{2^{gcd(2a,m)}}`, dim ≥ 1, rank `m − gcd(2a,m)`.
+- But its **components** `Tr(λ·x^{1+2^a})` **are bent for 2/3 of `λ`** when
+  `gcd(a,m)=1` (APN exponent) — exactly the classical count `2(2^m-1)/3` of bent
+  components of a Gold power map, reproduced over `F_256` (170/255 for `a=1,3`).
+  For `gcd(a,m)>1` (non-APN, e.g. `a=2` on `F_256`) the split differs (204 bent,
+  51 of rank 4). **A single extra nim-multiplication — the coefficient `λ` —
+  already unlocks nondegenerate game-realizable forms.** Multi-term sums reach
+  bent generically too.
+- Bent witnesses validate the zero-count `#{Q=0} = 2^{m-1} + (−1)^Arf·2^{m/2-1}`
+  exactly. **Observation (not yet a theorem):** all 170 bent components of
+  `Tr(λ·x^{1+2})` over `F_256` carry **Arf 0** — single-component broadening
+  reaches bent at only one win-bias sign; Arf-1 bent forms appear to need sums.
+
+The route consequence sharpens the open question. On a bent form `R(B) = {0}`, so
+the symmetric-`B` loopy rule (Loss-set `= R(B)`, see `loopy_quadric.rs`) collapses
+to `Loss = {0}` — the radical route is empty — and the frame-blind `Sp(B)` no-go
+applies in full, with **no degenerate part for it to be silent on**. So bent
+game-realizable forms are the *purest* Tier-2 statement: the `(m,a)=(4,1)` radical
+coincidence that masqueraded as a hit in `loopy_quadric.rs` provably cannot recur.
+The next route probe should feed a bent `{Q=0}` into the interactive/misère
+instruments, where realizing it is hardest.
+
 ## Arf as a conditional win-bias
 
 For a nonsingular quadratic form on `F_2^(2r)`:
@@ -233,8 +279,33 @@ XOR-linear. The current bounded results are negative:
 - the octal sweep over 292 codes, heap cutoff <= 4, found quotient orders
   `2, 6, 10, 12, 14`, no `(Z/2)^k` for `k >= 2`.
 
-This does not rule out misere games in general. It rules out the searched
-elementary-2-abelian octal quotient shape in that range.
+**Why — the kernel no-go (a structural obstruction, not an empty search).** The
+empirical negatives are explained by the Plambeck-Siegel structure theory
+("Misere quotients for impartial games", JCTA 2008), and it closes the misere
+route for *genuine* quadrics:
+
+- Every finite misere quotient `Q` has a **kernel** `K` — the mutual-divisibility
+  class of the product of all idempotents — which is the **maximal subgroup** of
+  `Q`; the map `x -> zx` (`z` = kernel identity) surjects `Q ->> K`, and every
+  homomorphism `Q ->` group factors through it. So `K` is the **only** `F_2`-vector-
+  space part of `Q`. (Tame `T_n = K_n u {1,a}`, `K_n ~= (Z/2)^n`, `|T_n| = 2^n+2`
+  — the genuine `(Z/2)^n` is the *kernel*, never the whole quotient, which is why
+  the example's "is the quotient `(Z/2)^k`" test never fires for `k >= 2`.)
+- **Theorem 6.4:** `z*Phi(G) = z*Phi(H) <=> G,H have the same *normal-play* Grundy
+  value`. So `K` is (isomorphic to) the **normal-play nim-value group** `(Z/2)^k`
+  under XOR, and `P n K` is the normal-play `{Grundy = 0}` set — **XOR-linear**.
+
+A genuine quadric is a *nonlinear* zero set *on a vector space*. The only vector-
+space part of a misere quotient is `K`, and there the P-structure is the linear
+normal-play one (Thm 6.4). The genuine misere non-linearity lives **off** the
+kernel, among the non-group "fickle units", where there is no ambient vector space
+and "quadric" is undefined. **So the misere quotient places its non-linearity
+exactly where the quadratic-form framing cannot reach it** — the misere analog of
+the frame-blind `Sp(B)` no-go. Verified concretely on `R8`, the smallest wild
+quotient (`experiments/misere_kernel.py`): kernel `(Z/2)^2`, `P n K = {0}` (linear),
+the lone genuine P-element a fickle unit outside `K`. (Caveat: Thm 6.4 carries a
+regularity hypothesis on the closed game set, satisfied by the regular finite
+quotients arising in practice.)
 
 ### Interactive route
 
@@ -267,6 +338,33 @@ nondegenerate core `V/R(B)`). So the loopy B-only rule reproduces the obstructio
 from a new angle rather than escaping it. The instrument — a cyclic rule's Draw-set
 fed through `fit_f2_quadratic` — is what's new; a genuine Tier-2 witness must hit
 `{Q=0}` where it is not the radical.
+
+### Bent route
+
+`examples/bent_route.rs` runs the route probes on a **bent** game-realizable form
+— a bent Gold component `Tr(λ x^{1+2^a})` (bent for 2/3 of `λ`, see "Broadening the
+form"). Bent is the cleanest Tier-2 test: `R(B) = {0}`, so the symmetric-B loopy
+Loss-set collapses to `{0}` (radical route dead, no `(m,a)=(4,1)`-style coincidence
+possible) and the `Sp(B)` no-go applies in full. Reading the form as an **Ising
+energy** `Q(v) = Σ_{i<j} B_ij v_i v_j + Σ_i q_i v_i` (couplings `B` + per-coin field
+`q_i = Q(e_i)`, both game-realizable), two results stand out (`m=8`, `λ=2`, bent
+Arf 0):
+
+- **B + frame already reaches the right quadric *class*.** A single-bit rule gated
+  by `B` alone in the bit frame (no diagonal, no `Q`) produces a genuine **bent
+  quadric of the correct Arf** — but a *different* member of the isometry class
+  (agreement with `{Q=0}` exactly at chance, `128/256`). So the residual gap to the
+  *specific* Gold `{Q=0}` is alignment within the `O(Q)`-orbit — i.e. the diagonal
+  framing, sharpened to a nondegenerate form with no radical to muddy it.
+- **The naive Ising completion fails.** Adding the per-coin field `q_i` as a local
+  spin-flip gate (`ΔQ_i(v) = q_i ⊕ B(v,e_i)`) does **not** align `B`'s quadric to
+  `{Q=0}`; it leaves the quadric variety entirely (P-set not a quadric). So the
+  diagonal framing must enter some way *other than* a per-coin spin-flip gate — a
+  concrete negative that narrows the search.
+
+Net: on the cleanest case, "B + frame" is provably enough for the right quadric
+*class*; aligning to the specific Gold quadric (the diagonal framing's naturality)
+is the open core, and the obvious local-field assembly is now ruled out.
 
 ### Frame-blind no-go
 
@@ -417,8 +515,12 @@ cargo test
 .venv/bin/python experiments/arf_win_bias.py
 .venv/bin/python experiments/open_question_probe.py
 .venv/bin/python experiments/framing_obstruction.py
+.venv/bin/python experiments/gold_family_survey.py
+.venv/bin/python experiments/misere_kernel.py
 cargo run --example misere_quotient
 cargo run --example interactive_kernel
+cargo run --example loopy_quadric
+cargo run --example bent_route
 cargo run --release --example octal_hunt
 ```
 

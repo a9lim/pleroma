@@ -424,14 +424,24 @@ examples/misere_quotient.rs    # misère quotients + the quadric test on P-sets
 examples/interactive_kernel.rs # B-coupled interactive games vs {Q=0}
 examples/octal_hunt.rs         # sweep octal games for a (ℤ/2)^k quadric P-set
                                # (cargo run --release --example octal_hunt)
+examples/loopy_quadric.rs      # cyclic (Draw-set) rules vs {Q=0}; the radical collapse
+examples/bent_route.rs         # route probes on a BENT form: B+frame reaches the right
+                               # quadric class, the local-field (Ising) completion fails
 demo.py            # the same tour from Python
 experiments/       # research probes ON TOP of the shipped lib: Arf of Gold
                    # forms, the game-built synthesis, the Arf win-bias,
                    # artin_arf (the trace ↔ Arf unification),
                    # open_question_probe (the polar-form obstruction),
-                   # tartan_bilinear (B realized by Turning-Corners), and
+                   # tartan_bilinear (B realized by Turning-Corners),
                    # framing_obstruction (the Sp(B) no-go + the diagonal-framing
-                   # ladder for the open question). See NOTES.md.
+                   # ladder for the open question), and gold_family_survey (the
+                   # full game-realizable quadratic family Σ Tr(c_i x^{1+2^i}) and
+                   # where it goes BENT — components Tr(λ x^{1+2^a}) bent for 2/3 of
+                   # λ, the nondegenerate forms single Gold can't reach), and
+                   # misere_kernel (the misère kernel no-go: a quotient's only F_2-
+                   # vector-space part is its kernel K, which by Plambeck–Siegel Thm
+                   # 6.4 carries the XOR-linear normal-play P-set — so the misère
+                   # route can't give a genuine quadric; verified on R8). See NOTES.md.
 ```
 
 The math thread (Arf↔Clifford, the games bridge, the char-0/char-2 classifier

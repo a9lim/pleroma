@@ -1,7 +1,7 @@
 //! The characteristic-0 Clifford classifier — the symmetry-completing companion
-//! to `arf.rs`. Where the Arf invariant returns the isomorphism class of a
-//! char-2 (nimber) Clifford algebra, this returns the isomorphism class of a
-//! char-0 one as a concrete matrix algebra over ℝ, ℂ, or ℍ.
+//! to [`char2`](crate::forms::char2). Where the Arf invariant returns the
+//! isomorphism class of a char-2 (nimber) Clifford algebra, this returns the
+//! isomorphism class of a char-0 one as a concrete matrix algebra over ℝ, ℂ, or ℍ.
 //!
 //! ## The two tables
 //!

@@ -9,7 +9,7 @@
 //!
 //! Characteristic 2 is genuinely different — a nonsingular char-2 form is *not*
 //! diagonalizable (its polar form is alternating), which is exactly why that leg
-//! uses the symplectic Arf reduction (`char2.rs`) instead. [`diagonalize`]
+//! uses the symplectic Arf reduction (`forms::char2`) instead. [`diagonalize`]
 //! returns `None` there, on the nose.
 //!
 //! The antisymmetric (`a`) part of a general bilinear form is a gauge — it does
@@ -88,7 +88,7 @@ fn ensure_pivot<S: Scalar>(g: &mut [Vec<S>], k: usize) -> bool {
 
 /// An isometric **diagonal** metric for a symmetric form, by congruence
 /// (Gram–Schmidt over the field). `None` in characteristic 2, where nonsingular
-/// forms are not diagonalizable (use the Arf reduction in `char2.rs`), or when
+/// forms are not diagonalizable (use the Arf reduction in `forms::char2`), or when
 /// a generic scalar-ring call encounters a nonzero nonunit pivot.
 ///
 /// The diagonal entries are the squares of an orthogonal basis; null entries are

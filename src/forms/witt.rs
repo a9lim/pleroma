@@ -1,5 +1,5 @@
 //! The Witt group of quadratic forms over a nim-field — the abstraction that
-//! sits behind the `A ⊕ A ≅ H ⊕ H` fact `arf.rs` checks pointwise.
+//! sits behind the `A ⊕ A ≅ H ⊕ H` fact the char-2 Arf tests check pointwise.
 //!
 //! Two nonsingular quadratic forms are **Witt-equivalent** if they become
 //! isomorphic after adding hyperbolic planes; the equivalence classes form an
@@ -314,7 +314,7 @@ mod tests {
 
     #[test]
     fn witt_class_over_f4() {
-        // From arf.rs's F₄ facts: q=[2,2],b=1 is anisotropic (Arf 1); q=[2,3],b=1
+        // From the char-2 F₄ facts: q=[2,2],b=1 is anisotropic (Arf 1); q=[2,3],b=1
         // is hyperbolic-class (Arf 0). Their Witt classes add to the nonzero class.
         let aniso = WittClass::from_metric(&metric(&[2, 2], &[((0, 1), 1)]));
         let split = WittClass::from_metric(&metric(&[2, 3], &[((0, 1), 1)]));

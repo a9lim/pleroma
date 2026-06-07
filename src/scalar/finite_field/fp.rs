@@ -4,7 +4,7 @@
 //! complete the **characteristic trichotomy** the rest of the library realizes:
 //! char 0 (surreal/surcomplex, classified by signature → matrix algebra), char 2
 //! (nimbers, classified by the Arf invariant), and now **odd characteristic**
-//! (classified by dimension + discriminant; see `disc.rs`). Putting `F_p` in the
+//! (classified by dimension + discriminant; see `forms::oddchar`). Putting `F_p` in the
 //! same generic `Scalar` engine lets the odd-char classifier run on the very same
 //! `Metric`/`CliffordAlgebra` machinery.
 //!

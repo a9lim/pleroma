@@ -9,7 +9,7 @@
 //!
 //! This *is* nim-multiplication — defined entirely by a game. `nim_mul_mex`
 //! computes it, and the tests confirm it agrees with the algebraic Fermat-power
-//! `nim_mul` in `nimber.rs`. Two independent definitions, one combinatorial and
+//! `scalar::nim_mul`. Two independent definitions, one combinatorial and
 //! one field-theoretic, of the same product.
 //!
 //! Nim-addition is likewise a game: the disjunctive sum of single-coin

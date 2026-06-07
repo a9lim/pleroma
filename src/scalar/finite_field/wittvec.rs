@@ -34,7 +34,7 @@
 //! ## On-brand hook: Artin–Schreier–Witt
 //!
 //! `W(F₂)` length-`N` is `Z/2^N`, and the additive Frobenius/`℘` on Witt vectors
-//! generalises the `y² + y = c` Artin–Schreier solver in `scalar/nimber.rs` to
+//! generalises the `y² + y = c` Artin–Schreier solver in `scalar::nim_solve_artin_schreier` to
 //! `Z/p^n`-extensions (Artin–Schreier–Witt theory) — extending the Arf↔Artin–
 //! Schreier thread. (Documented as motivation; the solver itself is future work.)
 

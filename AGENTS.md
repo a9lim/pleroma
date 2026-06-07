@@ -126,13 +126,15 @@ src/
                   # impl FiniteField (frobenius/pow/ext_degree/group_order); keeps
                   # only min_poly (F_p projection) + primitive_element. (NB the static
                   # order() = field order p^N, ≠ multiplicative_order(&self).)
-      nimber.rs   # On₂ in u128 (= F_{2^128}): nim_add = XOR; nim_mul via Fermat-power
-                  # recursion, memoised on 2^i ⊗ 2^j. Also nim_square / nim_sqrt
-                  # (Frobenius & inverse), nim_trace, the Artin–Schreier solver
-                  # (y²+y=c, solvable ⇔ Tr(c)=0). impl FiniteField; the nim_* free fns
-                  # (the Python-bound u128 surface) delegate to the trait. OVERRIDES
-                  # is_primitive (direct subgroup check) and discrete_log (Pohlig–
-                  # Hellman + BSGS over the known 2^128−1 factorization ORDER_FACTORS).
+      nimber/     # On₂ in u128 (= F_{2^128}), split by layer while re-exporting the
+                  # same nim_* surface flat:
+        mod.rs    #   Nimber wrapper + Scalar impl + public re-exports.
+        arithmetic.rs # nim_add = XOR; nim_mul via Fermat-power recursion memoised
+                  #   on 2^i ⊗ 2^j; nim_square/nim_sqrt/nim_inv.
+        artin_schreier.rs # nim_trace + y²+y=c solver (solvable ⇔ Tr(c)=0).
+        galois.rs #   impl FiniteField; degree/conjugates/min_poly/relative
+                  #   trace/norm/order/primitive/discrete-log. OVERRIDES is_primitive
+                  #   and discrete_log with Pohlig–Hellman + BSGS over ORDER_FACTORS.
       wittvec.rs  # WittVec<const P, const N, const F>: Witt vectors W_N(F_q), as the
                   # truncated unramified ring (Z/p^N)[t]/(f̃) (NOT the forms Witt
                   # group). The char-p analogue of Z_p (= W(F_p)) — the ring of
@@ -206,7 +208,7 @@ src/
                   # WittClassG — honest, not a gap).
     diagonalize.rs # congruence diagonalization (char ≠ 2): gram, diagonalize,
                   # as_diagonal. Returns None in char 2 (nonsingular forms aren't
-                  # diagonalizable there — use char2.rs's symplectic Arf reduction).
+                  # diagonalizable there — use char2/arf.rs's symplectic reduction).
                   # This is what lets char0/oddchar classify ARBITRARY metrics.
     equivalence.rs # isometry (per backend, via the complete invariant) +
                   # Witt decomposition (k·H ⊥ anisotropic kernel) over ℝ and F_q.
@@ -214,19 +216,22 @@ src/
                   # matrix algebra over ℝ/ℂ/ℍ via the 8-fold table (real-closed
                   # surreal/rational) and the 2-fold table (surcomplex). Non-diagonal
                   # metrics are diagonalized first (signature is pub(crate)).
-    oddchar.rs    # (was disc.rs) the odd-char classifier: FiniteOddField unifies Fp
-                  # and Fpn square classes + field metadata; classify_finite_odd /
-                  # finite_odd_witt are the generic implementation, while
-                  # classify_oddchar / oddchar_witt remain the prime-field wrappers.
-                  # discriminant + hasse_invariant (≡ +1 over finite fields);
-                  # dim+disc complete. Non-diagonal metrics diagonalized first.
-    char2.rs      # (was arf.rs) the Arf invariant (char-2 classifier): arf_f2 (F₂
-                  # bitmask) + arf_nimber (any nim-field, symplectic reduction + the
-                  # field trace). Also the Dickson invariant (dickson_matrix =
-                  # rank(g−I) mod 2, ker = SO; dickson_of_versor). The CLASSIFIER —
-                  # the quadric-fitting research bench split out to quadric_fit.rs.
+    oddchar/      # odd-characteristic forms, re-exported flat:
+      mod.rs      #   hub and trichotomy docs.
+      field.rs    #   FiniteOddField unifies Fp and Fpn square classes + metadata.
+      invariants.rs # classify_finite_odd / finite_odd_witt are the generic
+                  #   implementation; classify_oddchar / oddchar_witt remain
+                  #   prime-field wrappers. discriminant + hasse_invariant (≡ +1
+                  #   over finite fields); dim+disc complete. Non-diagonal metrics
+                  #   diagonalized first.
+    char2/        # characteristic-2 invariants, re-exported flat:
+      mod.rs      #   hub: forms::arf_invariant / forms::dickson_matrix stay shallow.
+      arf.rs      #   the Arf invariant (char-2 classifier): arf_f2 (F₂ bitmask) +
+                  #   arf_nimber (any nim-field, symplectic reduction + trace).
+      dickson.rs  #   Dickson invariant: dickson_matrix = rank(g−I) mod 2, ker = SO;
+                  #   dickson_of_versor delegates to generic versor grade parity.
     quadric_fit.rs # the "is this P-set a quadric?" research BENCH (split from
-                  # char2.rs): fit_f2_quadratic (Gaussian elim over the 2^k membership
+                  # the char2 classifier): fit_f2_quadratic (Gaussian elim over the 2^k membership
                   # equations) + QuadricFit{constant,qd,bmat,arf} + is_genuinely_
                   # quadratic. The instrument the game probes / misere_quotient /
                   # octal_hunt feed P-positions into — distinct from the classifier.
@@ -350,7 +355,7 @@ experiments/       # research probes ON TOP of the shipped lib: Arf of Gold
 
 The math thread (Arf↔Clifford, the games bridge, the char-0/char-2 classifier
 symmetry, the Artin–Schreier ↔ Arf unification, the open play-semantics
-question) is written up in `NOTES.md` — read it before touching `forms/char2.rs`,
+question) is written up in `NOTES.md` — read it before touching `forms/char2/`,
 `forms/quadric_fit.rs`, `forms/char0.rs`, `games/coin_turning.rs`,
 `games/kernel.rs`, `games/misere.rs`, `forms/witt.rs`, `experiments/`, or the
 `misere_quotient` / `interactive_kernel` examples.
@@ -497,7 +502,7 @@ need custom invariant-preserving deserialization, not a naive derive.)
 - **`forms::diagonalize`/`as_diagonal` return `None` in characteristic 2.** Not a
   bug: a nonsingular char-2 form has an alternating polar form and is *not*
   diagonalizable. The char-2 leg classifies via the symplectic Arf reduction
-  (`char2.rs`) instead, which takes the full (q, b) metric directly.
+  (`forms::char2`) instead, which takes the full (q, b) metric directly.
 - **`Qp` addition is not associative across precision boundaries.** Capped-relative
   precision (the standard p-adic model, like float): mul/inv are exact, but
   additive cancellation below the retained window reads as `0`. `Qp` is a *precision

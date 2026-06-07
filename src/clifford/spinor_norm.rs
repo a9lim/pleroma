@@ -1,7 +1,7 @@
 //! The spinor norm `N: O(Q) → F*/F*²` and the Dickson grade parity — the two
 //! invariants that, together, pin down a versor's place in the Pin/Spin tower.
 //!
-//! `forms/char2.rs` already classifies isometries in characteristic 2 by the
+//! `forms::char2` already classifies isometries in characteristic 2 by the
 //! **Dickson invariant** (`SO(Q) = ker D`). The companion across the *other*
 //! characteristics is the **spinor norm**: for the exact sequence
 //! `1 → {±1} → Pin(Q) → O(Q) → 1`, a versor `v = v₁⋯v_k` (a product of vectors)
@@ -18,7 +18,7 @@
 //! `F*/F*²` is trivial — the multiplicative spinor norm collapses. The correct
 //! char-2 spinor norm is **additive**, valued in `F/℘(F)` (the Artin–Schreier
 //! group, `℘(x) = x² + x`) — the very group the Arf invariant is pushed into by the
-//! field trace (`scalar/nimber.rs`'s `nim_trace`). So in char 2 the right companion
+//! field trace (`scalar::nim_trace`). So in char 2 the right companion
 //! to Dickson is that additive invariant, not this multiplicative one; we expose
 //! the **raw** norm `⟨v ṽ⟩₀` generically (correct as an element of `F`) and leave
 //! the "mod squares" / "mod ℘" reduction to the caller's field, where the square /

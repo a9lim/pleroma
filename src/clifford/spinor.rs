@@ -1,7 +1,7 @@
 //! Concrete spinor modules: left ideals and the matrices that realize Clifford
 //! generators as operators on column spinors.
 //!
-//! The char-0 classifier (`classify.rs`) *names* the real-closed matrix algebra
+//! The char-0 classifier (`forms::char0`) *names* the real-closed matrix algebra
 //! `Cl(p,q) ≅ M_d(K)`; this module builds concrete operator matrices. It searches
 //! for an idempotent `f` as a product of commuting "halves" `½(1 + w)` with
 //! `w² = +1`, takes the left ideal `S = Cl·f`, picks a basis, and reads off the

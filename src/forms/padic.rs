@@ -1,7 +1,7 @@
 //! The Hilbert symbol over `Q_p` and the Hasse–Minkowski local–global principle
 //! over `Q` — where the Hasse invariant finally does classifying work.
 //!
-//! `oddchar.rs`'s Hilbert symbol is identically `+1` (finite fields have trivial
+//! `forms::oddchar`'s Hilbert symbol is identically `+1` (finite fields have trivial
 //! Brauer group, so no nontrivial quaternion algebras). Over `Q_p` the Hilbert
 //! symbol `(a, b)_p` is genuinely nontrivial — it detects the quaternion algebra
 //! `(a, b)` — and the **Hasse invariant** `∏_{i<j}(a_i, a_j)_v` it builds becomes a

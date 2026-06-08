@@ -23,13 +23,15 @@
 //! automorphism group). Vectors are reported in lattice (basis) coordinates as
 //! integer vectors, both signs included.
 //!
-//! Honest cutoff. Short-vector enumeration is Fincke–Pohst (a Cholesky-bounded
-//! box search). Automorphism counting first checks the standard closed-form
-//! families this module knows how to recognize in their shipped bases (diagonal
-//! signed-permutation lattices and the `A`/`D`/`E` root lattices); everything else
-//! falls back to a backtracking search over basis images, which is **exponential**
-//! in general. The fallback is bounded by an explicit node budget
-//! ([`AUTO_NODE_BUDGET`]); when the search exceeds it the count is reported as
+//! Honest cutoff. Short-vector enumeration first applies a conservative unimodular
+//! size-reduction pass (integral shears/swaps, so the lattice is unchanged), then
+//! runs Fincke–Pohst (an LDL-bounded box search with exact norm filtering) and maps
+//! the vectors back to the original coordinates. Automorphism counting first checks
+//! closed-form families: diagonal signed-permutation lattices, literal `A`/`D`/`E`
+//! Cartan bases, and then basis-independent root systems recovered from the norm-2
+//! roots. Everything else falls back to a backtracking search over basis images,
+//! which is **exponential** in general. The fallback is bounded by an explicit node
+//! budget ([`AUTO_NODE_BUDGET`]); when the search exceeds it the count is reported as
 //! `None` rather than silently truncated. Use
 //! [`automorphism_group_order_bounded`](IntegralForm::automorphism_group_order_bounded)
 //! to choose the budget explicitly.
@@ -37,6 +39,7 @@
 use crate::linalg::field::inverse_matrix;
 use crate::linalg::integer::smith_normal_form;
 use crate::scalar::Rational;
+use std::collections::{BTreeMap, VecDeque};
 
 /// The default node budget for [`IntegralForm::automorphism_group_order`]. Beyond
 /// this many backtracking nodes the search reports `None` (the lattice is too
@@ -88,6 +91,110 @@ fn checked_pow2(n: usize) -> Option<u128> {
 
 fn signed_permutation_order(n: usize) -> Option<u128> {
     checked_pow2(n)?.checked_mul(checked_factorial(n)?)
+}
+
+fn round_div_nearest(num: i128, den: i128) -> i128 {
+    debug_assert!(den > 0);
+    let q = num.div_euclid(den);
+    let r = num.rem_euclid(den);
+    if r.checked_mul(2).expect("rounding residue exceeds i128") >= den {
+        q + 1
+    } else {
+        q
+    }
+}
+
+fn identity_i128(n: usize) -> Vec<Vec<i128>> {
+    let mut out = vec![vec![0i128; n]; n];
+    for (i, row) in out.iter_mut().enumerate() {
+        row[i] = 1;
+    }
+    out
+}
+
+fn map_coords(u: &[Vec<i128>], y: &[i128]) -> Vec<i128> {
+    let n = y.len();
+    let mut out = vec![0i128; n];
+    for i in 0..n {
+        let mut acc = 0i128;
+        for (j, &yj) in y.iter().enumerate() {
+            acc = acc
+                .checked_add(u[i][j].checked_mul(yj).expect("basis map exceeds i128"))
+                .expect("basis map exceeds i128");
+        }
+        out[i] = acc;
+    }
+    out
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum RootComponentKind {
+    A(usize),
+    D(usize),
+    E(usize),
+}
+
+impl RootComponentKind {
+    fn from_rank_and_roots(rank: usize, roots: usize) -> Option<Self> {
+        if rank >= 1 && roots == rank.checked_mul(rank + 1)? {
+            return Some(RootComponentKind::A(rank));
+        }
+        if rank >= 4 && roots == 2usize.checked_mul(rank)?.checked_mul(rank - 1)? {
+            return Some(RootComponentKind::D(rank));
+        }
+        match (rank, roots) {
+            (6, 72) => Some(RootComponentKind::E(6)),
+            (7, 126) => Some(RootComponentKind::E(7)),
+            (8, 240) => Some(RootComponentKind::E(8)),
+            _ => None,
+        }
+    }
+
+    fn automorphism_order(self) -> Option<u128> {
+        match self {
+            RootComponentKind::A(n) => {
+                if n == 1 {
+                    Some(2)
+                } else {
+                    checked_factorial(n + 1)?.checked_mul(2)
+                }
+            }
+            RootComponentKind::D(n) => match n {
+                4 => Some(1152),
+                _ if n >= 5 => checked_pow2(n)?.checked_mul(checked_factorial(n)?),
+                _ => None,
+            },
+            RootComponentKind::E(6) => Some(103_680),
+            RootComponentKind::E(7) => Some(2_903_040),
+            RootComponentKind::E(8) => Some(696_729_600),
+            RootComponentKind::E(_) => None,
+        }
+    }
+}
+
+fn canonical_root(mut v: Vec<i128>) -> Vec<i128> {
+    if let Some(&first) = v.iter().find(|&&x| x != 0) {
+        if first < 0 {
+            for x in &mut v {
+                *x = -*x;
+            }
+        }
+    }
+    v
+}
+
+fn rows_generate_full_lattice(rows: &[Vec<i128>], n: usize) -> bool {
+    let hnf = crate::linalg::integer::normalize_relation_rows(rows.to_vec());
+    if hnf.len() != n {
+        return false;
+    }
+    let mut index = 1i128;
+    for (i, row) in hnf.iter().enumerate() {
+        index = index
+            .checked_mul(row[i].abs())
+            .expect("root-lattice index exceeds i128");
+    }
+    index == 1
 }
 
 fn simple_laced_cartan_matches(gram: &[Vec<i128>], edges: &[(usize, usize)]) -> bool {
@@ -353,10 +460,120 @@ impl IntegralForm {
         (d, u)
     }
 
+    fn shear_basis(
+        gram: &mut [Vec<i128>],
+        transform: &mut [Vec<i128>],
+        i: usize,
+        j: usize,
+        k: i128,
+    ) {
+        if k == 0 {
+            return;
+        }
+        let n = gram.len();
+        let gij = gram[i][j];
+        let gii = gram[i][i];
+        let new_jj = gram[j][j]
+            .checked_add(
+                k.checked_mul(2)
+                    .and_then(|x| x.checked_mul(gij))
+                    .expect("basis reduction exceeds i128"),
+            )
+            .and_then(|x| {
+                k.checked_mul(k)
+                    .and_then(|kk| kk.checked_mul(gii))
+                    .and_then(|term| x.checked_add(term))
+            })
+            .expect("basis reduction exceeds i128");
+        let mut new_col = vec![0i128; n];
+        for l in 0..n {
+            new_col[l] = gram[l][j]
+                .checked_add(
+                    k.checked_mul(gram[l][i])
+                        .expect("basis reduction exceeds i128"),
+                )
+                .expect("basis reduction exceeds i128");
+        }
+        for l in 0..n {
+            gram[l][j] = new_col[l];
+            gram[j][l] = new_col[l];
+        }
+        gram[j][j] = new_jj;
+        for row in transform {
+            row[j] = row[j]
+                .checked_add(k.checked_mul(row[i]).expect("basis map exceeds i128"))
+                .expect("basis map exceeds i128");
+        }
+    }
+
+    fn swap_basis(gram: &mut [Vec<i128>], transform: &mut [Vec<i128>], i: usize, j: usize) {
+        if i == j {
+            return;
+        }
+        gram.swap(i, j);
+        for row in gram.iter_mut() {
+            row.swap(i, j);
+        }
+        for row in transform {
+            row.swap(i, j);
+        }
+    }
+
+    /// A conservative integral size reduction of a positive-definite basis. The
+    /// returned transform `U` maps reduced-basis coordinates back to `self`'s
+    /// coordinates and has determinant `±1`.
+    fn size_reduced_basis(&self) -> (IntegralForm, Vec<Vec<i128>>) {
+        let n = self.dim();
+        let mut gram = self.gram.clone();
+        let mut transform = identity_i128(n);
+        let max_passes = 8 * n.saturating_mul(n).saturating_add(1);
+        for _ in 0..max_passes {
+            let mut changed = false;
+            for i in 0..n {
+                if gram[i][i] <= 0 {
+                    continue;
+                }
+                for j in i + 1..n {
+                    let k = -round_div_nearest(gram[i][j], gram[i][i]);
+                    if k != 0 {
+                        Self::shear_basis(&mut gram, &mut transform, i, j, k);
+                        changed = true;
+                    }
+                }
+            }
+            for i in 0..n.saturating_sub(1) {
+                if gram[i + 1][i + 1] < gram[i][i] {
+                    Self::swap_basis(&mut gram, &mut transform, i, i + 1);
+                    changed = true;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        (IntegralForm { gram }, transform)
+    }
+
     /// All nonzero lattice vectors `x` with `0 < Q(x) ≤ bound`, in lattice
     /// coordinates and including both signs. `None` if the lattice is not
     /// positive definite (the count would be infinite).
     pub fn short_vectors(&self, bound: i128) -> Option<Vec<Vec<i128>>> {
+        if !self.is_positive_definite() {
+            return None;
+        }
+        if self.dim() == 0 || bound <= 0 {
+            return Some(Vec::new());
+        }
+        let (reduced, transform) = self.size_reduced_basis();
+        let vecs = reduced.short_vectors_raw(bound)?;
+        Some(
+            vecs.into_iter()
+                .map(|v| map_coords(&transform, &v))
+                .collect(),
+        )
+    }
+
+    fn short_vectors_raw(&self, bound: i128) -> Option<Vec<Vec<i128>>> {
         if !self.is_positive_definite() {
             return None;
         }
@@ -370,7 +587,7 @@ impl IntegralForm {
         // Pad the float radius outward so rounding can only over-collect; the
         // exact integer filter at the leaf removes any spurious vectors.
         let eps = 1e-9 * (bound as f64).max(1.0) + 1e-9;
-        self.fp_search(n, bound, &d, &u, eps, &mut x, &mut out);
+        self.fp_search(n, bound, &d, &u, eps, 0.0, &mut x, &mut out);
         Some(out)
     }
 
@@ -382,6 +599,7 @@ impl IntegralForm {
         d: &[f64],
         u: &[Vec<f64>],
         eps: f64,
+        tail: f64,
         x: &mut [i128],
         out: &mut Vec<Vec<i128>>,
     ) {
@@ -397,17 +615,6 @@ impl IntegralForm {
         for j in i..d.len() {
             center += u[idx][j] * x[j] as f64;
         }
-        // remaining budget for coordinates 0..=idx is encoded by re-deriving the
-        // partial norm; we recompute the running budget from `bound` minus the
-        // already-fixed tail terms.
-        let mut tail = 0.0f64;
-        for k in i..d.len() {
-            let mut c = 0.0f64;
-            for j in k + 1..d.len() {
-                c += u[k][j] * x[j] as f64;
-            }
-            tail += d[k] * (x[k] as f64 + c).powi(2);
-        }
         let remaining = bound as f64 - tail;
         if remaining < -eps {
             return;
@@ -417,7 +624,8 @@ impl IntegralForm {
         let hi = (-center + radius).floor() as i128;
         for xi in lo..=hi {
             x[idx] = xi;
-            self.fp_search(idx, bound, d, u, eps, x, out);
+            let coord = xi as f64 + center;
+            self.fp_search(idx, bound, d, u, eps, tail + d[idx] * coord * coord, x, out);
         }
         x[idx] = 0;
     }
@@ -508,9 +716,9 @@ impl IntegralForm {
         }
     }
 
-    /// Closed-form automorphism orders for standard bases. These are intentionally
-    /// syntactic recognizers, not a full root-system isometry classifier; arbitrary
-    /// basis changes still fall through to the exact search.
+    /// Closed-form automorphism orders. Literal standard bases are checked first
+    /// because they are cheap; then norm-2 roots are used for a basis-independent
+    /// simply-laced root-system classifier before falling back to exact search.
     fn automorphism_group_order_fast(&self) -> Option<u128> {
         let n = self.dim();
         if n == 0 {
@@ -555,7 +763,61 @@ impl IntegralForm {
         if self.matches_e8_cartan() {
             return Some(696_729_600);
         }
-        None
+        self.root_system_automorphism_order()
+    }
+
+    fn root_system_automorphism_order(&self) -> Option<u128> {
+        if !self.is_even() || self.minimum()? != 2 {
+            return None;
+        }
+        let n = self.dim();
+        let mut roots: Vec<Vec<i128>> = Vec::new();
+        for root in self.minimal_vectors()? {
+            let root = canonical_root(root);
+            if !roots.contains(&root) {
+                roots.push(root);
+            }
+        }
+        if !rows_generate_full_lattice(&roots, n) {
+            return None;
+        }
+
+        let mut seen = vec![false; roots.len()];
+        let mut kinds = Vec::new();
+        for start in 0..roots.len() {
+            if seen[start] {
+                continue;
+            }
+            let mut queue = VecDeque::from([start]);
+            seen[start] = true;
+            let mut component = Vec::new();
+            while let Some(i) = queue.pop_front() {
+                component.push(i);
+                for j in 0..roots.len() {
+                    if !seen[j] && self.inner(&roots[i], &roots[j]) != 0 {
+                        seen[j] = true;
+                        queue.push_back(j);
+                    }
+                }
+            }
+            let component_roots: Vec<Vec<i128>> =
+                component.into_iter().map(|i| roots[i].clone()).collect();
+            let rank =
+                crate::linalg::integer::normalize_relation_rows(component_roots.clone()).len();
+            let root_count = component_roots.len().checked_mul(2)?;
+            kinds.push(RootComponentKind::from_rank_and_roots(rank, root_count)?);
+        }
+
+        let mut order = 1u128;
+        let mut multiplicities: BTreeMap<RootComponentKind, usize> = BTreeMap::new();
+        for kind in kinds {
+            order = order.checked_mul(kind.automorphism_order()?)?;
+            *multiplicities.entry(kind).or_insert(0) += 1;
+        }
+        for mult in multiplicities.values() {
+            order = order.checked_mul(checked_factorial(*mult)?)?;
+        }
+        Some(order)
     }
 
     fn matches_a_cartan(&self) -> bool {
@@ -796,6 +1058,20 @@ mod tests {
     }
 
     #[test]
+    fn short_vectors_return_original_coordinates_after_basis_reduction() {
+        // Uᵀ I U for U = [[1, 10], [0, 1]] is a badly skewed basis of Z².
+        // The norm-1 vectors in this basis are ±(1,0) and ±(-10,1).
+        let g = IntegralForm::new(vec![vec![1, 10], vec![10, 101]]).unwrap();
+        let mut vecs = g.short_vectors(1).unwrap();
+        vecs.sort();
+        assert_eq!(
+            vecs,
+            vec![vec![-10, 1], vec![-1, 0], vec![1, 0], vec![10, -1]]
+        );
+        assert!(vecs.iter().all(|v| g.norm(v) == 1));
+    }
+
+    #[test]
     fn short_vectors_are_indefinite_safe() {
         // An indefinite form has no finite short-vector set.
         let hyp = IntegralForm::new(vec![vec![0, 1], vec![1, 0]]).unwrap();
@@ -828,17 +1104,15 @@ mod tests {
 
     #[test]
     fn automorphism_budget_cutoff_reports_none() {
-        // A tiny budget forces the search to give up rather than silently
-        // truncating: an honest None, not a wrong count. Use a permuted D_4 basis
-        // so this specifically exercises the fallback search instead of the
-        // standard-basis root-lattice recognizer.
-        let d4_fallback = permute_basis(&d4(), &[2, 0, 1, 3]);
-        assert_eq!(d4_fallback.automorphism_group_order_bounded(5), None);
-        // With a generous budget the count is exact again.
-        assert_eq!(
-            d4_fallback.automorphism_group_order_bounded(10_000_000),
-            Some(1152)
-        );
+        // Permuted root bases are now recognized by the root-system fast path,
+        // independent of the standard Cartan syntax.
+        let d4_permuted = permute_basis(&d4(), &[2, 0, 1, 3]);
+        assert_eq!(d4_permuted.automorphism_group_order_bounded(1), Some(1152));
+
+        // A tiny budget still forces the fallback search to give up rather than
+        // silently truncating on a non-root lattice: an honest None, not a wrong count.
+        let generic = IntegralForm::new(vec![vec![2, 1], vec![1, 3]]).unwrap();
+        assert_eq!(generic.automorphism_group_order_bounded(0), None);
     }
 
     #[test]

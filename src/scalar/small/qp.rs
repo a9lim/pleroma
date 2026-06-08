@@ -33,7 +33,7 @@
 //! layer (valuation + residue square class, both robust to relative precision)
 //! and is deliberately **excluded from the exact-ring fuzz suite**.
 
-use crate::scalar::{Fp, Scalar};
+use crate::scalar::{Fp, Rational, Scalar};
 use std::fmt;
 
 /// An element of `Q_p` to precision `k`: `p^{val} · unit` with `p ∤ unit` carried
@@ -112,6 +112,13 @@ impl<const P: u128, const K: u128> Qp<P, K> {
             unit: 1 % Self::modulus(),
             val: v,
         }
+    }
+
+    /// Embed a rational number into `Q_p`: `from_i128(num) · from_i128(den)^{-1}`.
+    pub fn from_rational(q: &Rational) -> Self {
+        let num = Self::from_i128(q.numer());
+        let den = Self::from_i128(q.denom());
+        num.mul(&den.inv().expect("Qp::from_rational: nonzero denominator"))
     }
 
     /// The p-adic valuation, or `None` for zero (whose valuation is `+∞`).
@@ -276,6 +283,18 @@ mod tests {
         assert_eq!(pinv.valuation(), Some(-1));
         // Zero is the only non-invertible element.
         assert_eq!(Q5::zero().inv(), None);
+    }
+
+    #[test]
+    fn from_rational_matches_integer_embedding_and_denominator_inverse() {
+        let x = Q5::from_rational(&Rational::new(50, 3));
+        let expected = Q5::from_i128(50).mul(&Q5::from_i128(3).inv().unwrap());
+        assert_eq!(x, expected);
+        assert_eq!(x.valuation(), Some(2));
+
+        let y = Q5::from_rational(&Rational::new(3, 50));
+        assert_eq!(y.valuation(), Some(-2));
+        assert_eq!(x.mul(&y), Q5::one());
     }
 
     #[test]

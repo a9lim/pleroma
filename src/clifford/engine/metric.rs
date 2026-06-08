@@ -91,6 +91,12 @@ impl<S: Scalar> Metric<S> {
         self.a.values().any(|v| !v.is_zero())
     }
 
+    /// True iff the basis is orthogonal: no off-diagonal polar or upper
+    /// contraction terms are present. Then a blade product reduces to one blade.
+    pub(crate) fn is_orthogonal(&self) -> bool {
+        self.b.values().all(|v| v.is_zero()) && self.a.values().all(|v| v.is_zero())
+    }
+
     /// Orthogonal direct sum `M ⟂ M'`: a block-diagonal metric on the disjoint
     /// union of the two generator sets.
     pub fn direct_sum(&self, other: &Metric<S>) -> Metric<S> {

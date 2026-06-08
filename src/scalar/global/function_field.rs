@@ -22,15 +22,15 @@
 //!
 //! ## Representation
 //!
-//! `num(t) / den(t)` as a pair of [`Poly`]s, denominator normalized monic — the
-//! same field-of-fractions arithmetic as [`Gauss`](crate::scalar::Gauss) (`inv =
-//! den/num`, cross-multiplication equality, no gcd reduction). The distinction is
-//! one of **role**, not arithmetic: `Gauss<S>` is `S(t)` carrying *one* (Gauss)
-//! valuation and is [`Valued`](crate::scalar::Valued); `RationalFunction<S>` is the
-//! *global* field carrying *all* its place valuations at once, so — exactly like
-//! [`Adele`](crate::scalar::Adele) — it is deliberately **not** `Valued` (no single
-//! canonical uniformizer). The per-place valuations are computed by the forms layer
-//! from [`num`](RationalFunction::num)/[`den`](RationalFunction::den).
+//! `num(t) / den(t)` as a pair of [`Poly`]s, with numerator and denominator
+//! gcd-reduced and the denominator normalized monic. This differs deliberately from
+//! [`Gauss`](crate::scalar::Gauss), whose capped-precision valuation model keeps
+//! unreduced fractions to avoid precision-unstable cancellation. `RationalFunction`
+//! is exact, so canonical reduction is safe and keeps global-place arithmetic from
+//! growing unnecessary common factors. Like [`Adele`](crate::scalar::Adele), it is
+//! deliberately **not** `Valued` (no single canonical uniformizer); the forms layer
+//! computes per-place valuations from [`num`](RationalFunction::num) and
+//! [`den`](RationalFunction::den).
 
 use crate::scalar::{Poly, Scalar};
 use std::fmt;
@@ -44,7 +44,8 @@ pub struct RationalFunction<S: Scalar> {
 }
 
 impl<S: Scalar> RationalFunction<S> {
-    /// Assemble `num / den` (already-`Poly`), normalizing the denominator to monic.
+    /// Assemble `num / den` (already-`Poly`), gcd-reducing and normalizing the
+    /// denominator to monic.
     fn from_polys(num: Poly<S>, den: Poly<S>) -> Self {
         assert!(!den.is_zero(), "RationalFunction: zero denominator");
         if num.is_zero() {
@@ -53,6 +54,15 @@ impl<S: Scalar> RationalFunction<S> {
                 den: Poly::one(),
             };
         }
+        let gcd = num.gcd(&den);
+        let (num, den) = if gcd == Poly::one() {
+            (num, den)
+        } else {
+            let (nq, nr) = num.divrem(&gcd);
+            let (dq, dr) = den.divrem(&gcd);
+            debug_assert!(nr.is_zero() && dr.is_zero(), "gcd must divide both");
+            (nq, dq)
+        };
         let lead_inv = den
             .leading()
             .unwrap()
@@ -198,10 +208,18 @@ mod tests {
 
     #[test]
     fn cross_multiplication_equality() {
-        // t/t = 1; (2t)/2 = t; structurally-different equal elements compare equal.
+        // t/t = 1; (2t)/2 = t; common factors are removed on construction.
         assert_eq!(rf(&[0, 1], &[0, 1]), F::one());
         assert_eq!(rf(&[0, 2], &[2]), F::t());
         assert_ne!(F::t(), F::one());
+    }
+
+    #[test]
+    fn fractions_are_gcd_reduced_and_denominator_monic() {
+        // (t + 1)(t + 2) / (2(t + 1)) = (t + 2) / 2 = 1 + 3t over F_5.
+        let x = rf(&[2, 3, 1], &[2, 2]);
+        assert_eq!(x.den(), &Poly::one());
+        assert_eq!(x.num(), &Poly::new(vec![Fp::<5>::new(1), Fp::<5>::new(3)]));
     }
 
     #[test]

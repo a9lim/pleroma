@@ -726,6 +726,11 @@ isotropy (`[a,b]` iso ⟺ `ab ∈ ℘(K_v)`; ranks 3/4 via the Part-A symbol `s_
 engine, cross-checked via Codex) spanning the `φ₀`/`ψ`/`φ₁` coordinates and every
 rank-by-rank branch — including the genuinely anisotropic 4-dim class realising `u = 4`
 (`[1,1] ⊥ [π, π⁻¹]`). The naive two-layer `W = W_q(k)²` version was correctly avoided.
+Mixed one-class radical tails use the odd-dimensional Clifford invariant:
+for `⟨c⟩ ⊥ ⊥[a_i,b_i]`, the local invariant is the Brauer sum
+`Σ [a_i b_i, c/a_i)`; over `F_{2^m}((π))` its split/non-split value distinguishes
+anisotropic dimension `1` from `3`, while the two-class quasilinear tail remains the
+universal anisotropic plane.
 
 **Global isotropy, delivered (`is_isotropic_global_char2`).** Hasse–Minkowski over
 `F_q(t)` itself, on three source-pinned ingredients past the per-place symbol. (1) A
@@ -800,17 +805,14 @@ Conway–Sloane symbol, computed by an exact-rational **p-adic Jordan decomposit
 (odd `p` diagonalizes; `p = 2` peels type-I lines and type-II even planes). This is
 the first time the adelic square-class machinery (`padic.rs`) acts on a *lattice*
 rather than a field square class. Claim level: **standard math** (Conway–Sloane
-*SPLAG* Ch. 15), **implemented-and-tested**, with one **honest boundary** — the
-`p = 2` symbol is complete only up to *sign-walking*, and even *SPLAG*'s printed
-canonical form is wrong there (Allcock, *On the classification of integral quadratic
-forms*). `are_in_same_genus` is exact for odd `p`, and **sound but conservative** at
-`p = 2`: it fuses compartment oddities and matches per-scale signs directly, exact for
-every symbol without a nontrivial sign-walking train (all the test cases, including
-randomised `Uᵀ G U` isometry checks), and at worst a conservative *false negative* on
-the rare Allcock edge cases — never a false positive. The independent theory pass
-(Codex, *SPLAG* §7 + the Allcock correction) supplied the oracle symbols, including
-the `ℤ⁸` (`1₀^{+8}`, type I) vs `E_8` (`1_{II}^{+8}`, type II) distinction that pins
-the type-I/II computation.
+*SPLAG* Ch. 15), **implemented-and-tested**. `are_in_same_genus` is exact for odd
+`p`, and at `p = 2` carries the full Conway–Sloane quintuple data `(scale, dim,
+det mod 8, type, oddity)` through the Allcock-corrected fine-symbol reduction:
+determinant residues are normalised, compartment oddities are fused, and
+sign-walking along trains adds `4` to the affected compartment oddity. The Sage
+`canonical_2_adic_reduction` examples and randomised `Uᵀ G U` isometry checks pin
+the implementation, alongside the `ℤ⁸` (`1₀^{+8}`, type I) vs `E_8` (`1_{II}^{+8}`,
+type II) distinction.
 
 M4 (delivered, `mass_formula.rs`) is the Minkowski–Siegel mass and the Leech lattice.
 The mass of the even-unimodular genus has the Bernoulli closed form `mass(n) =

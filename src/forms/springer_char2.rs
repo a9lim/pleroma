@@ -60,8 +60,11 @@
 //! [`relevant_places_char2`] set settles **rank 3/4** (good places are isotropic by
 //! Chevalley–Warning). `u(F_q(t)) = 4` (`C₂`, Tsen–Lang) caps it: every `rank ≥ 5`
 //! form is isotropic. (Local isotropy itself is reported for the ranks the sources
-//! pin exactly — `≤ 4` in the standard block shapes, `≥ 5` always isotropic;
-//! unsupported singular configurations return `None` rather than guess.)
+//! pin exactly — `≤ 4` in the standard block shapes, pure totally-singular tails
+//! via the two square classes of `K_v`, the rank-4 mixed case consisting of one
+//! binary block plus a two-class quasilinear tail, all nonsingular ranks via the AJ
+//! kernel, one-class singular tails via the odd-dimensional Clifford invariant, and
+//! `≥ 5` always isotropic.)
 
 use crate::forms::function_field_char2::{
     char2_monic_irreducible_factors, inverse_mod, strip_factor, trace_kappa_to_f2,
@@ -477,23 +480,106 @@ fn binary_is_hyperbolic<S: FiniteChar2Field>(
     local_is_pe(&a.mul(b), place)
 }
 
+fn nonsingular_anisotropic_dim<S: FiniteChar2Field>(
+    blocks: &[(RationalFunction<S>, RationalFunction<S>)],
+    place: &Char2Place<S>,
+) -> usize {
+    let form = Char2QuadForm::from_blocks(blocks.to_vec());
+    let d = springer_decompose_local_char2(&form, place);
+    if d.phi0 == 0 && d.phi1 == 0 && d.psi.is_empty() {
+        0
+    } else if d.phi0 == 1 && d.phi1 == 1 && d.psi.is_empty() {
+        4
+    } else {
+        2
+    }
+}
+
+fn singular_anisotropic_dim<S: FiniteChar2Field>(
+    singular: &[RationalFunction<S>],
+    place: &Char2Place<S>,
+) -> usize {
+    singular_parity_representatives(singular, place).len()
+}
+
+fn singular_parity_representatives<S: FiniteChar2Field>(
+    singular: &[RationalFunction<S>],
+    place: &Char2Place<S>,
+) -> Vec<RationalFunction<S>> {
+    let mut has_even = false;
+    let mut has_odd = false;
+    let mut reps = Vec::new();
+    for c in singular.iter().filter(|c| !c.is_zero()) {
+        match valuation(c, place).expect("filtered nonzero singular coefficient") & 1 {
+            0 if !has_even => {
+                has_even = true;
+                reps.push(c.clone());
+            }
+            1 if !has_odd => {
+                has_odd = true;
+                reps.push(c.clone());
+            }
+            _ => {}
+        }
+    }
+    reps
+}
+
+/// The local Clifford invariant of the odd-dimensional form
+/// `⟨c⟩ ⊥ r`, where `r = ⊥[a_i,b_i]` is nonsingular. In characteristic 2,
+/// `clif(⟨c⟩ ⊥ r) = clif(c r)`; with `[a_i,b_i] ≅ a_i[1,a_i b_i]`, this is the
+/// Brauer sum `Σ [a_i b_i, c/a_i)` evaluated by the local Artin-Schreier symbol.
+fn semisingular_clifford_at<S: FiniteChar2Field>(
+    blocks: &[(RationalFunction<S>, RationalFunction<S>)],
+    c: &RationalFunction<S>,
+    place: &Char2Place<S>,
+) -> u8 {
+    let mut inv = 0u8;
+    for (a, b) in blocks {
+        if a.is_zero() || b.is_zero() {
+            continue;
+        }
+        let d = a.mul(b);
+        if local_is_pe(&d, place) {
+            continue;
+        }
+        let lambda = c.mul(&a.inv().expect("a ≠ 0"));
+        inv ^= as_symbol_at(&d, &lambda, place);
+    }
+    inv
+}
+
+fn semisingular_anisotropic_dim<S: FiniteChar2Field>(
+    blocks: &[(RationalFunction<S>, RationalFunction<S>)],
+    c: &RationalFunction<S>,
+    place: &Char2Place<S>,
+) -> usize {
+    if semisingular_clifford_at(blocks, c, place) == 0 {
+        1
+    } else {
+        3
+    }
+}
+
 /// The **local anisotropic dimension** of `form` over `K_v` at `place`, for the form
-/// shapes the char-2 theory pins exactly: rank `≤ 4` in the standard block shapes
-/// (`#singular ≤ 1`), plus higher-rank forms that reduce to those shapes after
-/// stripping explicit hyperbolic binary blocks. Returns `None` for remaining
-/// rank-`≥ 5` anisotropic-kernel computations (always isotropic, but a full Witt
-/// reduction is needed for the exact kernel) and for unsupported singular
-/// configurations (`#singular ≥ 2`). `u(K_v) = 4`.
+/// shapes the char-2 theory pins exactly: pure totally-singular forms (read from
+/// the two square classes of `K_v*/K_v*²`), nonsingular forms of any rank via the AJ
+/// kernel, one-class singular tails via the odd-dimensional Clifford invariant, and
+/// any binary-block part plus a two-class singular tail. `u(K_v) = 4`.
 pub fn local_anisotropic_dim_char2<S: FiniteChar2Field>(
     form: &Char2QuadForm<S>,
     place: &Char2Place<S>,
 ) -> Option<usize> {
     let bl = &form.blocks;
     let nb = bl.len();
-    let ns = form.singular.iter().filter(|c| !c.is_zero()).count();
+    let singular = singular_parity_representatives(&form.singular, place);
+    let ns = singular.len();
     let rank = 2 * nb + ns;
     if rank == 0 {
         return Some(0);
+    }
+    if nb == 0 {
+        return Some(singular_anisotropic_dim(&form.singular, place));
     }
     let reduced_blocks: Vec<_> = bl
         .iter()
@@ -501,82 +587,26 @@ pub fn local_anisotropic_dim_char2<S: FiniteChar2Field>(
         .cloned()
         .collect();
     if reduced_blocks.len() != nb {
-        let reduced = Char2QuadForm::new(
-            reduced_blocks,
-            form.singular
-                .iter()
-                .filter(|c| !c.is_zero())
-                .cloned()
-                .collect(),
-        );
+        let reduced = Char2QuadForm::new(reduced_blocks, singular);
         return local_anisotropic_dim_char2(&reduced, place);
     }
-    if rank >= 5 {
-        return None;
+    if ns == 0 {
+        return Some(nonsingular_anisotropic_dim(bl, place));
     }
-    match (nb, ns) {
-        (0, 1) => Some(1), // ⟨c⟩, c ≠ 0
-        (1, 0) => {
-            // rank 2: [a,b]
-            let (a, b) = &bl[0];
-            if binary_is_hyperbolic(a, b, place) {
-                Some(0)
-            } else {
-                Some(2)
-            }
-        }
-        (1, 1) => {
-            // rank 3: [a,b] ⊥ ⟨c⟩
-            let (a, b) = &bl[0];
-            if a.is_zero() {
-                return Some(1); // [0,b] is hyperbolic, leaving ⟨c⟩ anisotropic
-            }
-            if b.is_zero() {
-                // [a,0] hyperbolic ⊥ ⟨c⟩ → just ⟨c⟩
-                return Some(1);
-            }
-            let d = a.mul(b); // ab
-            let lam = form.singular[0].mul(&a.inv().expect("a ≠ 0")); // c/a
-            if as_symbol_at(&d, &lam, place) == 0 {
-                Some(1) // [d, λ) splits ⇒ isotropic
-            } else {
-                Some(3)
-            }
-        }
-        (2, 0) => {
-            // rank 4: [a1,b1] ⊥ [a2,b2]
-            let (a1, b1) = &bl[0];
-            let (a2, b2) = &bl[1];
-            let h0 = binary_is_hyperbolic(a1, b1, place);
-            let h1 = binary_is_hyperbolic(a2, b2, place);
-            match (h0, h1) {
-                (true, true) => Some(0),
-                (true, false) => Some(2),
-                (false, true) => Some(2),
-                (false, false) => {
-                    let d1 = a1.mul(b1);
-                    let d2 = a2.mul(b2);
-                    let delta = d1.add(&d2);
-                    if !local_is_pe(&delta, place) {
-                        Some(2) // Δ ∉ ℘ ⇒ isotropic, anisotropic dim 2
-                    } else {
-                        let lambda = a2.mul(&a1.inv().expect("a1 ≠ 0")); // a2/a1
-                        if as_symbol_at(&d1, &lambda, place) == 0 {
-                            Some(0)
-                        } else {
-                            Some(4)
-                        }
-                    }
-                }
-            }
-        }
-        _ => None, // unsupported singular configuration (#singular ≥ 2)
+    if ns == 2 {
+        // The two valuation-parity classes span K over K². The quasilinear tail is
+        // universal as a value set, so it splits off hyperbolic planes from any
+        // nonsingular part and leaves precisely its two-class radical kernel.
+        return Some(2);
     }
+    if ns == 1 {
+        return Some(semisingular_anisotropic_dim(bl, &singular[0], place));
+    }
+    unreachable!("K_v*/K_v*² has only the even and odd valuation-parity classes")
 }
 
 /// Whether `form` is **isotropic over the completion** `K_v` at `place`. `Some(true)`
-/// for every rank `≥ 5` (`u(K_v) = 4`); otherwise `anisotropic_dim < rank`. `None`
-/// for unsupported singular shapes (mirrors [`local_anisotropic_dim_char2`]).
+/// for every rank `≥ 5` (`u(K_v) = 4`); otherwise `anisotropic_dim < rank`.
 pub fn local_is_isotropic_char2<S: FiniteChar2Field>(
     form: &Char2QuadForm<S>,
     place: &Char2Place<S>,
@@ -673,8 +703,8 @@ pub fn relevant_places_char2<S: FiniteChar2Field>(form: &Char2QuadForm<S>) -> Ve
 /// * **rank 3/4 non-degenerate**: Hasse–Minkowski — isotropic iff isotropic over
 ///   `K_v` at every [`relevant_places_char2`] (a finite set).
 ///
-/// `None` only if the local engine reports an unsupported shape at some place (it
-/// does not for the non-degenerate `rank ≤ 4` forms this routes there).
+/// The return type stays optional for API symmetry with the local routines; the
+/// current local engine covers every shape routed here.
 pub fn is_isotropic_global_char2<S: FiniteChar2Field>(form: &Char2QuadForm<S>) -> Option<bool> {
     // A null direction or a hyperbolic block isotropises the whole form.
     if form.singular.iter().any(|c| c.is_zero()) {
@@ -720,7 +750,7 @@ pub fn is_isotropic_global_char2<S: FiniteChar2Field>(form: &Char2QuadForm<S>) -
                 match local_is_isotropic_char2(form, &place) {
                     Some(true) => {}
                     Some(false) => return Some(false),
-                    None => all_iso = false, // unsupported shape leaked through
+                    None => all_iso = false,
                 }
             }
             all_iso.then_some(true)
@@ -885,6 +915,48 @@ mod tests {
     }
 
     #[test]
+    fn pure_singular_local_dimension_reads_square_classes() {
+        let one = r2(&[1], &[1]);
+        let t = r2(&[0, 1], &[1]);
+        let t2 = r2(&[0, 0, 1], &[1]);
+        // ⟨1,t⟩ spans both K²-classes over F₂((t)), so it is anisotropic of dim 2.
+        assert_eq!(anis(&[], &[one.clone(), t.clone()]), Some(2));
+        assert_eq!(iso(&[], &[one.clone(), t.clone()]), Some(false));
+        // ⟨1,t²⟩ has both coefficients in the even-valuation square class.
+        assert_eq!(anis(&[], &[one.clone(), t2.clone()]), Some(1));
+        assert_eq!(iso(&[], &[one.clone(), t2.clone()]), Some(true));
+        // Three pure singular entries are necessarily dependent over K².
+        assert_eq!(anis(&[], &[one, t, t2]), Some(2));
+        assert_eq!(
+            iso(
+                &[],
+                &[r2(&[1], &[1]), r2(&[0, 1], &[1]), r2(&[0, 0, 1], &[1])]
+            ),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn mixed_singular_tail_collapses_to_local_square_classes() {
+        let one = r2(&[1], &[1]);
+        let t = r2(&[0, 1], &[1]);
+        let t2 = r2(&[0, 0, 1], &[1]);
+        let block = [(one.clone(), one.clone())];
+
+        // Two singular entries in the same K²-class reduce to the rank-3 case.
+        assert_eq!(
+            anis(&block, &[one.clone(), t2.clone()]),
+            anis(&block, std::slice::from_ref(&one))
+        );
+
+        // Distinct valuation parities span K over K². The singular tail is a
+        // universal quasilinear plane, so one binary block plus that tail is
+        // isotropic with the two-class tail left as the anisotropic kernel.
+        assert_eq!(anis(&block, &[one.clone(), t.clone()]), Some(2));
+        assert_eq!(iso(&block, &[one, t]), Some(true));
+    }
+
+    #[test]
     fn iso_rank4() {
         let one = r2(&[1], &[1]);
         let t = r2(&[0, 1], &[1]);
@@ -964,6 +1036,110 @@ mod tests {
                 &[]
             ),
             Some(2)
+        );
+    }
+
+    #[test]
+    fn high_rank_nonsingular_dimension_uses_aj_kernel() {
+        let one = r2(&[1], &[1]);
+        let t = r2(&[0, 1], &[1]);
+        let inv_t = r2(&[1], &[0, 1]);
+
+        // Three copies of [1,1] reduce in W_q to one anisotropic binary block.
+        assert_eq!(
+            anis(
+                &[
+                    (one.clone(), one.clone()),
+                    (one.clone(), one.clone()),
+                    (one.clone(), one.clone())
+                ],
+                &[]
+            ),
+            Some(2)
+        );
+
+        // The u=4 class plus a binary [1,1] is no longer the pure (1,1) no-wild
+        // class, hence its anisotropic kernel is binary.
+        assert_eq!(
+            anis(
+                &[
+                    (one.clone(), one.clone()),
+                    (t.clone(), inv_t.clone()),
+                    (one.clone(), one.clone())
+                ],
+                &[]
+            ),
+            Some(2)
+        );
+
+        // A two-class quasilinear tail leaves exactly its two-dimensional radical
+        // kernel even when the nonsingular part has several blocks.
+        assert_eq!(
+            anis(
+                &[
+                    (one.clone(), one.clone()),
+                    (t.clone(), inv_t.clone()),
+                    (one.clone(), one.clone())
+                ],
+                &[one.clone(), t.clone()]
+            ),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn high_rank_one_class_singular_tail_uses_clifford_invariant() {
+        let one = r2(&[1], &[1]);
+        let t = r2(&[0, 1], &[1]);
+        let inv_t = r2(&[1], &[0, 1]);
+
+        // Two [1,1] blocks are hyperbolic in W_q, so adding a one-class radical
+        // leaves a one-dimensional anisotropic kernel.
+        assert_eq!(
+            anis(
+                &[(one.clone(), one.clone()), (one.clone(), one.clone())],
+                std::slice::from_ref(&one)
+            ),
+            Some(1)
+        );
+
+        // The u=4 nonsingular core has non-split odd Clifford invariant after any
+        // one-class radical is added, leaving the anisotropic rank-3 pure subform.
+        assert_eq!(
+            anis(
+                &[(one.clone(), one.clone()), (t.clone(), inv_t.clone())],
+                std::slice::from_ref(&one)
+            ),
+            Some(3)
+        );
+
+        // Adding one more [1,1] cancels the unramified bit of the u=4 core. The
+        // nonsingular kernel is binary, but it is the pure ramified class and does
+        // not represent the even singular square class.
+        assert_eq!(
+            anis(
+                &[
+                    (one.clone(), one.clone()),
+                    (t.clone(), inv_t.clone()),
+                    (one.clone(), one.clone())
+                ],
+                std::slice::from_ref(&one)
+            ),
+            Some(3)
+        );
+
+        // Three [1,1] blocks reduce to the binary [1,1], which represents 1; the
+        // semisingular kernel therefore collapses to the radical line.
+        assert_eq!(
+            anis(
+                &[
+                    (one.clone(), one.clone()),
+                    (one.clone(), one.clone()),
+                    (one.clone(), one.clone())
+                ],
+                std::slice::from_ref(&one)
+            ),
+            Some(1)
         );
     }
 

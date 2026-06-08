@@ -556,46 +556,56 @@ impl PyWittClassG {
     }
 }
 
-/// Classify a diagonal odd-characteristic form `q` over `F_p` (dimension +
-/// discriminant + Hasse). Supported primes: 3, 5, 7, 11, 13.
+/// Classify a diagonal odd-characteristic form `q` over `F_{p^degree}` (dimension
+/// + discriminant + Hasse). Supported fields: F_3, F_5, F_7, F_11, F_13, F_9,
+/// F_25, F_27.
 #[pyfunction]
-fn classify_oddchar(p: u128, q: Vec<i128>) -> PyResult<PyOddCharType> {
-    PyFiniteFieldForm::new(p, q, 1)?.classify()
+#[pyo3(signature = (p, q, degree=1))]
+fn classify_oddchar(p: u128, q: Vec<i128>, degree: usize) -> PyResult<PyOddCharType> {
+    PyFiniteFieldForm::new(p, q, degree)?.classify()
 }
 
-/// The odd-characteristic Witt class of a diagonal form `q` over `F_p`.
+/// The odd-characteristic Witt class of a diagonal form `q` over `F_{p^degree}`.
 #[pyfunction]
-fn oddchar_witt(p: u128, q: Vec<i128>) -> PyResult<PyWittClassG> {
-    PyFiniteFieldForm::new(p, q, 1)?.witt_class()
+#[pyo3(signature = (p, q, degree=1))]
+fn oddchar_witt(p: u128, q: Vec<i128>, degree: usize) -> PyResult<PyWittClassG> {
+    PyFiniteFieldForm::new(p, q, degree)?.witt_class()
 }
 
-/// Is `x` a square mod `p`? (Euler's criterion.) Supported primes: 3, 5, 7, 11, 13.
+/// Is `x` a square in `F_{p^degree}`?
 #[pyfunction]
-fn is_square_mod(p: u128, x: i128) -> PyResult<bool> {
-    PyFiniteFieldForm::new(p, Vec::new(), 1)?.is_square(x)
+#[pyo3(signature = (p, x, degree=1))]
+fn is_square_mod(p: u128, x: i128, degree: usize) -> PyResult<bool> {
+    PyFiniteFieldForm::new(p, Vec::new(), degree)?.is_square(x)
 }
 
 /// The Hasse–Witt invariant of a diagonal form `q` over `F_p` (always +1 over a
-/// finite field). Supported primes: 3, 5, 7, 11, 13.
+/// finite field).
 #[pyfunction]
-fn hasse_invariant(p: u128, q: Vec<i128>) -> PyResult<i8> {
-    PyFiniteFieldForm::new(p, q, 1)?.hasse_invariant()
+#[pyo3(signature = (p, q, degree=1))]
+fn hasse_invariant(p: u128, q: Vec<i128>, degree: usize) -> PyResult<i8> {
+    PyFiniteFieldForm::new(p, q, degree)?.hasse_invariant()
 }
 
-/// Witt decomposition of a diagonal odd-char form `q` over `F_p`: returns
+/// Witt decomposition of a diagonal odd-char form `q` over `F_{p^degree}`: returns
 /// `(witt_index, anisotropic_dim, anisotropic_disc_is_square, radical_dim)`.
-/// Supported primes: 3, 5, 7, 11, 13.
 #[pyfunction]
-fn witt_decompose_oddchar(p: u128, q: Vec<i128>) -> PyResult<(usize, usize, bool, usize)> {
-    PyFiniteFieldForm::new(p, q, 1)?.witt_decompose()
+#[pyo3(signature = (p, q, degree=1))]
+fn witt_decompose_oddchar(
+    p: u128,
+    q: Vec<i128>,
+    degree: usize,
+) -> PyResult<(usize, usize, bool, usize)> {
+    PyFiniteFieldForm::new(p, q, degree)?.witt_decompose()
 }
 
-/// Are two diagonal odd-char forms over `F_p` isometric? `(dim, discriminant)`
-/// is a complete invariant. Supported primes: 3, 5, 7, 11, 13.
+/// Are two diagonal odd-char forms over `F_{p^degree}` isometric? `(dim,
+/// discriminant)` is a complete invariant.
 #[pyfunction]
-fn is_isometric_oddchar(p: u128, q1: Vec<i128>, q2: Vec<i128>) -> PyResult<bool> {
-    let f1 = PyFiniteFieldForm::new(p, q1, 1)?;
-    let f2 = PyFiniteFieldForm::new(p, q2, 1)?;
+#[pyo3(signature = (p, q1, q2, degree=1))]
+fn is_isometric_oddchar(p: u128, q1: Vec<i128>, q2: Vec<i128>, degree: usize) -> PyResult<bool> {
+    let f1 = PyFiniteFieldForm::new(p, q1, degree)?;
+    let f2 = PyFiniteFieldForm::new(p, q2, degree)?;
     f1.is_isometric(&f2)
 }
 

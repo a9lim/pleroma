@@ -337,8 +337,16 @@ macro_rules! backend {
             }
             fn __pow__(&self, n: u128, _modulo: Option<&Bound<'_, PyAny>>) -> $mv {
                 let mut acc = self.alg.scalar(<$scalar as Scalar>::one());
-                for _ in 0..n {
-                    acc = self.alg.mul(&acc, &self.mv);
+                let mut base = self.mv.clone();
+                let mut e = n;
+                while e > 0 {
+                    if e & 1 == 1 {
+                        acc = self.alg.mul(&acc, &base);
+                    }
+                    e >>= 1;
+                    if e > 0 {
+                        base = self.alg.mul(&base, &base);
+                    }
                 }
                 $mv {
                     alg: self.alg.clone(),

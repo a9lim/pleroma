@@ -39,55 +39,15 @@ pub enum FFPlace<S: FiniteOddField> {
 
 // ───────────────────────── factorization over F_q ─────────────────────────
 
-/// Every monic polynomial of the given `degree ≥ 1` over `F_q` (there are
-/// `q^degree` of them). For trial-division factorization of small form entries.
-fn enumerate_monic<S: FiniteOddField>(degree: usize) -> Vec<Poly<S>> {
-    let q = S::field_order();
-    let count = q.pow(degree as u32);
-    let mut out = Vec::with_capacity(count as usize);
-    for idx in 0..count {
-        let mut coeffs = Vec::with_capacity(degree + 1);
-        let mut x = idx;
-        for _ in 0..degree {
-            coeffs.push(S::from_index(x % q));
-            x /= q;
-        }
-        coeffs.push(S::one()); // monic leading coefficient
-        out.push(Poly::new(coeffs));
-    }
-    out
-}
-
 /// The distinct monic irreducible factors of `f` over `F_q` (the square-free
 /// support — multiplicities dropped, which is all the place layer needs).
-///
-/// Deterministic trial division in increasing degree: lower-degree factors are
-/// removed first, so any candidate that still divides the cofactor is irreducible.
-/// Intended for **small** `q` and **low-degree** entries (the cost is `Σ q^d`).
 pub fn monic_irreducible_factors<S: FiniteOddField>(f: &Poly<S>) -> Vec<Poly<S>> {
-    let mut factors = Vec::new();
-    if f.degree().unwrap_or(0) == 0 {
-        return factors; // a unit / constant has no finite places
-    }
-    let mut g = f.make_monic();
-    let mut d = 1usize;
-    while g.degree().unwrap_or(0) >= d {
-        for c in enumerate_monic::<S>(d) {
-            loop {
-                let (quot, rem) = g.divrem(&c);
-                if rem.is_zero() {
-                    if !factors.contains(&c) {
-                        factors.push(c.clone());
-                    }
-                    g = quot;
-                } else {
-                    break;
-                }
-            }
-        }
-        d += 1;
-    }
-    factors
+    crate::forms::poly_factor::monic_irreducible_factor_support(
+        f,
+        S::characteristic_prime(),
+        S::field_order(),
+        S::from_index,
+    )
 }
 
 /// The multiplicity of `pi` in `p` (and `p` with all those factors stripped).

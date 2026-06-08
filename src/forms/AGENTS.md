@@ -132,9 +132,10 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   (so `F₂(t)`, `F₄(t)`, `F₈(t)` share one engine). Names carry `as_symbol_*` / `Char2Place`
   to avoid colliding with the odd `function_field` flat re-exports. The crate-private
   engine helpers (`strip_factor`/`inverse_mod`/`trace_kappa_to_f2`, and the factoriser
-  `char2_monic_irreducible_factors` — renamed off the odd-char `monic_irreducible_factors`
-  so the flat `forms::*` glob stays unambiguous) are `pub(crate)` so `springer_char2.rs`
-  reuses them.
+  `char2_monic_irreducible_factors` — a thin wrapper over the shared
+  `poly_factor` finite-field factorizer, renamed off the odd-char
+  `monic_irreducible_factors` so the flat `forms::*` glob stays unambiguous) are
+  `pub(crate)` so `springer_char2.rs` reuses them.
 - **`springer_char2.rs`** — the **char-2 local Witt/Springer decomposition**, the
   equal-char-2 mirror of `springer_local.rs` (but NOT the odd story at `p=2`: the wild
   `R_π` summand the `W=W(k)²` grading misses). `springer_decompose_local_char2(form,
@@ -143,10 +144,12 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   push each `[1,c]` to **Artin–Schreier normal form** (`asnf`: drop positive poles,
   clear even neg poles via `c_{n/2}+=√c_n`, keep the `κ`-constant Arf bit + odd neg
   poles `R_π`). Local isotropy `local_anisotropic_dim_char2`/`local_is_isotropic_char2`
-  is rank-by-rank (`ab∈℘(K_v)`; ranks 3/4 via the Part-A symbol `as_symbol_at`;
+  is invariant-driven (`ab∈℘(K_v)` for binary blocks, the AJ kernel for nonsingular
+  parts, valuation parity for totally-singular tails, and the odd-dimensional
+  Clifford invariant `Σ s_v(a_i b_i, c/a_i)` for one-class radical tails;
   `u(K_v)=4` ⇒ rank ≥ 5 isotropic). The form is `Char2QuadForm` (binary blocks + a
   totally-singular tail). **Read NOTES.md** before touching: this is the corrected
-  three-layer decomposition (the naive `W_q(k)²` was rightly avoided), pinned to ten
+  three-layer decomposition (the naive `W_q(k)²` was rightly avoided), pinned to
   source-derived oracles. **Global isotropy** `is_isotropic_global_char2(form) →
   Option<bool>` is Hasse–Minkowski over `F_q(t)` itself, on three ingredients past the
   symbol: `global_is_pe(f)` (`f ∈ ℘(F_q(t))`? — finite sweep of `f`'s poles + `∞`,
@@ -154,12 +157,7 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   odd-degree coeffs of `num·den` vanish, settles the totally-singular part via
   `[K:K²]=2`), and a bad-place sweep over `relevant_places_char2(form)` for rank 3/4
   (good places isotropic by Chevalley–Warning). `u(F_q(t))=4` (`C₂`) ⇒ rank ≥ 5
-  isotropic. **Looks like a bug, isn't:** (a) unsupported singular configs
-  (`#singular ≥ 2`) and rank ≥ 5 return `None` from the *local* `local_anisotropic_dim_char2`
-  (only source-pinned shapes get an exact dimension) — but the *global* routine handles
-  `#singular ≥ 2` elementarily (quasilinear over `F_q(t)` is `K²`-dependence, no
-  local–global failure here) and only returns `None` if a local call unexpectedly does;
-  (b) rank 2 is NOT a finite bad-place scan — the constant-trace `℘`-obstruction
+  isotropic. **Looks like a bug, isn't:** rank 2 is NOT a finite bad-place scan — the constant-trace `℘`-obstruction
   (`[1,1]/F₂(t)`) lives at infinitely many odd-degree places, caught only by the global
   `℘` test.
 
@@ -180,8 +178,8 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   s(F), pythagoras_number, u_invariant, is_sum_of_n_squares — computed over finite
   F_p (level≤2, u=2); ℝ/Q_p textbook constants documented.
 - **`quadric_fit.rs`** — the "is this P-set a quadric?" research BENCH (split from the
-  char2 classifier): `fit_f2_quadratic` (Gaussian elim over the 2^k membership
-  equations) + `QuadricFit` + `is_genuinely_quadratic`. The instrument the game
+  char2 classifier): `fit_f2_quadratic` (Boolean ANF/Mobius transform over the
+  2^k membership table) + `QuadricFit` + `is_genuinely_quadratic`. The instrument the game
   probes / misère_quotient / octal_hunt / loopy_quadric feed P-positions into —
   distinct from the classifier.
 
@@ -221,12 +219,14 @@ Staged M1→M4, all landed: `lattice.rs`, `root_lattices.rs`, `genus.rs`,
   `is_positive_definite` (Sylvester leading-minors via Bareiss, exact),
   `invariant_factors` (SNF → discriminant group `L#/L`), `level` (smallest `N` with
   `N·G⁻¹` even-integral, via the exact `Rational` inverse), `direct_sum`. The
-  positive-definite geometry: `short_vectors` (**Fincke–Pohst**: float LDLᵀ bounds
-  the box, exact i128 norm filters the leaves — float error can't add/drop a vector),
-  `minimum`/`minimal_vectors`/`kissing_number`, and `automorphism_group_order`
-  (backtracking over basis-vector images: `vᵢ` a lattice vector of norm `G[i][i]`
-  with `⟨vᵢ,vⱼ⟩ = G[i][j]` — every complete assignment is an automorphism, so the
-  count is exact). **Looks like a bug, isn't:** (a) the geometry methods return `None`
+  positive-definite geometry: `short_vectors` (unimodular size-reduction first, then
+  **Fincke–Pohst**: float LDLᵀ bounds the box, exact i128 norm filters the leaves,
+  and vectors are mapped back to the original basis — float error can't add/drop a
+  vector), `minimum`/`minimal_vectors`/`kissing_number`, and
+  `automorphism_group_order` (closed-form diagonal/ADE/root-system fast paths first;
+  otherwise backtracking over basis-vector images: `vᵢ` a lattice vector of norm `G[i][i]` with
+  `⟨vᵢ,vⱼ⟩ = G[i][j]` — every complete assignment is an automorphism, so the count is
+  exact). **Looks like a bug, isn't:** (a) the geometry methods return `None`
   for indefinite lattices on purpose (infinitely many vectors of each norm); (b) |Aut|
   is bounded by an explicit node budget (`AUTO_NODE_BUDGET`) and returns `None` past
   it (`E₈`/Leech are too big to brute-force) — an honest `None`, not a silent truncation
@@ -247,17 +247,16 @@ Staged M1→M4, all landed: `lattice.rs`, `root_lattices.rs`, `genus.rs`,
   symbol). Engine: the **p-adic Jordan decomposition** (`jordan_blocks`, exact over
   `Rational`): odd `p` diagonalizes (valuation-ordered Gram–Schmidt, `e_i←e_i+e_j` to
   pull a diagonal pivot to the min valuation — `2` a unit); `p=2` peels 1-dim type-I
-  lines and 2-dim even type-II planes by Schur complement. Per scale: `(dim, sign =
-  det square class, type, oddity = trace mod 8)`. `Genus::of` / `are_in_same_genus`.
-  **Looks like a bug, isn't:** (a) the comparison is **exact for odd `p`** (no
-  sign-walking there) and **sound but conservative at `p=2`** — it fuses compartment
-  oddities (well-defined) and matches per-scale signs directly, which is exact for all
-  symbols without nontrivial sign-walking trains (every test case and every randomised
-  ℤ-isometry check) but can return a conservative *false negative* on the rare
-  Allcock-corrected sign-walking edge cases (SPLAG's printed canonical form is itself
-  wrong there — documented, not silent); (b) signs/oddity are unused for odd `p`. The
-  `Z⁸` (`1₀^{+8}`, type I) vs `E_8` (`1_{II}^{+8}`, type II) oracle pins the
-  type-I/II distinction; randomised `Uᵀ G U` isometry invariance pins the whole engine.
+  lines and 2-dim even type-II planes by Schur complement. Per scale: `(dim,
+  det mod 8, type, oddity = trace mod 8)` at `p=2`; odd `p` still uses `(dim,
+  det square class)`. `Genus::of` / `are_in_same_genus`. **Looks like a bug,
+  isn't:** (a) the comparison is **exact for odd `p`** (no sign-walking there) and
+  uses the full Conway–Sloane/Allcock fine-symbol reduction at `p=2`: normalize
+  determinant residues, fuse compartment oddities, then sign-walk left along trains
+  while adding `4` to crossed compartment oddities (the giver/receiver bookkeeping);
+  (b) signs/oddity are unused for odd `p`. The `Z⁸` (`1₀^{+8}`, type I) vs `E_8`
+  (`1_{II}^{+8}`, type II), Sage canonical-symbol examples, and randomised
+  `Uᵀ G U` isometry invariance pin the engine.
 - **`mass_formula.rs`** (M4) — the **Minkowski–Siegel mass** of the even-unimodular
   genus, `mass(n) = |B_{n/2}|/n · ∏_{j<n/2} |B_{2j}|/(4j)` (hardcoded Bernoulli table
   `B_2..B_24`, checked cross-reduced rational mul → exact `(num, den)` or `None` past

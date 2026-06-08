@@ -16,15 +16,14 @@
 //! oddity (trace mod 8 of the type-I part).
 //!
 //! **Claim level and the p = 2 path.** For odd `p` the symbol is a complete `ℤ_p`
-//! invariant and the comparison here is exact. For `p = 2` the symbol is first
-//! canonicalised by Conway–Sloane/Allcock rules at the level this representation
-//! carries: oddities are fused within type-I compartments, and determinant signs
-//! are walked along trains so each train has at most one minus sign, placed on a
-//! smallest-dimensional term in that train. This replaces the older direct
-//! per-scale sign comparison. The symbol still records determinant only as the
-//! square-class sign (`±1`), not the full fine-symbol giver/receiver data, so this
-//! remains a genus invariant for the represented Conway–Sloane symbol rather than
-//! a replacement for a full fine-symbol implementation.
+//! invariant and the comparison here is exact. For `p = 2` the symbol carries the
+//! Conway–Sloane quintuple data `(scale, dim, det mod 8, type, oddity)` and is
+//! canonicalised by the Allcock-corrected fine-symbol calculus: determinant
+//! residues are normalised to signs, oddities are fused within type-I
+//! compartments, and sign-walking moves signs left along trains, adding `4` to the
+//! oddity of any compartment the walk crosses. This is the same canonical
+//! reduction exposed by Sage's `canonical_2_adic_reduction`, and replaces the
+//! older conservative per-scale sign comparison.
 //!
 //! References: Conway–Sloane *SPLAG* Ch. 15 §7; Allcock, *On the classification of
 //! integral quadratic forms* (the corrected 2-adic sign-walking calculus).
@@ -36,14 +35,16 @@ use std::collections::BTreeMap;
 
 /// One scale of a p-adic Jordan symbol: the constituent `p^scale · (unimodular of
 /// dimension `dim`)`. `sign` is the determinant square class of the unimodular part
-/// (`+1` iff a `ℤ_p`-square unit). For `p = 2`, `type_ii` is true when the
-/// constituent is even (a sum of `U`/`V` planes) and `oddity` is the trace mod 8 of
-/// the type-I (odd) part; for odd `p` those two fields are unused (`false`, `0`).
+/// (`+1` iff a `ℤ_p`-square unit). For `p = 2`, `det_mod8` is the determinant unit
+/// of the unimodular part in `{1,3,5,7}` before sign-walking, `type_ii` is true
+/// when the constituent is even (a sum of `U`/`V` planes), and `oddity` is the trace
+/// mod 8 of the type-I (odd) part. For odd `p`, `det_mod8` is informational only.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScaleSymbol {
     pub scale: u32,
     pub dim: usize,
     pub sign: i8,
+    pub det_mod8: i64,
     pub type_ii: bool,
     pub oddity: i64,
 }
@@ -142,6 +143,7 @@ struct RawBlock {
     scale: u32,
     dim: usize,
     sign: i8,
+    det_mod8: i64,
     type_ii: bool,
     oddity: i64,
 }
@@ -198,16 +200,17 @@ fn jordan_blocks(gram: &[Vec<i128>], p: i128) -> Option<Vec<RawBlock>> {
         if i == j {
             // 1-dimensional block ⟨a[i][i]⟩.
             let d = a[i][i].clone();
-            let (sign, type_ii, oddity) = if p == 2 {
+            let (sign, det_mod8, type_ii, oddity) = if p == 2 {
                 let u8v = unit_mod8(&d);
-                (sign_from_mod8(u8v), false, u8v)
+                (sign_from_mod8(u8v), u8v, false, u8v)
             } else {
-                (unit_sign_odd(&d, p), false, 0)
+                (unit_sign_odd(&d, p), 1, false, 0)
             };
             blocks.push(RawBlock {
                 scale,
                 dim: 1,
                 sign,
+                det_mod8,
                 type_ii,
                 oddity,
             });
@@ -227,11 +230,13 @@ fn jordan_blocks(gram: &[Vec<i128>], p: i128) -> Option<Vec<RawBlock>> {
             let beta = a[i][j].clone();
             let gamma = a[j][j].clone();
             let det = alpha.mul(&gamma).sub(&beta.mul(&beta));
-            let sign = sign_from_mod8(unit_mod8(&det));
+            let det_mod8 = unit_mod8(&det);
+            let sign = sign_from_mod8(det_mod8);
             blocks.push(RawBlock {
                 scale,
                 dim: 2,
                 sign,
+                det_mod8,
                 type_ii: true,
                 oddity: 0,
             });
@@ -258,28 +263,40 @@ fn jordan_blocks(gram: &[Vec<i128>], p: i128) -> Option<Vec<RawBlock>> {
     Some(blocks)
 }
 
+fn mul_mod8_unit(a: i64, b: i64) -> i64 {
+    (a * b).rem_euclid(8)
+}
+
 /// Aggregate raw blocks at prime `p` into the per-scale Conway–Sloane symbol
 /// (sorted by scale).
-fn aggregate(blocks: &[RawBlock]) -> Vec<ScaleSymbol> {
-    let mut by_scale: BTreeMap<u32, (usize, i8, bool, i64)> = BTreeMap::new();
+fn aggregate(blocks: &[RawBlock], p: i128) -> Vec<ScaleSymbol> {
+    let mut by_scale: BTreeMap<u32, (usize, i8, i64, bool, i64)> = BTreeMap::new();
     for b in blocks {
-        let e = by_scale.entry(b.scale).or_insert((0, 1, true, 0));
+        let e = by_scale.entry(b.scale).or_insert((0, 1, 1, p == 2, 0));
         e.0 += b.dim;
         e.1 *= b.sign;
-        if !b.type_ii {
-            e.2 = false; // any type-I constituent makes the scale type I
+        if p == 2 {
+            e.2 = mul_mod8_unit(e.2, b.det_mod8);
         }
-        e.3 = (e.3 + b.oddity).rem_euclid(8);
+        if p == 2 && !b.type_ii {
+            e.3 = false; // any type-I constituent makes the scale type I
+        }
+        if !b.type_ii {
+            e.4 = (e.4 + b.oddity).rem_euclid(8);
+        }
     }
     by_scale
         .into_iter()
-        .map(|(scale, (dim, sign, type_ii, oddity))| ScaleSymbol {
-            scale,
-            dim,
-            sign,
-            type_ii,
-            oddity: if type_ii { 0 } else { oddity },
-        })
+        .map(
+            |(scale, (dim, sign, det_mod8, type_ii, oddity))| ScaleSymbol {
+                scale,
+                dim,
+                sign,
+                det_mod8,
+                type_ii,
+                oddity: if type_ii { 0 } else { oddity },
+            },
+        )
         .collect()
 }
 
@@ -371,7 +388,7 @@ impl Genus {
         let mut symbols = BTreeMap::new();
         for p in relevant_primes(det) {
             let blocks = jordan_blocks(gram, p as i128)?;
-            symbols.insert(p, aggregate(&blocks));
+            symbols.insert(p, aggregate(&blocks, p as i128));
         }
         Some(Genus {
             dim: lattice.dim(),
@@ -427,7 +444,6 @@ fn fuse_oddities(syms: &[ScaleSymbol]) -> Vec<ScaleSymbol> {
 }
 
 /// Maximal type-I compartments: consecutive scales with type-I constituents.
-#[cfg(test)]
 fn two_adic_compartments(syms: &[ScaleSymbol]) -> Vec<Vec<usize>> {
     let mut out = Vec::new();
     let mut i = 0usize;
@@ -471,24 +487,42 @@ fn two_adic_trains(syms: &[ScaleSymbol]) -> Vec<Vec<usize>> {
     out
 }
 
-/// Canonicalise the carried 2-adic Conway–Sloane symbol: oddity fusion within
-/// compartments, then sign-walking along trains. The fine-symbol giver/receiver
-/// data is not represented here, so oddities are handled by the fused
-/// compartment invariant already stored in [`ScaleSymbol::oddity`].
+fn set_canonical_det_from_sign(sym: &mut ScaleSymbol) {
+    sym.det_mod8 = if sym.sign > 0 { 1 } else { 3 };
+}
+
+/// Canonicalise the carried 2-adic Conway–Sloane symbol: normalize determinant
+/// residues, fuse oddities within compartments, then sign-walk left along trains.
+/// Crossing a type-I compartment changes its fused oddity by `4`; this is the
+/// giver/receiver bookkeeping in the fine-symbol calculus.
 fn canonical_2adic_symbol(syms: &[ScaleSymbol]) -> Vec<ScaleSymbol> {
-    let mut out = fuse_oddities(syms);
-    for train in two_adic_trains(&out) {
-        let sign = train.iter().fold(1i8, |acc, &i| acc * out[i].sign);
-        for &i in &train {
-            out[i].sign = 1;
+    let mut out = syms.to_vec();
+    for sym in &mut out {
+        sym.sign = sign_from_mod8(sym.det_mod8);
+        set_canonical_det_from_sign(sym);
+        if sym.type_ii {
+            sym.oddity = 0;
+        } else {
+            sym.oddity = sym.oddity.rem_euclid(8);
         }
-        if sign < 0 {
-            let target = train
-                .iter()
-                .copied()
-                .min_by_key(|&i| (out[i].dim, out[i].scale))
-                .expect("train is nonempty");
-            out[target].sign = -1;
+    }
+    out = fuse_oddities(&out);
+    let compartments = two_adic_compartments(&out);
+    for train in two_adic_trains(&out) {
+        for &i in train.iter().rev().take(train.len().saturating_sub(1)) {
+            if out[i].sign < 0 {
+                out[i].sign = 1;
+                set_canonical_det_from_sign(&mut out[i]);
+                let prev = i - 1;
+                out[prev].sign *= -1;
+                set_canonical_det_from_sign(&mut out[prev]);
+                for compartment in &compartments {
+                    if compartment.contains(&prev) || compartment.contains(&i) {
+                        let head = compartment[0];
+                        out[head].oddity = (out[head].oddity + 4).rem_euclid(8);
+                    }
+                }
+            }
         }
     }
     out
@@ -529,6 +563,17 @@ mod tests {
 
     fn zn(n: usize) -> IntegralForm {
         IntegralForm::diagonal(&vec![1i128; n])
+    }
+
+    fn s2(scale: u32, dim: usize, det_mod8: i64, type_ii: bool, oddity: i64) -> ScaleSymbol {
+        ScaleSymbol {
+            scale,
+            dim,
+            sign: sign_from_mod8(det_mod8.rem_euclid(8)),
+            det_mod8: det_mod8.rem_euclid(8),
+            type_ii,
+            oddity,
+        }
     }
 
     /// Apply a unimodular change of basis Uᵀ G U (U upper-unitriangular with the
@@ -617,34 +662,10 @@ mod tests {
     #[test]
     fn two_adic_compartments_and_trains_follow_the_corrected_rules() {
         let syms = vec![
-            ScaleSymbol {
-                scale: 0,
-                dim: 1,
-                sign: 1,
-                type_ii: false,
-                oddity: 1,
-            },
-            ScaleSymbol {
-                scale: 1,
-                dim: 2,
-                sign: -1,
-                type_ii: true,
-                oddity: 0,
-            },
-            ScaleSymbol {
-                scale: 2,
-                dim: 1,
-                sign: 1,
-                type_ii: false,
-                oddity: 1,
-            },
-            ScaleSymbol {
-                scale: 4,
-                dim: 1,
-                sign: 1,
-                type_ii: false,
-                oddity: 1,
-            },
+            s2(0, 1, 1, false, 1),
+            s2(1, 2, 3, true, 0),
+            s2(2, 1, 1, false, 1),
+            s2(4, 1, 1, false, 1),
         ];
         assert_eq!(
             two_adic_compartments(&syms),
@@ -655,54 +676,57 @@ mod tests {
 
     #[test]
     fn two_adic_sign_walking_canonicalizes_train_signs() {
-        let a = vec![
-            ScaleSymbol {
-                scale: 0,
-                dim: 1,
-                sign: -1,
-                type_ii: false,
-                oddity: 1,
-            },
-            ScaleSymbol {
-                scale: 1,
-                dim: 1,
-                sign: -1,
-                type_ii: false,
-                oddity: 1,
-            },
-        ];
-        let b = vec![
-            ScaleSymbol {
-                sign: 1,
-                ..a[0].clone()
-            },
-            ScaleSymbol {
-                sign: 1,
-                ..a[1].clone()
-            },
-        ];
+        let a = vec![s2(0, 1, 3, false, 3), s2(1, 1, 3, false, 3)];
+        let b = vec![s2(0, 1, 1, false, 1), s2(1, 1, 1, false, 1)];
         assert_ne!(fuse_oddities(&a), fuse_oddities(&b));
         assert_eq!(canonical_2adic_symbol(&a), canonical_2adic_symbol(&b));
 
-        let c = vec![
-            ScaleSymbol {
-                scale: 0,
-                dim: 3,
-                sign: -1,
-                type_ii: false,
-                oddity: 1,
-            },
-            ScaleSymbol {
-                scale: 1,
-                dim: 1,
-                sign: 1,
-                type_ii: true,
-                oddity: 0,
-            },
-        ];
+        let c = vec![s2(0, 3, 3, false, 1), s2(1, 1, 1, true, 0)];
         let canon = canonical_2adic_symbol(&c);
-        assert_eq!(canon[0].sign, 1);
-        assert_eq!(canon[1].sign, -1); // smallest-dimensional term in the train
+        assert_eq!(canon[0].sign, -1); // Sage/CS canonical walking moves signs left
+        assert_eq!(canon[1].sign, 1);
+    }
+
+    #[test]
+    fn two_adic_reduction_matches_sage_quintuple_examples() {
+        // Sage canonical_2_adic_reduction:
+        // [[0,1,1,1,1], [1,1,1,1,1]] -> [[0,1,1,1,2], [1,1,1,1,0]]
+        let fused = canonical_2adic_symbol(&[s2(0, 1, 1, false, 1), s2(1, 1, 1, false, 1)]);
+        assert_eq!(
+            fused
+                .iter()
+                .map(|s| (s.scale, s.dim, s.sign, s.type_ii, s.oddity))
+                .collect::<Vec<_>>(),
+            vec![(0, 1, 1, false, 2), (1, 1, 1, false, 0)]
+        );
+
+        // [[1,2,3,1,4], [2,1,1,1,1], [3,1,1,1,1]]
+        // -> [[1,2,-1,1,6], [2,1,1,1,0], [3,1,1,1,0]]
+        let sage = canonical_2adic_symbol(&[
+            s2(1, 2, 3, false, 4),
+            s2(2, 1, 1, false, 1),
+            s2(3, 1, 1, false, 1),
+        ]);
+        assert_eq!(
+            sage.iter()
+                .map(|s| (s.scale, s.dim, s.sign, s.type_ii, s.oddity))
+                .collect::<Vec<_>>(),
+            vec![
+                (1, 2, -1, false, 6),
+                (2, 1, 1, false, 0),
+                (3, 1, 1, false, 0)
+            ]
+        );
+
+        // Walking a minus across a type-I compartment adds 4 to the fused oddity.
+        let crossed = canonical_2adic_symbol(&[s2(0, 1, 1, false, 1), s2(1, 1, 3, false, 3)]);
+        assert_eq!(
+            crossed
+                .iter()
+                .map(|s| (s.scale, s.dim, s.sign, s.type_ii, s.oddity))
+                .collect::<Vec<_>>(),
+            vec![(0, 1, -1, false, 0), (1, 1, 1, false, 0)]
+        );
     }
 
     #[test]

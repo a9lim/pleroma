@@ -120,6 +120,18 @@ impl Adele {
     /// Attach a finite-place deviation (for building non-principal adeles/ideles).
     /// A zero deviation is dropped (keeps the representation canonical).
     pub fn with_correction(mut self, p: u128, dev: LocalQp) -> Adele {
+        assert_eq!(
+            dev.prime(),
+            p,
+            "Adele correction key p={p} must match LocalQp prime {}",
+            dev.prime()
+        );
+        assert_eq!(
+            dev.precision(),
+            adele_prec(p),
+            "Adele correction at p={p} must use precision {}",
+            adele_prec(p)
+        );
         if dev.is_zero() {
             self.finite.remove(&p);
         } else {
@@ -430,6 +442,20 @@ mod tests {
         assert!(x.local_at(5).is_zero());
         assert!(!x.is_idele());
         assert_eq!(x.inv(), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "must match LocalQp prime")]
+    fn correction_prime_must_match_key() {
+        let dev = LocalQp::zero(5, adele_prec(5));
+        let _ = Adele::one().with_correction(7, dev);
+    }
+
+    #[test]
+    #[should_panic(expected = "must use precision")]
+    fn correction_precision_must_match_adele_policy() {
+        let dev = LocalQp::zero(5, adele_prec(5) + 1);
+        let _ = Adele::one().with_correction(5, dev);
     }
 
     #[test]

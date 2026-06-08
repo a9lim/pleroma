@@ -15,6 +15,7 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 #[inline]
 pub fn nim_add(a: u128, b: u128) -> u128 {
@@ -77,6 +78,73 @@ pub fn nim_mul(a: u128, b: u128) -> u128 {
     acc
 }
 
+#[inline]
+fn apply_f2_linear_map(mut x: u128, table: &[u128; 128]) -> u128 {
+    let mut acc = 0u128;
+    while x != 0 {
+        let i = x.trailing_zeros() as usize;
+        x &= x - 1;
+        acc ^= table[i];
+    }
+    acc
+}
+
+fn square_basis() -> &'static [u128; 128] {
+    static SQUARE_BASIS: OnceLock<[u128; 128]> = OnceLock::new();
+    SQUARE_BASIS.get_or_init(|| {
+        let mut basis = [0u128; 128];
+        for (i, slot) in basis.iter_mut().enumerate() {
+            *slot = nim_mul_pow2(i, i);
+        }
+        basis
+    })
+}
+
+fn invert_linear_basis(columns: &[u128; 128]) -> [u128; 128] {
+    let mut left = [0u128; 128];
+    let mut right = [0u128; 128];
+    for (col, &image) in columns.iter().enumerate() {
+        let mut bits = image;
+        while bits != 0 {
+            let row = bits.trailing_zeros() as usize;
+            bits &= bits - 1;
+            left[row] |= 1u128 << col;
+        }
+        right[col] = 1u128 << col;
+    }
+
+    for col in 0..128 {
+        let bit = 1u128 << col;
+        let pivot = (col..128)
+            .find(|&row| left[row] & bit != 0)
+            .expect("Frobenius basis matrix must be invertible");
+        left.swap(col, pivot);
+        right.swap(col, pivot);
+        for row in 0..128 {
+            if row != col && left[row] & bit != 0 {
+                left[row] ^= left[col];
+                right[row] ^= right[col];
+            }
+        }
+    }
+
+    let mut inverse_columns = [0u128; 128];
+    for (row, &row_bits) in right.iter().enumerate() {
+        let mut bits = row_bits;
+        while bits != 0 {
+            let col = bits.trailing_zeros() as usize;
+            bits &= bits - 1;
+            inverse_columns[col] |= 1u128 << row;
+        }
+    }
+    inverse_columns
+}
+
+fn sqrt_basis() -> &'static [u128; 128] {
+    static SQRT_BASIS: OnceLock<[u128; 128]> = OnceLock::new();
+    SQRT_BASIS.get_or_init(|| invert_linear_basis(square_basis()))
+}
+
 /// Nim-exponentiation by an ordinary integer exponent (square-and-multiply
 /// in the multiplicative group, using nim-multiplication).
 pub fn nim_pow(mut base: u128, mut exp: u128) -> u128 {
@@ -85,7 +153,7 @@ pub fn nim_pow(mut base: u128, mut exp: u128) -> u128 {
         if exp & 1 == 1 {
             acc = nim_mul(acc, base);
         }
-        base = nim_mul(base, base);
+        base = nim_square(base);
         exp >>= 1;
     }
     acc
@@ -95,7 +163,15 @@ pub fn nim_pow(mut base: u128, mut exp: u128) -> u128 {
 /// *bijection* on every finite nim-field F_{2^m} — char-2 squaring has no kernel.
 #[inline]
 pub fn nim_square(x: u128) -> u128 {
-    nim_mul(x, x)
+    apply_f2_linear_map(x, square_basis())
+}
+
+/// Apply the Frobenius `x ↦ x²` exactly `k` times.
+pub fn nim_frobenius_iter(mut x: u128, k: usize) -> u128 {
+    for _ in 0..k {
+        x = nim_square(x);
+    }
+    x
 }
 
 /// Nim-square-root: the inverse Frobenius. In F_{2^128} every element is a unique
@@ -104,7 +180,22 @@ pub fn nim_square(x: u128) -> u128 {
 /// global Frobenius restricts to each subfield), so this is also the square root
 /// in any F_{2^{2^k}} ⊆ F_{2^128}. Always defined — no `Option`.
 pub fn nim_sqrt(x: u128) -> u128 {
-    nim_pow(x, 1u128 << 127)
+    apply_f2_linear_map(x, sqrt_basis())
+}
+
+fn nim_pow_2k_minus_one(x: u128, k: usize) -> u128 {
+    match k {
+        0 => 1,
+        1 => x,
+        _ if k.is_multiple_of(2) => {
+            let y = nim_pow_2k_minus_one(x, k / 2);
+            nim_mul(nim_frobenius_iter(y, k / 2), y)
+        }
+        _ => {
+            let y = nim_pow_2k_minus_one(x, k - 1);
+            nim_mul(nim_square(y), x)
+        }
+    }
 }
 
 /// Nim-multiplicative inverse in F_{2^128}. The group F_{2^128}^* is cyclic of
@@ -114,6 +205,9 @@ pub fn nim_inv(x: u128) -> Option<u128> {
     if x == 0 {
         None
     } else {
-        Some(nim_pow(x, u128::MAX - 1)) // u128::MAX - 1 = 2^128 - 2
+        // x^(2^128−2) = (x^(2^127−1))². The helper builds `2^k−1` exponents by
+        // a doubling addition chain, so inversion uses few multiplications and
+        // cheap table-driven Frobenius steps.
+        Some(nim_square(nim_pow_2k_minus_one(x, 127)))
     }
 }

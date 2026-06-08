@@ -62,6 +62,26 @@ fn every_nonzero_has_inverse_in_f16() {
 }
 
 #[test]
+fn table_frobenius_agrees_with_multiplication_square() {
+    for x in [
+        0u128,
+        1,
+        2,
+        3,
+        15,
+        16,
+        255,
+        256,
+        65_535,
+        65_536,
+        1 << 40,
+        u128::MAX,
+    ] {
+        assert_eq!(nim_square(x), nim_mul(x, x), "square mismatch for {x}");
+    }
+}
+
+#[test]
 fn inverse_round_trips() {
     // x ⊗ x^{-1} = 1 for a spread of nonzero nimbers across several fields.
     for x in [

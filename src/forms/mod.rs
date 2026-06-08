@@ -60,6 +60,7 @@ pub mod lattice;
 pub mod mass_formula;
 pub mod oddchar;
 pub mod padic;
+pub(crate) mod poly_factor;
 pub mod quadric_fit;
 pub mod root_lattices;
 pub mod springer;

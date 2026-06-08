@@ -12,8 +12,8 @@
 //! implement [`Scalar`](crate::scalar::Scalar) — that trait's zero-argument
 //! `zero()`/`one()` can't supply them. It carries the same operations as inherent
 //! methods (`add`/`neg`/`mul`/`inv`/`is_zero`), and mixing two different primes is a
-//! bug (`debug_assert`-guarded), exactly as the rest of the table forbids mixing
-//! scalar worlds.
+//! bug (`assert`-guarded), exactly as the rest of the table forbids mixing scalar
+//! worlds.
 //!
 //! Precision is the same **capped-relative** model as `Qp` (mul/inv exact, addition
 //! non-associative across precision boundaries) — see `scalar/small/qp.rs`.
@@ -61,14 +61,14 @@ pub struct LocalQp {
 
 impl LocalQp {
     fn check(p: u128, k: u128) {
-        debug_assert!(
+        assert!(
             is_prime(p) && k > 0,
             "LocalQp needs prime p and positive precision k, got p={p}, k={k}"
         );
     }
 
     fn same_world(&self, other: &LocalQp) {
-        debug_assert!(
+        assert!(
             self.p == other.p && self.k == other.k,
             "LocalQp: cannot mix primes/precisions ({},{}) vs ({},{})",
             self.p,
@@ -397,10 +397,30 @@ mod tests {
     fn from_rational_valuation() {
         // 50/3 in Q_5: v_5(50) = 2, v_5(3) = 0 ⇒ valuation 2.
         let x = LocalQp::from_rational(5, 4, &Rational::new(50, 3));
+        let xq = Qp::<5, 4>::from_rational(&Rational::new(50, 3));
+        assert_eq!(x.unit(), xq.unit());
+        assert_eq!(x.valuation(), xq.valuation());
         assert_eq!(x.valuation(), Some(2));
         // 3/50 ⇒ valuation -2, and it is the inverse of the above.
         let y = LocalQp::from_rational(5, 4, &Rational::new(3, 50));
+        let yq = Qp::<5, 4>::from_rational(&Rational::new(3, 50));
+        assert_eq!(y.unit(), yq.unit());
+        assert_eq!(y.valuation(), yq.valuation());
         assert_eq!(y.valuation(), Some(-2));
         assert_eq!(x.mul(&y), LocalQp::one(5, 4));
+    }
+
+    #[test]
+    #[should_panic(expected = "needs prime p")]
+    fn invalid_runtime_world_is_rejected_in_release_too() {
+        let _ = LocalQp::one(4, 3);
+    }
+
+    #[test]
+    #[should_panic(expected = "cannot mix primes")]
+    fn mixed_runtime_worlds_are_rejected_in_release_too() {
+        let x = LocalQp::one(3, 4);
+        let y = LocalQp::one(5, 4);
+        let _ = x.add(&y);
     }
 }

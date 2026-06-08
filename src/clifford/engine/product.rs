@@ -68,8 +68,29 @@ impl<S: Scalar> Metric<S> {
         out
     }
 
+    /// Fast path for an orthogonal basis: `e_S e_T` is a single blade `e_{S△T}`
+    /// times the reordering sign and the product of `q_i` over repeated indices.
+    fn geom_product_blades_orthogonal(&self, s: u128, t: u128) -> BTreeMap<u128, S> {
+        let mut coeff = wedge_sign::<S>(s, t);
+        let mut common = s & t;
+        while common != 0 {
+            let i = common.trailing_zeros() as usize;
+            common &= common - 1;
+            coeff = coeff.mul(&self.q_val(i));
+            if coeff.is_zero() {
+                return BTreeMap::new();
+            }
+        }
+        let mut m = BTreeMap::new();
+        m.insert(s ^ t, coeff);
+        m
+    }
+
     /// The general-bilinear-form geometric product of two wedge blades.
     pub(super) fn geom_product_blades(&self, s: u128, t: u128) -> BTreeMap<u128, S> {
+        if self.is_orthogonal() {
+            return self.geom_product_blades_orthogonal(s, t);
+        }
         if s == 0 {
             let mut m = BTreeMap::new();
             m.insert(t, S::one());

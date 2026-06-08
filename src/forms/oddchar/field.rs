@@ -25,8 +25,8 @@ pub trait FiniteOddField: Scalar + Copy {
     fn from_i128(n: i128) -> Self;
 
     /// Enumerate the field: index `i ∈ [0, field_order())` ↦ a distinct element,
-    /// covering all of `F_q` exactly once. Used to enumerate monic polynomials over
-    /// `F_q` (e.g. trial-division factorization in the function-field place layer).
+    /// covering all of `F_q` exactly once. Used by deterministic finite-field
+    /// polynomial factorization in the function-field place layer.
     fn from_index(i: u128) -> Self;
 
     /// Square-class test in the field. `0` counts as a square.

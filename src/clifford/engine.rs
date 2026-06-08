@@ -89,6 +89,20 @@ mod tests {
     }
 
     #[test]
+    fn orthogonal_blade_product_handles_repeated_indices_directly() {
+        let metric = Metric::diagonal(vec![r(2), r(3), r(5)]);
+        let mut expect = BTreeMap::new();
+        // e_0e_1 · e_1e_2 = q_1 e_0e_2.
+        expect.insert(0b101, r(3));
+        assert_eq!(metric.geom_product_blades(0b011, 0b110), expect);
+
+        let mut expect_scalar = BTreeMap::new();
+        // e_0e_1 · e_0e_1 = -q_0q_1.
+        expect_scalar.insert(0, r(-6));
+        assert_eq!(metric.geom_product_blades(0b011, 0b011), expect_scalar);
+    }
+
+    #[test]
     fn grassmann_generators_are_nilpotent() {
         let alg = CliffordAlgebra::new(3, Metric::grassmann(3));
         for i in 0..3 {

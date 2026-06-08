@@ -535,7 +535,7 @@ pub fn loopy_quadric_probe<F: Fn(usize) -> Vec<usize>>(
     k: usize,
     moves: F,
 ) -> (Option<QuadricFit>, Option<QuadricFit>) {
-    assert!(k <= 12, "fit_f2_quadratic is exponential in k");
+    assert!(k <= 20, "loopy_quadric_probe is exponential in k");
     let n = 1usize << k;
     let (loss, draw) = loopy_decision_sets(n, moves);
     let loss_u: Vec<u128> = loss.iter().map(|&v| v as u128).collect();

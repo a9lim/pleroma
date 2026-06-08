@@ -37,88 +37,58 @@ impl QuadricFit {
 
 /// Try to fit a quadratic form `Q(x) = c ⊕ Σ q_i x_i ⊕ Σ_{i<j} b_ij x_i x_j` over
 /// F₂ on `k` variables whose zero set is exactly `set` (a list of bitmask points
-/// of F₂^k). Returns `None` if no quadratic form has that zero set. Solved by
-/// Gaussian elimination over F₂ on the `2^k` membership equations.
+/// of F₂^k). Returns `None` if no quadratic form has that zero set. The unique
+/// Boolean algebraic normal form is computed by a fast Mobius transform on the
+/// truth table; fitting succeeds exactly when every coefficient of degree `> 2`
+/// vanishes.
 ///
 /// This is the instrument both game probes feed their P-positions into: it answers
 /// "is this P-set a quadric, and if so what is its Arf (win-bias)?", and
 /// distinguishes a genuine quadric ([`QuadricFit::is_genuinely_quadratic`]) from a
 /// mere affine subspace (the XOR-linear case normal play already produces).
 pub fn fit_f2_quadratic(set: &[u128], k: usize) -> Option<QuadricFit> {
-    assert!(k <= 12, "fit_f2_quadratic is exponential in k");
-    // Coefficient layout: bit 0 = constant; bits 1..=k = linear x_i;
-    // then one bit per pair (i<j) for the quadratic terms.
-    let mut pair_index = vec![vec![0usize; k]; k];
-    let mut nbits = 1 + k;
-    for i in 0..k {
-        for j in (i + 1)..k {
-            pair_index[i][j] = nbits;
-            nbits += 1;
-        }
-    }
+    const MAX_ANF_DIM: usize = 20;
     assert!(
-        nbits <= u128::BITS as usize,
-        "coefficient layout must fit in u128"
+        k <= MAX_ANF_DIM,
+        "fit_f2_quadratic is exponential in k; max supported k is {MAX_ANF_DIM}"
     );
-    // Feature vector φ(v) over the coefficient layout (as a u128 bitmask).
-    let phi = |v: u128| -> u128 {
-        let mut f = 1u128; // constant
-        for i in 0..k {
-            if v & (1 << i) != 0 {
-                f |= 1u128 << (1 + i);
-            }
-        }
-        for i in 0..k {
-            for j in (i + 1)..k {
-                if v & (1 << i) != 0 && v & (1 << j) != 0 {
-                    f |= 1u128 << pair_index[i][j];
-                }
-            }
-        }
-        f
-    };
-    let in_set: std::collections::HashSet<u128> = set.iter().copied().collect();
+    let n = 1usize << k;
+    let domain_mask = if k == 0 { 0 } else { (1u128 << k) - 1 };
+    assert!(
+        set.iter().all(|&v| v & !domain_mask == 0),
+        "fit_f2_quadratic received a point outside F_2^{k}"
+    );
 
-    // Build the augmented system: rows (φ(v) | target), target = 0 iff v ∈ set.
-    let mut rows: Vec<(u128, bool)> = (0..(1u128 << k))
-        .map(|v| (phi(v), !in_set.contains(&v)))
-        .collect();
+    // Truth table for the target function Q(v): zero on `set`, one off it.
+    let mut coeffs = vec![true; n];
+    for &v in set {
+        coeffs[v as usize] = false;
+    }
 
-    // Gaussian elimination over F₂ (coefficient bits 0..nbits as pivots).
-    let mut pivots: Vec<(usize, usize)> = Vec::new(); // (bit, row index)
-    let mut r = 0usize;
-    for bit in 0..nbits {
-        if let Some(p) = (r..rows.len()).find(|&i| rows[i].0 & (1u128 << bit) != 0) {
-            rows.swap(r, p);
-            let (prow, ptgt) = rows[r];
-            for i in 0..rows.len() {
-                if i != r && rows[i].0 & (1u128 << bit) != 0 {
-                    rows[i].0 ^= prow;
-                    rows[i].1 ^= ptgt;
-                }
+    // Mobius transform: truth table -> algebraic normal form coefficients.
+    for i in 0..k {
+        let bit = 1usize << i;
+        for mask in 0..n {
+            if mask & bit != 0 {
+                coeffs[mask] ^= coeffs[mask ^ bit];
             }
-            pivots.push((bit, r));
-            r += 1;
         }
     }
-    // Consistency: any all-zero coefficient row must have target 0.
-    if rows.iter().any(|&(coef, tgt)| coef == 0 && tgt) {
-        return None; // not a quadric
+
+    if coeffs
+        .iter()
+        .enumerate()
+        .any(|(mask, &c)| c && mask.count_ones() > 2)
+    {
+        return None;
     }
-    // Read off one solution (free variables = 0).
-    let mut sol = 0u128;
-    for &(bit, row) in &pivots {
-        if rows[row].1 {
-            sol |= 1u128 << bit;
-        }
-    }
-    // (Sanity is guaranteed by construction; the form below reproduces `set`.)
-    let constant = sol & 1 != 0;
-    let qd: Vec<bool> = (0..k).map(|i| sol & (1u128 << (1 + i)) != 0).collect();
+
+    let constant = coeffs[0];
+    let qd: Vec<bool> = (0..k).map(|i| coeffs[1usize << i]).collect();
     let mut bmat = vec![0u128; k];
     for i in 0..k {
         for j in (i + 1)..k {
-            if sol & (1u128 << pair_index[i][j]) != 0 {
+            if coeffs[(1usize << i) | (1usize << j)] {
                 bmat[i] |= 1 << j;
                 bmat[j] |= 1 << i;
             }
@@ -174,10 +144,10 @@ mod tests {
     }
 
     #[test]
-    fn fit_supports_the_documented_k12_bound() {
-        let set: Vec<u128> = (0..(1u128 << 12)).collect();
-        let fit = fit_f2_quadratic(&set, 12).unwrap();
-        assert_eq!(fit.qd.len(), 12);
+    fn fit_supports_beyond_the_old_coefficient_layout_ceiling() {
+        let set: Vec<u128> = (0..(1u128 << 16)).collect();
+        let fit = fit_f2_quadratic(&set, 16).unwrap();
+        assert_eq!(fit.qd.len(), 16);
         assert_eq!(fit.arf.rank, 0);
         assert!(!fit.constant);
     }
@@ -196,5 +166,12 @@ mod tests {
             }
         }
         assert_eq!(count, 128, "expected exactly 2^7 quadrics over F₂³");
+    }
+
+    #[test]
+    fn cubic_truth_table_is_rejected() {
+        // Q(v) = x0 x1 x2 has zero set all points except 111; it is not quadratic.
+        let set: Vec<u128> = (0..8u128).filter(|&v| v != 7).collect();
+        assert!(fit_f2_quadratic(&set, 3).is_none());
     }
 }

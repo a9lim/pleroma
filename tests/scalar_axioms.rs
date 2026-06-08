@@ -124,10 +124,13 @@ axiom_suite!(
 // `Ordinal` is deliberately NOT a `Scalar`: nim-multiplication is partial — `None`
 // at ω^ω and above, the staged tower boundary — so it can't ride the `axiom_suite!`
 // macro. This bespoke checker fuzzes the transfinite char-2 field laws instead.
-// nim-addition is total and always checked; nim-multiplication's ring laws are
-// checked only where every needed product is defined, and the partiality itself is
-// pinned (a product is defined iff a factor is `0` or both factors are `< ω^ω`), so
-// a `None` is always a meaningful boundary fact and can never silently pass.
+// nim-addition is total and always checked. nim-multiplication is partial (the
+// prime-power tower reaches every ordinal `< ω^(ω²)` and free combinations beyond,
+// returning `None` only at the staged non-scalar-Kummer boundary), so its laws are
+// checked where defined: commutativity (and symmetric definedness) always; the full
+// commutative-ring laws on the `< ω^ω` segment, which is pinned **totally closed** so
+// the check never silently degenerates; and associativity opportunistically where the
+// whole triangle is defined past `ω^ω`.
 
 /// True iff every CNF exponent is finite — i.e. the ordinal is `< ω^ω`, the region
 /// where nim-multiplication is implemented (the degree-3 cube-root tower).
@@ -166,28 +169,26 @@ fn ordinal_field_axioms(a: &Ordinal, b: &Ordinal, c: &Ordinal) {
     assert!(a.nim_add(&Ordinal::zero()) == *a, "0 is the ⊕-identity");
     assert!(a.nim_add(a).is_zero(), "α ⊕ α = 0 (char 2)");
 
-    // ⊗ is partial: `Some` iff a factor is `0` or both factors are `< ω^ω`. Pin
-    // that equivalence so a `None` is always a checked boundary fact, never a
-    // silent skip.
-    for (x, y) in [(a, b), (b, c), (a, c), (a, a)] {
-        let defined = x.is_zero() || y.is_zero() || (below_omega_omega(x) && below_omega_omega(y));
+    // ⊗ is commutative and its definedness is symmetric — checkable on every triple
+    // regardless of the boundary (both sides `None`, or both equal `Some`).
+    for (x, y) in [(a, b), (b, c), (a, c)] {
         assert_eq!(
-            x.nim_mul(y).is_some(),
-            defined,
-            "⊗ is defined iff a factor is 0 or both factors are < ω^ω",
+            x.nim_mul(y),
+            y.nim_mul(x),
+            "⊗ commutative / symmetric domain"
         );
     }
 
-    // Where all three are `< ω^ω` every product is defined, and the commutative-ring
-    // laws must hold.
+    // The `< ω^ω` segment is **totally closed**: there every product is defined and
+    // the full commutative-ring laws hold. (Pinned, so the suite never degenerates
+    // into vacuously skipping multiplication.)
     if below_omega_omega(a) && below_omega_omega(b) && below_omega_omega(c) {
         let one = Ordinal::from_u128(1);
-        let ab = a.nim_mul(b).unwrap();
+        let ab = a.nim_mul(b).expect("< ω^ω is closed under ⊗");
         assert!(
             ab.nim_mul(c).unwrap() == a.nim_mul(&b.nim_mul(c).unwrap()).unwrap(),
             "⊗ associative"
         );
-        assert!(ab == b.nim_mul(a).unwrap(), "⊗ commutative");
         assert!(a.nim_mul(&one).unwrap() == *a, "1 is the ⊗-identity");
         assert!(
             a.nim_mul(&Ordinal::zero()).unwrap().is_zero(),
@@ -197,6 +198,14 @@ fn ordinal_field_axioms(a: &Ordinal, b: &Ordinal, c: &Ordinal) {
             a.nim_mul(&b.nim_add(c)).unwrap() == ab.nim_add(&a.nim_mul(c).unwrap()),
             "⊗ distributes over ⊕"
         );
+    }
+
+    // Past `ω^ω` the engine is partial; where a whole associativity triangle is
+    // defined, the law must still hold.
+    if let (Some(ab), Some(bc)) = (a.nim_mul(b), b.nim_mul(c)) {
+        if let (Some(l), Some(r)) = (ab.nim_mul(c), a.nim_mul(&bc)) {
+            assert_eq!(l, r, "⊗ associative where defined past ω^ω");
+        }
     }
 }
 

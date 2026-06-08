@@ -617,12 +617,19 @@ verified independently from finite-field theory: the 5th powers of `F_16*` are
 `F_4* = {1,2,3}` (`2 = 3^⊗5`, `3 = 2^⊗5`), so `4` is the smallest non-5th-power, and
 it stays a non-5th-power throughout the 2,3-primary tower.
 
-Implementation status: nim-mult is shipped `< ω^ω` (the degree-3 cube-root tower). The
-next increment is the **quintic stage** `< ω^(ω²)` (primes 2,3,5): key each monomial
-by `(base-5 digits of the ω-part of the exponent, base-3 digits of the finite part)`,
-with quintic carries `h_0^⊗5 = α_5 = 4`, `h_k^⊗5 = h_{k-1}` (generators
-`h_k = ω^(ω·5^k) = χ_{5^{k+1}}`) alongside the existing cube carries. Further primes
-extend the same scheme, one verified `α_u` at a time.
+Implementation status: the general prime-power tower (`scalar/big/ordinal/tower.rs`)
+is shipped as **Stage 1** — a monomial `ω^E` is keyed by `place m ↦ base-p(m) digit
+vector` of its exponent `E`, and `ω^{E1} ⊗ ω^{E2}` adds the digit vectors per `(m,k)`
+and reduces with the per-prime carries (`χ_{u^{k+1}}^u = χ_{u^k}`,
+`χ_u^u = α_u`). Stage 1 handles the *scalar*-`α_u` reductions (`α_3=2`, `α_5=4`,
+`α_17=16`), which already closes every ordinal `< ω^(ω²)` (primes 3,5 only) plus all
+higher products that never trigger a non-scalar Kummer carry — verified by a
+prime-3/prime-5 field-axiom sweep and the source-derived landmarks
+(`(ω^ω)^⊗5 = 4`, `(ω^ω)^⊗2 = ω^(ω·2)`, `ω^ω ⊗ ω = ω^(ω+1)`). The boundary is
+self-limiting: `None` at the first non-scalar `α_u` (e.g. `(ω^(ω²))^⊗7 = α_7 = ω+1`)
+or at `≥ ω^(ω^ω)`. **Stage 2** (remaining): the non-scalar `α_u` branching — a level-0
+carry by `α_7 = ω+1` splits a monomial into a *sum*, mixing across places — which
+closes the rest of `\bar{F_2} = ` ordinals `< ω^(ω^ω)`.
 
 ## Useful commands
 

@@ -85,8 +85,9 @@ impl NimberGame {
 
     /// The **Turning-Corners product**: Conway's coin game realizing
     /// nim-multiplication (the transfinite extension of
-    /// [`coin_turning::nim_mul_mex`](crate::games::nim_mul_mex)). `None` at and above
-    /// `ω^ω`, where the `On₂` nim-product is staged (see
+    /// [`coin_turning::nim_mul_mex`](crate::games::nim_mul_mex)). Defined across the
+    /// `On₂` prime-power tower (every heap `< ⋆ω^(ω²)` and free combinations beyond);
+    /// `None` only at the staged non-scalar-Kummer boundary (see
     /// [`big::ordinal`](crate::scalar::big)). Unlike the surreal leg — where the
     /// product is field multiplication — for nimbers the product is a *separate*
     /// game from the disjunctive sum; this is the seam where the game pillar meets
@@ -166,9 +167,17 @@ mod tests {
             .unwrap();
         assert_eq!(w3.grundy(), &Ordinal::from_u128(2));
 
-        // at ω^ω the nim-product is staged — honestly None, no crash.
+        // ⋆ω^ω is now the degree-5 generator χ_5: ⋆ω^ω ⊗ ⋆ω^ω = ⋆ω^(ω·2) (was staged
+        // under the old ω^ω boundary).
         let ww = NimberGame::from_ordinal(&Ordinal::omega_pow(Ordinal::omega()));
-        assert!(ww.turning_corners(&ww).is_none());
+        assert_eq!(
+            ww.turning_corners(&ww).unwrap().grundy(),
+            &Ordinal::omega_pow(Ordinal::monomial(Ordinal::from_u128(1), 2))
+        );
+        // the staged boundary is now the non-scalar Kummer carry: ⋆ω^(ω^ω) is None.
+        let www =
+            NimberGame::from_ordinal(&Ordinal::omega_pow(Ordinal::omega_pow(Ordinal::omega())));
+        assert!(www.turning_corners(&www).is_none());
     }
 
     #[test]

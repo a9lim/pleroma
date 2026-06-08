@@ -64,6 +64,7 @@
 
 mod cantor;
 mod nim;
+mod tower;
 
 use std::cmp::Ordering;
 use std::fmt;

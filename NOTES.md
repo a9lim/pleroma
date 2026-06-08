@@ -673,13 +673,12 @@ boundary. (b)/(c) are the way to push the wall — (b) for self-verification, (c
 
 ## Characteristic-2 local–global: the Artin–Schreier symbol over F_{2^m}(t)
 
-Claim level: **standard math, source-verified** (the symbol + reciprocity, and the
-local Aravire–Jacob Witt decomposition + rank-by-rank local isotropy),
-**implemented-and-tested** (`forms/function_field_char2.rs`, `forms/char2/field.rs`,
-`forms/springer_char2.rs`). The remaining *global* char-2 Hasse–Minkowski **for
-forms** (isotropy over `F_{2^m}(t)` itself, not just the per-place symbol) needs a
-global `℘`-reduction layer and is the next build. Appendix material — it rounds out
-the local↔global table into char 2 and touches no Arf/game claim.
+Claim level: **standard math, source-verified** (the symbol + reciprocity, the local
+Aravire–Jacob Witt decomposition + rank-by-rank local isotropy, **and** the global
+Hasse–Minkowski isotropy over `F_{2^m}(t)` itself), **implemented-and-tested**
+(`forms/function_field_char2.rs`, `forms/char2/field.rs`, `forms/springer_char2.rs`).
+The local↔global table now commutes into char 2 end-to-end; it touches no Arf/game
+claim. Appendix material.
 
 The odd-`q` local–global layer (`forms/function_field.rs`) needs odd residue
 characteristic: its tame Hilbert symbol uses the multiplicative square class
@@ -727,12 +726,38 @@ isotropy (`[a,b]` iso ⟺ `ab ∈ ℘(K_v)`; ranks 3/4 via the Part-A symbol `s_
 engine, cross-checked via Codex) spanning the `φ₀`/`ψ`/`φ₁` coordinates and every
 rank-by-rank branch — including the genuinely anisotropic 4-dim class realising `u = 4`
 (`[1,1] ⊥ [π, π⁻¹]`). The naive two-layer `W = W_q(k)²` version was correctly avoided.
-What remains is the **global** form-isotropy layer (`℘`-reduction over `F_q(t)`,
-beyond the per-place symbol).
+
+**Global isotropy, delivered (`is_isotropic_global_char2`).** Hasse–Minkowski over
+`F_q(t)` itself, on three source-pinned ingredients past the per-place symbol. (1) A
+global `℘`-membership test: `f ∈ ℘(F_q(t))` ⟺ `f ∈ ℘(K_v)` at every place (the
+local–global principle for `℘` holds over the rational function field — the map is
+into `∏_v K_v/℘`, a *product*), and the only obstructions live at the poles of `f`
+and at `∞` (which also reads the leftover constant's `Tr_{F_q/F₂}`), so a finite
+sweep decides it. This settles **rank 2** (`[a,b]` iso ⟺ `ab ∈ ℘`) — *not* reducible
+to a finite bad-place scan, since the constant-trace obstruction (`[1,1]/F₂(t)`,
+anisotropic) sits at infinitely many odd-degree places. (2) The **totally-singular**
+part is elementary because `[F_q(t):F_q(t)²] = 2`: `≥ 3` entries are `K²`-dependent
+(isotropic), a binary `⟨c₁,c₂⟩` is iso ⟺ `c₁c₂ ∈ K²`, and an anisotropic binary
+quasilinear part is *universal* (isotropises any form with a nonzero block) — so there
+is **no** local–global failure to punt on here (the failure that does exist for
+quasilinear forms is over more general base fields, not rational `F_q(t)`). (3) For
+**rank 3/4 non-degenerate**, a finite bad-place Hasse–Minkowski sweep: at a good place
+all coefficients are units, the rank-`≥3` reduction is a `>2`-variable form over the
+finite residue field, isotropic by Chevalley–Warning and Hensel-liftable, so only the
+finite bad set (places dividing a coefficient, plus `∞`) needs checking. `u(F_q(t)) =
+4` (`F_q(t)` is a `C₂` field, Tsen–Lang) caps it — every `rank ≥ 5` form is isotropic.
+Ten worked global oracles over `F₂(t)`/`F₄(t)` pin it (the `℘`-obstruction at both a
+constant-trace and a pole case, the rank-3/4 branches, the `u=4` anisotropic 4-dim
+class `[1,1]⊥[t,1/t]`, and the quasilinear cases). One Codex oracle was caught wrong in
+review (`[1,1]⊥[t,t]` is **isotropic** — vector `(1,0,1,1)` — not the norm form of
+`[1,t)`, which is `[1,1] ⊥ t·[1,1]`); the corrected witness is `[1,1]⊥[t,1/t]`.
 
 References: Serre, *Local Fields* XIV; Gille–Szamuely, *Central Simple Algebras and
-Galois Cohomology* §9; Elman–Karpenko–Merkurjev §§7, 14; Aravire–Jacob (the char-2
-function-field Witt theory). Independent theory pass cross-checked via Codex.
+Galois Cohomology* §9; Elman–Karpenko–Merkurjev §§7, 14 (regular/non-degenerate and
+totally-singular classification); Aravire–Jacob (the char-2 function-field Witt
+theory); Csahók–Kutas–Montessinos–Zábrádi (arXiv 2203.04068, the explicit `℘`
+minimization + Hasse–Minkowski over `F(t)`). Independent theory pass cross-checked via
+Codex (including the oracle-7 correction above).
 
 ## Useful commands
 

@@ -149,8 +149,10 @@ fn enumerate_monic<S: FiniteChar2Field>(degree: usize) -> Vec<Poly<S>> {
 }
 
 /// The distinct monic irreducible factors of `f` over `F_q` (square-free support).
-/// Deterministic trial division in increasing degree (small `q`, low degree).
-fn monic_irreducible_factors<S: FiniteChar2Field>(f: &Poly<S>) -> Vec<Poly<S>> {
+/// Deterministic trial division in increasing degree (small `q`, low degree). The
+/// char-2 twin of [`function_field::monic_irreducible_factors`]; the distinct name
+/// (vs the odd-char one) keeps the flat `forms::*` glob re-export unambiguous.
+pub(crate) fn char2_monic_irreducible_factors<S: FiniteChar2Field>(f: &Poly<S>) -> Vec<Poly<S>> {
     let mut factors = Vec::new();
     if f.degree().unwrap_or(0) == 0 {
         return factors;
@@ -389,7 +391,7 @@ pub fn as_symbol_places<S: FiniteChar2Field>(
 ) -> Vec<Char2Place<S>> {
     let mut places = vec![Char2Place::Infinite];
     if let Some((_, gden)) = dlog_differential(a, b) {
-        for pi in monic_irreducible_factors(&gden) {
+        for pi in char2_monic_irreducible_factors(&gden) {
             places.push(Char2Place::Finite(pi));
         }
     }

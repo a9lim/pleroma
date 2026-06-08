@@ -49,15 +49,23 @@
 //! isotropic. (Source-pinned to Aravire–Jacob and Elman–Karpenko–Merkurjev §§7, 13;
 //! oracles cross-checked via Codex — see the tests.)
 //!
-//! **Scope.** This is the *local* layer at a chosen place (the structure theorem and
-//! local isotropy). The *global* char-2 Hasse–Minkowski for forms — isotropy over
-//! `F_q(t)` itself — needs a global `℘`-reduction layer beyond the per-place symbol
-//! (Part A already ships the global *symbol* reciprocity `∑_v s_v = 0`); it is a
-//! separate build, noted in NOTES.md. Local isotropy is reported for the ranks the
-//! sources pin exactly (`≤ 4` in the standard block shapes; `≥ 5` is always
-//! isotropic); unsupported singular configurations return `None` rather than guess.
+//! # Global isotropy over `F_q(t)` (Hasse–Minkowski)
+//!
+//! [`is_isotropic_global_char2`] decides isotropy over `F_q(t)` itself. Three
+//! ingredients beyond the per-place symbol, all source-pinned: the global
+//! `℘`-membership test [`global_is_pe`] (`f ∈ ℘(F_q(t))` ⟺ `f ∈ ℘(K_v)` everywhere,
+//! a finite sweep of the poles of `f` plus `∞`) settles **rank 2** (`[a,b]` iso ⟺
+//! `ab ∈ ℘`); the elementary `[K : K²] = 2` square test [`ff_is_square`] settles the
+//! **totally-singular** part; and **Hasse–Minkowski** over the finite
+//! [`relevant_places_char2`] set settles **rank 3/4** (good places are isotropic by
+//! Chevalley–Warning). `u(F_q(t)) = 4` (`C₂`, Tsen–Lang) caps it: every `rank ≥ 5`
+//! form is isotropic. (Local isotropy itself is reported for the ranks the sources
+//! pin exactly — `≤ 4` in the standard block shapes, `≥ 5` always isotropic;
+//! unsupported singular configurations return `None` rather than guess.)
 
-use crate::forms::function_field_char2::{inverse_mod, strip_factor, trace_kappa_to_f2};
+use crate::forms::function_field_char2::{
+    char2_monic_irreducible_factors, inverse_mod, strip_factor, trace_kappa_to_f2,
+};
 use crate::forms::{artin_schreier_class_finite, as_symbol_at, Char2Place, FiniteChar2Field};
 use crate::scalar::{Poly, RationalFunction, Scalar};
 use std::collections::BTreeMap;
@@ -565,6 +573,143 @@ pub fn local_is_isotropic_char2<S: FiniteChar2Field>(
     local_anisotropic_dim_char2(form, place).map(|d| d < rank)
 }
 
+// ───────────────────────── global isotropy over F_q(t) ─────────────────────────
+
+/// Whether `f ∈ F_q(t)` is a **square**, i.e. lies in `K² = F_q(t²)`. Since
+/// `[F_q(t) : F_q(t)²] = 2` (`F_q` perfect, basis `{1, t}` over `K²`), `f = N/D` is a
+/// square iff `N·D ∈ F_q[t]²`, and a char-2 polynomial over a perfect field is a
+/// square iff every **odd-degree** coefficient vanishes (the even ones are squares
+/// automatically). The additive `℘`-analogue of this is [`global_is_pe`].
+fn ff_is_square<S: FiniteChar2Field>(f: &RationalFunction<S>) -> bool {
+    if f.is_zero() {
+        return true;
+    }
+    let prod = f.num().mul(f.den());
+    prod.coeffs()
+        .iter()
+        .enumerate()
+        .all(|(i, c)| i & 1 == 0 || c.is_zero())
+}
+
+/// Whether `f ∈ ℘(F_q(t))` — the **global** Artin–Schreier triviality test
+/// (`℘(x) = x² + x`). By the local–global principle for `℘` over the rational
+/// function field, `f ∈ ℘(F_q(t))` iff `f ∈ ℘(K_v)` at **every** place; and the only
+/// places that can carry an obstruction are the poles of `f` (finite places dividing
+/// `den f`) and `∞` (which also sees the leftover constant's `Tr_{F_q/F₂}`). So a
+/// finite sweep of `{∞} ∪ {P | den f}` decides it. The additive analogue of the
+/// odd-char [`is_global_square_ff`](crate::forms::function_field::is_global_square_ff).
+pub fn global_is_pe<S: FiniteChar2Field>(f: &RationalFunction<S>) -> bool {
+    if f.is_zero() {
+        return true;
+    }
+    if !local_is_pe(f, &Char2Place::Infinite) {
+        return false;
+    }
+    char2_monic_irreducible_factors(f.den())
+        .into_iter()
+        .all(|p| local_is_pe(f, &Char2Place::Finite(p)))
+}
+
+/// The finite set of places of `F_q(t)` that can make `form` anisotropic: `∞` plus
+/// every monic irreducible dividing a numerator or denominator of some coefficient.
+/// At every **other** place all coefficients are units, so a rank-`≥ 3` form reduces
+/// to a `> 2`-variable form over the finite residue field `κ` — isotropic by
+/// Chevalley–Warning and liftable by Hensel — and need not be checked.
+pub fn relevant_places_char2<S: FiniteChar2Field>(form: &Char2QuadForm<S>) -> Vec<Char2Place<S>> {
+    let mut primes: Vec<Poly<S>> = Vec::new();
+    let mut push = |g: &Poly<S>| {
+        for p in char2_monic_irreducible_factors(g) {
+            if !primes.contains(&p) {
+                primes.push(p);
+            }
+        }
+    };
+    for (a, b) in &form.blocks {
+        push(a.num());
+        push(a.den());
+        push(b.num());
+        push(b.den());
+    }
+    for c in &form.singular {
+        push(c.num());
+        push(c.den());
+    }
+    let mut places = vec![Char2Place::Infinite];
+    places.extend(primes.into_iter().map(Char2Place::Finite));
+    places
+}
+
+/// Whether `form` is **isotropic over `F_q(t)`** (the global Hasse–Minkowski verdict
+/// in characteristic 2). The dispatch, all source-pinned (Aravire–Jacob;
+/// Elman–Karpenko–Merkurjev; Csahók–Kutas–Montessinos–Zábrádi; Tsen–Lang `C₂`):
+///
+/// * a null coefficient (`⟨0⟩`) or a hyperbolic block (`[0,b]`/`[a,0]`) ⇒ isotropic;
+/// * `rank ≥ 5` ⇒ isotropic — `u(F_q(t)) = 4` (`F_q(t)` is a `C₂` field);
+/// * **totally singular** part (`℘`-free, quasilinear): `[K : K²] = 2`, so `≥ 3`
+///   singular entries are isotropic, and a binary `⟨c₁, c₂⟩` is isotropic iff
+///   `c₁c₂ ∈ K²` ([`ff_is_square`]); an anisotropic binary quasilinear part is
+///   *universal*, so it isotropises any form carrying a nonzero block;
+/// * **rank 2** `[a, b]`: isotropic iff `ab ∈ ℘(F_q(t))` ([`global_is_pe`]) — *not* a
+///   finite bad-place sweep, since the constant-trace obstruction lives at infinitely
+///   many odd-degree places (caught by the global `℘` test);
+/// * **rank 3/4 non-degenerate**: Hasse–Minkowski — isotropic iff isotropic over
+///   `K_v` at every [`relevant_places_char2`] (a finite set).
+///
+/// `None` only if the local engine reports an unsupported shape at some place (it
+/// does not for the non-degenerate `rank ≤ 4` forms this routes there).
+pub fn is_isotropic_global_char2<S: FiniteChar2Field>(form: &Char2QuadForm<S>) -> Option<bool> {
+    // A null direction or a hyperbolic block isotropises the whole form.
+    if form.singular.iter().any(|c| c.is_zero()) {
+        return Some(true);
+    }
+    if form.blocks.iter().any(|(a, b)| a.is_zero() || b.is_zero()) {
+        return Some(true);
+    }
+    let nb = form.blocks.len();
+    let ns = form.singular.len();
+    let rank = 2 * nb + ns;
+    if rank == 0 {
+        return Some(false); // the empty form is anisotropic by convention
+    }
+    if rank >= 5 {
+        return Some(true); // u(F_q(t)) = 4
+    }
+    // Totally-singular handling (the quasilinear part), elementary over F_q(t).
+    if ns >= 3 {
+        return Some(true); // ≥ 3 entries are K²-dependent
+    }
+    if ns == 2 {
+        // A binary block present ⇒ the (universal-if-anisotropic) singular pair
+        // isotropises it; otherwise it is the pure quasilinear ⟨c₁,c₂⟩.
+        if nb >= 1 {
+            return Some(true);
+        }
+        let prod = form.singular[0].mul(&form.singular[1]);
+        return Some(ff_is_square(&prod)); // ⟨c₁,c₂⟩ iso ⟺ c₁c₂ ∈ K²
+    }
+    // Non-degenerate from here (#singular ≤ 1).
+    match (nb, ns) {
+        (0, 1) => Some(false), // ⟨c⟩, c ≠ 0
+        (1, 0) => {
+            // rank 2: [a,b] isotropic ⟺ ab ∈ ℘(F_q(t)).
+            let (a, b) = &form.blocks[0];
+            Some(global_is_pe(&a.mul(b)))
+        }
+        // rank 3 ([a,b]⊥⟨c⟩) and rank 4 ([a,b]⊥[a,b]): Hasse–Minkowski.
+        _ => {
+            let mut all_iso = true;
+            for place in relevant_places_char2(form) {
+                match local_is_isotropic_char2(form, &place) {
+                    Some(true) => {}
+                    Some(false) => return Some(false),
+                    None => all_iso = false, // unsupported shape leaked through
+                }
+            }
+            all_iso.then_some(true)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -851,6 +996,145 @@ mod tests {
         assert_eq!(
             local_anisotropic_dim_char2(&Char2QuadForm::from_blocks(blocks), &p),
             Some(2)
+        );
+    }
+
+    // ── global isotropy over F_q(t) (Hasse–Minkowski), source-pinned oracles ──
+    // (verified independently, then cross-checked via Codex; oracle 7 below is the
+    // corrected one — [1,1]⊥[t,t] is ISOTROPIC, vector (1,0,1,1).)
+
+    fn gi(blocks: &[(R2, R2)], singular: &[R2]) -> Option<bool> {
+        is_isotropic_global_char2(&form(blocks, singular))
+    }
+
+    #[test]
+    fn global_pe_direct() {
+        // global_is_pe over F₂(t): ℘(t)=t²+t ∈ ℘; ℘(1/t)=(1+t)/t² ∈ ℘; 0 ∈ ℘.
+        assert!(global_is_pe(&r2(&[0, 1, 1], &[1]))); // t²+t = ℘(t)
+        assert!(global_is_pe(&r2(&[1, 1], &[0, 0, 1]))); // (1+t)/t² = ℘(1/t)
+        assert!(global_is_pe(&R2::zero())); // 0
+                                            // not in ℘: t (odd pole at ∞), 1/t (odd pole at 0), 1 (constant Tr=1).
+        assert!(!global_is_pe(&r2(&[0, 1], &[1]))); // t
+        assert!(!global_is_pe(&r2(&[1], &[0, 1]))); // 1/t
+        assert!(!global_is_pe(&r2(&[1], &[1]))); // 1
+    }
+
+    #[test]
+    fn global_rank2_pe_obstruction() {
+        let one = r2(&[1], &[1]);
+        // [1, t²+t]: ab = ℘(t) ∈ ℘ ⇒ isotropic.
+        assert_eq!(gi(&[(one.clone(), r2(&[0, 1, 1], &[1]))], &[]), Some(true));
+        // [1, 1]: ab = 1, Tr_{F₂/F₂}(1) = 1 ∉ ℘ ⇒ anisotropic (the F₄ norm form). NOT a
+        // bad-place sweep: 1 is a unit everywhere; the obstruction is the constant trace.
+        assert_eq!(gi(&[(one.clone(), one.clone())], &[]), Some(false));
+        // [1, t]: ab = t, odd pole at ∞ ⇒ anisotropic.
+        assert_eq!(gi(&[(one.clone(), r2(&[0, 1], &[1]))], &[]), Some(false));
+    }
+
+    #[test]
+    fn global_rank3() {
+        let one = r2(&[1], &[1]);
+        let t = r2(&[0, 1], &[1]);
+        // [1, t] ⊥ ⟨1⟩: isotropic — (1,0,1) gives 1+1=0 (s_v(t,1)=0 ∀v).
+        assert_eq!(
+            gi(&[(one.clone(), t.clone())], std::slice::from_ref(&one)),
+            Some(true)
+        );
+        // [1, 1] ⊥ ⟨t⟩: anisotropic — s_v(1, t) = 1 at ∞ (t not a norm from F₄(t)).
+        assert_eq!(
+            gi(&[(one.clone(), one.clone())], std::slice::from_ref(&t)),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn global_rank4() {
+        let one = r2(&[1], &[1]);
+        let t = r2(&[0, 1], &[1]);
+        let inv_t = r2(&[1], &[0, 1]);
+        // [1, t] ⊥ [1, t]: isotropic — equal summands, q(v, v) = 0.
+        assert_eq!(
+            gi(&[(one.clone(), t.clone()), (one.clone(), t.clone())], &[]),
+            Some(true)
+        );
+        // [1,1] ⊥ [t, t]: ISOTROPIC — (1,0,1,1): [1,1](1,0)+[t,t](1,1)=1+1=0. (The norm
+        // form of the division algebra [1,t) is [1,1] ⊥ t·[1,1], and t·[1,1] ≇ [t,t].)
+        assert_eq!(
+            gi(&[(one.clone(), one.clone()), (t.clone(), t.clone())], &[]),
+            Some(true)
+        );
+        // [1,1] ⊥ [t, 1/t]: anisotropic — the u = 4 class, anisotropic already at t=0.
+        assert_eq!(
+            gi(
+                &[(one.clone(), one.clone()), (t.clone(), inv_t.clone())],
+                &[]
+            ),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn global_rank_ge_5_is_isotropic() {
+        let one = r2(&[1], &[1]);
+        let t = r2(&[0, 1], &[1]);
+        let inv_t = r2(&[1], &[0, 1]);
+        // [1,1] ⊥ [t,1/t] ⊥ ⟨1⟩: the dim-4 core is anisotropic, but u(F₂(t)) = 4 ⇒ the
+        // dim-5 form is isotropic (C₂, Tsen–Lang).
+        assert_eq!(
+            gi(
+                &[(one.clone(), one.clone()), (t.clone(), inv_t.clone())],
+                std::slice::from_ref(&one)
+            ),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn global_totally_singular() {
+        let one = r2(&[1], &[1]);
+        let t = r2(&[0, 1], &[1]);
+        let t2 = r2(&[0, 0, 1], &[1]);
+        // ⟨1, t⟩: t ∉ K² (odd degree) ⇒ anisotropic.
+        assert_eq!(gi(&[], &[one.clone(), t.clone()]), Some(false));
+        // ⟨1, t²⟩: t² ∈ K² ⇒ K²-dependent ⇒ isotropic.
+        assert_eq!(gi(&[], &[one.clone(), t2.clone()]), Some(true));
+        // ⟨1, t, t²⟩: rank 3 ≥ 3 ⇒ K²-dependent ⇒ isotropic.
+        assert_eq!(gi(&[], &[one.clone(), t.clone(), t2.clone()]), Some(true));
+        // [1,1] ⊥ ⟨1, t⟩: the anisotropic ⟨1,t⟩ is universal ⇒ it isotropises the block.
+        assert_eq!(
+            gi(&[(one.clone(), one.clone())], &[one.clone(), t.clone()]),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn global_over_f4() {
+        type F4 = Fpn<2, 2>;
+        type R4 = RationalFunction<F4>;
+        let c = |n: u128| F4::from_index(n);
+        let rf = |num: Vec<u128>, den: Vec<u128>| -> R4 {
+            RationalFunction::new(
+                num.into_iter().map(c).collect(),
+                den.into_iter().map(c).collect(),
+            )
+        };
+        let one = rf(vec![1], vec![1]);
+        let alpha = rf(vec![2], vec![1]); // α (index 2 = the F₄ generator)
+                                          // [1, 1] over F₄(t): ab = 1 = α²+α = ℘(α) ⇒ isotropic (Tr_{F₄/F₂}(1) = 0).
+        assert_eq!(
+            is_isotropic_global_char2(&Char2QuadForm::from_blocks(vec![(
+                one.clone(),
+                one.clone()
+            )])),
+            Some(true)
+        );
+        // [1, α] over F₄(t): ab = α, Tr_{F₄/F₂}(α) = 1 ⇒ anisotropic.
+        assert_eq!(
+            is_isotropic_global_char2(&Char2QuadForm::from_blocks(vec![(
+                one.clone(),
+                alpha.clone()
+            )])),
+            Some(false)
         );
     }
 }

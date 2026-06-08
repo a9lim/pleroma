@@ -131,8 +131,10 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   even ramification (`as_symbol_ramified_places`). Generic over `FiniteChar2Field`
   (so `F₂(t)`, `F₄(t)`, `F₈(t)` share one engine). Names carry `as_symbol_*` / `Char2Place`
   to avoid colliding with the odd `function_field` flat re-exports. The crate-private
-  engine helpers (`strip_factor`/`inverse_mod`/`trace_kappa_to_f2`) are `pub(crate)` so
-  `springer_char2.rs` reuses them.
+  engine helpers (`strip_factor`/`inverse_mod`/`trace_kappa_to_f2`, and the factoriser
+  `char2_monic_irreducible_factors` — renamed off the odd-char `monic_irreducible_factors`
+  so the flat `forms::*` glob stays unambiguous) are `pub(crate)` so `springer_char2.rs`
+  reuses them.
 - **`springer_char2.rs`** — the **char-2 local Witt/Springer decomposition**, the
   equal-char-2 mirror of `springer_local.rs` (but NOT the odd story at `p=2`: the wild
   `R_π` summand the `W=W(k)²` grading misses). `springer_decompose_local_char2(form,
@@ -145,10 +147,21 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   `u(K_v)=4` ⇒ rank ≥ 5 isotropic). The form is `Char2QuadForm` (binary blocks + a
   totally-singular tail). **Read NOTES.md** before touching: this is the corrected
   three-layer decomposition (the naive `W_q(k)²` was rightly avoided), pinned to ten
-  source-derived oracles. **Looks like a bug, isn't:** unsupported singular configs
-  (`#singular ≥ 2`) and rank ≥ 5 return `None` from `local_anisotropic_dim_char2` (only
-  the source-pinned shapes get an exact dimension); the *global* form Hasse–Minkowski
-  over `F_q(t)` is deliberately NOT here yet (needs a global `℘`-reduction layer).
+  source-derived oracles. **Global isotropy** `is_isotropic_global_char2(form) →
+  Option<bool>` is Hasse–Minkowski over `F_q(t)` itself, on three ingredients past the
+  symbol: `global_is_pe(f)` (`f ∈ ℘(F_q(t))`? — finite sweep of `f`'s poles + `∞`,
+  settles rank 2: `[a,b]` iso ⟺ `ab ∈ ℘`), `ff_is_square(f)` (`f ∈ K²`? — all
+  odd-degree coeffs of `num·den` vanish, settles the totally-singular part via
+  `[K:K²]=2`), and a bad-place sweep over `relevant_places_char2(form)` for rank 3/4
+  (good places isotropic by Chevalley–Warning). `u(F_q(t))=4` (`C₂`) ⇒ rank ≥ 5
+  isotropic. **Looks like a bug, isn't:** (a) unsupported singular configs
+  (`#singular ≥ 2`) and rank ≥ 5 return `None` from the *local* `local_anisotropic_dim_char2`
+  (only source-pinned shapes get an exact dimension) — but the *global* routine handles
+  `#singular ≥ 2` elementarily (quasilinear over `F_q(t)` is `K²`-dependence, no
+  local–global failure here) and only returns `None` if a local call unexpectedly does;
+  (b) rank 2 is NOT a finite bad-place scan — the constant-trace `℘`-obstruction
+  (`[1,1]/F₂(t)`) lives at infinitely many odd-degree places, caught only by the global
+  `℘` test.
 
 ## The "form + involution" siblings
 

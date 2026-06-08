@@ -89,6 +89,18 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
 
 ## Local–global
 
+- **`global_field.rs`** — the `GlobalField` TRAIT: the local–global principle
+  written ONCE over the two kinds of global field, `Rational` (ℚ, a number field)
+  and `RationalFunction<S>` (`F_q(t)`, a function field). Five per-field primitives
+  (`relevant_places`/`hilbert_symbol_at`/`is_local_square`/`is_global_square`/
+  `is_isotropic_at_place`) + four DEFAULT theorem methods (`hasse_at_place`/
+  `reciprocity_product`/`ramified_places`/`is_isotropic_global` = Hasse–Minkowski).
+  The arithmetic primitives stay per-field (ℚ is i128 number theory with an
+  archimedean place; `F_q(t)` is `F_q[t]` factorization with none — the missing
+  real place IS the content), so `padic`/`adelic`/`function_field` keep their named
+  functions, now thin wrappers over the trait. NOT a `Valued` abstraction (a global
+  field carries all places at once, like `RationalFunction`/`Adele`). The mirror of
+  what `ResidueField` did for the discrete Springer engine.
 - **`padic.rs`** — the GENUINE Hilbert symbol over Q_p (odd-p + p=2 mod-8) — nontrivial
   unlike oddchar's +1 — + Hasse–Minkowski `is_isotropic_q` over ℚ. Oracle: Hilbert
   reciprocity `∏_v=+1`.
@@ -128,6 +140,24 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   equations) + `QuadricFit` + `is_genuinely_quadratic`. The instrument the game
   probes / misère_quotient / octal_hunt / loopy_quadric feed P-positions into —
   distinct from the classifier.
+
+## The trace-form bridge
+
+- **`trace_form.rs`** — the seam from the `scalar::CyclicGaloisExtension` layer to
+  the classifiers. `trace_twisted_form::<E>(k) -> Metric<E::Base>` builds the
+  **Frobenius-twisted** trace form `Q_k(x) = Tr_{E/F}(x·σ^k(x))` (q on the diagonal,
+  the alternating polar `Tr(eᵢσ^k eⱼ + eⱼσ^k eᵢ)` off it). NOT the naive `Tr(x²)`,
+  whose polar form vanishes in char 2 (Frobenius is additive) — that's the trap the
+  twist avoids. Instances: `Surcomplex` k=1 → the **norm form** `⟨2,2⟩`; odd `Fpn`
+  → a diagonalizable trace form. Two char-2 entry points to the **Gold form**
+  `Tr(x^{1+2^a})`, classified → `ArfResult` (rank `= m − gcd(2a,m)`, Arf → the
+  zero-count): `trace_form_arf::<E: …<Base=Fp<2>>>(k)` (the typed `Fpn<2,m>` path —
+  build over `F_2`, lift `F_2 ↪ Nimber` via `Metric::map`), and `gold_form(m, a)`
+  (the nim-native path over the subfield `F_{2^m} ⊂ Nimber`, m a power of two ≤ 128,
+  reaching F_16/F_256/… that `Fpn` can't). This pulls the Python Gold thread
+  (`experiments/trace_form_arf.py`, `gold_form_from_games.py`) into the typed core.
+  The form has dim `[E:F]`, capped at `MAX_BASIS_DIM=128` (= the full nim-field's
+  degree); the small power-of-two `m` keep the tests fast.
 
 ## Things that look like bugs but are not (forms layer)
 

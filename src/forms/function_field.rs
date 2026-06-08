@@ -208,15 +208,9 @@ pub fn hilbert_symbol_ff<S: FiniteOddField>(
     let cb = chi_kappa(&residue_unit_at(b, place), place);
     // χ_κ(−1): −1 is a square in κ iff |κ| ≡ 1 (mod 4).
     let chi_neg1 = if kappa_order(place) % 4 == 1 { 1 } else { -1 };
-    let (a_odd, b_odd) = (al.rem_euclid(2) == 1, be.rem_euclid(2) == 1);
-    let mut s: i8 = if a_odd && b_odd { chi_neg1 } else { 1 };
-    if b_odd {
-        s *= ca;
-    }
-    if a_odd {
-        s *= cb;
-    }
-    s
+    // Exactly the shared tame symbol — the same machine as the odd-`p` Q_p branch,
+    // with the residue character `χ_κ` in place of the Legendre symbol.
+    crate::forms::padic::tame_hilbert_symbol(al, be, ca, cb, chi_neg1)
 }
 
 // ───────────────────────── Hasse invariant + reciprocity ─────────────────────────
@@ -265,11 +259,7 @@ pub fn hilbert_reciprocity_product_ff<S: FiniteOddField>(
     a: &RationalFunction<S>,
     b: &RationalFunction<S>,
 ) -> i8 {
-    let mut prod = 1i8;
-    for place in relevant_places(&[a.clone(), b.clone()]) {
-        prod *= hilbert_symbol_ff(a, b, &place);
-    }
-    prod
+    <RationalFunction<S> as crate::forms::GlobalField>::reciprocity_product(a, b)
 }
 
 // ───────────────────────── Hasse–Minkowski over F_q(t) ─────────────────────────
@@ -292,7 +282,7 @@ fn disc<S: FiniteOddField>(entries: &[RationalFunction<S>]) -> RationalFunction<
 /// is represented by `num(x)·den(x) ∈ F_q[t]`, which is a square iff its `F_q`
 /// leading coefficient is a square **and** every irreducible factor has even
 /// multiplicity. The char-`p` analogue of `is_perfect_square` over `ℤ`.
-fn is_global_square_ff<S: FiniteOddField>(x: &RationalFunction<S>) -> bool {
+pub(crate) fn is_global_square_ff<S: FiniteOddField>(x: &RationalFunction<S>) -> bool {
     if x.is_zero() {
         return false;
     }
@@ -345,16 +335,7 @@ pub fn is_isotropic_at_place<S: FiniteOddField>(
 /// rank ≥ 3 over a finite residue field). Rank 2 reduces to `−a_1a_2` being a
 /// global square; a zero entry is an isotropic direction.
 pub fn is_isotropic_ff<S: FiniteOddField>(entries: &[RationalFunction<S>]) -> bool {
-    if entries.iter().any(|e| e.is_zero()) {
-        return true;
-    }
-    match entries.len() {
-        0 | 1 => false,
-        2 => is_global_square_ff(&entries[0].mul(&entries[1]).neg()),
-        _ => relevant_places(entries)
-            .iter()
-            .all(|pl| is_isotropic_at_place(entries, pl)),
-    }
+    <RationalFunction<S> as crate::forms::GlobalField>::is_isotropic_global(entries)
 }
 
 /// The per-place isotropy breakdown of a rank-`≥3` form — the function-field
@@ -394,10 +375,7 @@ pub fn ramified_places_ff<S: FiniteOddField>(
     a: &RationalFunction<S>,
     b: &RationalFunction<S>,
 ) -> Vec<FFPlace<S>> {
-    relevant_places(&[a.clone(), b.clone()])
-        .into_iter()
-        .filter(|pl| hilbert_symbol_ff(a, b, pl) == -1)
-        .collect()
+    <RationalFunction<S> as crate::forms::GlobalField>::ramified_places(a, b)
 }
 
 #[cfg(test)]

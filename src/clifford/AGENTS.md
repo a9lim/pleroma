@@ -16,7 +16,9 @@ core is split by concept under `engine/`:
 
 - **`basis.rs`** — `bits` / `grade` / `MAX_BASIS_DIM` / `wedge_sign`.
 - **`metric.rs`** — `Metric {q, b, a}`, constructors, `direct_sum`, `q_val`/
-  `has_upper`. **The metric carries `q` and `b` independently — see the rules.**
+  `has_upper`, `map` (coefficient base-change `Metric<S>→Metric<T>`, e.g. lifting an
+  `F_2` trace form into `Metric<Nimber>` for the Arf classifier — see
+  `forms/trace_form.rs`). **The metric carries `q` and `b` independently — see the rules.**
 - **`product.rs`** — `geom_product_blades` (the general-bilinear Chevalley product)
   plus the `cfg(test)` `reduce_word` oracle it is cross-validated against.
 - **`algebra.rs`** — `CliffordAlgebra<S>`: blade arithmetic, grade projection,

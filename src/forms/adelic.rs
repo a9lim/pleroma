@@ -25,9 +25,8 @@
 
 use std::collections::BTreeMap;
 
-use crate::forms::padic::{
-    hilbert_reciprocity_product, hilbert_symbol_at, is_isotropic_at_p, relevant_primes, Place,
-};
+use crate::forms::padic::{hilbert_symbol_at, is_isotropic_at_p, relevant_primes, Place};
+use crate::forms::GlobalField;
 use crate::scalar::{Rational, Scalar};
 
 /// The integer representative of a rational's class in `ℚ^*/(ℚ^*)²`: `num·den`
@@ -45,7 +44,7 @@ fn square_class(q: &Rational) -> i128 {
 /// (Hilbert reciprocity) — the multiplicative analogue of the adelic product
 /// formula `∏_v |x|_v = 1`.
 pub fn hilbert_product(a: &Rational, b: &Rational) -> i8 {
-    hilbert_reciprocity_product(square_class(a), square_class(b))
+    Rational::reciprocity_product(a, b)
 }
 
 // ---------------------------------------------------------------------------

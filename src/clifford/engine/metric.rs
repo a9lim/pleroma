@@ -111,4 +111,18 @@ impl<S: Scalar> Metric<S> {
     pub(crate) fn q_val(&self, i: usize) -> S {
         self.q.get(i).cloned().unwrap_or_else(S::zero)
     }
+
+    /// Base-change the metric by applying `f` to every coefficient (`q`, `b`, `a`).
+    /// A form over `S` becomes the same form over `T` — e.g. lifting an `F_2`-valued
+    /// trace form (`Metric<Fp<2>>`) into `Metric<Nimber>` so the char-2 Arf
+    /// classifier can read it (`m.map(|x| Nimber(x.0))`). The structure (which
+    /// `(i,j)` entries are present) is preserved verbatim; the caller is responsible
+    /// for `f` being a ring map if the result is to mean anything.
+    pub fn map<T: Scalar>(&self, f: impl Fn(&S) -> T) -> Metric<T> {
+        Metric {
+            q: self.q.iter().map(&f).collect(),
+            b: self.b.iter().map(|(&k, v)| (k, f(v))).collect(),
+            a: self.a.iter().map(|(&k, v)| (k, f(v))).collect(),
+        }
+    }
 }

@@ -168,10 +168,37 @@ fn omega2(u: i128) -> i128 {
     }
 }
 
+/// The **tame Hilbert symbol** — the shared formula behind the odd-`p` Hilbert
+/// symbol over `Q_p` *and* every (odd-residue) place of `F_q(t)`. With valuations
+/// `α, β` and residue quadratic characters `χ_a = χ(ā)`, `χ_b = χ(b̄)`, `χ_{−1} =
+/// χ(−1)`,
+/// `(a,b)_v = χ_{−1}^{αβ} · χ_a^β · χ_b^α`.
+/// Over `Q_p` the residue character is the Legendre symbol; over `F_q(t)` it is
+/// the residue-field character `χ_κ`. The `p = 2` (mod-8) and real branches are the
+/// two genuine exceptions — everything else is this symbol (see
+/// [`hilbert_symbol_ff`](crate::forms::hilbert_symbol_ff)).
+pub(crate) fn tame_hilbert_symbol(
+    alpha: i128,
+    beta: i128,
+    chi_a: i8,
+    chi_b: i8,
+    chi_neg1: i8,
+) -> i8 {
+    let (a_odd, b_odd) = (alpha.rem_euclid(2) == 1, beta.rem_euclid(2) == 1);
+    let mut s: i8 = if a_odd && b_odd { chi_neg1 } else { 1 };
+    if b_odd {
+        s *= chi_a;
+    }
+    if a_odd {
+        s *= chi_b;
+    }
+    s
+}
+
 /// The Hilbert symbol `(a, b)_p` over `Q_p`, for nonzero integers `a, b`. Standard
 /// explicit formulas (Serre III.1): for odd `p`, with `a = p^α u`, `b = p^β v`,
-/// `(a,b)_p = (−1)^{αβ ε(p)} (u|p)^β (v|p)^α`; for `p = 2`,
-/// `(a,b)_2 = (−1)^{ε(u)ε(v) + α ω(v) + β ω(u)}`.
+/// `(a,b)_p = (−1)^{αβ ε(p)} (u|p)^β (v|p)^α` (the [`tame_hilbert_symbol`] with the
+/// Legendre character); for `p = 2`, `(a,b)_2 = (−1)^{ε(u)ε(v) + α ω(v) + β ω(u)}`.
 pub fn hilbert_symbol_qp(a: i128, b: i128, p: u128) -> i8 {
     assert!(is_prime(p), "Hilbert symbol needs p prime");
     let a = square_free(a);
@@ -189,19 +216,14 @@ pub fn hilbert_symbol_qp(a: i128, b: i128, p: u128) -> i8 {
             -1
         }
     } else {
-        let eps = ((pi - 1) / 2).rem_euclid(2);
-        let mut s: i8 = if (al as i128 * be as i128) % 2 == 1 && eps == 1 {
-            -1
-        } else {
-            1
-        };
-        if be % 2 == 1 {
-            s *= legendre(ua, pi);
-        }
-        if al % 2 == 1 {
-            s *= legendre(ub, pi);
-        }
-        s
+        // odd p: the tame symbol with the residue Legendre character.
+        tame_hilbert_symbol(
+            al as i128,
+            be as i128,
+            legendre(ua, pi),
+            legendre(ub, pi),
+            legendre(-1, pi),
+        )
     }
 }
 
@@ -262,7 +284,7 @@ pub(crate) fn relevant_primes(entries: &[i128]) -> BTreeSet<u128> {
 }
 
 /// Is a perfect square (over `ℤ`, hence over `Q`)?
-fn is_perfect_square(n: i128) -> bool {
+pub(crate) fn is_perfect_square(n: i128) -> bool {
     if n < 0 {
         return false;
     }

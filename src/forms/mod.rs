@@ -30,6 +30,18 @@
 //! complete invariant, char-uniform) and [`hermitian`] forms over the surcomplex
 //! field (Sylvester signature; [`HermitianForm::from_skew`] handles the
 //! skew-Hermitian case via multiplication by `i`).
+//!
+//! The local–global layer is unified by [`global_field`] ([`GlobalField`]): the
+//! local–global principle (places, Hilbert symbol, reciprocity `∏_v (a,b)_v = +1`,
+//! Hasse–Minkowski) written **once** over the two kinds of global field, `ℚ`
+//! ([`Rational`](crate::scalar::Rational)) and `F_q(t)`
+//! ([`RationalFunction`](crate::scalar::RationalFunction)) — the `forms` mirror of
+//! what [`ResidueField`](crate::scalar::ResidueField) did for the discrete Springer
+//! engine. And [`trace_form`] bridges *into* this pillar from the field-growing
+//! side: the Frobenius-twisted trace form `Tr_{E/F}(x·σ^k(x))` of a
+//! [`CyclicGaloisExtension`](crate::scalar::CyclicGaloisExtension) is classified by
+//! the same façade — the norm form over `Surcomplex`, the Gold form over the
+//! nim-fields.
 
 pub mod adelic;
 pub mod brauer_wall;
@@ -39,6 +51,7 @@ pub mod classify;
 pub mod diagonalize;
 pub mod equivalence;
 pub mod function_field;
+pub mod global_field;
 pub mod hermitian;
 pub mod invariants;
 pub mod oddchar;
@@ -49,6 +62,7 @@ pub mod springer_laurent;
 pub mod springer_local;
 pub mod springer_padic;
 pub mod symplectic;
+pub mod trace_form;
 pub mod witt;
 pub mod witt_ring;
 
@@ -60,6 +74,7 @@ pub use classify::*;
 pub use diagonalize::*;
 pub use equivalence::*;
 pub use function_field::*;
+pub use global_field::*;
 pub use hermitian::*;
 pub use invariants::*;
 pub use oddchar::*;
@@ -70,5 +85,6 @@ pub use springer_laurent::*;
 pub use springer_local::*;
 pub use springer_padic::*;
 pub use symplectic::*;
+pub use trace_form::*;
 pub use witt::*;
 pub use witt_ring::*;

@@ -75,9 +75,14 @@ grow a field, and all four corners are filled:
 `Laurent` over a finite field is the equal-characteristic mirror of `Qp`;
 `Ramified` is the ramified twin of the unramified `Qq`. The finite *separable*
 extensions among these carry a uniform relative trace/norm (`FieldExtension`): the
-algebraic-closure functor `Surcomplex` (degree 2), the finite tower `Fpn/Fp`, and
-the unramified `Qq/Qp` — one interface for the norm map that feeds Hilbert symbols,
-the Brauer–Wall group, and Hermitian forms.
+algebraic-closure functor `Surcomplex` (degree 2), the finite tower `Fpn/Fp`, the
+unramified `Qq/Qp`, and the nim-field `Nimber/F_2` (`F_{2^128}`, the main char-2
+field) — one interface for the norm map that feeds Hilbert symbols, the Brauer–Wall
+group, and Hermitian forms. The cyclic-Galois ones (`CyclicGaloisExtension`, adding
+a basis and the generator `σ`) feed the **twisted trace form** `Tr_{E/F}(x·σ^k(x))`
+(`forms::trace_form`), which lands back in the form classifiers: the binary norm
+form over `Surcomplex`, and the **Gold form** `Tr(x^{1+2^a})` over the nim-fields,
+Arf-classified — the typed-core home of the game-built quadratic-form thread.
 
 **local ↔ global.** The Springer decomposition appears across the complete valued
 fields, and the value group controls the answer: over the surreals the value group
@@ -92,6 +97,10 @@ package recurs in **equal characteristic** over the global function field `F_q(t
 (`forms::function_field`): the tame Hilbert symbol at each monic-irreducible place
 plus the degree place `∞`, reciprocity `∏_v (a,b)_v = +1`, and Hasse–Minkowski —
 and here it is **exact** (no precision model), the char-`p` mirror of the ℚ stack.
+The two global fields answer **one** interface: the `GlobalField` trait states the
+places, the local Hilbert symbol, reciprocity, and Hasse–Minkowski once, with `ℚ`
+and `F_q(t)` as its two implementors — the local↔global mirror of the
+`ResidueField`-keyed Springer engine.
 
 **the games bridge.** Red/blue/green Hackenbush is the one object that reads out as
 a surreal (blue−red), a nimber (all-green = Nim), or a general partizan game — and

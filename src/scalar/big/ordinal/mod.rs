@@ -46,15 +46,21 @@
 //!   `(ω³)⊗³ = ω`, `(ω⁹)⊗³ = ω³`.
 //! * **At `ω^ω` and above it is staged.** `ω^ω` is the first ordinal with an
 //!   *infinite* CNF exponent; any such ordinal returns `None`. Reaching the full
-//!   algebraic closure (the ordinals `< ω^{ω^ω}`) additionally requires: the other
-//!   primes (degree 5, 7, …) whose generators enter at `ω^ω` and are *not* defined
-//!   by a clean cube-root relation but by a root-finding condition over the
-//!   partially-built field (Artin–Schreier-flavoured — cf.
-//!   [`finite_field::nimber::artin_schreier`](crate::scalar::finite_field)); and the
-//!   transfinite levels `ω^ω → ω^{ω²} → … → ω^{ω^ω}` where the exponents themselves
-//!   become infinite ordinals (the CNF recursion already supports this
-//!   structurally). That is a multi-stage research climb, deliberately not shipped
-//!   speculatively.
+//!   algebraic closure (the ordinals `< ω^{ω^ω}`) additionally requires the other
+//!   primes: for the `(k+1)`-th prime `u` the generator is `χ_u = ω^(ω^(k-1))`
+//!   (`χ_3 = ω`, `χ_5 = ω^ω`, `χ_7 = ω^(ω²)`, …), defined by the **clean Kummer
+//!   relation** `(χ_u)^u = α_u` and `(χ_{u^{n+1}})^u = χ_{u^n}`, where `α_u` is
+//!   Lenstra's *excess* — the smallest ordinal below `χ_u` with no `u`-th root there
+//!   (DiMuro Thm 3.1.4 / Table 1: `α_3 = 2`, `α_5 = 4`, `α_7 = ω+1`,
+//!   `α_11 = ω^ω+1`, `α_13 = ω+4`). The root-finding is in *computing* `α_u`, not in
+//!   the generator relation. (The Artin–Schreier `x²+x+1` relation is instead the
+//!   `p = u = 2` Fermat-tower case — DiMuro Thm 3.1.7 / Cor 3.11 — already handled
+//!   inside the finite nimber field
+//!   [`finite_field::nimber`](crate::scalar::finite_field).) The transfinite levels
+//!   `ω^ω → ω^(ω²) → … → ω^(ω^ω)` (where the CNF exponents become infinite ordinals)
+//!   climb prime by prime; the CNF recursion already supports them structurally. A
+//!   multi-stage climb, shipped incrementally rather than speculatively; the `α_u`
+//!   table is primary-source-verified — see `NOTES.md`.
 
 mod cantor;
 mod nim;

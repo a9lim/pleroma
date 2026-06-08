@@ -576,6 +576,54 @@ two walls.
   is pinned **equal** to the golden `thermograph` (`cargo run --example tropical`).
   Naming, machine-checked — no claim beyond it.
 
+## Ordinal nim-multiplication above ω^ω: the Lenstra–DiMuro excess elements
+
+Claim level: **standard math, primary-source-verified** (J. DiMuro, *On Onp*,
+arXiv:1108.0962, Thm 3.1 + Table 1; the On₂ table first appeared in H. W. Lenstra,
+*Nim multiplication*, 1978). Verified *before* building, per the discipline that a
+research-grade landmark must come from the source, not the implementation under test.
+
+The algebraic closure of `F₂` is the ordinals `< ω^(ω^ω)` under nim-arithmetic. The
+field generators are `χ_r` for prime powers `r`; for the `(k+1)`-th prime `u`,
+`χ_u = ω^(ω^(k-1))` (so `χ_3 = ω`, `χ_5 = ω^ω`, `χ_7 = ω^(ω²)`, `χ_11 = ω^(ω³)`, …),
+and `sup_n χ_{u^n}` is the next prime's generator. Two relation families:
+
+- **odd primes `u` (Kummer):** `(χ_u)^u = α_u` and `(χ_{u^{n+1}})^u = χ_{u^n}`, where
+  `α_u` is the *excess* — the smallest ordinal `< χ_u` with no `u`-th root below `χ_u`
+  (DiMuro Thm 3.1.4). NOT an Artin–Schreier condition (that was a mischaracterization
+  in an earlier draft of `ordinal/mod.rs`, now fixed).
+- **the prime 2 (Fermat tower, Artin–Schreier):** `χ_2` is a root of `x²+x+1` (=
+  nimber `2`), the `x^p−x−1` case `p = u` (DiMuro Thm 3.1.7 / Cor 3.11). This is the
+  `F_{2^{2^k}}` tower the finite `Nimber` backend already implements.
+
+Lenstra's effective rule for the excess: `f(u) = ord₂(u)` (multiplicative order of 2
+mod `u` = degree of a primitive `u`-th root of unity), and `α_u = χ_{f(u)} + m` for a
+finite excess `m`, with `χ_h = Σ_{r ∈ Q(h)} χ_r` over a unique prime-power set `Q(h)`
+(Cor 4.4). Worked subtlety: `χ_{f(11)} = χ_10 = χ_5 = ω^ω` because `d(χ_5) = 20`
+(`χ_5` is a 5th root of `4 ∈ F_16`, so degree `4·5`) and `2 | 20` ⇒ `Q(10) = {5}`.
+
+**Verified On₂ table** (`α_u`, `u ≤ 43`; `[·]` denotes ordinary/Cantor exponentiation):
+
+| u | α_u | u | α_u | u | α_u |
+|---|---|---|---|---|---|
+| 3 | 2 | 13 | ω+4 | 29 | ω^(ω²)+4 |
+| 5 | 4 | 17 | 16 | 31 | ω^ω+1 |
+| 7 | ω+1 | 19 | ω³+4 | 37 | ω³+4 |
+| 11 | ω^ω+1 | 23 | ω^(ω³)+1 | 41 | ω^ω+1 |
+| | | | | 43 | ω^(ω²)+1 |
+
+`α_5 = 4` — the only new excess the quintic stage `< ω^(ω²)` needs — was *also*
+verified independently from finite-field theory: the 5th powers of `F_16*` are
+`F_4* = {1,2,3}` (`2 = 3^⊗5`, `3 = 2^⊗5`), so `4` is the smallest non-5th-power, and
+it stays a non-5th-power throughout the 2,3-primary tower.
+
+Implementation status: nim-mult is shipped `< ω^ω` (the degree-3 cube-root tower). The
+next increment is the **quintic stage** `< ω^(ω²)` (primes 2,3,5): key each monomial
+by `(base-5 digits of the ω-part of the exponent, base-3 digits of the finite part)`,
+with quintic carries `h_0^⊗5 = α_5 = 4`, `h_k^⊗5 = h_{k-1}` (generators
+`h_k = ω^(ω·5^k) = χ_{5^{k+1}}`) alongside the existing cube carries. Further primes
+extend the same scheme, one verified `α_u` at a time.
+
 ## Useful commands
 
 ```sh

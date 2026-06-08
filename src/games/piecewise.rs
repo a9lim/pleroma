@@ -149,3 +149,18 @@ pub(crate) fn sub_pl(f: &Pl, g: &Pl) -> Pl {
         .collect();
     Pl { pts }.cleaned()
 }
+
+/// Pointwise sum `f + g` (linear on each merged segment, no crossings) — the
+/// additive twin of [`sub_pl`]. It names the tropical `⊗` on walls (tropical
+/// multiplication is ordinary addition of values); see
+/// [`crate::games::tropical_thermography`].
+pub(crate) fn add_pl(f: &Pl, g: &Pl) -> Pl {
+    let pts = merge_ts(f, g)
+        .into_iter()
+        .map(|t| {
+            let v = f.value_at(&t).add(&g.value_at(&t));
+            (t, v)
+        })
+        .collect();
+    Pl { pts }.cleaned()
+}

@@ -552,6 +552,30 @@ from finite `FieldExtension`/`CyclicGaloisExtension` honestly (non-Galois/infini
 degree), the same boundary `analytic` draws. All appendix material; none of it
 changes the Arf/game claims.
 
+## Thermography as tropical arithmetic
+
+A latent structure made explicit, **not a new theorem**. The thermograph
+recursion (`games/thermography.rs`) already computes a tropical (min-plus /
+max-plus) semiring without naming it: the option folds `combine(_, take_max)` are
+the tropical `⊕` (pointwise `max`/`min`), and cooling shifts values by `±t` —
+tropical `⊗` (tropical multiplication is ordinary `+`). The two scaffold walls
+genuinely live in **dual** semirings: the left wall is a `(max, +)` ⊕-fold over the
+Left options' right walls, the right wall a `(min, +)` ⊕-fold over the Right
+options' left walls. That duality is why `scalar/tropical.rs` makes
+`Tropical<MaxPlus>` and `Tropical<MinPlus>` *distinct types* (sharing one impl body,
+the `Surcomplex<S>`/`Laurent<S,K>` move) — the type system then forbids mixing the
+two walls.
+
+- **Standard math**: the correspondence (thermography is tropical) — Berlekamp–
+  Conway–Guy *Winning Ways*, Conway *ONAG*, Siegel *Combinatorial Game Theory*.
+- **Implemented and tested**: `Semiring` + `Tropical<C>` (a sibling trait, *not* a
+  `Scalar` — an idempotent `⊕` has no additive inverse, the same reason the game
+  group can't carry Clifford), fuzzed in both conventions
+  (`tests/tropical_axioms.rs`); and `games::thermograph_via_tropical`, a parallel
+  recursion that routes the folds through the named `Pl::oplus_max`/`oplus_min` and
+  is pinned **equal** to the golden `thermograph` (`cargo run --example tropical`).
+  Naming, machine-checked — no claim beyond it.
+
 ## Useful commands
 
 ```sh
@@ -569,6 +593,7 @@ cargo run --example interactive_kernel
 cargo run --example loopy_quadric
 cargo run --example bent_route
 cargo run --release --example octal_hunt
+cargo run --example tropical
 ```
 
 Do not treat the numbers in old notes as current. Re-run the relevant commands
@@ -578,7 +603,9 @@ when using a table or claim in the paper.
 
 - Conway, *On Numbers and Games*: surreal numbers, nimbers.
 - Berlekamp-Conway-Guy, *Winning Ways*: coin-turning games and the
-  Turning-Corners/nim-product theorem.
+  Turning-Corners/nim-product theorem; thermography.
+- Siegel, *Combinatorial Game Theory*: temperature theory / thermography (the
+  tropical-semiring reading of the scaffold walls).
 - Arf, *Untersuchungen uber quadratische Formen...*: quadratic forms in
   characteristic 2.
 - Dickson, *Linear Groups*: binary quadratic forms and zero-count bias.

@@ -40,6 +40,7 @@ pub mod number_game;
 pub mod partizan;
 pub mod piecewise;
 pub mod thermography;
+pub mod tropical_thermography;
 
 pub use atomic_weight::*;
 pub use coin_turning::*;
@@ -54,3 +55,4 @@ pub use number_game::*;
 pub use partizan::*;
 pub use piecewise::*;
 pub use thermography::*;
+pub use tropical_thermography::*;

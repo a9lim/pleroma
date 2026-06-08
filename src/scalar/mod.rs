@@ -95,6 +95,7 @@ pub mod integrality;
 pub mod poly;
 pub mod residue;
 pub mod small;
+pub mod tropical;
 pub mod valued;
 
 pub use analytic::*;
@@ -109,6 +110,7 @@ pub use integrality::*;
 pub use poly::*;
 pub use residue::*;
 pub use small::*;
+pub use tropical::*;
 pub use valued::*;
 
 use std::fmt::Debug;

@@ -44,6 +44,15 @@ Clifford story lives on the scalar backends and not on all games.
   arXiv:2007.03949 Thm 10). `aw` IS additive on all-small games.
 - **`piecewise.rs`** — `Pl`: exact rational piecewise-linear wall arithmetic used by
   thermography.
+- **`tropical_thermography.rs`** — names the latent tropical structure in
+  thermography and machine-checks it. The option folds are tropical `⊕` in DUAL
+  semirings — the left wall a `(max,+)` fold over the Left options' right walls, the
+  right wall a `(min,+)` fold over the Right options' left walls — and cooling is
+  tropical `⊗`. `Pl::oplus_max`/`oplus_min`/`otimes` name the wall operations;
+  `thermograph_via_tropical` is a parallel recursion pinned EQUAL to
+  `thermography::thermograph` (it reuses the IDENTICAL freeze/meeting-temperature
+  tail — it only renames the folds, it does not reimplement cooling). The
+  `Semiring`/`Tropical<C>` algebra it points at lives in `scalar/tropical.rs`.
 
 ## Impartial / outcome analysis
 
@@ -100,3 +109,13 @@ Clifford story lives on the scalar backends and not on all games.
 - **`Game` stays an acyclic `Arc` tree by construction** (it cannot represent
   cycles). Loopy games are a separate `LoopyGraph` engine; `thermography` is finite-
   game-only (loopy games never freeze to a number).
+- **`Pl` does NOT implement `Semiring`, and `add_pl` + the `pub(crate)` widening in
+  `thermography.rs` are deliberate.** A `Pl` wall has no representable ∞-wall (the
+  tropical `⊕`-identity), so the semiring law-checking lives on `Tropical<C>` (which
+  has `Infinity`), not on `Pl`; `Pl` only gets the named wrappers
+  `oplus_max`/`oplus_min`/`otimes` it actually uses. Do NOT fake an ∞-wall with empty
+  `pts` — that breaks the `self.pts[0]` invariant `value_at` assumes. `add_pl` (in
+  `piecewise.rs`) is the additive twin of `sub_pl` naming the `⊗`; `freeze` and
+  `meeting_temperature` were widened from private to `pub(crate)` (bodies untouched)
+  only so `thermograph_via_tropical` reuses the identical cooling tail — the golden
+  thermography tests are the proof those visibility edits are inert.

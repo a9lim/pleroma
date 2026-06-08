@@ -110,7 +110,12 @@ and `F_q(t)` as its two implementors — the local↔global mirror of the
 **the games bridge.** Red/blue/green Hackenbush is the one object that reads out as
 a surreal (blue−red), a nimber (all-green = Nim), or a general partizan game — and
 nim-multiplication itself is realized by Conway's Turning-Corners coin game. This
-is the seam where the game pillar meets the scalar pillar.
+is the seam where the game pillar meets the scalar pillar. And thermography itself
+**is** tropical arithmetic — the option folds are the tropical `⊕` and cooling is
+the tropical `⊗`, with the two scaffold walls living in the dual `(max,+)`/`(min,+)`
+semirings — named in `scalar/tropical.rs` (a `Semiring`, not a `Scalar`: an
+idempotent `⊕` has no inverse) and machine-checked equal to the golden thermograph
+by `games::thermograph_via_tropical`.
 
 ## The char-2 point
 

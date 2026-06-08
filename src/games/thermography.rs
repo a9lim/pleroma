@@ -35,7 +35,7 @@ use std::cmp::Ordering;
 /// Least `t ≥ 0` where `D(t) = E(t) − 2t = 0`, given `D(0) ≥ 0` and `D → −∞`.
 /// Here `E = left_raw − right_raw`, so this is the temperature at which the
 /// scaffolds meet.
-fn meeting_temperature(e: &Pl) -> Rational {
+pub(crate) fn meeting_temperature(e: &Pl) -> Rational {
     let two = Rational::int(2);
     let d_at = |t: &Rational| e.value_at(t).sub(&two.mul(t));
 
@@ -62,7 +62,7 @@ fn meeting_temperature(e: &Pl) -> Rational {
 }
 
 /// Freeze a Left scaffold: `left_raw(t) − t` below `τ`, then the mast.
-fn freeze(raw: &Pl, tau: &Rational, mast: &Rational, left: bool) -> Pl {
+pub(crate) fn freeze(raw: &Pl, tau: &Rational, mast: &Rational, left: bool) -> Pl {
     let mut pts = Vec::new();
     for (t, v) in &raw.pts {
         if t.cmp(tau) == Ordering::Less {

@@ -101,6 +101,15 @@ exact-vs-capped-precision boundary in `exactness.rs`.
     and `Nimber` (σ=nim-Frobenius, bit basis {1,2,…,2¹²⁷}). The relative trace stays
     `FieldExtension::trace` — σ/basis are the only new data, so it's a thin subtrait.
     Consumed by `forms/trace_form.rs`.
+- **`tropical.rs`** — the `Semiring` trait + the tropical number type `Tropical<C>`,
+  the `(min,+)/(max,+)` semiring. A SIBLING structure (like `Valued`), **not** a
+  `Scalar`: a semiring drops the additive inverse (tropical `⊕` is idempotent), so it
+  is not a ring and never enters `clifford/` — the same boundary the game *group*
+  hits. The convention is a sealed compile-time marker (`MaxPlus`/`MinPlus`), so the
+  two dual semirings are distinct, non-interoperating types sharing one impl body (the
+  `Surcomplex<S>`/`Laurent<S,K>` move). The games-pillar payoff (thermography IS
+  tropical) lives in `games/tropical_thermography.rs`; the semiring laws are fuzzed in
+  both conventions in `tests/tropical_axioms.rs`.
 
 ## `exact/` — the Archimedean char-0 base (field + ring of integers)
 
@@ -235,6 +244,13 @@ fuzz and carries the `ExactScalar`/`ExactFieldScalar` markers. It feeds
   Not every world takes roots or has a valuation, so the bounds stay opt-in. The
   trait impls *delegate to inherent methods of the same name* (inherent-shadows-
   trait makes that delegate-not-recurse).
+- **`Tropical` has no `neg`/`inv` and is deliberately not a `Scalar`.** A semiring's
+  `⊕` is idempotent (`a ⊕ a = a`), so there is no additive inverse — that is the
+  defining difference from a ring, and the reason `Semiring` is a sibling trait, not a
+  `Scalar` supertrait. `Tropical` never reaches `clifford/` (a Clifford algebra needs
+  a commutative *ring*), exactly the boundary the game group hits. The two conventions
+  are distinct types on purpose: `Tropical<MaxPlus>` and `Tropical<MinPlus>` do not
+  interoperate, because thermography's two walls live in dual semirings.
 - **`Surreal` has two square roots, by design.** `sqrt_to_terms(n)` is the lazy
   `SeriesRoots` primitive; `ExactRoots::sqrt(&self)` (0 args) is the exact value.
   Different arities, different precision contracts — don't unify them. (Python:

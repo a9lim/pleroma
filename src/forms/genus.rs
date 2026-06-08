@@ -730,6 +730,29 @@ mod tests {
     }
 
     #[test]
+    fn two_adic_sign_walking_across_type_ii_bridge_is_pinned() {
+        // A type-II constituent bridges two separate type-I compartments into one
+        // train. Walking a sign from the right compartment to the left crosses
+        // both incident type-I compartments, adding 4 to each fused oddity.
+        let crossed = canonical_2adic_symbol(&[
+            s2(0, 1, 1, false, 1),
+            s2(1, 2, 1, true, 0),
+            s2(2, 1, 3, false, 1),
+        ]);
+        assert_eq!(
+            crossed
+                .iter()
+                .map(|s| (s.scale, s.dim, s.sign, s.type_ii, s.oddity))
+                .collect::<Vec<_>>(),
+            vec![
+                (0, 1, -1, false, 5),
+                (1, 2, 1, true, 0),
+                (2, 1, 1, false, 5)
+            ]
+        );
+    }
+
+    #[test]
     fn reflexive_and_isometry_invariant() {
         // A lattice is in its own genus.
         for g in [a_n(2), a_n(4), d_n(4), d_n(5), e_6(), e_7(), e_8(), zn(5)] {

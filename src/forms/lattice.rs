@@ -23,22 +23,24 @@
 //! automorphism group). Vectors are reported in lattice (basis) coordinates as
 //! integer vectors, both signs included.
 //!
-//! Honest cutoff. Short-vector enumeration first applies a conservative unimodular
-//! size-reduction pass (integral shears/swaps, so the lattice is unchanged), then
-//! runs Fincke–Pohst (an LDL-bounded box search with exact norm filtering) and maps
-//! the vectors back to the original coordinates. Automorphism counting first checks
-//! closed-form families: diagonal signed-permutation lattices, literal `A`/`D`/`E`
-//! Cartan bases, and then basis-independent root systems recovered from the norm-2
-//! roots. Everything else falls back to a backtracking search over basis images,
-//! which is **exponential** in general. The fallback is bounded by an explicit node
-//! budget ([`AUTO_NODE_BUDGET`]); when the search exceeds it the count is reported as
-//! `None` rather than silently truncated. Use
+//! Honest cutoff. Short-vector enumeration first tries an exact rational ellipsoid
+//! box from `G⁻¹` when the box is small enough; larger boxes apply a conservative
+//! unimodular size-reduction pass (integral shears/swaps, so the lattice is
+//! unchanged), then run Fincke–Pohst (an LDL-bounded box search with exact norm
+//! filtering) and map the vectors back to the original coordinates. Automorphism
+//! counting first checks closed-form families: diagonal signed-permutation
+//! lattices, literal `A`/`D`/`E` Cartan bases, and then basis-independent root
+//! systems recovered from the norm-2 roots. Everything else falls back to a
+//! backtracking search over basis images, which is **exponential** in general.
+//! The fallback is bounded by an explicit node budget ([`AUTO_NODE_BUDGET`]);
+//! when the search exceeds it the count is reported as `None` rather than
+//! silently truncated. Use
 //! [`automorphism_group_order_bounded`](IntegralForm::automorphism_group_order_bounded)
 //! to choose the budget explicitly.
 
 use crate::linalg::field::inverse_matrix;
 use crate::linalg::integer::smith_normal_form;
-use crate::scalar::Rational;
+use crate::scalar::{Rational, Scalar};
 use std::collections::{BTreeMap, VecDeque};
 
 /// The default node budget for [`IntegralForm::automorphism_group_order`]. Beyond
@@ -46,6 +48,7 @@ use std::collections::{BTreeMap, VecDeque};
 /// large for brute-force automorphism enumeration — e.g. `E₈`, whose Weyl group
 /// has order ~7·10⁸, or the Leech lattice). The bound is explicit, not silent.
 pub const AUTO_NODE_BUDGET: u64 = 100_000_000;
+const SHORT_VECTOR_EXACT_ENUM_LIMIT: u128 = 2_000_000;
 
 /// A positive-definite or indefinite integral lattice, recorded by its symmetric integer
 /// Gram matrix `G`. Construct with [`IntegralForm::new`] (validates square +
@@ -91,6 +94,40 @@ fn checked_pow2(n: usize) -> Option<u128> {
 
 fn signed_permutation_order(n: usize) -> Option<u128> {
     checked_pow2(n)?.checked_mul(checked_factorial(n)?)
+}
+
+fn square_ge_scaled(r: u128, num: u128, den: u128) -> bool {
+    match r.checked_mul(r).and_then(|rr| rr.checked_mul(den)) {
+        Some(lhs) => lhs >= num,
+        None => true,
+    }
+}
+
+fn ceil_sqrt_rational(x: &Rational) -> Option<i128> {
+    if x.sign() != std::cmp::Ordering::Greater {
+        return Some(0);
+    }
+    let num = u128::try_from(x.numer()).ok()?;
+    let den = u128::try_from(x.denom()).ok()?;
+    let approx = ((num as f64) / (den as f64)).sqrt().ceil();
+    let mut hi = if approx.is_finite() && approx >= 0.0 {
+        (approx as u128).saturating_add(2).max(1)
+    } else {
+        1
+    };
+    while !square_ge_scaled(hi, num, den) {
+        hi = hi.checked_mul(2)?;
+    }
+    let mut lo = 0u128;
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if square_ge_scaled(mid, num, den) {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
+    }
+    i128::try_from(lo).ok()
 }
 
 fn round_div_nearest(num: i128, den: i128) -> i128 {
@@ -564,6 +601,9 @@ impl IntegralForm {
         if self.dim() == 0 || bound <= 0 {
             return Some(Vec::new());
         }
+        if let Some(vecs) = self.short_vectors_exact_bounded(bound, SHORT_VECTOR_EXACT_ENUM_LIMIT) {
+            return Some(vecs);
+        }
         let (reduced, transform) = self.size_reduced_basis();
         let vecs = reduced.short_vectors_raw(bound)?;
         Some(
@@ -571,6 +611,55 @@ impl IntegralForm {
                 .map(|v| map_coords(&transform, &v))
                 .collect(),
         )
+    }
+
+    fn short_vectors_exact_bounded(&self, bound: i128, limit: u128) -> Option<Vec<Vec<i128>>> {
+        let n = self.dim();
+        let mat: Vec<Vec<Rational>> = self
+            .gram
+            .iter()
+            .map(|row| row.iter().map(|&x| Rational::int(x)).collect())
+            .collect();
+        let inv = inverse_matrix(mat)?;
+        let mut ranges = Vec::with_capacity(n);
+        let mut count = 1u128;
+        for i in 0..n {
+            let radius2 = Rational::int(bound).mul(&inv[i][i]);
+            let r = ceil_sqrt_rational(&radius2)?;
+            let ru = u128::try_from(r).ok()?;
+            let width = ru.checked_mul(2)?.checked_add(1)?;
+            count = count.checked_mul(width)?;
+            if count > limit {
+                return None;
+            }
+            ranges.push(r);
+        }
+        let mut out = Vec::new();
+        let mut x = vec![0i128; n];
+        self.enumerate_exact_box(&ranges, 0, bound, &mut x, &mut out);
+        Some(out)
+    }
+
+    fn enumerate_exact_box(
+        &self,
+        ranges: &[i128],
+        idx: usize,
+        bound: i128,
+        x: &mut [i128],
+        out: &mut Vec<Vec<i128>>,
+    ) {
+        if idx == ranges.len() {
+            let q = self.norm(x);
+            if q > 0 && q <= bound {
+                out.push(x.to_vec());
+            }
+            return;
+        }
+        for xi in -ranges[idx]..=ranges[idx] {
+            x[idx] = xi;
+            self.enumerate_exact_box(ranges, idx + 1, bound, x, out);
+        }
+        x[idx] = 0;
     }
 
     fn short_vectors_raw(&self, bound: i128) -> Option<Vec<Vec<i128>>> {
@@ -584,8 +673,10 @@ impl IntegralForm {
         let (d, u) = self.ldl();
         let mut out = Vec::new();
         let mut x = vec![0i128; n];
-        // Pad the float radius outward so rounding can only over-collect; the
-        // exact integer filter at the leaf removes any spurious vectors.
+        // Pad the float radius outward; the exact integer filter at the leaf
+        // removes any spurious vectors. Small boxes are handled above by exact
+        // rational bounds, so this path is for larger enumerations where the
+        // floating bound is the practical cutoff.
         let eps = 1e-9 * (bound as f64).max(1.0) + 1e-9;
         self.fp_search(n, bound, &d, &u, eps, 0.0, &mut x, &mut out);
         Some(out)
@@ -1062,8 +1153,13 @@ mod tests {
         // Uᵀ I U for U = [[1, 10], [0, 1]] is a badly skewed basis of Z².
         // The norm-1 vectors in this basis are ±(1,0) and ±(-10,1).
         let g = IntegralForm::new(vec![vec![1, 10], vec![10, 101]]).unwrap();
+        let mut exact = g
+            .short_vectors_exact_bounded(1, SHORT_VECTOR_EXACT_ENUM_LIMIT)
+            .expect("small rational ellipsoid box is enumerated exactly");
+        exact.sort();
         let mut vecs = g.short_vectors(1).unwrap();
         vecs.sort();
+        assert_eq!(exact, vecs);
         assert_eq!(
             vecs,
             vec![vec![-10, 1], vec![-1, 0], vec![1, 0], vec![10, -1]]

@@ -316,18 +316,17 @@ pub struct LoopyNimCertificate {
 /// ordinary nimber `mex`-computed over their non-`Side` options.
 ///
 /// **Exact** when the non-Draw subgraph is acyclic — there `Value(0) ⟺ Loss` and
-/// the values agree with [`grundy_graph`](crate::games::grundy_graph). Returns
-/// `None` when the non-Draw subgraph still contains a cycle (e.g. a cycle whose
-/// members are resolved to Win/Loss by an exit): assigning finite nim-values there
-/// requires the full *sidling* fixpoint, which is deferred. This mirrors
-/// `grundy_graph` returning `None` on a cycle, refined by first pulling out the
-/// draws as `Side`.
+/// the values agree with [`grundy_graph`](crate::games::grundy_graph). If the
+/// non-Draw subgraph is cyclic, a bounded sidling search is accepted only when the
+/// finite mex equations have a **unique** solution; ambiguous or over-budget
+/// cyclic systems return `None` rather than choosing an order-dependent value.
 pub fn loopy_nim_values(succ: &[Vec<usize>]) -> Option<Vec<LoopyNimber>> {
     loopy_nim_values_certified(succ).map(|(values, _)| values)
 }
 
 /// [`loopy_nim_values`] plus a small certificate explaining the outcome split and
-/// whether cyclic non-Draw sidling was solved by the bounded mex-equation search.
+/// whether cyclic non-Draw sidling was solved uniquely by the bounded mex-equation
+/// search.
 pub fn loopy_nim_values_certified(
     succ: &[Vec<usize>],
 ) -> Option<(Vec<LoopyNimber>, LoopyNimCertificate)> {
@@ -428,16 +427,18 @@ fn solve_mex_sidling(succ: &[Vec<usize>], is_side: &[bool]) -> Option<(Vec<u128>
     }
 
     impl Solver<'_> {
-        fn rec(&mut self, idx: usize) -> Option<bool> {
+        fn rec(&mut self, idx: usize, solution: &mut Option<Vec<u128>>) -> Option<bool> {
             if self.examined > MAX_SIDLING_ASSIGNMENTS {
                 return None;
             }
             if idx == self.order.len() {
-                return Some(all_mex_equations_hold(
-                    self.succ,
-                    self.is_side,
-                    &self.values,
-                ));
+                if all_mex_equations_hold(self.succ, self.is_side, &self.values) {
+                    if solution.is_some() {
+                        return Some(false); // multiple fixed points: not canonical
+                    }
+                    *solution = Some(self.values.clone());
+                }
+                return Some(true);
             }
             let v = self.order[idx];
             for candidate in 0..=self.max_for[v] {
@@ -449,15 +450,15 @@ fn solve_mex_sidling(succ: &[Vec<usize>], is_side: &[bool]) -> Option<(Vec<u128>
                 self.assigned[v] = true;
                 if partial_mex_equations_hold(self.succ, self.is_side, &self.assigned, &self.values)
                 {
-                    match self.rec(idx + 1) {
-                        Some(true) => return Some(true),
-                        Some(false) => {}
+                    match self.rec(idx + 1, solution) {
+                        Some(true) => {}
+                        Some(false) => return Some(false),
                         None => return None,
                     }
                 }
                 self.assigned[v] = false;
             }
-            Some(false)
+            Some(true)
         }
     }
 
@@ -470,8 +471,9 @@ fn solve_mex_sidling(succ: &[Vec<usize>], is_side: &[bool]) -> Option<(Vec<u128>
         values,
         examined,
     };
-    match solver.rec(0) {
-        Some(true) => Some((solver.values, solver.examined)),
+    let mut solution = None;
+    match solver.rec(0, &mut solution) {
+        Some(true) => solution.map(|values| (values, solver.examined)),
         Some(false) | None => None,
     }
 }
@@ -682,6 +684,22 @@ mod tests {
         assert_eq!(
             g.outcomes(),
             vec![Outcome::Loss, Outcome::Win, Outcome::Loss]
+        );
+    }
+
+    #[test]
+    fn ambiguous_cyclic_sidling_returns_none() {
+        // Symmetric cycle-with-exits:
+        //   g0 = mex{g1,0}, g1 = mex{g0,0}
+        // has two fixed points, (1,2) and (2,1). Positions 0 and 1 are graph-
+        // symmetric, so choosing either finite assignment would be noncanonical.
+        let succ = vec![vec![1, 2], vec![0, 3], vec![], vec![]];
+        assert_eq!(loopy_nim_values(&succ), None);
+        assert_eq!(loopy_nim_values_certified(&succ), None);
+        let g = LoopyGraph::new(succ);
+        assert_eq!(
+            g.outcomes(),
+            vec![Outcome::Win, Outcome::Win, Outcome::Loss, Outcome::Loss]
         );
     }
 

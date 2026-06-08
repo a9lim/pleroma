@@ -135,7 +135,7 @@ fn octal_misere_quotient(
 
 /// Loopy impartial nim-values of a (possibly cyclic) game graph: each position is
 /// an ordinary nimber, or `None` for a Draw position (the loopy `∞`/`Side`).
-/// Errors when the non-Draw subgraph still has a cycle (needs full sidling).
+/// Errors when a cyclic non-Draw subgraph has no unique bounded sidling solution.
 #[pyfunction]
 fn loopy_nim_values(succ: Vec<Vec<usize>>) -> PyResult<Vec<Option<u128>>> {
     crate::games::loopy_nim_values(&succ)
@@ -147,7 +147,9 @@ fn loopy_nim_values(succ: Vec<Vec<usize>>) -> PyResult<Vec<Option<u128>>> {
                 })
                 .collect()
         })
-        .ok_or_else(|| PyValueError::new_err("non-Draw subgraph has a cycle — needs full sidling"))
+        .ok_or_else(|| {
+            PyValueError::new_err("cyclic non-Draw subgraph has no unique bounded sidling solution")
+        })
 }
 
 // ---------------------------------------------------------------------------

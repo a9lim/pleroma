@@ -350,6 +350,22 @@ mod tests {
     }
 
     #[test]
+    fn orthogonal_fast_product_reproduces_reduce_word() {
+        let m = Metric::diagonal(vec![r(2), r(-3), r(0)]);
+        assert!(m.is_orthogonal());
+        for ba in 0u128..8 {
+            for bb in 0u128..8 {
+                let word: Vec<usize> = bits(ba).into_iter().chain(bits(bb)).collect();
+                assert_eq!(
+                    m.geom_product_blades(ba, bb),
+                    m.reduce_word(&word),
+                    "orthogonal fast-path mismatch on blades {ba:#b}·{bb:#b}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn general_bilinear_in_order_contraction() {
         let mut a = BTreeMap::new();
         a.insert((0usize, 1usize), r(5));

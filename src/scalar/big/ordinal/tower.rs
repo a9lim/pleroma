@@ -67,7 +67,7 @@ use std::collections::{BTreeMap, BTreeSet};
 /// `place m ↦ base-p(m) digit vector`, where digit `k` is the power of the generator
 /// `χ_{p(m)^{k+1}}` (`0 ≤ digit < p(m)`). An absent place / empty vector is all-zero;
 /// the empty map is the exponent `0` (the monomial `1`).
-type GenKey = BTreeMap<u128, Vec<u8>>;
+type GenKey = BTreeMap<u128, Vec<u128>>;
 
 /// Whether `n` is prime (trial division; `n` is a small prime index in practice).
 fn is_prime(n: u128) -> bool {
@@ -131,10 +131,10 @@ fn alpha_ordinal(u: u128) -> Option<Ordinal> {
 }
 
 /// Base-`base` digit vector of `v` (least-significant first, no trailing zeros).
-fn base_digits(mut v: u128, base: u128) -> Vec<u8> {
+fn base_digits(mut v: u128, base: u128) -> Vec<u128> {
     let mut d = Vec::new();
     while v > 0 {
-        d.push((v % base) as u8);
+        d.push(v % base);
         v /= base;
     }
     d
@@ -154,20 +154,21 @@ fn decompose_exp(e: &Ordinal) -> Option<GenKey> {
 
 /// Rebuild the exponent ordinal `E = Σ ω^m · V_m` from a [`GenKey`] (`V_m` read back
 /// from its base-`p(m)` digits).
-fn recompose_exp(key: &GenKey) -> Ordinal {
-    key.iter().fold(Ordinal::zero(), |acc, (&m, digits)| {
+fn recompose_exp(key: &GenKey) -> Option<Ordinal> {
+    key.iter().try_fold(Ordinal::zero(), |acc, (&m, digits)| {
         let u = place_prime(m);
         let mut v: u128 = 0;
         let mut pw: u128 = 1;
         for &d in digits {
-            v += d as u128 * pw;
-            pw *= u;
+            let term = d.checked_mul(pw)?;
+            v = v.checked_add(term)?;
+            pw = pw.checked_mul(u)?;
         }
-        if v == 0 {
+        Some(if v == 0 {
             acc
         } else {
             acc.nim_add(&Ordinal::monomial(Ordinal::from_u128(m), v))
-        }
+        })
     })
 }
 
@@ -176,42 +177,49 @@ fn recompose_exp(key: &GenKey) -> Ordinal {
 /// `q` (each owes one factor of the excess `α_u`, resolved by the caller). Processes
 /// high→low: a digit `≥ u` at level `k ≥ 1` carries one to level `k-1`
 /// (`χ_{u^{k+1}}^u = χ_{u^k}`); at level 0 it is removed and counted (`χ_u^u = α_u`).
-fn reduce_place(raw: &[u32], u: u128) -> (Vec<u8>, u32) {
+fn reduce_place(raw: &[u128], u: u128) -> Option<(Vec<u128>, u128)> {
     let mut d = raw.to_vec();
-    let mut q = 0u32;
-    let uu = u as u32;
     for k in (0..d.len()).rev() {
-        while d[k] >= uu {
-            d[k] -= uu;
-            if k == 0 {
-                q += 1;
-            } else {
-                d[k - 1] += 1;
-            }
+        let carry = d[k] / u;
+        d[k] %= u;
+        if carry == 0 {
+            continue;
         }
+        if k == 0 {
+            while d.last() == Some(&0) {
+                d.pop();
+            }
+            return Some((d, carry));
+        }
+        d[k - 1] = d[k - 1].checked_add(carry)?;
     }
-    let mut digits: Vec<u8> = d.iter().map(|&x| x as u8).collect();
+    let mut digits: Vec<u128> = d;
     while digits.last() == Some(&0) {
         digits.pop();
     }
-    (digits, q)
+    Some((digits, 0))
 }
 
 /// Add two generator monomials' digit vectors per `(m,k)` and reduce each place,
 /// returning the canonical base [`GenKey`] and the per-place count of level-0 Kummer
 /// carries (the excess `α_{p(m)}` owed). Pure digit bookkeeping — no `α` resolution.
-fn reduce_keys(a: &GenKey, b: &GenKey) -> (GenKey, BTreeMap<u128, u32>) {
+fn reduce_keys(a: &GenKey, b: &GenKey) -> Option<(GenKey, BTreeMap<u128, u128>)> {
     let mut base = GenKey::new();
-    let mut overflow: BTreeMap<u128, u32> = BTreeMap::new();
+    let mut overflow: BTreeMap<u128, u128> = BTreeMap::new();
     let places: BTreeSet<u128> = a.keys().chain(b.keys()).copied().collect();
     for m in places {
         let da = a.get(&m).map(Vec::as_slice).unwrap_or(&[]);
         let db = b.get(&m).map(Vec::as_slice).unwrap_or(&[]);
         let len = da.len().max(db.len());
-        let raw: Vec<u32> = (0..len)
-            .map(|i| *da.get(i).unwrap_or(&0) as u32 + *db.get(i).unwrap_or(&0) as u32)
-            .collect();
-        let (red, q) = reduce_place(&raw, place_prime(m));
+        let raw: Vec<u128> = (0..len)
+            .map(|i| {
+                da.get(i)
+                    .copied()
+                    .unwrap_or(0)
+                    .checked_add(db.get(i).copied().unwrap_or(0))
+            })
+            .collect::<Option<_>>()?;
+        let (red, q) = reduce_place(&raw, place_prime(m))?;
         if q > 0 {
             overflow.insert(m, q);
         }
@@ -219,7 +227,7 @@ fn reduce_keys(a: &GenKey, b: &GenKey) -> (GenKey, BTreeMap<u128, u32>) {
             base.insert(m, red);
         }
     }
-    (base, overflow)
+    Some((base, overflow))
 }
 
 /// The product of two generator monomials `ω^{E_a}·c_a` and `ω^{E_b}·c_b`, as a full
@@ -228,12 +236,12 @@ fn reduce_keys(a: &GenKey, b: &GenKey) -> (GenKey, BTreeMap<u128, u32>) {
 /// owe — recursively, since `α_u` is itself a (strictly-lower-place) ordinal. `None` if
 /// some owed `α_u` is past the verified table (`u > 43`).
 fn mul_mono(ka: &GenKey, ca: u128, kb: &GenKey, cb: u128) -> Option<Ordinal> {
-    let (base_key, overflow) = reduce_keys(ka, kb);
+    let (base_key, overflow) = reduce_keys(ka, kb)?;
     let coeff = nim_mul(ca, cb);
     let base = if base_key.is_empty() {
         Ordinal::from_u128(coeff)
     } else {
-        Ordinal::monomial(recompose_exp(&base_key), coeff)
+        Ordinal::monomial(recompose_exp(&base_key)?, coeff)
     };
     if overflow.is_empty() {
         return Some(base);
@@ -478,5 +486,16 @@ mod tests {
         // And anything ≥ ω^(ω^ω) (an infinite exponent place) is out of range outright.
         let w_ww = Ordinal::omega_pow(ww()); // ω^(ω^ω)
         assert_eq!(mul(&w_ww, &w()), None);
+    }
+
+    #[test]
+    fn identity_preserves_large_valid_prime_digits() {
+        // p(53)=257, so digit 256 is legal. This used to truncate through `u8`
+        // storage and collapse the monomial to 1 even when multiplying by 1.
+        assert_eq!(place_prime(53), 257);
+        let exp = Ordinal::monomial(fin(53), 256);
+        let x = Ordinal::omega_pow(exp);
+        assert_eq!(mul(&x, &fin(1)), Some(x.clone()));
+        assert_eq!(mul(&fin(1), &x), Some(x));
     }
 }

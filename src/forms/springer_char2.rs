@@ -382,6 +382,88 @@ fn local_is_pe<S: FiniteChar2Field>(c: &RationalFunction<S>, place: &Char2Place<
     e == 0 && r.is_empty()
 }
 
+fn split_poly_by_uniformizer<S: Scalar>(poly: &Poly<S>, pi: &Poly<S>) -> (Poly<S>, Poly<S>) {
+    let mut q = poly.clone();
+    let pi2 = pi.mul(pi);
+    let mut even = Poly::zero();
+    let mut odd = Poly::zero();
+    let mut pow = Poly::one();
+    let mut pow_level = 0usize;
+    let mut k = 0usize;
+    while !q.is_zero() {
+        let (next, digit) = q.divrem(pi);
+        let level = k / 2;
+        while pow_level < level {
+            pow = pow.mul(&pi2);
+            pow_level += 1;
+        }
+        let term = digit.mul(&pow);
+        if k & 1 == 0 {
+            even = even.add(&term);
+        } else {
+            odd = odd.add(&term);
+        }
+        q = next;
+        k += 1;
+    }
+    (even, odd)
+}
+
+fn split_poly_by_x_parity<S: Scalar>(poly: &Poly<S>) -> (Poly<S>, Poly<S>) {
+    let mut even = Vec::new();
+    let mut odd = Vec::new();
+    for (i, c) in poly.coeffs().iter().cloned().enumerate() {
+        let out = if i & 1 == 0 { &mut even } else { &mut odd };
+        let j = i / 2;
+        if out.len() <= j {
+            out.resize_with(j + 1, S::zero);
+        }
+        out[j] = c;
+    }
+    (Poly::new(even), Poly::new(odd))
+}
+
+fn quotient_in_square_subfield<S: Scalar>(
+    num_even: Poly<S>,
+    num_odd: Poly<S>,
+    den_even: Poly<S>,
+    den_odd: Poly<S>,
+) -> bool {
+    // In K = K² ⊕ πK², (n0 + πn1)/(d0 + πd1) lies in K² iff
+    // n0*d1 + n1*d0 = 0. This is the purely-inseparable char-2 analogue of
+    // rationalising the denominator.
+    num_even
+        .mul(&den_odd)
+        .add(&num_odd.mul(&den_even))
+        .is_zero()
+}
+
+/// Whether `f ∈ K_v²` in the completion at `place`.
+fn local_is_square<S: FiniteChar2Field>(f: &RationalFunction<S>, place: &Char2Place<S>) -> bool {
+    let Some(v) = valuation(f, place) else {
+        return true;
+    };
+    if v & 1 != 0 {
+        return false;
+    }
+    match place {
+        Char2Place::Finite(p) => {
+            let (_, ncof) = strip_factor(f.num().clone(), p);
+            let (_, dcof) = strip_factor(f.den().clone(), p);
+            let (ne, no) = split_poly_by_uniformizer(&ncof, p);
+            let (de, do_) = split_poly_by_uniformizer(&dcof, p);
+            quotient_in_square_subfield(ne, no, de, do_)
+        }
+        Char2Place::Infinite => {
+            let nt = Poly::new(f.num().coeffs().iter().rev().cloned().collect());
+            let dt = Poly::new(f.den().coeffs().iter().rev().cloned().collect());
+            let (ne, no) = split_poly_by_x_parity(&nt);
+            let (de, do_) = split_poly_by_x_parity(&dt);
+            quotient_in_square_subfield(ne, no, de, do_)
+        }
+    }
+}
+
 // ───────────────────────── the decomposition ─────────────────────────
 
 /// The per-block contribution `(φ₀-bit, φ₁-bit, ψ-part)` of a nonsingular block
@@ -499,27 +581,24 @@ fn singular_anisotropic_dim<S: FiniteChar2Field>(
     singular: &[RationalFunction<S>],
     place: &Char2Place<S>,
 ) -> usize {
-    singular_parity_representatives(singular, place).len()
+    singular_square_representatives(singular, place).len()
 }
 
-fn singular_parity_representatives<S: FiniteChar2Field>(
+fn singular_square_representatives<S: FiniteChar2Field>(
     singular: &[RationalFunction<S>],
     place: &Char2Place<S>,
 ) -> Vec<RationalFunction<S>> {
-    let mut has_even = false;
-    let mut has_odd = false;
     let mut reps = Vec::new();
     for c in singular.iter().filter(|c| !c.is_zero()) {
-        match valuation(c, place).expect("filtered nonzero singular coefficient") & 1 {
-            0 if !has_even => {
-                has_even = true;
+        if reps.is_empty() {
+            reps.push(c.clone());
+        } else if reps.len() == 1 {
+            let ratio = c.mul(&reps[0].inv().expect("nonzero representative inverts"));
+            if !local_is_square(&ratio, place) {
                 reps.push(c.clone());
             }
-            1 if !has_odd => {
-                has_odd = true;
-                reps.push(c.clone());
-            }
-            _ => {}
+        } else {
+            break;
         }
     }
     reps
@@ -562,17 +641,18 @@ fn semisingular_anisotropic_dim<S: FiniteChar2Field>(
 }
 
 /// The **local anisotropic dimension** of `form` over `K_v` at `place`, for the form
-/// shapes the char-2 theory pins exactly: pure totally-singular forms (read from
-/// the two square classes of `K_v*/K_v*²`), nonsingular forms of any rank via the AJ
-/// kernel, one-class singular tails via the odd-dimensional Clifford invariant, and
-/// any binary-block part plus a two-class singular tail. `u(K_v) = 4`.
+/// shapes the char-2 theory pins exactly: pure totally-singular forms (read as a
+/// `K_v²`-span inside the two-dimensional vector space `K_v = K_v² ⊕ πK_v²`),
+/// nonsingular forms of any rank via the AJ kernel, one-class singular tails via
+/// the odd-dimensional Clifford invariant, and any binary-block part plus a
+/// two-dimensional singular tail. `u(K_v) = 4`.
 pub fn local_anisotropic_dim_char2<S: FiniteChar2Field>(
     form: &Char2QuadForm<S>,
     place: &Char2Place<S>,
 ) -> Option<usize> {
     let bl = &form.blocks;
     let nb = bl.len();
-    let singular = singular_parity_representatives(&form.singular, place);
+    let singular = singular_square_representatives(&form.singular, place);
     let ns = singular.len();
     let rank = 2 * nb + ns;
     if rank == 0 {
@@ -594,15 +674,15 @@ pub fn local_anisotropic_dim_char2<S: FiniteChar2Field>(
         return Some(nonsingular_anisotropic_dim(bl, place));
     }
     if ns == 2 {
-        // The two valuation-parity classes span K over K². The quasilinear tail is
+        // The two coefficients form a K²-basis of K. The quasilinear tail is
         // universal as a value set, so it splits off hyperbolic planes from any
-        // nonsingular part and leaves precisely its two-class radical kernel.
+        // nonsingular part and leaves precisely its two-dimensional radical kernel.
         return Some(2);
     }
     if ns == 1 {
         return Some(semisingular_anisotropic_dim(bl, &singular[0], place));
     }
-    unreachable!("K_v*/K_v*² has only the even and odd valuation-parity classes")
+    unreachable!("K_v has K_v²-dimension two")
 }
 
 /// Whether `form` is **isotropic over the completion** `K_v` at `place`. `Some(true)`
@@ -919,9 +999,14 @@ mod tests {
         let one = r2(&[1], &[1]);
         let t = r2(&[0, 1], &[1]);
         let t2 = r2(&[0, 0, 1], &[1]);
+        let one_plus_t = r2(&[1, 1], &[1]);
         // ⟨1,t⟩ spans both K²-classes over F₂((t)), so it is anisotropic of dim 2.
         assert_eq!(anis(&[], &[one.clone(), t.clone()]), Some(2));
         assert_eq!(iso(&[], &[one.clone(), t.clone()]), Some(false));
+        // Same valuation parity is not enough: 1+t has an odd π-coefficient, so
+        // it is not in K² and ⟨1,1+t⟩ is still anisotropic of dimension 2.
+        assert_eq!(anis(&[], &[one.clone(), one_plus_t.clone()]), Some(2));
+        assert_eq!(iso(&[], &[one.clone(), one_plus_t]), Some(false));
         // ⟨1,t²⟩ has both coefficients in the even-valuation square class.
         assert_eq!(anis(&[], &[one.clone(), t2.clone()]), Some(1));
         assert_eq!(iso(&[], &[one.clone(), t2.clone()]), Some(true));
@@ -941,6 +1026,7 @@ mod tests {
         let one = r2(&[1], &[1]);
         let t = r2(&[0, 1], &[1]);
         let t2 = r2(&[0, 0, 1], &[1]);
+        let one_plus_t = r2(&[1, 1], &[1]);
         let block = [(one.clone(), one.clone())];
 
         // Two singular entries in the same K²-class reduce to the rank-3 case.
@@ -949,11 +1035,13 @@ mod tests {
             anis(&block, std::slice::from_ref(&one))
         );
 
-        // Distinct valuation parities span K over K². The singular tail is a
+        // Distinct K²-lines span K over K². The singular tail is a
         // universal quasilinear plane, so one binary block plus that tail is
         // isotropic with the two-class tail left as the anisotropic kernel.
         assert_eq!(anis(&block, &[one.clone(), t.clone()]), Some(2));
-        assert_eq!(iso(&block, &[one, t]), Some(true));
+        assert_eq!(iso(&block, &[one.clone(), t]), Some(true));
+        assert_eq!(anis(&block, &[one.clone(), one_plus_t.clone()]), Some(2));
+        assert_eq!(iso(&block, &[one, one_plus_t]), Some(true));
     }
 
     #[test]

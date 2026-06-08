@@ -510,6 +510,14 @@ expansion (`number_game.rs` / `from_transfinite_sign_expansion`) — appendix
 material too; none of it touches the Arf/game thread. The same is true of the
 new adelic/global layer (`scalar/global`, `forms/adelic`): useful context for
 local-global form experiments, but not evidence for the game-semantics claim.
+The analytic-layer unification (`scalar/analytic.rs`) is the same kind of
+round-out: the scattered root-taking methods are now two traits — `ExactRoots`
+(exact `sqrt`/`is_square` across ℚ, the nim/finite fields, the p-adics, `Surreal`,
+`Laurent`) and `SeriesRoots` (the lazy `*_to_terms` surreal primitives) — with the
+algebraic-closure surcomplex `√(a+bi)` falling out as a blanket
+`Surcomplex<R: ExactRoots+Ordered>` impl (it used to be a private helper inside
+`forms/char0`). It makes surcomplex root-taking first-class and the classifier call
+a trait, but changes no Arf/game claim.
 
 ## Useful commands
 

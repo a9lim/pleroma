@@ -4,7 +4,9 @@
 //! `pub(crate)` because the `backend!` macro in [`super::engine`] threads them in
 //! as the per-backend parse/wrap hooks.
 
-use crate::scalar::{Integer, Nimber, Omnific, Ordinal, Rational, Scalar, Surcomplex, Surreal};
+use crate::scalar::{
+    ExactRoots, Integer, Nimber, Omnific, Ordinal, Rational, Scalar, Surcomplex, Surreal,
+};
 use pyo3::basic::CompareOp;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
@@ -272,15 +274,29 @@ impl PySurreal {
             .map(|inner| PySurreal { inner })
             .ok_or_else(|| PyValueError::new_err("0 has no inverse"))
     }
-    /// The **truncated real square root** to `n` leading terms; `None` unless the
-    /// leading coefficient is a perfect ℚ-square and the value is ≥ 0 (so `√2`
-    /// and `√(2ω)` are `None`, while `√ω = ω^{1/2}` is exact).
+    /// The **truncated real square root** to `n` leading terms (the lazy
+    /// `SeriesRoots` primitive); `None` unless the leading coefficient is a perfect
+    /// ℚ-square and the value is ≥ 0 (so `√2` and `√(2ω)` are `None`, while
+    /// `√ω = ω^{1/2}` is exact). For the precision-free exact value see
+    /// [`exact_sqrt`](Self::exact_sqrt).
     fn sqrt(&self, n: usize) -> Option<PySurreal> {
-        self.inner.sqrt(n).map(|inner| PySurreal { inner })
+        self.inner.sqrt_to_terms(n).map(|inner| PySurreal { inner })
     }
     /// The **truncated real `k`-th root** to `n` leading terms (same ℚ-power scope).
     fn nth_root(&self, k: u32, n: usize) -> Option<PySurreal> {
-        self.inner.nth_root(k, n).map(|inner| PySurreal { inner })
+        self.inner
+            .nth_root_to_terms(k, n)
+            .map(|inner| PySurreal { inner })
+    }
+    /// Whether this is a square in the represented surreal subdomain (`ExactRoots`).
+    fn is_square(&self) -> bool {
+        ExactRoots::is_square(&self.inner)
+    }
+    /// The **exact** real square root (no precision argument): `Some` iff a finite
+    /// represented surreal squares back to this — `√ω = ω^{1/2}`, `√4 = 2`, but
+    /// `√2` is `None`. The exact companion to [`sqrt`](Self::sqrt).
+    fn exact_sqrt(&self) -> Option<PySurreal> {
+        ExactRoots::sqrt(&self.inner).map(|inner| PySurreal { inner })
     }
     /// The **birthday** as an `Ordinal` (transfinite-aware): `ω ↦ ω`, `ε ↦ ω`,
     /// `ω^ω ↦ ω^ω`. `None` outside the representable subclass (`√ω`, …).
@@ -420,6 +436,26 @@ impl PySurcomplex {
             acc = acc.mul(&self.inner);
         }
         PySurcomplex { inner: acc }
+    }
+    /// Whether this is a square in the surcomplex field (`ExactRoots`).
+    fn is_square(&self) -> bool {
+        ExactRoots::is_square(&self.inner)
+    }
+    /// The **exact algebraic-closure square root** `√(a+bi)`: the surcomplex field
+    /// is algebraically closed over its real-closed base, so a represented number
+    /// has a represented root. `None` outside the represented square subdomain
+    /// (e.g. `√2`). The functorial companion of `Surreal.exact_sqrt`.
+    fn sqrt(&self) -> Option<PySurcomplex> {
+        ExactRoots::sqrt(&self.inner).map(|inner| PySurcomplex { inner })
+    }
+    /// The **truncated inverse** `1/(a+bi)` to `n` leading terms — succeeds where
+    /// [`inv`](Self::inv) returns `None` because the norm `a²+b²` is a non-monomial
+    /// surreal. Errors only on `0`.
+    fn inv_to_terms(&self, n: usize) -> PyResult<PySurcomplex> {
+        self.inner
+            .inv_to_terms(n)
+            .map(|inner| PySurcomplex { inner })
+            .ok_or_else(|| PyValueError::new_err("0 has no inverse"))
     }
     fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
         matches!(parse_surcomplex(other), Ok(x) if x == self.inner)

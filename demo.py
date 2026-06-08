@@ -46,6 +46,13 @@ print("  0 < ε < 1e-9?", pl.surreal(0) < pl.epsilon() < pl.rational(1, 10**9))
 section("surcomplex — only a field over the surreals")
 z = pl.Surcomplex(pl.omega(), 1)  # ω + i
 print("  (ω+i)(ω-i)   =", z * z.conj(), "  (= ω²+1, a genuine norm)")
+# algebraic closure: every represented number has a represented root (ExactRoots)
+print("  √(3+4i) = 2+i:", pl.Surcomplex(3, 4).sqrt())
+print("  √ω over ℂ    :", pl.Surcomplex(pl.omega(), 0).sqrt(), " √2 declines:",
+      pl.Surcomplex(2, 0).sqrt())
+# division stays first-class even when the norm a²+b² is a non-monomial surreal
+zz = pl.Surcomplex(pl.omega() + 1, 1)
+print("  1/(ω+1+i)→6t :", zz.inv_to_terms(6), "  z·z⁻¹ =", zz * zz.inv_to_terms(6))
 
 section("versors — reflections & rotations in Cl(3,0)")
 E = pl.SurrealAlgebra(q=[1, 1, 1])
@@ -331,6 +338,7 @@ w = pl.omega()
 print("  √ω = ω^{1/2}                 :", w.sqrt(4), "  (squares back to", w.sqrt(4) ** 2, ")")
 print("  √(ω²+2ω+1) = ω+1             :", (w * w + 2 * w + 1).sqrt(2))
 print("  √2 is not finite-CNF/ℚ       :", pl.surreal(2).sqrt(4))   # None — honest scope
+print("  exact √ω (no precision arg)  :", w.exact_sqrt(), " is_square(ω):", w.is_square())
 print("  1/(ω+1) Neumann to 3 terms   :", (w + 1).inv_to_terms(3))
 
 section("transfinite birthdays & Gonshor sign expansions")

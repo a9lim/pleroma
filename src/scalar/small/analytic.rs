@@ -28,116 +28,13 @@
 //! on `v ≥ 1` / `1 + p𝒪`) — are deliberately left for a follow-up, the same way
 //! the surreal layer grew incrementally.
 
-use crate::scalar::{FiniteField, Fp, Fpn, Qp, Qq, Scalar, WittVec, Zp};
+use crate::scalar::analytic::{fp_is_square, fp_sqrt, fq_sqrt};
+use crate::scalar::{Fp, Fpn, Qp, Qq, Scalar, WittVec, Zp};
 
-// ───────────────────────── residue-field helpers ─────────────────────────
-
-/// `base^e mod m` (the residue fields here are tiny, so `u128` products suffice).
-fn mod_pow(mut base: u128, mut e: u128, m: u128) -> u128 {
-    let mut acc = 1u128 % m;
-    base %= m;
-    while e > 0 {
-        if e & 1 == 1 {
-            acc = (acc * base) % m;
-        }
-        base = (base * base) % m;
-        e >>= 1;
-    }
-    acc
-}
-
-/// Whether `a` is a square in `F_p` (odd `p`): `a = 0` or `a^{(p−1)/2} = 1`.
-fn fp_is_square(a: u128, p: u128) -> bool {
-    let a = a % p;
-    a == 0 || mod_pow(a, (p - 1) / 2, p) == 1
-}
-
-/// A square root of `a` in `F_p` (odd `p`) via Tonelli–Shanks, or `None` if `a`
-/// is a non-residue. The returned root is the seed for the Hensel lift.
-fn fp_sqrt(a: u128, p: u128) -> Option<u128> {
-    let a = a % p;
-    if a == 0 {
-        return Some(0);
-    }
-    if mod_pow(a, (p - 1) / 2, p) != 1 {
-        return None; // non-residue
-    }
-    if p % 4 == 3 {
-        return Some(mod_pow(a, (p + 1) / 4, p)); // the fast branch
-    }
-    // p ≡ 1 (mod 4): full Tonelli–Shanks. Write p−1 = q·2^s with q odd.
-    let (mut q, mut s) = (p - 1, 0u32);
-    while q % 2 == 0 {
-        q /= 2;
-        s += 1;
-    }
-    // Find a quadratic non-residue z.
-    let mut z = 2u128;
-    while mod_pow(z, (p - 1) / 2, p) != p - 1 {
-        z += 1;
-    }
-    let mut m = s;
-    let mut c = mod_pow(z, q, p);
-    let mut t = mod_pow(a, q, p);
-    let mut r = mod_pow(a, (q + 1) / 2, p);
-    loop {
-        if t == 1 {
-            return Some(r);
-        }
-        // least i in 1..m with t^{2^i} = 1
-        let mut i = 1u32;
-        let mut t2 = (t * t) % p;
-        while t2 != 1 {
-            t2 = (t2 * t2) % p;
-            i += 1;
-        }
-        let b = mod_pow(c, 1u128 << (m - i - 1), p);
-        m = i;
-        c = (b * b) % p;
-        t = (t * c) % p;
-        r = (r * b) % p;
-    }
-}
-
-/// A square root of `a` in `F_q = F_{p^N}` (odd `p`) via Tonelli–Shanks over the
-/// field, or `None` for a non-square. Uses a primitive element as the guaranteed
-/// quadratic non-residue.
-fn fq_sqrt<const P: u128, const N: usize>(a: Fpn<P, N>) -> Option<Fpn<P, N>> {
-    if a.is_zero() {
-        return Some(Fpn::zero());
-    }
-    if !a.is_square() {
-        return None;
-    }
-    let one = Fpn::<P, N>::one();
-    // q−1 = q'·2^s with q' odd.
-    let (mut qodd, mut s) = (Fpn::<P, N>::order() - 1, 0u32);
-    while qodd % 2 == 0 {
-        qodd /= 2;
-        s += 1;
-    }
-    let z = Fpn::<P, N>::primitive_element(); // a generator ⇒ a non-residue
-    let mut m = s;
-    let mut c = z.pow(qodd);
-    let mut t = a.pow(qodd);
-    let mut r = a.pow((qodd + 1) / 2);
-    loop {
-        if t == one {
-            return Some(r);
-        }
-        let mut i = 1u32;
-        let mut t2 = t.mul(&t);
-        while t2 != one {
-            t2 = t2.mul(&t2);
-            i += 1;
-        }
-        let b = c.pow(1u128 << (m - i - 1));
-        m = i;
-        c = b.mul(&b);
-        t = t.mul(&c);
-        r = r.mul(&b);
-    }
-}
+// The residue-field square roots (`fp_is_square` / `fp_sqrt` / `fq_sqrt`) that
+// seed the Hensel lifts here now live at the analytic root in
+// [`crate::scalar::analytic`], shared with the `ExactRoots` impls for the finite
+// fields. This module keeps the p-adic-specific Newton lift and Teichmüller rep.
 
 // ───────────────────────── generic lift helpers ─────────────────────────
 

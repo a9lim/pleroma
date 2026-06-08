@@ -525,7 +525,7 @@ mod tests {
         );
         assert_eq!(eps.birthday_ordinal(), Some(Ordinal::omega())); // 1 + ω = ω
                                                                     // The honest boundary: √ω, ω−1, ½ω are outside the subclass ⇒ None.
-        assert!(w.sqrt(4).unwrap().birthday_ordinal().is_none()); // √ω = ω^{1/2}
+        assert!(w.sqrt_to_terms(4).unwrap().birthday_ordinal().is_none()); // √ω = ω^{1/2}
         assert!(w.sub(&int(1)).birthday_ordinal().is_none()); // ω − 1
         assert!(Surreal::monomial(int(1), Rational::new(1, 2))
             .birthday_ordinal()
@@ -565,41 +565,44 @@ mod tests {
     fn surreal_square_roots() {
         let w = Surreal::omega();
         // √ω = ω^{1/2}, exact (monomial radicand), and squares back to ω.
-        let root_w = w.sqrt(4).unwrap();
+        let root_w = w.sqrt_to_terms(4).unwrap();
         assert_eq!(
             root_w,
             Surreal::omega_pow(Surreal::from_rational(Rational::new(1, 2)))
         );
         assert_eq!(root_w.mul(&root_w), w);
         // √4 = 2.
-        assert_eq!(int(4).sqrt(4).unwrap(), int(2));
+        assert_eq!(int(4).sqrt_to_terms(4).unwrap(), int(2));
         // √(ω²+2ω+1) = ω+1 in the two leading terms (perfect square, square lead).
         let perfect = Surreal::omega_pow(int(2))
             .add(&Surreal::monomial(int(1), Rational::int(2)))
             .add(&int(1)); // ω² + 2ω + 1
-        assert_eq!(perfect.sqrt(2).unwrap(), w.add(&int(1)));
+        assert_eq!(perfect.sqrt_to_terms(2).unwrap(), w.add(&int(1)));
         // The honest ℚ-coefficient boundary: leading coeff not a perfect square
         // ⇒ None (√2, √(2ω)); negative ⇒ None (√−ω). √0 = 0.
-        assert!(int(2).sqrt(4).is_none());
+        assert!(int(2).sqrt_to_terms(4).is_none());
         assert!(Surreal::monomial(int(1), Rational::int(2))
-            .sqrt(4)
+            .sqrt_to_terms(4)
             .is_none());
-        assert!(w.neg().sqrt(4).is_none());
-        assert_eq!(Surreal::zero().sqrt(4).unwrap(), Surreal::zero());
+        assert!(w.neg().sqrt_to_terms(4).is_none());
+        assert_eq!(Surreal::zero().sqrt_to_terms(4).unwrap(), Surreal::zero());
     }
 
     #[test]
     fn surreal_nth_roots() {
         let w = Surreal::omega();
         // ∛(ω³) = ω (monomial radicand, exact).
-        assert_eq!(Surreal::omega_pow(int(3)).nth_root(3, 4).unwrap(), w);
+        assert_eq!(
+            Surreal::omega_pow(int(3)).nth_root_to_terms(3, 4).unwrap(),
+            w
+        );
         // ∛(−8) = −2 (odd root of a negative is allowed).
-        assert_eq!(int(-8).nth_root(3, 4).unwrap(), int(-2));
+        assert_eq!(int(-8).nth_root_to_terms(3, 4).unwrap(), int(-2));
         // ∛2 is irrational ⇒ None.
-        assert!(int(2).nth_root(3, 4).is_none());
+        assert!(int(2).nth_root_to_terms(3, 4).is_none());
         // (1+ε)³ = 1 + 3ε + 3ε² + ε³ ; the cube root recovers 1+ε in 2 terms.
         let base = Surreal::one().add(&Surreal::epsilon());
         let cubed = base.mul(&base).mul(&base);
-        assert_eq!(cubed.nth_root(3, 2).unwrap(), base);
+        assert_eq!(cubed.nth_root_to_terms(3, 2).unwrap(), base);
     }
 }

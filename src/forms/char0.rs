@@ -41,7 +41,7 @@ use crate::clifford::Metric;
 use crate::forms::{disc_class, hasse_at_place, relevant_primes, square_free, Place};
 use crate::scalar::Surcomplex;
 use crate::scalar::Surreal;
-use crate::scalar::{Rational, Scalar};
+use crate::scalar::{ExactRoots, Rational, Scalar};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -208,72 +208,21 @@ pub fn classify_complex(n: usize, r: usize) -> CliffordType {
     }
 }
 
-fn exact_surreal_sqrt_nonnegative(x: &Surreal) -> Option<Surreal> {
-    if x.is_zero() {
-        return Some(Surreal::zero());
-    }
-    if x.sign() != Ordering::Greater {
-        return None;
-    }
-    let base = x.terms().len().max(1);
-    for n in 1..=(8 * base + 32) {
-        let root = x.sqrt(n)?;
-        if root.mul(&root) == *x {
-            return Some(root);
-        }
-    }
-    None
-}
-
-fn exact_surcomplex_sqrt(z: &Surcomplex<Surreal>) -> Option<Surcomplex<Surreal>> {
-    if z.is_zero() {
-        return Some(Surcomplex::zero());
-    }
-    let root = if z.im.is_zero() {
-        match z.re.sign() {
-            Ordering::Greater => {
-                let root = exact_surreal_sqrt_nonnegative(&z.re)?;
-                Surcomplex::new(root, Surreal::zero())
-            }
-            Ordering::Less => {
-                let root = exact_surreal_sqrt_nonnegative(&z.re.neg())?;
-                Surcomplex::new(Surreal::zero(), root)
-            }
-            Ordering::Equal => Surcomplex::zero(),
-        }
-    } else {
-        let norm_sq = z.re.mul(&z.re).add(&z.im.mul(&z.im));
-        let norm = exact_surreal_sqrt_nonnegative(&norm_sq)?;
-        let half = Surreal::from_rational(Rational::new(1, 2));
-        let a2 = norm.add(&z.re).mul(&half);
-        let b2 = norm.sub(&z.re).mul(&half);
-        let a = exact_surreal_sqrt_nonnegative(&a2)?;
-        let mut b = exact_surreal_sqrt_nonnegative(&b2)?;
-        if z.im.sign() == Ordering::Less {
-            b = b.neg();
-        }
-        Surcomplex::new(a, b)
-    };
-    if root.mul(&root) == *z {
-        Some(root)
-    } else {
-        None
-    }
-}
-
 /// Signature over the implemented `Surreal` subdomain where every nonzero
-/// diagonal entry is exactly square-equivalent to ±1.
+/// diagonal entry is exactly square-equivalent to ±1. The exact-square test is
+/// the [`ExactRoots`] square root (the helper that used to live here now lives at
+/// the scalar layer, shared with the surcomplex blanket).
 pub(crate) fn surreal_signature(metric: &Metric<Surreal>) -> Option<(usize, usize, usize)> {
     let diag = crate::forms::as_diagonal(metric)?;
     let (mut p, mut q, mut r) = (0, 0, 0);
     for x in &diag.q {
         match x.sign() {
             Ordering::Greater => {
-                exact_surreal_sqrt_nonnegative(x)?;
+                x.sqrt()?; // representable exact square root?
                 p += 1;
             }
             Ordering::Less => {
-                exact_surreal_sqrt_nonnegative(&x.neg())?;
+                x.neg().sqrt()?;
                 q += 1;
             }
             Ordering::Equal => r += 1,
@@ -283,7 +232,8 @@ pub(crate) fn surreal_signature(metric: &Metric<Surreal>) -> Option<(usize, usiz
 }
 
 /// Rank/radical over the implemented `Surcomplex<Surreal>` subdomain where each
-/// nonzero diagonal entry has an exact represented square root.
+/// nonzero diagonal entry has an exact represented square root — the algebraic-
+/// closure [`ExactRoots`] `sqrt` (the `Surcomplex` blanket impl).
 pub(crate) fn surcomplex_rank(metric: &Metric<Surcomplex<Surreal>>) -> Option<(usize, usize)> {
     let diag = crate::forms::as_diagonal(metric)?;
     let mut nonzero = 0usize;
@@ -292,7 +242,7 @@ pub(crate) fn surcomplex_rank(metric: &Metric<Surcomplex<Surreal>>) -> Option<(u
         if z.is_zero() {
             radical += 1;
         } else {
-            exact_surcomplex_sqrt(z)?;
+            z.sqrt()?;
             nonzero += 1;
         }
     }

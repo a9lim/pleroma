@@ -64,6 +64,23 @@ src/
                   # "local fields" view (cuts across small/ + functor/), and the datum
                   # Ramified folds from its base. NOT a Scalar supertrait (rings of
                   # integers + exact Archimedean worlds excluded), same as the ops.
+    analytic.rs   # the ANALYTIC layer UNIFIED: the root-taking surface as two traits
+                  # split on where precision lives. ExactRoots {is_square; sqrt} (no
+                  # precision arg — exact, or exact to the type's K) for Rational,
+                  # Nimber, Fp, Fpn, Zp, Qp, Qq, WittVec, Surreal (exact via the
+                  # fixed-point bridge over the lazy roots), Laurent (Newton in odd/0
+                  # char, even-exponent inverse-Frobenius in char 2), AND the blanket
+                  # Surcomplex<R: ExactRoots+Ordered> — the algebraic-closure √(a+bi)
+                  # that used to be a private helper in forms/char0 (the classifier now
+                  # calls the trait). SeriesRoots {sqrt_to_terms; nth_root_to_terms;
+                  # inv_to_terms} (caller-chosen n) is the lazy interface — Surreal-only
+                  # (the one world with unbounded, not type-fixed, precision). Ordered
+                  # {sign} is the datum the Surcomplex blanket needs to pick the branch.
+                  # The residue Tonelli roots (fp_sqrt/fq_sqrt) live here now (shared
+                  # with small/analytic's Hensel seed). Surcomplex<Surreal> also gets a
+                  # lazy inv_to_terms (division when the norm a²+b² is non-monomial).
+                  # Gauss/Ramified excluded honestly (rational-function/ramified roots
+                  # need a different machine). NOT a Scalar supertrait, like valued.
     functor/      # the root-level *functors* — ways to GROW a field, orthogonal to
                   # the place table. 2×2 (algebraic|transcendental × residue|value-
                   # extending), ALL FOUR corners filled (see functor/mod.rs).
@@ -128,10 +145,14 @@ src/
                   #   round trip on the representable subclass). Every ordinal ↦
                   #   all-pluses incl ω^ω; ε=+(−)^ω. None outside the representable
                   #   subclass (√ω, ½ω, ω−1) — honest, not ℝ-trunc.
-        analytic.rs      # the LAZY FIELD layer: inv_to_terms (Neumann-series inverse
-                  #   to n terms — non-monomials too, the Zp-style precision contract)
-                  #   + sqrt/nth_root (real-closed roots; Some iff the leading coeff
-                  #   is a perfect ℚ-power, so √2/√(2ω) honestly None, √ω exact).
+        analytic.rs      # the LAZY FIELD layer (the SeriesRoots primitives): inv_to_terms
+                  #   (Neumann-series inverse to n terms — non-monomials too, the Zp-style
+                  #   precision contract) + sqrt_to_terms/nth_root_to_terms (real-closed
+                  #   roots to n terms; Some iff the leading coeff is a perfect ℚ-power, so
+                  #   √2/√(2ω) honestly None, √ω exact). Named *_to_terms (matching
+                  #   inv_to_terms) so the precision-free names sqrt/is_square belong to
+                  #   ExactRoots (scalar/analytic.rs), whose Surreal sqrt is the exact
+                  #   value recovered by squaring these truncations back.
       omnific.rs  # the omnific integers Oz: Omnific(Surreal) newtype, a transfinite
                   # commutative RING (not field). Surreal mirror of Integer (the ring
                   # of integers of No); the exterior algebra with ω-scale coeffs.
@@ -168,12 +189,14 @@ src/
                   # with F=1 IS Qp. p^val·(Witt unit), char()=0, inv TOTAL on nonzero.
                   # Capped-relative (excluded from the fuzz suite). Completes the
                   # (field, ring of integers) pairing on the unramified leg.
-      analytic.rs # the ANALYTIC layer over all four backends (mirror of surreal/
-                  # analytic.rs): Hensel-lifted is_square/sqrt (Tonelli residue seed
-                  # over F_p/F_q + Newton lift y←(y+u/y)/2; ODD p only — dyadic sqrt
+      analytic.rs # the p-adic ANALYTIC layer over all four backends (mirror of surreal/
+                  # analytic.rs): Hensel-lifted is_square/sqrt (Newton lift y←(y+u/y)/2
+                  # seeded by the Tonelli residue roots — fp_sqrt/fq_sqrt now live in
+                  # scalar/analytic.rs and are imported here; ODD p only — dyadic sqrt
                   # is the forms mod-8 story, asserted) and the Teichmüller rep τ
                   # (the (q−1)th root of unity; added to Zp/Qp/Qq, WittVec already
-                  # had it). nth_root + p-adic log/exp are the documented next ops.
+                  # had it). The inherent is_square/sqrt are what ExactRoots delegates to
+                  # (scalar/analytic.rs). nth_root + p-adic log/exp are the next ops.
 
     finite_field/ # FAMILY — the finite residue worlds (the char trichotomy's finite
                   # leg + the unramified ring of integers)
@@ -561,6 +584,24 @@ need custom invariant-preserving deserialization, not a naive derive.)
 
 ## Things that look like bugs but are not
 
+- **`Surreal` has two square roots, by design.** The inherent `sqrt_to_terms(n)` is
+  the lazy `SeriesRoots` primitive (n leading terms); `ExactRoots::sqrt(&self)` (0
+  args) is the exact value. They are *different methods with different arities*, so
+  on a concrete `Surreal` `x.sqrt_to_terms(4)` is lazy and `x.sqrt()` (with
+  `ExactRoots` in scope) is exact. The rename to `*_to_terms` (matching the existing
+  `inv_to_terms`) is what frees the bare names `sqrt`/`is_square` for the
+  precision-free `ExactRoots` family across every backend. Don't "unify" them back to
+  one `sqrt` — the two precision contracts are genuinely different. The Python
+  `Surreal.sqrt(n)` stays the lazy one; `Surreal.exact_sqrt()` is the exact one.
+- **`ExactRoots`/`SeriesRoots`/`Ordered` are NOT `Scalar` supertraits** (same as the
+  operators and `Valued`): not every world takes roots, so the bounds stay opt-in.
+  The trait impls *delegate to inherent methods of the same name* (e.g.
+  `ExactRoots::sqrt` for `Qp` calls the inherent `Qp::sqrt`); inherent-shadows-trait
+  in method position makes that delegate-not-recurse, exactly the `Valued` pattern.
+- **`ExactRoots::sqrt`/`is_square` on `Zp`/`Qp`/`Qq`/`WittVec` panic at p=2.** They
+  inherit the inherent odd-p assertion (the dyadic case is the forms mod-8 story).
+  The finite fields and `Laurent` handle char 2 natively, so the trait is total
+  there; the p-adic rings are the documented exception, not a bug.
 - **Scalar `+ - *` operators are concrete-only, NOT a `Scalar` supertrait.** This
   is deliberate: making `Scalar: Add+Sub+Mul+Neg` brings the ops into scope for
   every generic `S`, where `Mul::mul(self, Self)` shadows `Scalar::mul(&self,

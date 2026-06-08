@@ -70,6 +70,7 @@
 //! and even in `finite_field`); the two pillars are complementary views of the
 //! same backends.
 
+pub mod analytic;
 pub mod big;
 pub mod exact;
 pub mod finite_field;
@@ -79,6 +80,7 @@ pub mod integrality;
 pub mod small;
 pub mod valued;
 
+pub use analytic::*;
 pub use big::*;
 pub use exact::*;
 pub use finite_field::*;

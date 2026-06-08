@@ -60,14 +60,20 @@ impl Surreal {
     /// the deliberate ℚ-coefficient boundary: `√2` and `√(2ω)` are `None`
     /// (`√2` is not a finite-CNF-with-ℚ-coeffs surreal), while `√ω = ω^{1/2}`
     /// and `√(ω²+2ω+1) = ω+1` are exact in their leading terms.
-    pub fn sqrt(&self, n: usize) -> Option<Surreal> {
-        self.nth_root(2, n)
+    ///
+    /// This is the lazy ([`SeriesRoots`](crate::scalar::SeriesRoots)) primitive;
+    /// for the *exact* value (no precision argument) see the
+    /// [`ExactRoots::sqrt`](crate::scalar::ExactRoots::sqrt) impl, which squares
+    /// these truncations back until one matches.
+    pub fn sqrt_to_terms(&self, n: usize) -> Option<Surreal> {
+        self.nth_root_to_terms(2, n)
     }
 
     /// The **truncated real `k`-th root** to `n` leading terms (`k ≥ 1`), or
     /// `None`. `Some` iff the leading coefficient is a perfect ℚ `k`-th power
-    /// (and, for even `k`, `self > 0`). See [`sqrt`](Self::sqrt) for the scope.
-    pub fn nth_root(&self, k: u32, n: usize) -> Option<Surreal> {
+    /// (and, for even `k`, `self > 0`). See [`sqrt_to_terms`](Self::sqrt_to_terms)
+    /// for the scope.
+    pub fn nth_root_to_terms(&self, k: u32, n: usize) -> Option<Surreal> {
         if k == 0 {
             return None;
         }

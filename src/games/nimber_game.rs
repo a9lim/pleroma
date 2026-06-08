@@ -86,12 +86,12 @@ impl NimberGame {
     /// The **Turning-Corners product**: Conway's coin game realizing
     /// nim-multiplication (the transfinite extension of
     /// [`coin_turning::nim_mul_mex`](crate::games::nim_mul_mex)). Defined across the
-    /// `On₂` prime-power tower (every heap `< ⋆ω^(ω²)` and free combinations beyond);
-    /// `None` only at the staged non-scalar-Kummer boundary (see
-    /// [`big::ordinal`](crate::scalar::big)). Unlike the surreal leg — where the
-    /// product is field multiplication — for nimbers the product is a *separate*
-    /// game from the disjunctive sum; this is the seam where the game pillar meets
-    /// the nimber field (`⋆ω ⊗ ⋆ω ⊗ ⋆ω = ⋆2`, Conway's `ω³ = 2`).
+    /// `On₂` prime-power tower, including the non-scalar Kummer branching (`α_7 = ω+1`,
+    /// …); `None` only when a Kummer carry needs a prime `> 43` (past the source-verified
+    /// excess table) or at `≥ ⋆ω^(ω^ω)` (see [`big::ordinal`](crate::scalar::big)).
+    /// Unlike the surreal leg — where the product is field multiplication — for nimbers
+    /// the product is a *separate* game from the disjunctive sum; this is the seam where
+    /// the game pillar meets the nimber field (`⋆ω ⊗ ⋆ω ⊗ ⋆ω = ⋆2`, Conway's `ω³ = 2`).
     pub fn turning_corners(&self, other: &NimberGame) -> Option<NimberGame> {
         self.grundy
             .nim_mul(&other.grundy)

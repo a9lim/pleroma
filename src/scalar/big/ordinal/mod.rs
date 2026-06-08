@@ -29,38 +29,32 @@
 //! * **nim-addition is complete and exact** ([`nim`]): like-`ω`-power
 //!   coefficients combine by XOR (so `α ⊕ α = 0`, `ω ⊕ 1 = ω+1`), giving the
 //!   genuine transfinite characteristic-2 additive group.
-//! * **nim-multiplication is implemented across the whole degree-3ⁿ tower** —
-//!   every ordinal strictly below **`ω^ω`** (all CNF exponents finite). Following
-//!   DiMuro (*arXiv:1108.0962*, extending Conway *ONAG* ch. 6 and Lenstra 1977 "On
-//!   the algebraic closure of two"): the finite layers are `F_{2^{2^n}}`, then `ω`
-//!   supplies the missing cube roots (`ω³ = 2`), and the tower of cube-root
-//!   generators
-//!   `g₀ = ω, g₁ = ω³, g₂ = ω⁹, …, gₙ = ω^(3ⁿ)`  with  `g₀³ = 2,  gₙ³ = g_{n-1}`
-//!   climbs to `ω^ω`. Every ordinal `< ω^ω` is a multivariate monomial in the `gₙ`
-//!   read off the **base-3 digits** of its exponents (`ω^e = ⊗ₖ gₖ^{dₖ}`,
-//!   `e = Σ dₖ·3ᵏ`), so nim-multiplication is digit-vector addition with the
-//!   cube-root carries `gₖ³ = g_{k-1}`, `g₀³ = 2` (`nim::tower_mul`). This strictly
-//!   subsumes the old `< ω³`, `(ω³−2)`-reduction path (the one-generator,
-//!   single-digit case) — the `f4_adjoin_omega_is_a_field` (F₆₄) and
-//!   `omega_cubed_is_two` checks remain green as regression. New worked relations:
-//!   `(ω³)⊗³ = ω`, `(ω⁹)⊗³ = ω³`.
-//! * **At `ω^ω` and above it is staged.** `ω^ω` is the first ordinal with an
-//!   *infinite* CNF exponent; any such ordinal returns `None`. Reaching the full
-//!   algebraic closure (the ordinals `< ω^{ω^ω}`) additionally requires the other
-//!   primes: for the `(k+1)`-th prime `u` the generator is `χ_u = ω^(ω^(k-1))`
-//!   (`χ_3 = ω`, `χ_5 = ω^ω`, `χ_7 = ω^(ω²)`, …), defined by the **clean Kummer
-//!   relation** `(χ_u)^u = α_u` and `(χ_{u^{n+1}})^u = χ_{u^n}`, where `α_u` is
-//!   Lenstra's *excess* — the smallest ordinal below `χ_u` with no `u`-th root there
-//!   (DiMuro Thm 3.1.4 / Table 1: `α_3 = 2`, `α_5 = 4`, `α_7 = ω+1`,
-//!   `α_11 = ω^ω+1`, `α_13 = ω+4`). The root-finding is in *computing* `α_u`, not in
-//!   the generator relation. (The Artin–Schreier `x²+x+1` relation is instead the
-//!   `p = u = 2` Fermat-tower case — DiMuro Thm 3.1.7 / Cor 3.11 — already handled
-//!   inside the finite nimber field
-//!   [`finite_field::nimber`](crate::scalar::finite_field).) The transfinite levels
-//!   `ω^ω → ω^(ω²) → … → ω^(ω^ω)` (where the CNF exponents become infinite ordinals)
-//!   climb prime by prime; the CNF recursion already supports them structurally. A
-//!   multi-stage climb, shipped incrementally rather than speculatively; the `α_u`
-//!   table is primary-source-verified — see `NOTES.md`.
+//! * **nim-multiplication is implemented across the prime-power generator tower**
+//!   ([`tower`]). Following DiMuro (*arXiv:1108.0962*, extending Conway *ONAG* ch. 6
+//!   and Lenstra 1977 "On the algebraic closure of two"): the finite layers are
+//!   `F_{2^{2^n}}`; then for the prime governing exponent-place `ω^m` — `p(m)` = the
+//!   `(m+2)`-th prime (`p(0)=3`, `p(1)=5`, `p(2)=7`, …) — the generators are
+//!   `χ_{p(m)^{k+1}} = ω^(ω^m · p(m)^k)`, so every ordinal `< ω^(ω^ω)` is a monomial
+//!   in the `χ` read off the **base-`p(m)` digits** of its exponents' `ω^m`-coefficients
+//!   (`ω^E = ⊗_{m,k} χ_{p(m)^{k+1}}^{d_{m,k}}`). Nim-multiplication is digit-vector
+//!   addition with the carries `χ_{u^{k+1}}^u = χ_{u^k}` (`k ≥ 1`) and the bottom
+//!   **Kummer** relation `χ_u^u = α_u` — `α_u` being Lenstra's *excess*, the smallest
+//!   ordinal `< χ_u` with no `u`-th root there. The prime-3 place is the degree-3 cube
+//!   tower (`g₀=ω, gₙ=ω^(3ⁿ), g₀³=2, gₙ³=g_{n-1}`); `f4_adjoin_omega_is_a_field` (F₆₄)
+//!   and `omega_cubed_is_two` remain green as its regression.
+//! * **The boundary is honest and operational.** A non-scalar excess (`α_7 = ω+1`,
+//!   `α_11 = ω^ω+1`, `α_13 = ω+4`, …) is a *sum*, so a level-0 Kummer carry **branches**
+//!   the monomial and the reduced monomial is nim-multiplied back by `α_u`. This recurses
+//!   **strictly downward by place** (every `α_{p(m)}` is built from generators at places
+//!   `< m`), bottoming out at `α_3 = 2` in the finite field. We carry the
+//!   **source-verified** `α_u` for primes `u ≤ 43` (DiMuro Thm 3.1.4 / Table 1:
+//!   `α_3=2, α_5=4, α_7=ω+1, α_11=ω^ω+1, α_13=ω+4, α_17=16, …, α_43=ω^(ω²)+1`), so a
+//!   product is exact whenever its Kummer carries stay at primes `≤ 43`; a carry needing
+//!   `α_47` or beyond returns `None`, as does anything `≥ ω^(ω^ω)` (an infinite exponent
+//!   place). (The Artin–Schreier `x²+x+1` relation is the separate `u = 2` Fermat-tower
+//!   case — DiMuro Thm 3.1.7 / Cor 3.11 — handled inside the finite nimber field
+//!   [`finite_field::nimber`](crate::scalar::finite_field).) The `α_u` table is
+//!   primary-source-verified — see `NOTES.md`.
 
 mod cantor;
 mod nim;

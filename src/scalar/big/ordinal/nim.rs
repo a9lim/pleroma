@@ -60,15 +60,15 @@ impl Ordinal {
     }
 
     /// Nim-multiplication across the prime-power generator tower (Conway / Lenstra /
-    /// DiMuro; see [`tower`](super::tower)). Exact for every pair of ordinals
-    /// `< ω^(ω^ω)` whose product never needs a **non-scalar** Kummer reduction
-    /// `χ_u^u = α_u` (Stage 1): every ordinal `< ω^(ω²)` (primes 3, 5 only, both with
-    /// scalar `α`), plus all higher products that avoid a non-scalar `α_u` carry
-    /// (e.g. `(ω^(ω²))^{⊗k}` for `k < 7`).
+    /// DiMuro; see [`tower`](super::tower)). The non-scalar excesses `α_u` (`α_7 = ω+1`,
+    /// `α_11 = ω^ω+1`, …) branch a Kummer carry into a *sum*, which is nim-multiplied
+    /// back in recursively — descending by place, since every `α_{p(m)}` lives at places
+    /// `< m`. Exact for every pair of ordinals `< ω^(ω^ω)` whose product triggers Kummer
+    /// carries only at primes `≤ 43` (the source-verified `α_u` table, DiMuro Table 1).
     ///
     /// Returns `None` when an operand reaches `≥ ω^(ω^ω)` (an infinite exponent place,
     /// outside the algebraically-closed segment) **or** when a level-0 carry would need
-    /// a non-scalar `α_u` (`α_7 = ω+1`, …) — the staged branching expansion (Stage 2).
+    /// an `α_u` past the verified table (`α_47` and beyond) — the staged boundary.
     pub fn nim_mul(&self, other: &Ordinal) -> Option<Ordinal> {
         // Zero is absorbing in any field.
         if self.is_zero() || other.is_zero() {
@@ -313,37 +313,31 @@ mod tests {
 
     #[test]
     fn multiplication_reaches_past_omega_omega() {
-        // The boundary moved off ω^ω: the prime-power tower (`tower.rs`) now reaches
-        // every ordinal < ω^(ω²) and free combinations beyond. Spot-checks of the
-        // source-verified landmarks (full coverage lives in `tower::tests`):
+        // The prime-power tower (`tower.rs`) reaches every ordinal whose Kummer carries
+        // stay at primes ≤ 43 — well past ω^ω. Spot-checks of source-verified landmarks
+        // (full coverage lives in `tower::tests`):
         let omega = Ordinal::omega();
         let ww = Ordinal::omega_pow(omega.clone()); // ω^ω = χ_5
-                                                    // ω^ω ⊗ ω = ω^(ω+1) (was None under the old ω^ω boundary).
+                                                    // ω^ω ⊗ ω = ω^(ω+1).
         assert_eq!(
             ww.nim_mul(&omega).unwrap(),
             Ordinal::omega_pow(omega.nim_add(&fin(1)))
         );
-        // (ω^ω)⊗⁵ = α_5 = 4 (the quintic Kummer reduction).
+        // (ω^ω)⊗⁵ = α_5 = 4 (the quintic, scalar Kummer reduction).
         let mut p = ww.clone();
         for _ in 0..4 {
             p = p.nim_mul(&ww).unwrap();
         }
         assert_eq!(p, fin(4));
-        // The new staged boundary is the non-scalar Kummer carry (α_7 = ω+1): the
-        // 7th power of χ_7 = ω^(ω²) is `None`, and so is anything ≥ ω^(ω^ω).
-        let w_w2 = Ordinal::omega_pow(Ordinal::omega_pow(fin(2))); // ω^(ω²)
-        let mut q = w_w2.clone();
-        let mut staged = false;
-        for _ in 0..6 {
-            match q.nim_mul(&w_w2) {
-                Some(next) => q = next,
-                None => {
-                    staged = true;
-                    break;
-                }
-            }
+        // The Stage-2 branching: χ_7 = ω^(ω²), and (χ_7)⊗⁷ = α_7 = ω + 1 (non-scalar —
+        // a single monomial branches into a sum).
+        let chi7 = Ordinal::omega_pow(Ordinal::omega_pow(fin(2))); // ω^(ω²)
+        let mut q = fin(1);
+        for _ in 0..7 {
+            q = q.nim_mul(&chi7).unwrap();
         }
-        assert!(staged, "(ω^(ω²))⊗⁷ should be staged (non-scalar α_7)");
+        assert_eq!(q, omega.nim_add(&fin(1))); // ω + 1
+                                               // The boundary now sits past prime 43, and ≥ ω^(ω^ω) is out of range.
         assert_eq!(Ordinal::omega_pow(ww.clone()).nim_mul(&omega), None); // ω^(ω^ω)
     }
 }

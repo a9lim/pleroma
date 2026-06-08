@@ -27,24 +27,37 @@
 //!
 //! `ω^{E1} ⊗ ω^{E2}`: the generator powers **add** (`χ^i ⊗ χ^j = χ^{i+j}`), i.e. the
 //! two keys' digit vectors add componentwise per `(m,k)`; then each place reduces by
-//! the tower carries (high→low, exactly as the cube tower's `reduce_key` did):
+//! the tower carries (high→low):
 //!
 //! - `χ_{u^{k+1}}^u = χ_{u^k}` (`k ≥ 1`): a digit `≥ u` at level `k` carries one down
-//!   to level `k-1`;
+//!   to level `k-1` — exact, keeps a single monomial;
 //! - `χ_u^u = α_u` (`k = 0`, the **Kummer** relation): a digit `≥ u` at level 0
 //!   consumes a factor of the *excess* `α_u`.
 //!
+//! ## The branching reduction (non-scalar `α_u`)
+//!
+//! The excess `α_u` is a finite nimber for some primes (`α_3=2`, `α_5=4`, `α_17=16`)
+//! and a genuine transfinite ordinal for others (`α_7=ω+1`, `α_11=ω^ω+1`, `α_13=ω+4`,
+//! …). A scalar `α_u` keeps a level-0 carry inside the coefficient — the product stays
+//! one monomial. A non-scalar `α_u` is a *sum*, so the carry **branches** the monomial:
+//! `χ_u^u = α_u` replaces a generator power by `α_u`, and the (reduced) monomial must be
+//! nim-multiplied by that sum, mixing across exponent places.
+//!
+//! This recursion **descends by place**: every `α_{p(m)}` is built from generators at
+//! places strictly `< m` (`α_7 = ω+1` uses `ω = χ_3`, place 0 < 2; `α_11 = ω^ω+1` uses
+//! `χ_5`, place 1 < 3; verified from DiMuro Table 1). So `base ⊗ excess` can never
+//! re-trigger a carry at the place that produced it, and the recursion bottoms out at
+//! `α_3 = 2` in the finite field — the crate's "recurse only on strictly-simpler
+//! exponents" discipline. Termination depth is bounded by the largest place index.
+//!
 //! ## Staging (honest scope)
 //!
-//! `α_u` is a finite nimber for some primes (`α_3=2`, `α_5=4`, `α_17=16`, …) and a
-//! genuine transfinite ordinal for others (`α_7=ω+1`, `α_11=ω^ω+1`, `α_13=ω+4`, …).
-//! **Stage 1 (this module)** handles the *scalar* `α_u`: a level-0 carry there just
-//! multiplies the coefficient, so the product stays a single reduced monomial. When a
-//! level-0 carry needs a *non-scalar* `α_u` it returns `None` — the self-limiting
-//! boundary. This already closes every ordinal `< ω^(ω²)` (only primes 3,5 appear
-//! there, both with scalar `α`) plus all higher products that never trigger a
-//! non-scalar Kummer carry (e.g. `(ω^(ω²))^{⊗k}` for `k < 7`). The non-scalar
-//! branching expansion (`α_7 = ω+1` ⇒ a carry splits a monomial into a sum) is Stage 2.
+//! We carry the **source-verified** excesses `α_u` for primes `u ≤ 43` (DiMuro Table 1;
+//! see `NOTES.md`). The product of any two ordinals `< ω^(ω^ω)` is therefore exact
+//! whenever every Kummer carry it triggers is at a prime `≤ 43`; a carry needing `α_47`
+//! or beyond returns `None` — the honest operational boundary, moved up from the earlier
+//! "any non-scalar `α_u`" cut. (Anything `≥ ω^(ω^ω)`, an infinite exponent place, is out
+//! of range outright.)
 
 use super::Ordinal;
 use crate::scalar::nim_mul;
@@ -88,17 +101,33 @@ fn place_prime(m: u128) -> u128 {
     }
 }
 
-/// The excess `α_u` as a finite nimber, or `None` if `α_u` is a genuine transfinite
-/// ordinal (the Stage-1 boundary — the non-scalar Kummer reduction needs the branching
-/// expansion, not yet implemented). Verified On₂ values (DiMuro Table 1; see `NOTES.md`).
-fn alpha_scalar(u: u128) -> Option<u128> {
-    match u {
-        3 => Some(2),
-        5 => Some(4),
-        17 => Some(16),
-        // u = 7, 11, 13, 19, 23, … have non-scalar α_u (Stage 2).
-        _ => None,
-    }
+/// The excess `α_u` (`χ_u^u = α_u`, the Kummer relation) as an ordinal, or `None` for
+/// primes beyond the source-verified table (`u > 43` — the staged boundary). Every
+/// `α_u` is built from generators at strictly-lower places than `χ_u`'s own, which is
+/// what makes the branching reduction descend and terminate. Values: DiMuro Table 1
+/// (see `NOTES.md`); square brackets there are ordinary ordinal exponentiation, already
+/// resolved (`[2^ω]=ω`, `[2^{ω²}]=ω^ω`, …).
+fn alpha_ordinal(u: u128) -> Option<Ordinal> {
+    let fin = Ordinal::from_u128;
+    let wpow = Ordinal::omega_pow;
+    let w = Ordinal::omega;
+    let val = match u {
+        3 => fin(2),
+        5 => fin(4),
+        7 => w().nim_add(&fin(1)),        // ω + 1
+        11 => wpow(w()).nim_add(&fin(1)), // ω^ω + 1
+        13 => w().nim_add(&fin(4)),       // ω + 4
+        17 => fin(16),
+        19 => wpow(fin(3)).nim_add(&fin(4)),       // ω³ + 4
+        23 => wpow(wpow(fin(3))).nim_add(&fin(1)), // ω^(ω³) + 1
+        29 => wpow(wpow(fin(2))).nim_add(&fin(4)), // ω^(ω²) + 4
+        31 => wpow(w()).nim_add(&fin(1)),          // ω^ω + 1
+        37 => wpow(fin(3)).nim_add(&fin(4)),       // ω³ + 4
+        41 => wpow(w()).nim_add(&fin(1)),          // ω^ω + 1
+        43 => wpow(wpow(fin(2))).nim_add(&fin(1)), // ω^(ω²) + 1
+        _ => return None,
+    };
+    Some(val)
 }
 
 /// Base-`base` digit vector of `v` (least-significant first, no trailing zeros).
@@ -143,19 +172,19 @@ fn recompose_exp(key: &GenKey) -> Ordinal {
 }
 
 /// Reduce one place's raw (post-addition) generator-power digits to canonical digits
-/// `< u`, returning `(canonical digits, accumulated scalar)` or `None` if a level-0
-/// (Kummer) carry needs a non-scalar `α_u`. Processes high→low: a digit `≥ u` at level
-/// `k ≥ 1` carries one to level `k-1` (`χ_{u^{k+1}}^u = χ_{u^k}`); at level 0 it
-/// consumes a factor `α_u` (`χ_u^u = α_u`).
-fn reduce_place(raw: &[u32], u: u128) -> Option<(Vec<u8>, u128)> {
+/// `< u`, returning the canonical digits and the number of **level-0 (Kummer) carries**
+/// `q` (each owes one factor of the excess `α_u`, resolved by the caller). Processes
+/// high→low: a digit `≥ u` at level `k ≥ 1` carries one to level `k-1`
+/// (`χ_{u^{k+1}}^u = χ_{u^k}`); at level 0 it is removed and counted (`χ_u^u = α_u`).
+fn reduce_place(raw: &[u32], u: u128) -> (Vec<u8>, u32) {
     let mut d = raw.to_vec();
-    let mut scalar = 1u128;
+    let mut q = 0u32;
     let uu = u as u32;
     for k in (0..d.len()).rev() {
         while d[k] >= uu {
             d[k] -= uu;
             if k == 0 {
-                scalar = nim_mul(scalar, alpha_scalar(u)?);
+                q += 1;
             } else {
                 d[k - 1] += 1;
             }
@@ -165,15 +194,15 @@ fn reduce_place(raw: &[u32], u: u128) -> Option<(Vec<u8>, u128)> {
     while digits.last() == Some(&0) {
         digits.pop();
     }
-    Some((digits, scalar))
+    (digits, q)
 }
 
-/// Multiply two generator monomials by exponent: add their digit vectors per `(m,k)`
-/// and reduce each place. Returns the reduced [`GenKey`] and the scalar factor
-/// produced by the Kummer carries, or `None` at the Stage-1 boundary.
-fn mul_keys(a: &GenKey, b: &GenKey) -> Option<(GenKey, u128)> {
-    let mut out = GenKey::new();
-    let mut scalar = 1u128;
+/// Add two generator monomials' digit vectors per `(m,k)` and reduce each place,
+/// returning the canonical base [`GenKey`] and the per-place count of level-0 Kummer
+/// carries (the excess `α_{p(m)}` owed). Pure digit bookkeeping — no `α` resolution.
+fn reduce_keys(a: &GenKey, b: &GenKey) -> (GenKey, BTreeMap<u128, u32>) {
+    let mut base = GenKey::new();
+    let mut overflow: BTreeMap<u128, u32> = BTreeMap::new();
     let places: BTreeSet<u128> = a.keys().chain(b.keys()).copied().collect();
     for m in places {
         let da = a.get(&m).map(Vec::as_slice).unwrap_or(&[]);
@@ -182,37 +211,59 @@ fn mul_keys(a: &GenKey, b: &GenKey) -> Option<(GenKey, u128)> {
         let raw: Vec<u32> = (0..len)
             .map(|i| *da.get(i).unwrap_or(&0) as u32 + *db.get(i).unwrap_or(&0) as u32)
             .collect();
-        let (red, s) = reduce_place(&raw, place_prime(m))?;
-        scalar = nim_mul(scalar, s);
+        let (red, q) = reduce_place(&raw, place_prime(m));
+        if q > 0 {
+            overflow.insert(m, q);
+        }
         if !red.is_empty() {
-            out.insert(m, red);
+            base.insert(m, red);
         }
     }
-    Some((out, scalar))
+    (base, overflow)
 }
 
-/// Nim-multiply two ordinals `< ω^(ω^ω)`, or `None` outside that range / at the
-/// Stage-1 (non-scalar `α_u`) boundary. Distributes over CNF: each monomial pair's
-/// coefficients nim-multiply, the exponents multiply via [`mul_keys`], and like
-/// monomials XOR-accumulate (char 2).
+/// The product of two generator monomials `ω^{E_a}·c_a` and `ω^{E_b}·c_b`, as a full
+/// ordinal (a *sum*, once a non-scalar Kummer carry branches it). Adds the generator
+/// powers, reduces, then nim-multiplies in the excess `α` factors the level-0 carries
+/// owe — recursively, since `α_u` is itself a (strictly-lower-place) ordinal. `None` if
+/// some owed `α_u` is past the verified table (`u > 43`).
+fn mul_mono(ka: &GenKey, ca: u128, kb: &GenKey, cb: u128) -> Option<Ordinal> {
+    let (base_key, overflow) = reduce_keys(ka, kb);
+    let coeff = nim_mul(ca, cb);
+    let base = if base_key.is_empty() {
+        Ordinal::from_u128(coeff)
+    } else {
+        Ordinal::monomial(recompose_exp(&base_key), coeff)
+    };
+    if overflow.is_empty() {
+        return Some(base);
+    }
+    // Excess factor `∏_m α_{p(m)}^{⊗ q_m}`. Each `α` lives at places `< m` (DiMuro), so
+    // both this fold and `base ⊗ excess` descend in place and terminate.
+    let mut excess = Ordinal::from_u128(1);
+    for (&m, &q) in &overflow {
+        let alpha = alpha_ordinal(place_prime(m))?;
+        for _ in 0..q {
+            excess = mul(&excess, &alpha)?;
+        }
+    }
+    mul(&base, &excess)
+}
+
+/// Nim-multiply two ordinals `< ω^(ω^ω)`, or `None` outside that range / when a Kummer
+/// carry needs an excess `α_u` past the verified table (`u > 43`). Distributes over CNF
+/// (char-2 field addition = nim-add); each monomial pair is handled by [`mul_mono`].
 pub(super) fn mul(a: &Ordinal, b: &Ordinal) -> Option<Ordinal> {
-    let mut acc: BTreeMap<GenKey, u128> = BTreeMap::new();
+    let mut acc = Ordinal::zero();
     for (ea, ca) in a.terms() {
         let ka = decompose_exp(ea)?;
         for (eb, cb) in b.terms() {
             let kb = decompose_exp(eb)?;
-            let (rk, s) = mul_keys(&ka, &kb)?;
-            let coeff = nim_mul(nim_mul(*ca, *cb), s);
-            *acc.entry(rk).or_insert(0) ^= coeff;
+            let term = mul_mono(&ka, *ca, &kb, *cb)?;
+            acc = acc.nim_add(&term);
         }
     }
-    Some(acc.into_iter().fold(Ordinal::zero(), |out, (k, c)| {
-        if c == 0 {
-            out
-        } else {
-            out.nim_add(&Ordinal::monomial(recompose_exp(&k), c))
-        }
-    }))
+    Some(acc)
 }
 
 #[cfg(test)]
@@ -228,20 +279,66 @@ mod tests {
     fn ww() -> Ordinal {
         Ordinal::omega_pow(Ordinal::omega()) // ω^ω
     }
+    fn chi7() -> Ordinal {
+        Ordinal::omega_pow(Ordinal::omega_pow(fin(2))) // ω^(ω²) = χ_7
+    }
+    /// `χ_7^⊗n` by repeated nim-multiplication.
+    fn chi7_pow(n: u32) -> Ordinal {
+        let mut p = fin(1);
+        for _ in 0..n {
+            p = mul(&p, &chi7()).unwrap();
+        }
+        p
+    }
 
     #[test]
     fn place_primes_are_the_odd_primes() {
-        assert_eq!(place_prime(0), 3);
-        assert_eq!(place_prime(1), 5);
-        assert_eq!(place_prime(2), 7);
-        assert_eq!(place_prime(3), 11);
-        assert_eq!(place_prime(4), 13);
-        assert_eq!(place_prime(5), 17);
+        for (m, p) in [
+            (0, 3),
+            (1, 5),
+            (2, 7),
+            (3, 11),
+            (4, 13),
+            (5, 17),
+            (6, 19),
+            (7, 23),
+            (8, 29),
+            (9, 31),
+            (10, 37),
+            (11, 41),
+            (12, 43),
+            (13, 47),
+        ] {
+            assert_eq!(place_prime(m), p);
+        }
+    }
+
+    #[test]
+    fn alpha_excesses_descend_in_place() {
+        // The termination invariant: every verified α_u is built from generators at
+        // places strictly below χ_u's own place (the (u)-index in the odd primes). This
+        // is what makes `base ⊗ excess` descend; a typo that violated it would loop.
+        for m in 0..=12u128 {
+            let u = place_prime(m);
+            let alpha = alpha_ordinal(u).unwrap();
+            // the highest place appearing anywhere in α_u must be < m.
+            let mut hi: Option<u128> = None;
+            for (exp, _) in alpha.terms() {
+                if let Some(sub) = decompose_exp(exp) {
+                    if let Some(&mx) = sub.keys().last() {
+                        hi = Some(hi.map_or(mx, |h| h.max(mx)));
+                    }
+                }
+            }
+            if let Some(h) = hi {
+                assert!(h < m, "α_{u} reaches place {h} ≥ its own place {m}");
+            }
+        }
     }
 
     #[test]
     fn reproduces_cube_tower_below_omega_omega() {
-        // ω ⊗ ω = ω², ω⊗³ = 2, ω²⊗ω² = ω⁴ = 2⊗ω — the prime-3, place-0 behavior.
+        // ω ⊗ ω = ω², ω⊗³ = 2, ω⊗⁴ = ω·2 — the prime-3, place-0 behavior.
         let wsq = mul(&w(), &w()).unwrap();
         assert_eq!(wsq, Ordinal::omega_pow(fin(2)));
         assert_eq!(mul(&wsq, &w()).unwrap(), fin(2)); // ω³ = 2
@@ -259,7 +356,7 @@ mod tests {
         let w4 = mul(&w3, &ww()).unwrap();
         assert_eq!(w4, Ordinal::omega_pow(Ordinal::monomial(fin(1), 4))); // ω^{ω·4}
         let w5 = mul(&w4, &ww()).unwrap();
-        assert_eq!(w5, fin(4)); // (ω^ω)⊗⁵ = α_5 = 4  ← the headline
+        assert_eq!(w5, fin(4)); // (ω^ω)⊗⁵ = α_5 = 4
     }
 
     #[test]
@@ -277,15 +374,38 @@ mod tests {
     }
 
     #[test]
+    fn septic_kummer_landmark() {
+        // THE Stage-2 headline, from DiMuro Table 1 (NOT from the engine — non-circular):
+        // χ_7 = ω^(ω²), and χ_7^⊗7 = α_7 = ω + 1. The 7th power is the first non-scalar
+        // Kummer carry; it branches the monomial into the sum ω + 1.
+        assert_eq!(chi7_pow(7), w().nim_add(&fin(1))); // ω + 1
+
+        // χ_7^⊗8 = α_7 ⊗ χ_7 = (ω+1)⊗ω^(ω²) = ω^(ω²+1) + ω^(ω²).
+        let e_w2_1 = Ordinal::omega_pow(fin(2)).nim_add(&fin(1)); // ω² + 1
+        let w2 = Ordinal::omega_pow(fin(2)); // ω²
+        assert_eq!(
+            chi7_pow(8),
+            Ordinal::omega_pow(e_w2_1).nim_add(&Ordinal::omega_pow(w2))
+        );
+
+        // χ_7^⊗9 = α_7 ⊗ χ_7^⊗2 = (ω+1)⊗ω^(ω²·2) = ω^(ω²·2+1) + ω^(ω²·2). Hand-verified
+        // both ways (= χ_7^⊗8 ⊗ χ_7), so it also pins associativity through the carry.
+        let w2_2 = Ordinal::monomial(fin(2), 2); // ω²·2  (exponent)
+        let w2_2_1 = w2_2.nim_add(&fin(1)); // ω²·2 + 1
+        assert_eq!(
+            chi7_pow(9),
+            Ordinal::omega_pow(w2_2_1).nim_add(&Ordinal::omega_pow(w2_2))
+        );
+        assert_eq!(chi7_pow(9), mul(&chi7_pow(8), &chi7()).unwrap());
+    }
+
+    #[test]
     fn quintic_stage_field_axioms() {
-        // The decisive Stage-1 check: the commutative-ring axioms on a sample of
-        // ordinals < ω^(ω²) spanning BOTH the prime-3 (place ω^0) and prime-5 (place
-        // ω^1) towers, with coefficients in F_4 — every product is defined here, and
-        // associativity is what a digit-carry bug would break. (The F_64/g_0 level
-        // stays exhaustively pinned by `nim::tests::f4_adjoin_omega_is_a_field`.)
+        // The prime-3/prime-5 (scalar-α) commutative-ring sweep on a sample of ordinals
+        // < ω^(ω²) spanning both the place-ω⁰ and place-ω¹ towers, coeffs in F_4. Every
+        // product is defined here; associativity is what a digit-carry bug would break.
         let w = Ordinal::omega();
-        // ω·n = ω^1·n (exponent the FINITE ordinal 1), distinct from ω^ω·n.
-        let wn = |n| Ordinal::monomial(fin(1), n);
+        let wn = |n| Ordinal::monomial(fin(1), n); // ω·n = ω^1·n (finite exponent 1)
         let elems: Vec<Ordinal> = vec![
             fin(1),
             fin(2),
@@ -301,13 +421,37 @@ mod tests {
             wn(3).nim_add(&fin(2)),                                         // ω·3 + 2
             Ordinal::omega_pow(wn(2)).nim_add(&Ordinal::omega_pow(fin(3))), // ω^(ω·2)+ω³
         ];
+        check_field_axioms(&elems);
+    }
+
+    #[test]
+    fn septic_stage_field_axioms() {
+        // The decisive Stage-2 check: the commutative-ring axioms on a sample built from
+        // χ_7 = ω^(ω²) (the first non-scalar-α generator), its powers 1..6, ω (= χ_3,
+        // which α_7 = ω+1 drags in), F_4 scalars, and mixed sums. Every pairwise product
+        // stays within primes {3, 7} (both ≤ 43 ⇒ all `Some`), and associativity /
+        // distributivity through the α_7 branching is exactly what a mis-mixed carry
+        // would break. The α_7 = ω+1 *value* is source-pinned in `septic_kummer_landmark`.
+        let mut elems: Vec<Ordinal> = vec![fin(1), fin(2), fin(3), w(), w().nim_add(&fin(1))];
+        for n in 1..=6u32 {
+            elems.push(chi7_pow(n));
+        }
+        elems.push(chi7().nim_add(&w())); // χ_7 + ω
+        elems.push(Ordinal::monomial(Ordinal::omega_pow(fin(2)), 2).nim_add(&fin(1))); // χ_7·2 + 1
+        elems.push(chi7_pow(3).nim_add(&w()).nim_add(&fin(1))); // χ_7³ + ω + 1
+        check_field_axioms(&elems);
+    }
+
+    /// Commutativity, identity, associativity, and distributivity over `⊕`, on every
+    /// triple of a sample whose pairwise products are all defined.
+    fn check_field_axioms(elems: &[Ordinal]) {
         let one = fin(1);
-        for a in &elems {
-            for b in &elems {
-                let ab = a.nim_mul(b).expect("< ω^(ω²) is closed under ⊗");
+        for a in elems {
+            for b in elems {
+                let ab = a.nim_mul(b).expect("sample is closed under ⊗");
                 assert_eq!(ab, b.nim_mul(a).unwrap(), "non-commutative");
                 assert_eq!(a.nim_mul(&one).unwrap(), *a, "identity");
-                for c in &elems {
+                for c in elems {
                     let l = ab.nim_mul(c).unwrap();
                     let r = a.nim_mul(&b.nim_mul(c).unwrap()).unwrap();
                     assert_eq!(l, r, "× not associative");
@@ -320,24 +464,18 @@ mod tests {
     }
 
     #[test]
-    fn boundary_returns_none_on_nonscalar_alpha() {
-        // χ_7 = ω^(ω²): free powers are fine (no carry) …
-        let w_w2 = Ordinal::omega_pow(Ordinal::omega_pow(fin(2))); // ω^(ω²)
-        assert!(mul(&w_w2, &w_w2).is_some()); // (ω^(ω²))⊗² = ω^(ω²·2), free
-                                              // … but the 7th power needs the Kummer carry α_7 = ω+1 (non-scalar) ⇒ Stage 2.
-        let mut p = w_w2.clone();
-        let mut hit_none = false;
-        for _ in 0..6 {
-            match mul(&p, &w_w2) {
-                Some(q) => p = q,
-                None => {
-                    hit_none = true;
-                    break;
-                }
-            }
-        }
-        assert!(hit_none, "(ω^(ω²))⊗⁷ must hit the non-scalar-α boundary");
-        // and anything ≥ ω^(ω^ω) (an infinite exponent place) is out of range.
+    fn boundary_returns_none_past_prime_43() {
+        // Everything through prime 43 is defined: e.g. χ_43 = ω^(ω^12), free powers fine.
+        let chi43 = Ordinal::omega_pow(Ordinal::omega_pow(fin(12)));
+        assert!(mul(&chi43, &chi43).is_some()); // (ω^(ω^12))⊗² — free, no carry
+
+        // But a Kummer carry at place 13 (prime 47) is past the verified table ⇒ None.
+        // ω^(ω^13·40) = χ_47^⊗40; squaring drives the place-13 digit to 80 ≥ 47, owing
+        // the unverified α_47.
+        let big = Ordinal::omega_pow(Ordinal::monomial(fin(13), 40)); // ω^(ω^13·40)
+        assert_eq!(mul(&big, &big), None);
+
+        // And anything ≥ ω^(ω^ω) (an infinite exponent place) is out of range outright.
         let w_ww = Ordinal::omega_pow(ww()); // ω^(ω^ω)
         assert_eq!(mul(&w_ww, &w()), None);
     }

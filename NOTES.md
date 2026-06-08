@@ -78,7 +78,7 @@ systems:
 | `Fp`, `Fpn`, `Zp`, `WittVec` | comparison scalar worlds for the characteristic trichotomy |
 | `Qp`, `Qq`, `Laurent`, `Ramified`, `Gauss` | local-field-style backends/functors, mostly precision models; used for valuation and Springer/Hilbert-symbol experiments |
 | `Adele`, `LocalQp` | a runtime-prime adelic precision model over `Q`; used by the local-global form layer |
-| `Ordinal` in `big/ordinal/` | staged transfinite nimbers: nim-addition on represented CNF terms; nim-multiplication below `omega^omega` via the current degree-3 tower |
+| `Ordinal` in `big/ordinal/` | staged transfinite nimbers: nim-addition on represented CNF terms; nim-multiplication via the prime-power generator tower (Kummer carries through `α_u`, `u ≤ 43`) |
 
 The writeup should focus on `Nimber`, and mention the others only as context.
 
@@ -618,18 +618,58 @@ verified independently from finite-field theory: the 5th powers of `F_16*` are
 it stays a non-5th-power throughout the 2,3-primary tower.
 
 Implementation status: the general prime-power tower (`scalar/big/ordinal/tower.rs`)
-is shipped as **Stage 1** — a monomial `ω^E` is keyed by `place m ↦ base-p(m) digit
-vector` of its exponent `E`, and `ω^{E1} ⊗ ω^{E2}` adds the digit vectors per `(m,k)`
-and reduces with the per-prime carries (`χ_{u^{k+1}}^u = χ_{u^k}`,
-`χ_u^u = α_u`). Stage 1 handles the *scalar*-`α_u` reductions (`α_3=2`, `α_5=4`,
-`α_17=16`), which already closes every ordinal `< ω^(ω²)` (primes 3,5 only) plus all
-higher products that never trigger a non-scalar Kummer carry — verified by a
-prime-3/prime-5 field-axiom sweep and the source-derived landmarks
-(`(ω^ω)^⊗5 = 4`, `(ω^ω)^⊗2 = ω^(ω·2)`, `ω^ω ⊗ ω = ω^(ω+1)`). The boundary is
-self-limiting: `None` at the first non-scalar `α_u` (e.g. `(ω^(ω²))^⊗7 = α_7 = ω+1`)
-or at `≥ ω^(ω^ω)`. **Stage 2** (remaining): the non-scalar `α_u` branching — a level-0
-carry by `α_7 = ω+1` splits a monomial into a *sum*, mixing across places — which
-closes the rest of `\bar{F_2} = ` ordinals `< ω^(ω^ω)`.
+is shipped. A monomial `ω^E` is keyed by `place m ↦ base-p(m) digit vector` of its
+exponent `E`, and `ω^{E1} ⊗ ω^{E2}` adds the digit vectors per `(m,k)` and reduces
+with the per-prime carries (`χ_{u^{k+1}}^u = χ_{u^k}`, `χ_u^u = α_u`).
+
+- **Stage 1** — *scalar* `α_u` (`α_3=2`, `α_5=4`, `α_17=16`): the level-0 carry stays
+  in the coefficient, so the product is one monomial. Closes every ordinal `< ω^(ω²)`
+  (primes 3,5 only) plus all higher products that avoid a non-scalar Kummer carry.
+- **Stage 2** (shipped) — *non-scalar* `α_u` (`α_7=ω+1`, `α_11=ω^ω+1`, …): the level-0
+  carry **branches** the monomial into the sum `α_u`, which is nim-multiplied back in.
+  The recursion **descends by place** — every `α_{p(m)}` is built from generators at
+  places `< m` (verified from Table 1), bottoming out at `α_3=2` in the finite field,
+  so it terminates in depth ≤ the largest place index. Carries the source-verified `α_u`
+  for primes `u ≤ 43`.
+
+Verified by a prime-3/prime-5 field-axiom sweep (Stage 1), a prime-7 field-axiom sweep
+through the `α_7` branching (Stage 2), and source-derived landmarks (`(ω^ω)^⊗5 = 4`;
+`(ω^(ω²))^⊗7 = α_7 = ω+1`; `(ω^(ω²))^⊗9 = ω^(ω²·2+1) + ω^(ω²·2)`, cross-checked two
+ways so it also pins associativity through the carry). The α *values* come from the
+source, never the engine (a wrong α still yields *an* associative ring, so the sweeps
+test engine consistency, not the α — that division is deliberate).
+
+**Operational boundary** (honest): a product is exact iff every Kummer carry it triggers
+is at a prime `≤ 43`; a carry needing `α_47` or beyond returns `None`, as does anything
+`≥ ω^(ω^ω)`. The `u ≤ 43` cap is a **math wall, not an engineering one** — see below.
+
+### Why the table is hardcoded, and the route past it (future work)
+
+DiMuro Thm 4.6 splits every excess as `α_u = (Σ_{q ∈ Q(f(u))} χ_q) + m`, finite `m`:
+
+- the **shape** is formulaic — `f(u) = ord_u(2)` (verified against all 13 table rows),
+  `Q(f(u))` = the prime-power factorization minimized under field containment (keep the
+  odd parts; keep the 2-part `2^a` only if no `χ_{r^j}` already supplies degree `2^a` —
+  the `d(χ_5)=20` absorption), and each `χ_q` is a known ordinal;
+- the **finite excess `m` has no closed form**. Thm 4.6 proves only that it is finite and
+  exists; DiMuro computes the actual values numerically (Mathematica). The `19 → m=4`
+  outlier is why no clean rule fits (an earlier reverse-engineered rule matched values but
+  did not self-cohere).
+
+So two unbuilt routes, both worth exploring, neither attempted here:
+
+- **(b) compute `f(u)` + `Q(f(u))` + the `χ`-sum by formula, hardcode only the small
+  excess ints.** Same `u ≤ 43` coverage, but more principled — the magic ordinals become
+  *computed* `χ_q`, and the `f`/`Q` computation becomes an independent cross-check against
+  DiMuro's own columns. Cost: a recursive `d(χ_{r^j})` degree for `Q`'s 2-absorption.
+- **(c) full automation** — also derive `m` by searching for the smallest finite
+  correction with no `u`-th root below `χ_u`. Unbounded in `u`, but requires u-th-power
+  testing in the transfinite field (research-grade) and is **unverifiable past `u = 43`**
+  (no source table beyond it) — so it would ship numbers the "verify, don't claim"
+  discipline can't sign off without an independent oracle.
+
+Left at the hardcoded table (route "a") for now: minimal, fully source-pinned, explicit
+boundary. (b)/(c) are the way to push the wall — (b) for self-verification, (c) for reach.
 
 ## Useful commands
 

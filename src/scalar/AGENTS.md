@@ -146,7 +146,12 @@ exact-vs-capped-precision boundary in `exactness.rs`.
   - `mod.rs` — CNF core: `Ordinal = Vec<(exponent: Ordinal, coeff: u128)>`, the lex
     cmp, `as_finite`, Debug.
   - `nim.rs` — char-2 NIM arithmetic: `nim_add` (coeff XOR) COMPLETE; `nim_mul`
-    implemented below ω^ω via the degree-3 tower (returns `None` at ω^ω and above).
+    dispatches zero / finite×finite / the generator tower.
+  - `tower.rs` — the prime-power generator tower (Conway/Lenstra/DiMuro): a monomial
+    `ω^E` keyed by `place m ↦ base-p(m) digit vector`; `⊗` adds digit vectors and
+    reduces with the Kummer carries `χ_u^u = α_u`. Non-scalar `α_u` (`α_7=ω+1`, …)
+    branch a carry into a *sum*, recursed in by descending place. Carries source-verified
+    `α_u` for primes `u ≤ 43`; `None` past that or at `≥ ω^(ω^ω)` (see `NOTES.md`).
   - `cantor.rs` — ORDINARY (Cantor) `ord_add`/`ord_mul` (ω+ω=ω·2, 1+ω=ω) — the
     surreal birthday's run-length arithmetic. A distinct algebra, sharing only CNF.
 

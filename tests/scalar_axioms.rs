@@ -122,12 +122,12 @@ axiom_suite!(
 // --- transfinite ordinal nimbers On₂: a PARTIAL field (nim_mul is `Option`) ---
 //
 // `Ordinal` is deliberately NOT a `Scalar`: nim-multiplication is partial — `None`
-// at ω^ω and above, the staged tower boundary — so it can't ride the `axiom_suite!`
+// past the staged tower boundary — so it can't ride the `axiom_suite!`
 // macro. This bespoke checker fuzzes the transfinite char-2 field laws instead.
 // nim-addition is total and always checked. nim-multiplication is partial (the
-// prime-power tower reaches every ordinal `< ω^(ω²)` and free combinations beyond,
-// returning `None` only at the staged non-scalar-Kummer boundary), so its laws are
-// checked where defined: commutativity (and symmetric definedness) always; the full
+// prime-power tower, with the non-scalar-Kummer branching, reaches every product whose
+// carries stay at primes `≤ 43`, returning `None` past that / at `≥ ω^(ω^ω)`), so its
+// laws are checked where defined: commutativity (and symmetric definedness) always; the full
 // commutative-ring laws on the `< ω^ω` segment, which is pinned **totally closed** so
 // the check never silently degenerates; and associativity opportunistically where the
 // whole triangle is defined past `ω^ω`.

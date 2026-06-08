@@ -789,12 +789,33 @@ Staged M1→M4, each shippable; M1 (delivered) is the geometry of one lattice:
 - Oracles pin it to the classical numbers: `A_2`/`A_3`/`D_4`/`E_8` kissing numbers
   6/12/24/**240**, |Aut| 12/48/**1152**, det 3/4/4/**1**, and `Aut(ℤⁿ)=2ⁿ·n!`.
 
-M2 adds the `A_n`/`D_n`/`E_{6,7,8}` catalogue (with the `E₈` ↔ mod-8 Bott /
-`brauer_wall` BW(ℝ)=ℤ/8 resonance as a NOTES line, not a theorem); M3 the genus and
-`are_in_same_genus`; M4 the Conway–Sloane mass formula and the Leech lattice `Λ₂₄`
-with `Aut(Λ₂₄) = Co₀` — the **buildable** Conway-group connection that closes the
-loop to the repo's namesake. The **Monster** stays a thematic line only: it is
-monstrous moonshine (VOAs, the Griess algebra), not a quadratic-form computation.
+M2 (delivered) is the `A_n`/`D_n`/`E_{6,7,8}` catalogue (`root_lattices.rs`), with
+the `E₈` ↔ mod-8 Bott / `brauer_wall` BW(ℝ)=ℤ/8 resonance: `E₈` is the unique rank-8
+even unimodular lattice, so the periodicity that runs the real Clifford table and the
+densest-packing lattice are the *same* mod-8 fact, read once on each pillar — a
+resonance worth naming, not a theorem.
+
+M3 (delivered, `genus.rs`) is the genus: signature + determinant + the per-prime
+Conway–Sloane symbol, computed by an exact-rational **p-adic Jordan decomposition**
+(odd `p` diagonalizes; `p = 2` peels type-I lines and type-II even planes). This is
+the first time the adelic square-class machinery (`padic.rs`) acts on a *lattice*
+rather than a field square class. Claim level: **standard math** (Conway–Sloane
+*SPLAG* Ch. 15), **implemented-and-tested**, with one **honest boundary** — the
+`p = 2` symbol is complete only up to *sign-walking*, and even *SPLAG*'s printed
+canonical form is wrong there (Allcock, *On the classification of integral quadratic
+forms*). `are_in_same_genus` is exact for odd `p`, and **sound but conservative** at
+`p = 2`: it fuses compartment oddities and matches per-scale signs directly, exact for
+every symbol without a nontrivial sign-walking train (all the test cases, including
+randomised `Uᵀ G U` isometry checks), and at worst a conservative *false negative* on
+the rare Allcock edge cases — never a false positive. The independent theory pass
+(Codex, *SPLAG* §7 + the Allcock correction) supplied the oracle symbols, including
+the `ℤ⁸` (`1₀^{+8}`, type I) vs `E_8` (`1_{II}^{+8}`, type II) distinction that pins
+the type-I/II computation.
+
+M4 will add the Conway–Sloane mass formula `∑ 1/|Aut| = mass(genus)` and the Leech
+lattice `Λ₂₄` with `Aut(Λ₂₄) = Co₀` — the **buildable** Conway-group connection that
+closes the loop to the repo's namesake. The **Monster** stays a thematic line only: it
+is monstrous moonshine (VOAs, the Griess algebra), not a quadratic-form computation.
 
 ## Useful commands
 

@@ -211,7 +211,8 @@ The classifiers above work over a *field* (square classes / Witt / Arf). An
 integer Gram matrix. Its invariants are arithmetic (det, level, minimum, kissing
 number, |Aut|), and the coarse classification is the **genus** (local
 equivalence at every place), which reuses the `padic.rs`/`adelic.rs` primitives.
-Staged M1→M4 (M2–M4 land later: `root_lattices.rs`, `genus.rs`, `mass_formula.rs`).
+Staged M1→M4 (M1–M3 landed: `lattice.rs`, `root_lattices.rs`, `genus.rs`; M4
+`mass_formula.rs` + Leech lands last).
 
 - **`lattice.rs`** (M1) — `IntegralForm { gram: Vec<Vec<i128>> }` (private Gram,
   built via `new` (square+symmetric-checked) / `diagonal`, never a struct literal).
@@ -233,6 +234,30 @@ Staged M1→M4 (M2–M4 land later: `root_lattices.rs`, `genus.rs`, `mass_formul
   `ℤ` is odd, so the smallest `N` making `N·G⁻¹` even-diagonal is 2 (cf. `A_1=⟨2⟩→4`,
   `E₈→1`). Oracles: `A_2`/`A_3`/`D_4`/`E_8` det, kissing (6/12/24/240), |Aut|
   (12/48/1152), level (3/·/·/1), `Z^n` (|Aut| `2ⁿ·n!`).
+- **`root_lattices.rs`** (M2) — the ADE catalogue: `a_n` (Cartan matrix), `d_n`
+  (`B·Bᵀ` from the geometric basis `{eᵢ−e_{i+1}}∪{e_{n-2}+e_{n-1}}`, sidestepping the
+  fork-indexing), `e_6`/`e_7`/`e_8` (Dynkin edge lists). `coxeter_number = #roots/rank`
+  (computed, not tabulated — an irreducible root system has `n·h` roots). `is_root_lattice`
+  (min 2 + roots generate `L`, index read off the HNF pivots). `E_8` is the unique rank-8
+  even unimodular lattice — the visible meeting point of the char-0 mod-8 Bott /
+  `brauer_wall` BW(ℝ)=ℤ/8 story and the lattice world (NOTES line). Det/kissing/Coxeter
+  oracles protect every construction; |Aut| oracles only on the small ones
+  (`A_n`→`2(n+1)!`, `D_4`→1152, `D_5`→3840; `E_8`→`None`, past the budget).
+- **`genus.rs`** (M3) — the **genus** = (signature, det, per-prime Conway–Sloane
+  symbol). Engine: the **p-adic Jordan decomposition** (`jordan_blocks`, exact over
+  `Rational`): odd `p` diagonalizes (valuation-ordered Gram–Schmidt, `e_i←e_i+e_j` to
+  pull a diagonal pivot to the min valuation — `2` a unit); `p=2` peels 1-dim type-I
+  lines and 2-dim even type-II planes by Schur complement. Per scale: `(dim, sign =
+  det square class, type, oddity = trace mod 8)`. `Genus::of` / `are_in_same_genus`.
+  **Looks like a bug, isn't:** (a) the comparison is **exact for odd `p`** (no
+  sign-walking there) and **sound but conservative at `p=2`** — it fuses compartment
+  oddities (well-defined) and matches per-scale signs directly, which is exact for all
+  symbols without nontrivial sign-walking trains (every test case and every randomised
+  ℤ-isometry check) but can return a conservative *false negative* on the rare
+  Allcock-corrected sign-walking edge cases (SPLAG's printed canonical form is itself
+  wrong there — documented, not silent); (b) signs/oddity are unused for odd `p`. The
+  `Z⁸` (`1₀^{+8}`, type I) vs `E_8` (`1_{II}^{+8}`, type II) oracle pins the
+  type-I/II distinction; randomised `Uᵀ G U` isometry invariance pins the whole engine.
 
 ## Things that look like bugs but are not (forms layer)
 

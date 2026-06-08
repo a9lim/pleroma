@@ -131,7 +131,7 @@ pub fn gold_form(m: usize, a: usize) -> Metric<Nimber> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scalar::{Fpn, Rational, Surcomplex};
+    use crate::scalar::{Fpn, Qq, Rational, Surcomplex};
 
     fn gcd(a: usize, b: usize) -> usize {
         if b == 0 {
@@ -148,6 +148,17 @@ mod tests {
         let m = trace_twisted_form::<Surcomplex<Rational>>(1);
         assert_eq!(m.q, vec![Rational::int(2), Rational::int(2)]);
         assert!(m.b.is_empty());
+    }
+
+    #[test]
+    fn qq_twist_uses_the_unramified_galois_basis() {
+        // E = Q_9/Q_3: the same trace-form bridge now reaches the unramified local
+        // leg via the Teichmüller-lifted residue basis and the Witt-Frobenius.
+        type Q9 = Qq<3, 3, 2>;
+        let m = trace_twisted_form::<Q9>(1);
+        assert_eq!(m.q.len(), 2);
+        assert!(m.q.iter().all(|x| !x.is_zero()));
+        assert!(m.q.iter().all(|x| x.valuation().is_some()));
     }
 
     #[test]

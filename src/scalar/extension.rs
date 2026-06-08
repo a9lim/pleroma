@@ -238,11 +238,10 @@ impl FieldExtension for Nimber {
 /// this is a thin subtrait rather than a reimplementation.
 ///
 /// `Surcomplex` (`σ = ` conjugation), the finite-field tower `Fpn` (`σ = ` the
-/// Frobenius), and `Nimber` (`σ = ` the nim-Frobenius) implement it. `Qq` is left
-/// out for now: it has [`FieldExtension`] trace/norm already, but a Galois
-/// `F`-basis requires a deliberate Teichmüller-lift basis of `W_N(F_q)/W_N(F_p)`,
-/// a clean follow-up — the same "honest exclusion, not a stub" discipline this
-/// module applies to `Ramified`/`Gauss`.
+/// Frobenius), `Qq` (`σ = ` the Witt–Frobenius, with Teichmüller-lifted residue
+/// basis), and `Nimber` (`σ = ` the nim-Frobenius) implement it. `Ramified` and
+/// `Gauss` stay out: the former is not generally Galois, and the latter has
+/// infinite degree.
 pub trait CyclicGaloisExtension: FieldExtension {
     /// An `F`-basis of `E`; its length equals
     /// [`extension_degree`](FieldExtension::extension_degree).
@@ -288,6 +287,24 @@ impl<const P: u128, const N: usize> CyclicGaloisExtension for Fpn<P, N> {
     fn sigma(&self) -> Self {
         use crate::scalar::FiniteField;
         self.frobenius()
+    }
+}
+
+impl<const P: u128, const N: usize, const F: usize> CyclicGaloisExtension for Qq<P, N, F> {
+    fn basis() -> Vec<Self> {
+        // Teichmüller lifts of the standard F_p-basis of the residue field F_q.
+        // Nakayama lifts this residue basis to a Q_p-basis of the unramified field.
+        (0..F)
+            .map(|j| {
+                let mut a = [0u128; F];
+                a[j] = 1;
+                Qq::<P, N, F>::teichmuller(Fpn::<P, F>::from_coeffs(&a))
+            })
+            .collect()
+    }
+
+    fn sigma(&self) -> Self {
+        qq_frobenius(self)
     }
 }
 
@@ -507,6 +524,25 @@ mod tests {
         let x = Fpn::<3, 2>::from_coeffs(&[1, 2]);
         assert_eq!(x.sigma(), x.frobenius()); // σ = Frobenius
         assert_eq!(x.sigma_power(2), x); // Frobenius has order N = 2 on F_{3²}
+    }
+
+    #[test]
+    fn cyclic_galois_qq() {
+        type Q9 = Qq<3, 3, 2>;
+        let basis = <Q9 as CyclicGaloisExtension>::basis();
+        assert_eq!(basis.len(), 2);
+        assert_eq!(basis[0], Q9::one());
+        assert_eq!(
+            basis[1].unit_residue(),
+            Some(Fpn::<3, 2>::from_coeffs(&[0, 1]))
+        );
+
+        let x = Q9::teichmuller(Fpn::<3, 2>::from_coeffs(&[1, 1]));
+        assert_eq!(x.sigma(), qq_frobenius(&x)); // σ = Witt-Frobenius
+        assert_eq!(x.sigma_power(2), x); // unramified degree 2
+
+        let over_base = <Q9 as FieldExtension>::embed(&Qq::<3, 3, 1>::from_int(5));
+        assert_eq!(over_base.sigma(), over_base); // the base Q_p is fixed
     }
 
     #[test]

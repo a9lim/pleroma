@@ -65,6 +65,11 @@ pub trait ResidueField: Valued {
     /// of the unit part, defined for every nonzero element (`None` only for `0`).
     /// The datum the Springer second-residue map reads at each valuation layer.
     fn residue_unit(&self) -> Option<Self::Residue>;
+
+    /// The canonical multiplicative section `τ : k → 𝒪` of the residue map. It
+    /// satisfies `residue(τ(a)) = a` and `τ(ab) = τ(a)τ(b)` with `τ(0)=0`; it is
+    /// not additive in general.
+    fn teichmuller(residue: Self::Residue) -> Self;
 }
 
 // ───────────────────────── Q_p → F_p ─────────────────────────
@@ -83,6 +88,9 @@ impl<const P: u128, const K: u128> ResidueField for Qp<P, K> {
         // `unit()` is the unit mantissa u of x = p^v·u; None only for 0.
         self.valuation()
             .map(|_| Fp::<P>::from_u128(self.unit() % P))
+    }
+    fn teichmuller(residue: Fp<P>) -> Self {
+        Qp::teichmuller(residue)
     }
 }
 
@@ -105,6 +113,9 @@ impl<const P: u128, const N: usize, const F: usize> ResidueField for Qq<P, N, F>
     fn residue_unit(&self) -> Option<Fpn<P, F>> {
         self.unit_residue()
     }
+    fn teichmuller(residue: Fpn<P, F>) -> Self {
+        Qq::teichmuller(residue)
+    }
 }
 
 // ───────────────────────── F_q((t)) → F_q ─────────────────────────
@@ -125,6 +136,9 @@ impl<S: Scalar, const K: usize> ResidueField for Laurent<S, K> {
     }
     fn residue_unit(&self) -> Option<S> {
         self.leading_coeff()
+    }
+    fn teichmuller(residue: S) -> Self {
+        Laurent::from_scalar(residue)
     }
 }
 
@@ -198,5 +212,42 @@ mod tests {
         }
         angular_is_some_for_nonzero(&Qp::<7, 3>::from_i128(14));
         angular_is_some_for_nonzero(&Laurent::<Rational, 6>::t());
+    }
+
+    #[test]
+    fn teichmuller_section_lifts_residues() {
+        for a in 0..5u128 {
+            let r = Fp::<5>::from_u128(a);
+            let t = <Qp<5, 4> as ResidueField>::teichmuller(r);
+            assert_eq!(t.residue(), Some(r));
+        }
+
+        type Q9 = Qq<3, 3, 2>;
+        let g = Fpn::<3, 2>::from_coeffs(&[0, 1]);
+        let tg = <Q9 as ResidueField>::teichmuller(g);
+        assert_eq!(tg.residue(), Some(g));
+
+        let a = Rational::new(3, 2);
+        let ta = <Laurent<Rational, 6> as ResidueField>::teichmuller(a.clone());
+        assert_eq!(ta.residue(), Some(a));
+    }
+
+    #[test]
+    fn teichmuller_section_is_multiplicative_not_additive() {
+        type Q5 = Qp<5, 4>;
+        let a = Fp::<5>::from_u128(1);
+        let b = Fp::<5>::from_u128(1);
+        let ta = <Q5 as ResidueField>::teichmuller(a);
+        let tb = <Q5 as ResidueField>::teichmuller(b);
+        assert_eq!(
+            ta.mul(&tb).residue(),
+            Some(a.mul(&b)),
+            "τ(ab) and τ(a)τ(b) reduce to the same residue"
+        );
+
+        let lhs = <Q5 as ResidueField>::teichmuller(a.add(&b));
+        let rhs = ta.add(&tb);
+        assert_eq!(lhs.residue(), rhs.residue());
+        assert_ne!(lhs, rhs, "Teichmuller lifts are not generally additive");
     }
 }

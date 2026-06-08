@@ -43,7 +43,7 @@
 //! [`Poly`]: crate::scalar::Poly
 //! [`HasRingOfIntegers`]: crate::scalar::HasRingOfIntegers
 
-use crate::scalar::{Poly, Scalar, Valued};
+use crate::scalar::{Poly, RationalFunction, ResidueField, Scalar, Valued};
 use std::fmt;
 
 /// An element of the rational function field `S(t)`: `num(t) / den(t)` with `den`
@@ -222,6 +222,66 @@ impl<S: Valued> Valued for Gauss<S> {
     }
 }
 
+fn reduce_poly_at_min<S: ResidueField>(p: &Poly<S>, min_val: i128) -> Poly<S::Residue> {
+    Poly::new(
+        p.coeffs()
+            .iter()
+            .map(|c| match c.valuation() {
+                Some(v) if v == min_val => c
+                    .residue_unit()
+                    .expect("a nonzero coefficient has an angular component"),
+                _ => S::Residue::zero(),
+            })
+            .collect(),
+    )
+}
+
+fn gauss_angular_component<S: ResidueField>(x: &Gauss<S>) -> Option<RationalFunction<S::Residue>> {
+    let vn = x.num.min_coeff_valuation()?;
+    let vd = x.den.min_coeff_valuation().expect("denominator is nonzero");
+    let num = reduce_poly_at_min(&x.num, vn);
+    let den = reduce_poly_at_min(&x.den, vd);
+    Some(RationalFunction::new(
+        num.coeffs().to_vec(),
+        den.coeffs().to_vec(),
+    ))
+}
+
+impl<S: ResidueField> ResidueField for Gauss<S> {
+    type Residue = RationalFunction<S::Residue>;
+
+    fn residue(&self) -> Option<Self::Residue> {
+        match self.valuation() {
+            None => Some(RationalFunction::zero()),
+            Some(v) if v < 0 => None,
+            Some(0) => gauss_angular_component(self),
+            Some(_) => Some(RationalFunction::zero()),
+        }
+    }
+
+    fn residue_unit(&self) -> Option<Self::Residue> {
+        gauss_angular_component(self)
+    }
+
+    fn teichmuller(residue: Self::Residue) -> Self {
+        let num = residue
+            .num()
+            .coeffs()
+            .iter()
+            .cloned()
+            .map(S::teichmuller)
+            .collect();
+        let den = residue
+            .den()
+            .coeffs()
+            .iter()
+            .cloned()
+            .map(S::teichmuller)
+            .collect();
+        Gauss::new(num, den)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -334,5 +394,39 @@ mod tests {
         let x = t.add(&s);
         let xi = x.inv().expect("nonzero inverts");
         assert_eq!(x.mul(&xi), GL::one());
+    }
+
+    #[test]
+    fn residue_field_is_rational_function_over_base_residue() {
+        type R = RationalFunction<Fp<3>>;
+
+        assert_eq!(G::t().residue(), Some(R::t()));
+        assert_eq!(G::from_base(c(3)).residue(), Some(R::zero()));
+        assert_eq!(
+            G::from_base(c(3)).residue_unit(),
+            Some(R::from_base(Fp::<3>::one()))
+        );
+
+        // 3 + 2t reduces to 2 t because the constant coefficient has higher
+        // valuation; the Gauss residue field remembers tbar.
+        let x = G::new(vec![c(3), c(2)], vec![c(1)]);
+        assert_eq!(
+            x.residue(),
+            Some(RationalFunction::from_poly(Poly::monomial(
+                1,
+                Fp::<3>::new(2)
+            )))
+        );
+    }
+
+    #[test]
+    fn teichmuller_lifts_rational_function_residue() {
+        type R = RationalFunction<Fp<3>>;
+        let r = R::new(
+            vec![Fp::<3>::new(1), Fp::<3>::new(2)],
+            vec![Fp::<3>::new(1)],
+        );
+        let tau = <G as ResidueField>::teichmuller(r.clone());
+        assert_eq!(tau.residue(), Some(r));
     }
 }

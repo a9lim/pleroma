@@ -80,6 +80,7 @@
 pub mod analytic;
 pub mod big;
 pub mod exact;
+pub mod exactness;
 pub mod extension;
 pub mod finite_field;
 pub mod functor;
@@ -93,6 +94,7 @@ pub mod valued;
 pub use analytic::*;
 pub use big::*;
 pub use exact::*;
+pub use exactness::*;
 pub use extension::*;
 pub use finite_field::*;
 pub use functor::*;

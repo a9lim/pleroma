@@ -39,7 +39,7 @@
 //! its bases it is therefore **excluded from the exact-ring fuzz suite**. The
 //! *valuation* is nonetheless exact (see [`Ramified::valuation`]).
 
-use crate::scalar::{Scalar, Valued};
+use crate::scalar::{ResidueField, Scalar, Valued};
 use std::fmt;
 
 /// An element of `L = S(π)` with `πᴱ = ϖ`: the coordinate vector
@@ -98,6 +98,15 @@ impl<S: Valued, const E: usize> Ramified<S, E> {
             }
         }
         best
+    }
+
+    fn leading_component(&self) -> Option<&S> {
+        let target = self.valuation()?;
+        self.coeffs.iter().enumerate().find_map(|(i, a)| {
+            a.valuation()
+                .filter(|v| E as i128 * *v + i as i128 == target)
+                .map(|_| a)
+        })
     }
 
     /// Whether this lies in the ring of integers `O_S[π]` — the same-type
@@ -242,6 +251,39 @@ impl<S: Valued, const E: usize> Scalar for Ramified<S, E> {
     }
 }
 
+impl<S: Valued, const E: usize> Valued for Ramified<S, E> {
+    fn valuation(&self) -> Option<i128> {
+        Ramified::valuation(self)
+    }
+
+    /// The extension uniformizer `π`, normalized so `v_L(π)=1`.
+    fn uniformizer() -> Self {
+        Ramified::pi()
+    }
+}
+
+impl<S: ResidueField, const E: usize> ResidueField for Ramified<S, E> {
+    type Residue = S::Residue;
+
+    fn residue(&self) -> Option<Self::Residue> {
+        match self.valuation() {
+            None => Some(S::Residue::zero()),
+            Some(v) if v < 0 => None,
+            Some(0) => self.residue_unit(),
+            Some(_) => Some(S::Residue::zero()),
+        }
+    }
+
+    fn residue_unit(&self) -> Option<Self::Residue> {
+        self.leading_component()
+            .and_then(|component| component.residue_unit())
+    }
+
+    fn teichmuller(residue: Self::Residue) -> Self {
+        Ramified::from_base(S::teichmuller(residue))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -340,6 +382,29 @@ mod tests {
         assert!(E2::pi().is_integral()); // v = 1 ≥ 0
         assert!(E2::one().is_integral());
         assert!(!E2::pi().inv().unwrap().is_integral()); // v = −1
+    }
+
+    #[test]
+    fn valued_trait_uses_pi_as_uniformizer() {
+        assert_eq!(<E2 as Valued>::uniformizer(), E2::pi());
+        assert_eq!(<E2 as Valued>::uniformizer().valuation(), Some(1));
+    }
+
+    #[test]
+    fn residue_field_is_the_base_residue() {
+        assert_eq!(E2::pi().residue(), Some(Fp::<3>::zero()));
+        assert_eq!(E2::pi().residue_unit(), Some(Fp::<3>::one()));
+        assert_eq!(E2::from_base(q3(2)).residue(), Some(Fp::<3>::from_u128(2)));
+        assert_eq!(E2::from_base(q3(3)).residue(), Some(Fp::<3>::zero()));
+        assert_eq!(E2::from_base(q3(3)).residue_unit(), Some(Fp::<3>::one()));
+    }
+
+    #[test]
+    fn teichmuller_lifts_base_residue_through_ramification() {
+        let r = Fp::<3>::from_u128(2);
+        let tau = <E2 as ResidueField>::teichmuller(r);
+        assert_eq!(tau.residue(), Some(r));
+        assert_eq!(tau.valuation(), Some(0));
     }
 
     #[test]

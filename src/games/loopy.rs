@@ -149,12 +149,13 @@ impl LoopyValue {
     }
 
     /// The disjunctive sum, where it is defined on this catalogue. Returns `None`
-    /// when the sum leaves the catalogue (e.g. `over + over`, a distinct
-    /// infinitesimal not named here) — honestly partial, not wrong.
+    /// when the sum leaves the catalogue or when this small catalogue deliberately
+    /// refuses a drawn value not represented by its named tags.
     ///
     /// The closed cases: `dud` absorbs everything (`dud + G = dud`); `on + off =
     /// dud`; `on`/`off` absorb every other stopper (`on` is `>` every stopper);
-    /// `∗ + ∗ = 0`; `over + under = 0`; and `0` is the identity.
+    /// `∗ + ∗ = 0`; `over + over = over`, `under + under = under`,
+    /// `∗ + over = over`, `∗ + under = under`; and `0` is the identity.
     pub fn add(&self, other: &LoopyValue) -> Option<LoopyValue> {
         use LoopyValue::*;
         let r = match (*self, *other) {
@@ -168,9 +169,9 @@ impl LoopyValue {
                 Off
             }
             (Star, Star) => Zero,
-            (Over, Under) | (Under, Over) => Zero,
-            // over+over, under+under, star+over, star+under leave the catalogue.
-            _ => return None,
+            (Over, Over) | (Star, Over) | (Over, Star) => Over,
+            (Under, Under) | (Star, Under) | (Under, Star) => Under,
+            (Over, Under) | (Under, Over) => return None,
         };
         Some(r)
     }
@@ -178,9 +179,9 @@ impl LoopyValue {
 
 impl PartialOrd for LoopyValue {
     /// The conservative partial order on the catalogue. The comparable core is the
-    /// chain `off < under < 0 < over < on`, with `on` above and `off` below every
-    /// other (non-`dud`) value. `∗` is confused with `0`, `over`, `under` (only
-    /// comparable to the extremes `on`/`off`), and `dud` is confused with
+    /// chain `off < under < ∗ < over < on`, with `0` confused with `∗` and between
+    /// `under` and `over`. `on` sits above and `off` below every other non-`dud`
+    /// value. `dud` is confused with
     /// everything (comparable only to itself). Incomparable ⇒ `None`.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         use LoopyValue::*;
@@ -195,8 +196,10 @@ impl PartialOrd for LoopyValue {
             (_, On) => Some(Ordering::Less),
             (Off, _) => Some(Ordering::Less),
             (_, Off) => Some(Ordering::Greater),
-            // star is confused with 0/over/under.
-            (Star, _) | (_, Star) => None,
+            // star is confused with 0, but sits between under and over.
+            (Star, Zero) | (Zero, Star) => None,
+            (Star, Over) | (Under, Star) => Some(Ordering::Less),
+            (Over, Star) | (Star, Under) => Some(Ordering::Greater),
             // the remaining comparable chain under < 0 < over.
             (a, b) => {
                 let rank = |v: LoopyValue| match v {
@@ -595,10 +598,13 @@ mod tests {
         assert_eq!(On.add(&Star), Some(On)); // on absorbs stoppers
         assert_eq!(On.add(&Over), Some(On));
         assert_eq!(Star.add(&Star), Some(Zero));
-        assert_eq!(Over.add(&Under), Some(Zero));
-        // honestly partial outside the catalogue.
-        assert_eq!(Over.add(&Over), None);
-        assert_eq!(Star.add(&Over), None);
+        assert_eq!(Over.add(&Under), None);
+        assert_eq!(Over.add(&Over), Some(Over));
+        assert_eq!(Under.add(&Under), Some(Under));
+        assert_eq!(Star.add(&Over), Some(Over));
+        assert_eq!(Star.add(&Under), Some(Under));
+        // over+under is a draw-class value outside these named tags.
+        assert_eq!(Under.add(&Over), None);
     }
 
     #[test]
@@ -606,12 +612,12 @@ mod tests {
         use LoopyValue::*;
         // the comparable chain off < under < 0 < over < on.
         assert!(Off < Under && Under < Zero && Zero < Over && Over < On);
+        assert!(Under < Star && Star < Over);
         assert!(Off < On);
         // on/off are the extremes (over every non-dud value).
         assert!(On > Star && Off < Star);
-        // star is confused with 0/over/under; dud with everything.
+        // star is confused with 0; dud with everything.
         assert_eq!(Star.partial_cmp(&Zero), None);
-        assert_eq!(Star.partial_cmp(&Over), None);
         assert_eq!(Dud.partial_cmp(&Zero), None);
         assert_eq!(Dud.partial_cmp(&On), None);
         assert_eq!(Dud.partial_cmp(&Dud), Some(Ordering::Equal));

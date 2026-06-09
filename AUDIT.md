@@ -16,6 +16,17 @@ Severity vocabulary (as used throughout):
 
 ---
 
+## Implementation progress
+
+This section tracks fixes landed after the original audit. The original finding
+writeups are retained below as the defect record and repro context.
+
+| Batch | Status | Findings | Current evidence |
+|---|---|---|---|
+| 1 | fixed and validated | L-1, C-2, F-3, F-1, G-1, G-2, G-3, G-5, P-5 | Unit-pivot nullspace now returns `None` on nonunit pivots and callers propagate it; Hermitian off-diagonal pivot uses the conjugate partner; loopy stopper sums/order and misere-Nim zero heaps are corrected. Validation: `cargo test`, `cargo check --all-targets`, `cargo check --features python --all-targets`, `cargo check --examples`, both clippy `-D warnings` gates, `maturin develop`, a targeted Python probe, and `git diff --check`. |
+
+---
+
 ## Methodology
 
 - **Partition.** Sixteen reviewers, one per domain slice: nimber+ordinal,

@@ -167,7 +167,7 @@ pub fn blade_subspace<S: Scalar>(
                 .collect()
         })
         .collect();
-    Some(field::unit_pivot_nullspace(mat, n))
+    field::unit_pivot_nullspace(mat, n)
 }
 
 /// Whether `A` is a **blade** (a decomposable homogeneous multivector). Scalars,
@@ -351,6 +351,22 @@ mod tests {
             &alg.wedge(&alg.gen(2), &alg.gen(3)),
         );
         assert!(!is_blade(&alg, &a));
+        assert!(factor_blade(&alg, &a).is_none());
+    }
+
+    #[test]
+    fn integer_blade_subspace_refuses_nonunit_kernel_pivot() {
+        let alg = CliffordAlgebra::new(3, Metric::<Integer>::grassmann(3));
+        let minus_two = Integer(-2);
+        let e01 = alg.wedge(&alg.gen(0), &alg.gen(1));
+        let e02 = alg.wedge(&alg.gen(0), &alg.gen(2));
+        let a = alg.add(
+            &alg.scalar_mul(&minus_two, &e01),
+            &alg.scalar_mul(&minus_two, &e02),
+        );
+
+        assert!(is_blade(&alg, &a));
+        assert!(blade_subspace(&alg, &a).is_none());
         assert!(factor_blade(&alg, &a).is_none());
     }
 }

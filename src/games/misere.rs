@@ -108,13 +108,13 @@ pub fn nim_moves(pos: &Vec<u128>) -> Vec<Vec<u128>> {
 }
 
 /// The misère-Nim theorem (Bouton): a position is a misère P-position iff either
-/// every heap is ≤ 1 and there is an *odd* number of heaps, or some heap is ≥ 2
-/// and the nim-sum (XOR) of the heaps is 0. (The empty position is N.)
+/// every nonzero heap is 1 and there is an *odd* number of nonzero heaps, or some
+/// heap is ≥ 2 and the nim-sum (XOR) of the heaps is 0. (The empty position is N.)
 pub fn misere_nim_p_predicted(heaps: &[u128]) -> bool {
     let xor = heaps.iter().fold(0u128, |a, &h| a ^ h);
     let max = heaps.iter().copied().max().unwrap_or(0);
     if max <= 1 {
-        heaps.len() % 2 == 1
+        heaps.iter().filter(|&&h| h != 0).count() % 2 == 1
     } else {
         xor == 0
     }
@@ -490,6 +490,16 @@ mod tests {
             }
         }
         rec(&mut Vec::new(), 4, &mut memo);
+    }
+
+    #[test]
+    fn misere_nim_closed_form_ignores_zero_heaps() {
+        assert!(misere_nim_p_predicted(&[1, 0]));
+        assert!(!misere_nim_p_predicted(&[0]));
+        assert_eq!(
+            misere_is_p(&vec![1], &nim_moves, &mut HashMap::new()),
+            Some(misere_nim_p_predicted(&[1, 0]))
+        );
     }
 
     #[test]

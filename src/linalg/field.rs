@@ -2,8 +2,8 @@
 //!
 //! A `Scalar` may be a field, a local ring, or a precision model. These kernels
 //! therefore pivot only on entries whose [`Scalar::inv`] exists. Over a field this
-//! is ordinary Gauss-Jordan elimination; over a ring it gives the unit-visible
-//! part and returns `None` when a required nonunit pivot appears.
+//! is ordinary Gauss-Jordan elimination; over a ring these routines return
+//! `None` when a required nonunit pivot appears.
 
 use crate::scalar::Scalar;
 
@@ -80,13 +80,21 @@ pub(crate) fn inverse_matrix<S: Scalar>(mut m: Vec<Vec<S>>) -> Option<Vec<Vec<S>
 }
 
 /// A basis of the right nullspace `{ x : M x = 0 }` of a row-major matrix with
-/// `ncols` columns.
-pub(crate) fn unit_pivot_nullspace<S: Scalar>(mut m: Vec<Vec<S>>, ncols: usize) -> Vec<Vec<S>> {
+/// `ncols` columns. Returns `None` when a nonzero remaining column has no unit
+/// pivot, which is the point where field Gaussian elimination would have to
+/// divide by a nonunit.
+pub(crate) fn unit_pivot_nullspace<S: Scalar>(
+    mut m: Vec<Vec<S>>,
+    ncols: usize,
+) -> Option<Vec<Vec<S>>> {
     let nrows = m.len();
     let mut pivot_cols: Vec<usize> = Vec::new();
     let mut row = 0;
     for col in 0..ncols {
         let Some(piv) = (row..nrows).find(|&r| m[r][col].inv().is_some()) else {
+            if (row..nrows).any(|r| !m[r][col].is_zero()) {
+                return None;
+            }
             continue;
         };
         m.swap(row, piv);
@@ -122,5 +130,30 @@ pub(crate) fn unit_pivot_nullspace<S: Scalar>(mut m: Vec<Vec<S>>, ncols: usize) 
         }
         basis.push(x);
     }
-    basis
+    Some(basis)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scalar::{Integer, Rational};
+
+    fn r(n: i128) -> Rational {
+        Rational::int(n)
+    }
+
+    #[test]
+    fn nullspace_over_fields_still_finds_free_columns() {
+        let basis = unit_pivot_nullspace(vec![vec![r(1), r(2), r(3)]], 3).unwrap();
+        assert_eq!(
+            basis,
+            vec![vec![r(-2), r(1), r(0)], vec![r(-3), r(0), r(1)]]
+        );
+    }
+
+    #[test]
+    fn nullspace_returns_none_on_required_nonunit_pivot() {
+        let m = vec![vec![Integer(0), Integer(2), Integer(-2)]];
+        assert!(unit_pivot_nullspace(m, 3).is_none());
+    }
 }

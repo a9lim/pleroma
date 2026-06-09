@@ -800,8 +800,9 @@ fn nim_canonical(heaps: Vec<u128>) -> Vec<u128> {
     crate::games::nim_canonical(heaps)
 }
 
-/// The closed-form misère-Nim P-position rule: with every heap `≤ 1`, a P iff an
-/// odd number of heaps; otherwise (some heap `≥ 2`) a P iff the XOR is `0`.
+/// The closed-form misère-Nim P-position rule: with every nonzero heap equal to
+/// `1`, a P iff an odd number of nonzero heaps; otherwise (some heap `≥ 2`) a P
+/// iff the XOR is `0`.
 #[pyfunction]
 fn misere_nim_p_predicted(heaps: Vec<u128>) -> bool {
     crate::games::misere_nim_p_predicted(&heaps)

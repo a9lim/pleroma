@@ -982,10 +982,13 @@ impl PySymplecticForm {
             inner: self.inner.direct_sum(&other.inner),
         }
     }
-    fn classify(&self) -> PySymplecticClass {
-        PySymplecticClass {
-            inner: self.inner.classify(),
-        }
+    fn classify(&self) -> PyResult<PySymplecticClass> {
+        self.inner
+            .classify()
+            .map(|inner| PySymplecticClass { inner })
+            .ok_or_else(|| {
+                PyValueError::new_err("classification needs a unit pivot over this scalar")
+            })
     }
     fn __repr__(&self) -> String {
         format!("SymplecticForm(dim={})", self.inner.dim())

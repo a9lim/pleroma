@@ -77,10 +77,11 @@ fn ensure_pivot<S: Scalar>(h: &mut [Vec<Surcomplex<S>>], k: usize) -> bool {
         }
     }
     // all trailing diagonals zero: combine in an off-diagonal partner. With
-    // λ = H[k][j], the new H[k][k] = λ·conj(λ) + conj(λ)·λ = 2|λ|² ≠ 0 (real).
+    // λ = conj(H[k][j]), the new H[k][k] = H[k][j]·conj(H[k][j]) +
+    // conj(H[k][j])·H[k][j] = 2|H[k][j]|² ≠ 0 (real).
     for j in (k + 1)..n {
         if !h[k][j].is_zero() {
-            let lambda = h[k][j].clone();
+            let lambda = h[k][j].conj();
             combine(h, k, j, &lambda);
             return true;
         }
@@ -271,6 +272,24 @@ mod tests {
             vec![gc(0, 1), gc(2, 0)], // should be −i to be Hermitian
         ])
         .is_none());
+    }
+
+    #[test]
+    fn off_diagonal_pivot_uses_conjugate_partner() {
+        let h = HermitianForm::from_gram(vec![vec![gc(0, 0), gc(1, 1)], vec![gc(1, -1), gc(0, 0)]])
+            .unwrap();
+        assert_eq!(
+            h.diagonalize(),
+            vec![Rational::int(4), Rational::new(-1, 2)]
+        );
+        assert_eq!(
+            h.signature(rsign),
+            HermitianSignature {
+                pos: 1,
+                neg: 1,
+                radical: 0
+            }
+        );
     }
 
     #[test]

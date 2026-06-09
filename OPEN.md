@@ -1,9 +1,10 @@
 # TODO: Genuine Research Problems
 
-This file is intentionally narrow. It lists directions from repo audits and the
-Gold/Arf draft that look like genuine new research rather than implementation of
-known formulas, standard algorithms, or already-source-pinned theory. Implemented
-mathematical facts and maintenance context live in `README.md` and `AGENTS.md`.
+This file is intentionally narrow. It lists directions from repo audits, roadmap
+splits, and the Gold/Arf draft that look like genuine new research rather than
+implementation of known formulas, standard algorithms, or already-source-pinned
+theory. Implemented mathematical facts and maintenance context live in
+`README.md` and `AGENTS.md`.
 
 ## Natural Gold-quadric game rule
 
@@ -226,6 +227,56 @@ Relevant surfaces:
 - `src/scalar/big/ordinal/mod.rs`
 - `src/scalar/AGENTS.md`
 - `examples/tour.rs`
+
+## Transfinite Arf/Witt classification for ordinal-nimber coefficients
+
+Decide what, if anything, should replace the finite-field Arf/Brauer-Wall bit for
+`CliffordAlgebra<Ordinal>` metrics whose coefficients do not all lie in one finite
+nim-subfield.
+
+What is implementation, not research:
+- `ROADMAP.md` Bridge D is the tractable engine bridge: make `Ordinal` usable as a
+  checked Clifford coefficient domain on the source-verified tower, and test the
+  Clifford relations for genuinely transfinite squares such as `omega`.
+- If all metric entries lie in a common finite nim-subfield `F_{2^d} ⊂ On₂`,
+  classification should route through the generic finite characteristic-2 Arf
+  classifier from Bridge B after detecting that subfield.
+- The finite-field answer is an `F₂` bit because the absolute trace
+  `Tr_{F_{2^d}/F₂}` exists. That finite-subfield case should stay separated from
+  the genuinely transfinite case.
+
+Why this is research:
+- For genuinely transfinite ordinal-nimber coefficients there is no finite degree,
+  so the finite trace-to-`F₂` definition of the Arf bit does not apply as-is.
+- General characteristic-2 quadratic form theory has invariants over the
+  coefficient field, such as Artin-Schreier quotient data, but the repo's current
+  finite-nimber facade is an `F₂`-valued Arf/BW classifier. Deciding the right
+  computable invariant for the represented ordinal-nimber domain is not just
+  genericizing `arf_nimber`.
+- The implemented ordinal multiplication itself is partial outside the verified
+  Kummer tower. Any classifier that needs Artin-Schreier solving, roots, or field
+  closure must respect that same source-verified boundary.
+
+Concrete progress targets:
+- Define the classification domain exactly: common finite subfields, the
+  source-verified transfinite tower, or the ideal full `On_2` nimber field.
+- Implement and test common finite-subfield detection so Bridge D can honestly
+  delegate those metrics to Bridge B.
+- Decide whether genuinely transfinite metrics should expose no classifier, a
+  coefficient-field Arf class, a direct-limit finite-subfield invariant, or some
+  other replacement for the finite trace bit.
+- If an Artin-Schreier quotient or root-search route is chosen, build a checked
+  oracle and prove enough about its represented domain to avoid table-driven
+  guesses.
+- State separately whether a Brauer-Wall class exists on the same surface, and
+  whether it agrees with any proposed Arf-like invariant.
+
+Relevant surfaces:
+- `ROADMAP.md` Bridge D
+- `src/scalar/big/ordinal/`
+- `src/forms/char2/`
+- `src/forms/witt/brauer_wall.rs`
+- `src/clifford/`
 
 ## References For The Open Threads
 

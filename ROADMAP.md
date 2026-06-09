@@ -6,7 +6,8 @@ or shortly after the first public release. It is deliberately distinct from
 
 - **`OPEN.md`** holds *genuine research problems* — things with no known answer
   (the natural Gold-quadric game rule, a game-native quadratic deformation of
-  `GameExterior`, transfinite nim excesses past the verified table).
+  `GameExterior`, transfinite nim excesses past the verified table, and the
+  transfinite Arf/Witt question for ordinal-nimber coefficients).
 - **`ROADMAP.md`** (this file) holds *buildable bridges* — connections between the
   four mature pillars whose mathematics is largely standard, but whose **code does
   not exist yet** and whose existence would make the project's symmetry spine
@@ -258,9 +259,9 @@ three pillars share one computation and gives `trace_form` a structural home.
 ## Bridge D — transfinite char-2 Clifford (`OrdinalAlgebra`)
 
 **Pillars:** `scalar/big/ordinal` ↔ `clifford/`.
-**Claim level:** the *engine* is implementable-and-tested; the *classification of
-genuinely transfinite coefficients* is **open** (cross-ref `OPEN.md`). The purest
-symmetry-completion, but the most caveated — lowest priority.
+**Claim level:** implemented-and-tested once built. This bridge is the checked
+engine/symmetry completion only; classification of genuinely transfinite
+coefficients is out of scope and tracked in `OPEN.md`.
 
 ### The target and the blocker
 
@@ -293,16 +294,16 @@ coefficients — `ω`, `ω+1` as squares — the exact char-2 twin of `SurrealAl
 `ω`/`ε`. It is a symmetry-completion and a demo of the `No ↔ On₂` mirror, not a new
 computational capability over the finite case.
 
-### Classification subtlety (where it touches `OPEN.md`)
+### Classification boundary
 
-The Arf invariant reduces to `F₂` via `Tr_{F/F₂}`, which needs a **finite** degree.
+This bridge should not try to classify every `Metric<Ordinal>`.
+
 - If all metric entries lie in a common **finite** nim-subfield `F_{2^d} ⊂ On₂`
   (including odd-degree ones reached through `ω`), Arf is well-defined with degree
   `d` — reuse Bridge B's generic `arf_char2` after detecting the subfield.
-- For **genuinely transfinite** entries the absolute trace is over an infinite
-  extension and Arf-to-`F₂` is *not* defined as-is. That is a real open question
-  (the transfinite Witt/Arf theory), and belongs in `OPEN.md` alongside the
-  existing transfinite-nim thread — add a note there rather than forcing an answer.
+- If any metric entry is genuinely transfinite, `OrdinalAlgebra` should still build
+  and test the Clifford product, but expose no Arf/Brauer-Wall answer. The missing
+  classifier is a research problem, not part of this roadmap bridge.
 
 ### Implementation surface
 
@@ -320,14 +321,15 @@ The Arf invariant reduces to `F₂` via `Tr_{F/F₂}`, which needs a **finite** 
 ## Suggested sequencing
 
 1. **B first** — small, self-contained, unblocks classification of the `Fpn`
-   Clifford algebras the engine already builds, and is a prerequisite for the
-   classification half of D.
+   Clifford algebras the engine already builds, and supplies the finite-subfield
+   classifier D may delegate to.
 2. **A** — the headline; the most on-theme and the most visible for a public
    release (the mod-8 spine made computational). Needs the `signature()`
    generalization and the SNF transform-matrix return.
 3. **C** — quick, elegant, ties three pillars; good "small beautiful thing".
-4. **D** — last; design-bless the panic-`mul` with a9 first, ship the engine,
-   route classification through B, push the transfinite-Arf question to `OPEN.md`.
+4. **D** — last; design-bless the panic-`mul` with a9 first, ship the engine, and
+   route only finite-subfield classification through B. Genuinely transfinite
+   Arf/Witt classification lives in `OPEN.md`.
 
 Each is independently shippable and independently testable; none requires the
-others except D's classifier leaning on B.
+others except D's finite-subfield delegation leaning on B.

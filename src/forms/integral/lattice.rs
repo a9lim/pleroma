@@ -7,9 +7,10 @@
 //! invariants are arithmetic, not just field-theoretic — the determinant, the
 //! level, the minimum and kissing number, the automorphism group order — and the
 //! coarse classification is the **genus** (local equivalence at every place),
-//! built on the same p-adic primitives `padic.rs`/`adelic.rs` already carry. This
-//! module is the M1 core (the geometry of one lattice); `root_lattices.rs`,
-//! `genus.rs`, and `mass_formula.rs` build the A/D/E catalogue, the genus
+//! built on the same p-adic primitives `local_global/padic.rs` and
+//! `local_global/adelic.rs` already carry. This module is the M1 core (the
+//! geometry of one lattice); `integral/root_lattices.rs`, `integral/genus.rs`,
+//! and `integral/mass_formula.rs` build the A/D/E catalogue, the genus
 //! equivalence, and the Conway–Sloane mass formula on top.
 //!
 //! Conventions. The **norm** of `x ∈ L` is `Q(x) = xᵀ G x` (so a "norm-2 vector"

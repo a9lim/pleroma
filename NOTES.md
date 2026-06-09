@@ -508,11 +508,11 @@ algebra `Γ` (`divided_power.rs`, the char-faithful symmetric mirror of the
 exterior Hopf algebra), and the transfinite surreal↔game round trip via the sign
 expansion (`number_game.rs` / `from_transfinite_sign_expansion`) — appendix
 material too; none of it touches the Arf/game thread. The same is true of the
-new adelic/global layer (`scalar/global`, `forms/adelic`): useful context for
+new adelic/global layer (`scalar/global`, `forms/local_global/adelic.rs`): useful context for
 local-global form experiments, but not evidence for the game-semantics claim. Its
 equal-characteristic mirror — the exact global function field `F_q(t)`
 (`scalar/global/function_field.rs` = `RationalFunction` over the shared `Poly`
-ring `F_q[t]`) and its local–global form layer (`forms/function_field.rs`: tame
+ring `F_q[t]`) and its local–global form layer (`forms/local_global/function_field.rs`: tame
 Hilbert symbol, reciprocity `∏_v (a,b)_v = +1`, Hasse–Minkowski, cross-checked
 against `springer_laurent`) — is the same kind of "any number" table round-out
 (it completes local↔global into a 2-row char-0/char-`p` table and fills the
@@ -676,11 +676,11 @@ boundary. (b)/(c) are the way to push the wall — (b) for self-verification, (c
 Claim level: **standard math, source-verified** (the symbol + reciprocity, the local
 Aravire–Jacob Witt decomposition + rank-by-rank local isotropy, **and** the global
 Hasse–Minkowski isotropy over `F_{2^m}(t)` itself), **implemented-and-tested**
-(`forms/function_field_char2.rs`, `forms/char2/field.rs`, `forms/springer_char2.rs`).
+(`forms/local_global/function_field_char2.rs`, `forms/char2/field.rs`, `forms/springer_char2.rs`).
 The local↔global table now commutes into char 2 end-to-end; it touches no Arf/game
 claim. Appendix material.
 
-The odd-`q` local–global layer (`forms/function_field.rs`) needs odd residue
+The odd-`q` local–global layer (`forms/local_global/function_field.rs`) needs odd residue
 characteristic: its tame Hilbert symbol uses the multiplicative square class
 `u^{(|κ|−1)/2}`, undefined when `|κ| = 2^k`. The char-2 replacement is genuinely a
 *different formula*, not the same one at `p = 2`:
@@ -767,10 +767,11 @@ Codex (including the oracle-7 correction above).
 ## Integral lattices and the genus (the arithmetic view of a form)
 
 Claim level: **standard math** (classical lattice theory — Conway–Sloane *SPLAG*),
-**implemented-and-tested** (`forms/lattice.rs`; `linalg/integer.rs` SNF/ext-gcd).
+**implemented-and-tested** (`forms/integral/lattice.rs`; `linalg/integer.rs` SNF/ext-gcd).
 Appendix material — it touches no Arf/game claim. This is the **adelic layer's
-intended payload**: the local–global machinery (`forms/padic`, `forms/adelic`)
-classifies forms over a field; the integral lattice is the object whose *genus* is
+intended payload**: the local–global machinery (`forms/local_global/padic.rs`,
+`forms/local_global/adelic.rs`) classifies forms over a field; the integral
+lattice is the object whose *genus* is
 "local equivalence at every place," so the genus computation (M3) is where those
 p-adic primitives finally land on a ℤ-form rather than a square class.
 
@@ -794,16 +795,16 @@ Staged M1→M4, each shippable; M1 (delivered) is the geometry of one lattice:
 - Oracles pin it to the classical numbers: `A_2`/`A_3`/`D_4`/`E_8` kissing numbers
   6/12/24/**240**, |Aut| 12/48/**1152**, det 3/4/4/**1**, and `Aut(ℤⁿ)=2ⁿ·n!`.
 
-M2 (delivered) is the `A_n`/`D_n`/`E_{6,7,8}` catalogue (`root_lattices.rs`), with
+M2 (delivered) is the `A_n`/`D_n`/`E_{6,7,8}` catalogue (`forms/integral/root_lattices.rs`), with
 the `E₈` ↔ mod-8 Bott / `brauer_wall` BW(ℝ)=ℤ/8 resonance: `E₈` is the unique rank-8
 even unimodular lattice, so the periodicity that runs the real Clifford table and the
 densest-packing lattice are the *same* mod-8 fact, read once on each pillar — a
 resonance worth naming, not a theorem.
 
-M3 (delivered, `genus.rs`) is the genus: signature + determinant + the per-prime
+M3 (delivered, `forms/integral/genus.rs`) is the genus: signature + determinant + the per-prime
 Conway–Sloane symbol, computed by an exact-rational **p-adic Jordan decomposition**
 (odd `p` diagonalizes; `p = 2` peels type-I lines and type-II even planes). This is
-the first time the adelic square-class machinery (`padic.rs`) acts on a *lattice*
+the first time the adelic square-class machinery (`forms/local_global/padic.rs`) acts on a *lattice*
 rather than a field square class. Claim level: **standard math** (Conway–Sloane
 *SPLAG* Ch. 15), **implemented-and-tested**. `are_in_same_genus` is exact for odd
 `p`, and at `p = 2` carries the full Conway–Sloane quintuple data `(scale, dim,
@@ -814,7 +815,7 @@ sign-walking along trains adds `4` to the affected compartment oddity. The Sage
 the implementation, alongside the `ℤ⁸` (`1₀^{+8}`, type I) vs `E_8` (`1_{II}^{+8}`,
 type II) distinction.
 
-M4 (delivered, `mass_formula.rs`) is the Minkowski–Siegel mass and the Leech lattice.
+M4 (delivered, `forms/integral/mass_formula.rs`) is the Minkowski–Siegel mass and the Leech lattice.
 The mass of the even-unimodular genus has the Bernoulli closed form `mass(n) =
 |B_{n/2}|/n · ∏_{j=1}^{n/2-1} |B_{2j}|/(4j)`. At `n = 8` it is `1/696729600 =
 1/|W(E_8)|` — and since `E_8` is alone in its genus, the formula **recovers** the

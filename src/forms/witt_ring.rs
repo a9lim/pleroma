@@ -29,7 +29,7 @@
 //!     [`two_fold_pfister_is_hyperbolic`](self) demonstrates `I² = 0` directly.
 //!     `e₂` is identically trivial — the same fact `oddchar`'s Hasse `≡ +1` records.
 //!   * **`Q_p`** (`u = 4`): `I³ = 0`. The staircase reaches `(e₀, e₁, e₂)` with
-//!     **`e₂` = Hasse genuinely nontrivial** — the payoff that `forms/padic.rs`
+//!     **`e₂` = Hasse genuinely nontrivial** — the payoff that `forms/local_global/padic.rs`
 //!     supplies (over a finite field the Brauer group is trivial so `e₂` carries
 //!     nothing; over `Q_p` it does).
 //!   * **`ℝ`** (surreal backend, `u = ∞`): the tower is **infinite**. `Iⁿ = 2ⁿℤ`

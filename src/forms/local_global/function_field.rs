@@ -8,7 +8,7 @@
 //!   * **simpler:** `q` is odd, so *every* residue field `κ(π) = F_q[t]/(π) =
 //!     F_{q^{deg π}}` has odd characteristic. The Hilbert symbol is therefore the
 //!     **tame symbol** at every place — there is **no `p = 2` branch** (the messy
-//!     mod-8 case that `padic.rs` carries). The residue-characteristic-2 boundary
+//!     mod-8 case that `local_global/padic.rs` carries). The residue-characteristic-2 boundary
 //!     is the `springer_laurent` boundary; char-2 function fields are out of scope.
 //!   * **different:** there is **no archimedean place**. The role of `ℝ` is played
 //!     by the **degree place `∞`** (uniformizer `1/t`, residue field `F_q`), which

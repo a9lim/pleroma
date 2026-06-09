@@ -28,7 +28,7 @@ Each pillar's `mod.rs` re-exports its children flat, so public paths stay shallo
 |---|---|---|
 | `src/scalar/`   | commutative coefficient worlds (the `Scalar` trait + every backend) | [`src/scalar/AGENTS.md`](src/scalar/AGENTS.md) |
 | `src/clifford/` | the multivector engine + the GA layer | [`src/clifford/AGENTS.md`](src/clifford/AGENTS.md) |
-| `src/forms/`    | quadratic forms & invariants, by the char trichotomy | [`src/forms/AGENTS.md`](src/forms/AGENTS.md) |
+| `src/forms/`    | quadratic forms & invariants, by the char trichotomy plus local-global and integral layers | [`src/forms/AGENTS.md`](src/forms/AGENTS.md) |
 | `src/games/`    | combinatorial game theory | [`src/games/AGENTS.md`](src/games/AGENTS.md) |
 | `src/py/`       | PyO3 bindings (feature = "python") + the binding-scope policy | [`src/py/AGENTS.md`](src/py/AGENTS.md) |
 | `src/linalg/`   | crate-private shared linear algebra | [`src/linalg/AGENTS.md`](src/linalg/AGENTS.md) |
@@ -49,7 +49,7 @@ recurring symmetries the project is built around:
 - **surreal No ↔ ordinal On₂** (char-0 field and char-2 non-field sharing one CNF core).
 - **(field, ring of integers)** pairings, made structural in `scalar/integrality.rs`.
 - the **2×2 functor table** (algebraic|transcendental × residue|value-extending).
-- **local ↔ global** (the Springer trio + the adelic Hasse–Minkowski layer).
+- **local ↔ global** (the Springer trio + the local-global Hasse–Minkowski layer).
 
 ## Commands
 

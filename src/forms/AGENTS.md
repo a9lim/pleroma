@@ -9,8 +9,8 @@ by `char F`. This axis cuts ACROSS the place table that organizes `scalar/`.
 > `witt.rs`, or anything feeding the open play-semantics question.
 
 `mod.rs` re-exports the legs + `classify` + diagonalize/equivalence + witt/
-witt_ring + brauer_wall + padic + adelic + springer + the symplectic/hermitian
-"form + involution" siblings, all flat.
+witt_ring + brauer_wall + `local_global/` + `integral/` + springer + the
+symplectic/hermitian "form + involution" siblings, all flat.
 
 ## The façade
 
@@ -84,16 +84,16 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
 - **`springer_laurent.rs`** — the **equal-characteristic** entry point (wrapper +
   `Laurent*` aliases): `springer_decompose_laurent` over `F_q((t))` (char p, residue
   F_q). Same two-layer story; residue char 2 REJECTED (the char-2 Witt boundary).
-  Used by `function_field.rs` as an independent oracle.
+  Used by `local_global/function_field.rs` as an independent oracle.
 - **`springer.rs`** — over the surreals (char 0, residue ℝ). The ONE that does NOT
   fit the generic engine: value group 2-divisible ⇒ W(No)=W(ℝ)=ℤ (second layer
   collapses), residue ℝ is a signature not a finite square-class. Keeps its own
   engine (owns the flat `ResidueForm`/`SpringerDecomp`/`springer_decompose` names) —
   that mismatch IS the symmetry, not a gap. So it stays out of `ResidueField`.
 
-## Local–global
+## Local–global (`local_global/`)
 
-- **`global_field.rs`** — the `GlobalField` TRAIT: the local–global principle
+- **`local_global/global_field.rs`** — the `GlobalField` TRAIT: the local–global principle
   written ONCE over the two kinds of global field, `Rational` (ℚ, a number field)
   and `RationalFunction<S>` (`F_q(t)`, a function field). Five per-field primitives
   (`relevant_places`/`hilbert_symbol_at`/`is_local_square`/`is_global_square`/
@@ -102,27 +102,29 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   The arithmetic primitives stay per-field (ℚ is i128 number theory with an
   archimedean place; `F_q(t)` is `F_q[t]` factorization with none — the missing
   real place IS the content), so `padic`/`adelic`/`function_field` keep their named
-  functions, now thin wrappers over the trait. NOT a `Valued` abstraction (a global
-  field carries all places at once, like `RationalFunction`/`Adele`). The mirror of
-  what `ResidueField` did for the discrete Springer engine.
-- **`padic.rs`** — the GENUINE Hilbert symbol over Q_p (odd-p + p=2 mod-8) — nontrivial
+  public modules and functions, now thin wrappers over the trait. NOT a `Valued`
+  abstraction (a global field carries all places at once, like `RationalFunction`/
+  `Adele`). The mirror of what `ResidueField` did for the discrete Springer engine.
+- **`local_global/padic.rs`** — the GENUINE Hilbert symbol over Q_p (odd-p + p=2 mod-8) — nontrivial
   unlike oddchar's +1 — + Hasse–Minkowski `is_isotropic_q` over ℚ. Oracle: Hilbert
   reciprocity `∏_v=+1`.
-- **`adelic.rs`** — local–global rational helpers: `hilbert_product` over all places,
+- **`local_global/adelic.rs`** — local–global rational helpers: `hilbert_product` over all places,
   rank≥3 adelic Hasse–Minkowski breakdown (`isotropy_over_adeles`/`AdelicIsotropy`),
-  Brauer local invariant sums. Reuses `padic.rs`.
-- **`function_field.rs`** — the **equal-characteristic mirror** of `padic.rs`+`adelic.rs`
-  over the global function field `F_q(t)` (`scalar::RationalFunction`). Places
+  Brauer local invariant sums. Reuses `local_global/padic.rs`.
+- **`local_global/function_field.rs`** — the **equal-characteristic mirror** of
+  `local_global/padic.rs` + `local_global/adelic.rs` over the global function field
+  `F_q(t)` (`scalar::RationalFunction`). Places
   `FFPlace{Infinite, Finite(π)}` (monic irreducibles + the degree place), the **tame**
   Hilbert symbol `hilbert_symbol_ff` (the odd-`p` `hilbert_symbol_qp` branch with the
   residue Legendre → `χ_κ`; **no `p=2` branch** since `q` is odd), reciprocity
   `hilbert_reciprocity_product_ff`, `is_isotropic_ff`/`is_isotropic_at_place`/
   `isotropy_over_ff_adeles` (Hasse–Minkowski, u-invariant 4 like `Q_p`, but **no
   archimedean place** ⇒ no definiteness condition), and `ramified_places_ff` (even
-  count). Names carry `_ff` where `padic.rs` collides (e.g. `hasse_at_place_ff`).
-  Exact (the product formula is `deg`-counting); odd residue char only — the
-  `springer_laurent` boundary. Cross-checked against `springer_decompose_laurent`.
-- **`function_field_char2.rs`** — the **equal-characteristic-2** mirror: the
+  count). Names carry `_ff` where `local_global/padic.rs` collides (e.g.
+  `hasse_at_place_ff`). Exact (the product formula is `deg`-counting); odd residue
+  char only — the `springer_laurent` boundary. Cross-checked against
+  `springer_decompose_laurent`.
+- **`local_global/function_field_char2.rs`** — the **equal-characteristic-2** mirror: the
   **asymmetric Artin–Schreier symbol** `[a,b)` over `F_{2^m}(t)` (`a` additive mod
   `℘`, `b` multiplicative), NOT the tame symbol. Local invariant = the **Schmid
   formula** `s_v(a,b) = Tr_{κ/F₂}(Res_v(a·dlog b))` (`as_symbol_at`), via a from-scratch
@@ -202,17 +204,18 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   The form has dim `[E:F]`, capped at `MAX_BASIS_DIM=128` (= the full nim-field's
   degree); the small power-of-two `m` keep the tests fast.
 
-## Integral lattices (the arithmetic view — Arc 4)
+## Integral lattices (`integral/` — the arithmetic view / Arc 4)
 
 The classifiers above work over a *field* (square classes / Witt / Arf). An
 **integral lattice** is the complementary object: a free ℤ-module with an
 integer Gram matrix. Its invariants are arithmetic (det, level, minimum, kissing
 number, |Aut|), and the coarse classification is the **genus** (local
-equivalence at every place), which reuses the `padic.rs`/`adelic.rs` primitives.
-Staged M1→M4, all landed: `lattice.rs`, `root_lattices.rs`, `genus.rs`,
-`mass_formula.rs` (+ the Leech lattice).
+equivalence at every place), which reuses the `local_global/padic.rs` and
+`local_global/adelic.rs` primitives. Staged M1→M4, all landed:
+`integral/lattice.rs`, `integral/root_lattices.rs`, `integral/genus.rs`,
+`integral/mass_formula.rs` (+ the Leech lattice).
 
-- **`lattice.rs`** (M1) — `IntegralForm { gram: Vec<Vec<i128>> }` (private Gram,
+- **`integral/lattice.rs`** (M1) — `IntegralForm { gram: Vec<Vec<i128>> }` (private Gram,
   built via `new` (square+symmetric-checked) / `diagonal`, never a struct literal).
   Convention: **norm** `Q(x) = xᵀGx` (a "norm-2 root" has `Q=2`; twice the value of
   `½Q`). `determinant` (fraction-free **Bareiss**, exact), `is_even`/`is_unimodular`,
@@ -234,7 +237,7 @@ Staged M1→M4, all landed: `lattice.rs`, `root_lattices.rs`, `genus.rs`,
   `ℤ` is odd, so the smallest `N` making `N·G⁻¹` even-diagonal is 2 (cf. `A_1=⟨2⟩→4`,
   `E₈→1`). Oracles: `A_2`/`A_3`/`D_4`/`E_8` det, kissing (6/12/24/240), |Aut|
   (12/48/1152), level (3/·/·/1), `Z^n` (|Aut| `2ⁿ·n!`).
-- **`root_lattices.rs`** (M2) — the ADE catalogue: `a_n` (Cartan matrix), `d_n`
+- **`integral/root_lattices.rs`** (M2) — the ADE catalogue: `a_n` (Cartan matrix), `d_n`
   (`B·Bᵀ` from the geometric basis `{eᵢ−e_{i+1}}∪{e_{n-2}+e_{n-1}}`, sidestepping the
   fork-indexing), `e_6`/`e_7`/`e_8` (Dynkin edge lists). `coxeter_number = #roots/rank`
   (computed, not tabulated — an irreducible root system has `n·h` roots). `is_root_lattice`
@@ -243,7 +246,7 @@ Staged M1→M4, all landed: `lattice.rs`, `root_lattices.rs`, `genus.rs`,
   `brauer_wall` BW(ℝ)=ℤ/8 story and the lattice world (NOTES line). Det/kissing/Coxeter
   oracles protect every construction; |Aut| oracles only on the small ones
   (`A_n`→`2(n+1)!`, `D_4`→1152, `D_5`→3840; `E_8`→`None`, past the budget).
-- **`genus.rs`** (M3) — the **genus** = (signature, det, per-prime Conway–Sloane
+- **`integral/genus.rs`** (M3) — the **genus** = (signature, det, per-prime Conway–Sloane
   symbol). Engine: the **p-adic Jordan decomposition** (`jordan_blocks`, exact over
   `Rational`): odd `p` diagonalizes (valuation-ordered Gram–Schmidt, `e_i←e_i+e_j` to
   pull a diagonal pivot to the min valuation — `2` a unit); `p=2` peels 1-dim type-I
@@ -257,7 +260,7 @@ Staged M1→M4, all landed: `lattice.rs`, `root_lattices.rs`, `genus.rs`,
   (b) signs/oddity are unused for odd `p`. The `Z⁸` (`1₀^{+8}`, type I) vs `E_8`
   (`1_{II}^{+8}`, type II), Sage canonical-symbol examples, and randomised
   `Uᵀ G U` isometry invariance pin the engine.
-- **`mass_formula.rs`** (M4) — the **Minkowski–Siegel mass** of the even-unimodular
+- **`integral/mass_formula.rs`** (M4) — the **Minkowski–Siegel mass** of the even-unimodular
   genus, `mass(n) = |B_{n/2}|/n · ∏_{j<n/2} |B_{2j}|/(4j)` (hardcoded Bernoulli table
   `B_2..B_24`, checked cross-reduced rational mul → exact `(num, den)` or `None` past
   the i128 ceiling). `mass(8) = 1/696729600 = 1/|W(E_8)|` — the formula *recovers* the
@@ -278,6 +281,6 @@ Staged M1→M4, all landed: `lattice.rs`, `root_lattices.rs`, `genus.rs`,
   The char-2 leg classifies via the symplectic Arf reduction (`char2/`) on the full
   (q, b) metric instead.
 - **The odd-char Hasse invariant is ≡ +1** over a finite field — genuinely trivial
-  there, unlike the p-adic Hilbert symbol in `padic.rs` (where Hasse does real work).
+  there, unlike the p-adic Hilbert symbol in `local_global/padic.rs` (where Hasse does real work).
 - **Rational & Surcomplex impl `ClassifyForm` but not `WittClassify`** — their Witt
   data isn't a single `WittClassG`. Honest, not a gap.

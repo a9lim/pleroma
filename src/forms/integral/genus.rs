@@ -4,8 +4,9 @@
 //! Two integral lattices are in the same genus iff they are isometric over `ℝ`
 //! (same signature) and over `ℤ_p` for every prime `p`. The genus is the natural
 //! arithmetic coarsening of the isometry class, and it is exactly the place where
-//! the adelic machinery the crate already carries (`padic.rs`'s square classes,
-//! `is_square_qp`) acts on a *lattice* rather than a field-level square class.
+//! the local-global machinery the crate already carries
+//! (`local_global/padic.rs`'s square classes, `is_square_qp`) acts on a *lattice*
+//! rather than a field-level square class.
 //!
 //! The engine is the **p-adic Jordan decomposition**. Over `ℤ_p` a lattice splits
 //! orthogonally into scaled unimodular constituents `⊥_k p^k L_k`; for odd `p`

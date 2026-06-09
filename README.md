@@ -196,8 +196,9 @@ file-by-file breakdown:
   (versors, outermorphisms, Hopf/divided-power structures, conformal/projective GA,
   spinors).
 - `src/forms/` — the quadratic-form classifiers and invariants across the
-  characteristic trichotomy, plus Witt/Brauer–Wall, the Springer trio, and the
-  rational local–global layer.
+  characteristic trichotomy, plus Witt/Brauer–Wall, the Springer trio,
+  `local_global/` for Hasse–Minkowski/Hilbert symbols, and `integral/` for
+  lattices, genus, mass, and Leech.
 - `src/games/` — normal-, misère-, and loopy-play impartial games, short partizan
   games, thermography/atomic weight, Hackenbush, and the exterior algebra of the
   game group.

@@ -42,27 +42,24 @@
 //! [`CyclicGaloisExtension`](crate::scalar::CyclicGaloisExtension) is classified by
 //! the same façade — the norm form over `Surcomplex`, the Gold form over the
 //! nim-fields.
+//!
+//! The arithmetic side sits in two named shelves while preserving the flat public
+//! API: [`local_global`] for Hilbert-symbol/Hasse–Minkowski machinery and
+//! [`integral`] for lattices, genus, mass, and Leech.
 
-pub mod adelic;
 pub mod brauer_wall;
 pub mod char0;
 pub mod char2;
 pub mod classify;
 pub mod diagonalize;
 pub mod equivalence;
-pub mod function_field;
-pub mod function_field_char2;
-pub mod genus;
-pub mod global_field;
 pub mod hermitian;
+pub mod integral;
 pub mod invariants;
-pub mod lattice;
-pub mod mass_formula;
+pub mod local_global;
 pub mod oddchar;
-pub mod padic;
 pub(crate) mod poly_factor;
 pub mod quadric_fit;
-pub mod root_lattices;
 pub mod springer;
 pub mod springer_char2;
 pub mod springer_laurent;
@@ -73,25 +70,18 @@ pub mod trace_form;
 pub mod witt;
 pub mod witt_ring;
 
-pub use adelic::*;
 pub use brauer_wall::*;
 pub use char0::*;
 pub use char2::*;
 pub use classify::*;
 pub use diagonalize::*;
 pub use equivalence::*;
-pub use function_field::*;
-pub use function_field_char2::*;
-pub use genus::*;
-pub use global_field::*;
 pub use hermitian::*;
+pub use integral::*;
 pub use invariants::*;
-pub use lattice::*;
-pub use mass_formula::*;
+pub use local_global::*;
 pub use oddchar::*;
-pub use padic::*;
 pub use quadric_fit::*;
-pub use root_lattices::*;
 pub use springer::*;
 pub use springer_char2::*;
 pub use springer_laurent::*;

@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn class_ring_mul_matches_concrete_tensor_form() {
-        // THE RING-LAW ORACLE: the derived class-level product WittClassG::mul must
+        // THE RING-LAW ORACLE: the derived class-level product WittClassG::try_mul must
         // agree with classifying the actual tensor product of forms, for every pair
         // of small nondegenerate forms. Verifies both the ℤ/4 (F_3) and F₂[ℤ/2] (F_5)
         // ring laws against ground truth, and that they are well-defined on classes.
@@ -298,7 +298,8 @@ mod tests {
                     let lhs = finite_odd_witt(&tensor_form(a, b).unwrap()).unwrap();
                     let rhs = finite_odd_witt(a)
                         .unwrap()
-                        .mul(&finite_odd_witt(b).unwrap());
+                        .try_mul(&finite_odd_witt(b).unwrap())
+                        .expect("tensor_form check stays inside one odd-char Witt ring");
                     assert_eq!(lhs, rhs, "P={P}: ring law disagrees with tensor_form");
                 }
             }
@@ -314,17 +315,23 @@ mod tests {
         let one5 = WittClassG::oddchar_one(5, 0);
         for m in [diag::<3>(&[1]), diag::<3>(&[2]), diag::<3>(&[1, 2])] {
             let c = finite_odd_witt(&m).unwrap();
-            assert_eq!(c.mul(&one3), c);
+            assert_eq!(c.try_mul(&one3).expect("same F3 Witt ring"), c);
         }
         for m in [diag::<5>(&[1]), diag::<5>(&[2]), diag::<5>(&[1, 2])] {
             let c = finite_odd_witt(&m).unwrap();
-            assert_eq!(c.mul(&one5), c);
+            assert_eq!(c.try_mul(&one5).expect("same F5 Witt ring"), c);
         }
         // and Char0: signatures multiply, ⟨1⟩ is unit 1.
         let sig3 = WittClassG::char0(3, 0);
-        assert_eq!(sig3.mul(&WittClassG::char0(1, 0)), sig3);
         assert_eq!(
-            WittClassG::char0(2, 0).mul(&WittClassG::char0(5, 0)),
+            sig3.try_mul(&WittClassG::char0(1, 0))
+                .expect("same char-0 Witt ring"),
+            sig3
+        );
+        assert_eq!(
+            WittClassG::char0(2, 0)
+                .try_mul(&WittClassG::char0(5, 0))
+                .expect("same char-0 Witt ring"),
             WittClassG::Char0 { signature: 10 }
         );
     }

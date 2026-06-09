@@ -33,8 +33,9 @@ use crate::forms::{
 };
 use crate::scalar::{Nimber, Surcomplex, Surreal};
 
-/// A class in the Brauer–Wall group, by characteristic leg. Each leg's `add` is the
-/// group law induced by the graded tensor product `⊗̂`.
+/// A class in the Brauer–Wall group, by characteristic leg. Each leg's
+/// [`try_add`](Self::try_add) is the group law induced by the graded tensor product
+/// `⊗̂`; cross-leg addition is rejected because it would mix ground fields.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BrauerWallClass {
     /// `BW(ℝ) ≅ ℤ/8`: the Bott index `s = (q − p) mod 8`.
@@ -53,13 +54,7 @@ pub enum BrauerWallClass {
 }
 
 impl BrauerWallClass {
-    /// The group operation induced by the graded tensor product `⊗̂`. Panics across
-    /// different legs (you cannot tensor algebras over different ground fields).
-    pub fn add(&self, other: &BrauerWallClass) -> BrauerWallClass {
-        self.try_add(other)
-            .expect("invalid Brauer-Wall class addition")
-    }
-
+    /// The group operation induced by the graded tensor product `⊗̂`.
     pub fn try_add(&self, other: &BrauerWallClass) -> Result<BrauerWallClass, &'static str> {
         match (*self, *other) {
             (BrauerWallClass::Real(a), BrauerWallClass::Real(b)) => {
@@ -214,7 +209,9 @@ mod tests {
         let mut cur = g;
         let mut n = 1;
         while cur != id {
-            cur = cur.add(&g);
+            cur = cur
+                .try_add(&g)
+                .expect("subgroup walk stays inside one Brauer-Wall leg");
             n += 1;
             assert!(n <= 64, "subgroup walk did not close — bug in add");
         }
@@ -255,7 +252,12 @@ mod tests {
         let tensored = av.graded_tensor(&aw);
         assert_eq!(
             bw_class_real(&tensored.metric),
-            Some(bw_class_real(&v).unwrap().add(&bw_class_real(&w).unwrap()))
+            Some(
+                bw_class_real(&v)
+                    .unwrap()
+                    .try_add(&bw_class_real(&w).unwrap())
+                    .expect("same real Brauer-Wall leg")
+            )
         );
     }
 
@@ -319,7 +321,7 @@ mod tests {
             seen.insert(key(&id));
             while let Some(x) = frontier.pop() {
                 for g in &gens {
-                    let y = x.add(g);
+                    let y = x.try_add(g).expect("odd-char closure stays in one field");
                     if seen.insert(key(&y)) {
                         frontier.push(y);
                     }
@@ -338,7 +340,8 @@ mod tests {
             Some(
                 bw_class_finite_odd(&a)
                     .unwrap()
-                    .add(&bw_class_finite_odd(&b).unwrap())
+                    .try_add(&bw_class_finite_odd(&b).unwrap())
+                    .expect("same odd-char Brauer-Wall leg")
             )
         );
 
@@ -369,7 +372,8 @@ mod tests {
             Some(
                 bw_class_nimber(&a)
                     .unwrap()
-                    .add(&bw_class_nimber(&h).unwrap())
+                    .try_add(&bw_class_nimber(&h).unwrap())
+                    .expect("same nimber Brauer-Wall leg")
             )
         );
         assert_eq!(subgroup_order(BrauerWallClass::Char2 { arf: 1 }), 2);
@@ -387,7 +391,8 @@ mod tests {
             Some(
                 bw_class_nimber(&a)
                     .unwrap()
-                    .add(&bw_class_nimber(&h).unwrap())
+                    .try_add(&bw_class_nimber(&h).unwrap())
+                    .expect("same nimber Brauer-Wall leg")
             )
         );
     }

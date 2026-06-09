@@ -176,7 +176,8 @@ fn oddchar_witt_is_a_homomorphism() {
                 finite_odd_witt(&sum).unwrap(),
                 finite_odd_witt(a)
                     .unwrap()
-                    .add(&finite_odd_witt(b).unwrap()),
+                    .try_add(&finite_odd_witt(b).unwrap())
+                    .expect("same finite-field Witt group"),
                 "homomorphism failed"
             );
         }
@@ -188,9 +189,9 @@ fn witt_group_is_z4_when_minus_one_nonsquare() {
     // F_3: −1 = 2 is a nonsquare (q ≡ 3 mod 4) ⇒ W(F_3) ≅ ℤ/4.
     let g = finite_odd_witt(&diag::<3>(&[1])).unwrap();
     let id = WittClassG::oddchar_zero(3, 1);
-    let g2 = g.add(&g);
-    let g3 = g2.add(&g);
-    let g4 = g3.add(&g);
+    let g2 = g.try_add(&g).expect("same F3 Witt group");
+    let g3 = g2.try_add(&g).expect("same F3 Witt group");
+    let g4 = g3.try_add(&g).expect("same F3 Witt group");
     assert_ne!(g, id);
     assert_ne!(g2, id); // order > 2 ⇒ not (ℤ/2)²
     assert_ne!(g3, id);
@@ -204,10 +205,10 @@ fn witt_group_is_z2xz2_when_minus_one_square() {
     let g = finite_odd_witt(&diag::<5>(&[1])).unwrap(); // 1 is a square
     let h = finite_odd_witt(&diag::<5>(&[2])).unwrap(); // 2 is a nonsquare
                                                         // every nonidentity element has order 2 (exponent 2)
-    assert_eq!(g.add(&g), id);
-    assert_eq!(h.add(&h), id);
-    let gh = g.add(&h);
-    assert_eq!(gh.add(&gh), id);
+    assert_eq!(g.try_add(&g).expect("same F5 Witt group"), id);
+    assert_eq!(h.try_add(&h).expect("same F5 Witt group"), id);
+    let gh = g.try_add(&h).expect("same F5 Witt group");
+    assert_eq!(gh.try_add(&gh).expect("same F5 Witt group"), id);
     // the four elements are distinct ⇒ the full Klein four-group
     let elems = [id, g, h, gh];
     for i in 0..4 {
@@ -225,7 +226,8 @@ fn extension_fields_use_the_same_trait_path() {
     assert_eq!(
         finite_odd_witt(&f9)
             .unwrap()
-            .add(&WittClassG::oddchar_zero(9, 0)),
+            .try_add(&WittClassG::oddchar_zero(9, 0))
+            .expect("same F9 Witt group"),
         finite_odd_witt(&f9).unwrap()
     );
 }

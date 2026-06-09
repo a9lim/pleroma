@@ -142,7 +142,7 @@ fn main() {
     let mut b = BTreeMap::new();
     b.insert((0usize, 1usize), Nimber(1));
     let aplane = Metric::new(vec![Nimber(1), Nimber(1)], b);
-    let wa = WittClass::from_metric(&aplane);
+    let wa = WittClass::try_from_metric(&aplane).expect("anisotropic plane is nonsingular");
     println!(
         "  w(A) = {} ;  w(A)+w(A) = {}",
         wa.display(),

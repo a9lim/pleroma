@@ -72,24 +72,14 @@ where
     misere_is_n_inner(pos, moves, memo, &mut visiting)
 }
 
-/// Misère outcome of a finite **acyclic** impartial game. Panics if the move
-/// graph has a directed cycle; use [`try_misere_is_n`] when cyclic input is
-/// possible.
-pub fn misere_is_n<P, F>(pos: &P, moves: &F, memo: &mut HashMap<P, bool>) -> bool
+/// Convenience checked wrapper: `Some(true)` iff `pos` is a misère P-position
+/// (second player wins), or `None` if the move graph has a directed cycle.
+pub fn misere_is_p<P, F>(pos: &P, moves: &F, memo: &mut HashMap<P, bool>) -> Option<bool>
 where
     P: Clone + Eq + Hash,
     F: Fn(&P) -> Vec<P>,
 {
-    try_misere_is_n(pos, moves, memo).expect("misere_is_n requires an acyclic move graph")
-}
-
-/// Convenience: `true` iff `pos` is a misère P-position (second player wins).
-pub fn misere_is_p<P, F>(pos: &P, moves: &F, memo: &mut HashMap<P, bool>) -> bool
-where
-    P: Clone + Eq + Hash,
-    F: Fn(&P) -> Vec<P>,
-{
-    !misere_is_n(pos, moves, memo)
+    try_misere_is_n(pos, moves, memo).map(|is_n| !is_n)
 }
 
 /// A Nim position: heap sizes, kept sorted ascending with empty heaps dropped so
@@ -184,7 +174,8 @@ impl AbstractGame {
     /// Misère outcome of a sum (multiset of component positions): `true` = N.
     pub fn misere_outcome(&self, pos: &[usize], memo: &mut HashMap<Vec<usize>, bool>) -> bool {
         let canon = Self::canon(pos);
-        misere_is_n(&canon, &|p| self.sum_moves(p), memo)
+        try_misere_is_n(&canon, &|p| self.sum_moves(p), memo)
+            .expect("finite quotient sum graph should be acyclic")
     }
 }
 
@@ -467,7 +458,8 @@ pub fn octal_misere_quotient(
     build_quotient(elements, &tests, |g| {
         let mut pos: Vec<u128> = g.iter().map(|&x| x as u128).collect();
         pos.sort_unstable();
-        misere_is_n(&pos, &moves, &mut memo)
+        try_misere_is_n(&pos, &moves, &mut memo)
+            .expect("octal quotient search expects an acyclic bounded graph")
     })
 }
 
@@ -485,7 +477,7 @@ mod tests {
                 let pos = nim_canonical(prefix.clone());
                 let is_p = misere_is_p(&pos, &nim_moves, memo);
                 assert_eq!(
-                    is_p,
+                    is_p.expect("Nim move graph is acyclic"),
                     misere_nim_p_predicted(&pos),
                     "misère Nim mismatch at {pos:?}"
                 );
@@ -507,11 +499,7 @@ mod tests {
         }
         let mut memo = HashMap::new();
         assert_eq!(try_misere_is_n(&0u128, &self_loop, &mut memo), None);
-        assert!(std::panic::catch_unwind(|| {
-            let mut memo = HashMap::new();
-            misere_is_n(&0u128, &self_loop, &mut memo);
-        })
-        .is_err());
+        assert_eq!(misere_is_p(&0u128, &self_loop, &mut HashMap::new()), None);
     }
 
     #[test]
@@ -563,7 +551,8 @@ mod tests {
         ] {
             let mut h = heaps.clone();
             h.sort_unstable();
-            let is_n = misere_is_n(&h, &|p| octal_moves(&code, p), &mut memo);
+            let is_n = try_misere_is_n(&h, &|p| octal_moves(&code, p), &mut memo)
+                .expect("octal Nim move graph is acyclic");
             assert_eq!(
                 is_n,
                 !misere_nim_p_predicted(&heaps),
@@ -588,18 +577,18 @@ mod tests {
         let mut memo: HashMap<Vec<u128>, bool> = HashMap::new();
         let one = nim_canonical(vec![1]); // XOR = 1, but misère-P (you must take the last coin)
         let oneone = nim_canonical(vec![1, 1]); // XOR = 0, but misère-N
-        assert!(misere_is_p(&one, &nim_moves, &mut memo));
-        assert!(!misere_is_p(&oneone, &nim_moves, &mut memo));
+        assert!(misere_is_p(&one, &nim_moves, &mut memo).expect("Nim move graph is acyclic"));
+        assert!(!misere_is_p(&oneone, &nim_moves, &mut memo).expect("Nim move graph is acyclic"));
         // 0 ∈ P-set?  empty position is terminal ⇒ N, so 0 ∉ misère-P. A subspace
         // (or its outcome set) would contain 0; a coset structure is impossible
         // because [1] (xor 1) is P while [1,1]+[1,1]-style xor-0 combos are N.
         let empty = nim_canonical(vec![]);
-        assert!(!misere_is_p(&empty, &nim_moves, &mut memo));
+        assert!(!misere_is_p(&empty, &nim_moves, &mut memo).expect("Nim move graph is acyclic"));
 
         // Concrete subspace-failure witness: u=[1], v=[1] are both in the P-set
         // under the all-ones regime, but their nim-sum (xor) leaves the regime.
         // (Here the point is structural: outcome is not an XOR-linear function.)
         let three_ones = nim_canonical(vec![1, 1, 1]); // XOR = 1, misère-P (odd count)
-        assert!(misere_is_p(&three_ones, &nim_moves, &mut memo));
+        assert!(misere_is_p(&three_ones, &nim_moves, &mut memo).expect("Nim move graph is acyclic"));
     }
 }

@@ -80,9 +80,10 @@ contract. `usize` remains for graph nodes, option indices, and collection length
   (on/off/over/under/dud with outcome/neg/partial order/partial sum). The payoff is
   `loopy_decision_sets`/`loopy_quadric_probe`: read a cyclic rule's Loss-set AND
   Draw-set, each fit by `fit_f2_quadratic`.
-- **`misere.rs`** — misère-play outcomes (`misere_is_n`/`_is_p`) for finite acyclic
-  impartial games; misère Nim vs Bouton; the bounded indistinguishability quotient
-  (`misere_quotient`, `AbstractGame`, `Quotient`); octal games (`octal_moves`,
+- **`misere.rs`** — checked misère-play outcomes (`try_misere_is_n`/`misere_is_p`)
+  for finite acyclic impartial games; cycles return `None`. Covers misère Nim vs
+  Bouton; the bounded indistinguishability quotient (`misere_quotient`,
+  `AbstractGame`, `Quotient`); octal games (`octal_moves`,
   `octal_misere_quotient`). The non-linear route to the open question.
 
 ## The bridge object

@@ -150,9 +150,9 @@ array lengths, dimensions, and const-generic sizes that are inherently indices.
   commutative RING (not field). The surreal mirror of `Integer`.
 - **`ordinal/`** — transfinite (ordinal) NIMBERS On₂, the char-2 mirror of surreal:
   - `mod.rs` — CNF core: `Ordinal = Vec<(exponent: Ordinal, coeff: u128)>`, the lex
-    cmp, `as_finite`, `checked_mul`, `checked_inv`, and `Scalar`. The `Scalar::mul`
-    route is panic-on-escape, matching the checked Kummer tower boundary; callers
-    that need an explicit mathematical boundary use the checked methods.
+    cmp, `as_finite`, `checked_inv`, and `Scalar`. The `Scalar::mul`
+    route is panic-on-escape, matching the Kummer tower boundary; callers
+    that need an explicit mathematical boundary use `nim_mul`.
   - `nim.rs` — char-2 NIM arithmetic: `nim_add` (coeff XOR) COMPLETE; `nim_mul`
     dispatches zero / finite×finite / the generator tower.
   - `tower.rs` — the prime-power generator tower (Conway/Lenstra/DiMuro): a monomial

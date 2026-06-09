@@ -7,7 +7,7 @@
 //! `(a, b)` — and the **Hasse invariant** `∏_{i<j}(a_i, a_j)_v` it builds becomes a
 //! real classifying invariant. The payoff is **Hasse–Minkowski**: a quadratic form
 //! over `Q` is isotropic iff it is isotropic over `ℝ` and over every `Q_p` — a
-//! theorem this module makes executable ([`is_isotropic_q`]).
+//! theorem this module makes executable ([`try_is_isotropic_q`]).
 //!
 //! Forms are integer diagonal forms `⟨a_1,…,a_n⟩` (a rational form scales to one
 //! without changing square classes). Everything depends only on square classes, so
@@ -158,8 +158,10 @@ fn mul_mod_runtime(mut a: u128, mut b: u128, m: u128) -> u128 {
     acc
 }
 
-/// Checked version of [`is_square_qp`]. Returns `None` when `p` is not a prime
-/// representable by the bounded `i128` implementation.
+/// Is the nonzero integer `n` a square in `Q_p`? `v_p(n)` even **and** the unit part
+/// is a square unit (`≡ □ mod p` for odd `p`; `≡ 1 mod 8` for `p = 2`). Returns
+/// `None` when `p` is not a prime representable by the bounded `i128`
+/// implementation.
 pub fn try_is_square_qp(n: i128, p: u128) -> Option<bool> {
     if !is_prime(p) || i128::try_from(p).is_err() {
         return None;
@@ -177,12 +179,6 @@ pub fn try_is_square_qp(n: i128, p: u128) -> Option<bool> {
     } else {
         legendre(u, p) == 1
     })
-}
-
-/// Is the nonzero integer `n` a square in `Q_p`? `v_p(n)` even **and** the unit part
-/// is a square unit (`≡ □ mod p` for odd `p`; `≡ 1 mod 8` for `p = 2`).
-pub fn is_square_qp(n: i128, p: u128) -> bool {
-    try_is_square_qp(n, p).expect("Q_p square test needs prime p ≤ i128::MAX")
 }
 
 // --- the Hilbert symbol ---
@@ -240,9 +236,12 @@ pub(crate) fn tame_hilbert_symbol(
     s
 }
 
-/// Checked version of [`hilbert_symbol_qp`]. Returns `None` when `p` is not a
-/// representable prime, either argument is zero, or square-class reduction
-/// overflows the bounded `i128` implementation.
+/// The Hilbert symbol `(a, b)_p` over `Q_p`, for nonzero integers `a, b`. Standard
+/// explicit formulas (Serre III.1): for odd `p`, with `a = p^α u`, `b = p^β v`,
+/// `(a,b)_p = (−1)^{αβ ε(p)} (u|p)^β (v|p)^α` (the [`tame_hilbert_symbol`] with the
+/// Legendre character); for `p = 2`, `(a,b)_2 = (−1)^{ε(u)ε(v) + α ω(v) + β ω(u)}`.
+/// Returns `None` when `p` is not a representable prime, either argument is zero,
+/// or square-class reduction overflows the bounded `i128` implementation.
 pub fn try_hilbert_symbol_qp(a: i128, b: i128, p: u128) -> Option<i128> {
     if !is_prime(p) || i128::try_from(p).is_err() {
         return None;
@@ -275,36 +274,27 @@ pub fn try_hilbert_symbol_qp(a: i128, b: i128, p: u128) -> Option<i128> {
     })
 }
 
-/// The Hilbert symbol `(a, b)_p` over `Q_p`, for nonzero integers `a, b`. Standard
-/// explicit formulas (Serre III.1): for odd `p`, with `a = p^α u`, `b = p^β v`,
-/// `(a,b)_p = (−1)^{αβ ε(p)} (u|p)^β (v|p)^α` (the [`tame_hilbert_symbol`] with the
-/// Legendre character); for `p = 2`, `(a,b)_2 = (−1)^{ε(u)ε(v) + α ω(v) + β ω(u)}`.
-pub fn hilbert_symbol_qp(a: i128, b: i128, p: u128) -> i128 {
-    try_hilbert_symbol_qp(a, b, p)
-        .expect("Hilbert symbol needs prime p ≤ i128::MAX and nonzero arguments")
-}
-
 /// The Hilbert symbol at an arbitrary place of `Q` (named `_at` to avoid clashing
 /// with the finite-field [`oddchar::hilbert_symbol`](crate::forms::hilbert_symbol)).
-pub fn hilbert_symbol_at(a: i128, b: i128, place: Place) -> i128 {
-    match place {
+pub fn try_hilbert_symbol_at(a: i128, b: i128, place: Place) -> Option<i128> {
+    Some(match place {
         Place::Real => hilbert_symbol_real(a, b),
-        Place::Prime(p) => hilbert_symbol_qp(a, b, p),
-    }
+        Place::Prime(p) => try_hilbert_symbol_qp(a, b, p)?,
+    })
 }
 
 // --- Hasse invariant and Hasse–Minkowski ---
 
 /// The Hasse invariant `ε_v(⟨a_1,…,a_n⟩) = ∏_{i<j} (a_i, a_j)_v` at a place `v`
 /// (Serre's convention). Entries must be nonzero.
-pub fn hasse_at_place(entries: &[i128], place: Place) -> i128 {
+pub fn try_hasse_at_place(entries: &[i128], place: Place) -> Option<i128> {
     let mut h = 1i128;
     for i in 0..entries.len() {
         for j in (i + 1)..entries.len() {
-            h *= hilbert_symbol_at(entries[i], entries[j], place);
+            h *= try_hilbert_symbol_at(entries[i], entries[j], place)?;
         }
     }
-    h
+    Some(h)
 }
 
 /// The square class of the discriminant `∏ a_i`, kept square-free / small.
@@ -325,11 +315,15 @@ pub(crate) fn try_is_isotropic_at_p(entries: &[i128], p: u128) -> Option<bool> {
     let d = try_disc_class(entries)?;
     Some(match n {
         0 | 1 => false,
-        2 => is_square_qp(neg_product(entries[0], entries[1])?, p),
-        3 => hilbert_symbol_qp(-1, d.checked_neg()?, p) == hasse_at_place(entries, Place::Prime(p)),
+        2 => try_is_square_qp(neg_product(entries[0], entries[1])?, p)?,
+        3 => {
+            try_hilbert_symbol_qp(-1, d.checked_neg()?, p)?
+                == try_hasse_at_place(entries, Place::Prime(p))?
+        }
         4 => {
-            !is_square_qp(d, p)
-                || hasse_at_place(entries, Place::Prime(p)) == hilbert_symbol_qp(-1, -1, p)
+            !try_is_square_qp(d, p)?
+                || try_hasse_at_place(entries, Place::Prime(p))?
+                    == try_hilbert_symbol_qp(-1, -1, p)?
         }
         _ => true,
     })
@@ -382,21 +376,14 @@ pub(crate) fn is_perfect_square(n: i128) -> bool {
 /// `+1` for every nonzero `a, b` (Hilbert's reciprocity law); the local symbols are
 /// `+1` at all but finitely many places (those dividing `2ab`). This is the
 /// structural form of the oracle the tests use, exposed for the adelic layer.
-pub fn hilbert_reciprocity_product(a: i128, b: i128) -> i128 {
+pub fn try_hilbert_reciprocity_product(a: i128, b: i128) -> Option<i128> {
     let mut prod = hilbert_symbol_real(a, b);
     let mut primes = relevant_primes(&[a, b]);
     primes.insert(2);
     for p in primes {
-        prod *= hilbert_symbol_qp(a, b, p);
+        prod *= try_hilbert_symbol_qp(a, b, p)?;
     }
-    prod
-}
-
-/// Local isotropy of a nondegenerate integer diagonal form over `Q_p`, by rank
-/// (Serre IV.2.2): n=1 never; n=2 iff `−d` is a square; n=3 iff `(−1,−d)_p = ε_p`;
-/// n=4 iff `d` is a nonsquare or `ε_p = (−1,−1)_p`; n≥5 always.
-pub(crate) fn is_isotropic_at_p(entries: &[i128], p: u128) -> bool {
-    try_is_isotropic_at_p(entries, p).expect("local isotropy square-class overflowed i128")
+    Some(prod)
 }
 
 /// Whether a diagonal form `⟨a_1,…,a_n⟩` over `Q` is **isotropic** (represents 0
@@ -404,11 +391,8 @@ pub(crate) fn is_isotropic_at_p(entries: &[i128], p: u128) -> bool {
 /// isotropic over `ℝ` and over every `Q_p`. A zero entry is an isotropic direction;
 /// otherwise rank 1 is anisotropic, rank 2 needs `−a_1 a_2` a global square, and
 /// rank ≥ 3 needs `ℝ`-indefiniteness plus the local condition at each prime dividing
-/// `2·∏a_i` (all other primes are automatically isotropic for rank ≥ 3).
-pub fn is_isotropic_q(entries: &[i128]) -> bool {
-    try_is_isotropic_q(entries).expect("rational isotropy square-class overflowed i128")
-}
-
+/// `2·∏a_i` (all other primes are automatically isotropic for rank ≥ 3). Returns
+/// `None` if bounded square-class arithmetic overflows.
 pub fn try_is_isotropic_q(entries: &[i128]) -> Option<bool> {
     if entries.contains(&0) {
         return Some(true); // a null coordinate direction
@@ -440,17 +424,25 @@ pub fn try_is_isotropic_q(entries: &[i128]) -> Option<bool> {
 mod tests {
     use super::*;
 
+    fn sq(n: i128, p: u128) -> bool {
+        try_is_square_qp(n, p).expect("test prime is supported")
+    }
+
+    fn hs(a: i128, b: i128, p: u128) -> i128 {
+        try_hilbert_symbol_qp(a, b, p).expect("test Hilbert symbol is defined")
+    }
+
+    fn iso(entries: &[i128]) -> bool {
+        try_is_isotropic_q(entries).expect("test square classes fit i128")
+    }
+
     #[test]
     fn hilbert_symbol_is_symmetric_and_bimultiplicative_seed() {
         // symmetry
         for &p in &[2u128, 3, 5, 7] {
             for a in [-3i128, -1, 1, 2, 3, 5, 6] {
                 for b in [-3i128, -1, 1, 2, 3, 5, 6] {
-                    assert_eq!(
-                        hilbert_symbol_qp(a, b, p),
-                        hilbert_symbol_qp(b, a, p),
-                        "(a,b)_{p} symmetry"
-                    );
+                    assert_eq!(hs(a, b, p), hs(b, a, p), "(a,b)_{p} symmetry");
                 }
             }
         }
@@ -458,14 +450,14 @@ mod tests {
         // (a,-a): z² = a x² − a y² has (x,y,z)=(1,1,0).
         for &p in &[2u128, 3, 5] {
             for a in [-3i128, -1, 1, 2, 3, 5] {
-                assert_eq!(hilbert_symbol_qp(a, -a, p), 1, "(a,−a)_{p} = 1");
+                assert_eq!(hs(a, -a, p), 1, "(a,−a)_{p} = 1");
             }
         }
     }
 
     /// The Hilbert reciprocity oracle: ∏ over all places = +1.
     fn reciprocity_holds(a: i128, b: i128) -> bool {
-        hilbert_reciprocity_product(a, b) == 1
+        try_hilbert_reciprocity_product(a, b).expect("test symbols are defined") == 1
     }
 
     #[test]
@@ -485,11 +477,11 @@ mod tests {
     fn hilbert_detects_nontrivial_quaternion_algebra() {
         // (−1,−1)_2 = −1: Hamilton's quaternions ramify at 2 and ∞ — the canonical
         // nontrivial symbol that finite fields can never exhibit.
-        assert_eq!(hilbert_symbol_qp(-1, -1, 2), -1);
+        assert_eq!(hs(-1, -1, 2), -1);
         assert_eq!(hilbert_symbol_real(-1, -1), -1);
         // … and (−1,−1) is trivial at every odd prime.
         for &p in &[3u128, 5, 7, 11] {
-            assert_eq!(hilbert_symbol_qp(-1, -1, p), 1);
+            assert_eq!(hs(-1, -1, p), 1);
         }
         // (2,3)_? : ∏ must still be +1 (reciprocity), with some nontrivial local one.
         assert!(reciprocity_holds(2, 3));
@@ -498,66 +490,66 @@ mod tests {
     #[test]
     fn is_square_qp_basics() {
         // 2 is a square in Q_7 iff 2 is a QR mod 7: 3²=2, yes.
-        assert!(is_square_qp(2, 7));
+        assert!(sq(2, 7));
         // 3 is a nonsquare mod 7.
-        assert!(!is_square_qp(3, 7));
+        assert!(!sq(3, 7));
         // p has odd valuation ⇒ never a square.
-        assert!(!is_square_qp(7, 7));
-        assert!(!is_square_qp(5, 7)); // 5 is a nonresidue mod 7
-                                      // mod 8 rule at p = 2: units ≡ 1 mod 8 are squares.
-        assert!(is_square_qp(17, 2)); // 17 ≡ 1 mod 8
-        assert!(!is_square_qp(3, 2)); // 3 ≢ 1 mod 8
-        assert!(is_square_qp(4, 2)); // 4 = 2², even valuation, unit 1
+        assert!(!sq(7, 7));
+        assert!(!sq(5, 7)); // 5 is a nonresidue mod 7
+                            // mod 8 rule at p = 2: units ≡ 1 mod 8 are squares.
+        assert!(sq(17, 2)); // 17 ≡ 1 mod 8
+        assert!(!sq(3, 2)); // 3 ≢ 1 mod 8
+        assert!(sq(4, 2)); // 4 = 2², even valuation, unit 1
     }
 
     #[test]
     fn three_squares_and_sums_of_squares() {
         // ⟨1,1,1⟩: x²+y²+z²=0 has no nontrivial rational solution ⇒ anisotropic.
-        assert!(!is_isotropic_q(&[1, 1, 1]));
+        assert!(!iso(&[1, 1, 1]));
         // ⟨1,1,-1⟩: (1,0,1) ⇒ isotropic.
-        assert!(is_isotropic_q(&[1, 1, -1]));
+        assert!(iso(&[1, 1, -1]));
         // ⟨1,1,1,1⟩: positive definite ⇒ anisotropic over ℝ ⇒ over Q.
-        assert!(!is_isotropic_q(&[1, 1, 1, 1]));
+        assert!(!iso(&[1, 1, 1, 1]));
         // ⟨1,1,1,-1⟩: indefinite, rank 4, and isotropic over Q (e.g. 1+0+0-1).
-        assert!(is_isotropic_q(&[1, 1, 1, -1]));
+        assert!(iso(&[1, 1, 1, -1]));
         // any rank-5 indefinite form is isotropic (u-invariant of Q at every p ≤ 4).
-        assert!(is_isotropic_q(&[1, 1, 1, 1, -1]));
+        assert!(iso(&[1, 1, 1, 1, -1]));
         // but rank-5 DEFINITE is not (real place).
-        assert!(!is_isotropic_q(&[1, 1, 1, 1, 1]));
+        assert!(!iso(&[1, 1, 1, 1, 1]));
     }
 
     #[test]
     fn classic_anisotropic_ternaries() {
         // x² + y² = 3 z²  ⇔  ⟨1,1,-3⟩ isotropic. No rational solution (3 ≡ 3 mod 4
         // is not a sum of two rational squares) ⇒ anisotropic.
-        assert!(!is_isotropic_q(&[1, 1, -3]));
+        assert!(!iso(&[1, 1, -3]));
         // x² + y² = 2 z²  ⇔  ⟨1,1,-2⟩: (1,1,1) works ⇒ isotropic.
-        assert!(is_isotropic_q(&[1, 1, -2]));
+        assert!(iso(&[1, 1, -2]));
         // x² + y² = 5 z²  ⇔  ⟨1,1,-5⟩: (1,2,1) works (1+4=5) ⇒ isotropic.
-        assert!(is_isotropic_q(&[1, 1, -5]));
+        assert!(iso(&[1, 1, -5]));
         // ⟨1,-2,-5⟩ vs ⟨1,-2,-7⟩ etc. — spot-check via reciprocity-backed locals.
-        assert!(is_isotropic_q(&[1, 1, -25])); // −25·... actually -1·1 ·... 5² ⇒ iso
+        assert!(iso(&[1, 1, -25])); // −25·... actually -1·1 ·... 5² ⇒ iso
     }
 
     #[test]
     fn rank_two_is_global_square_condition() {
         // ⟨a,b⟩ isotropic iff −ab is a perfect square.
-        assert!(is_isotropic_q(&[1, -1])); // −(−1)=1 = 1²
-        assert!(is_isotropic_q(&[2, -8])); // −(2·−8)=16 = 4²
-        assert!(!is_isotropic_q(&[1, -2])); // −(−2)=2, not a square
-        assert!(!is_isotropic_q(&[1, 1])); // −1 not a square
+        assert!(iso(&[1, -1])); // −(−1)=1 = 1²
+        assert!(iso(&[2, -8])); // −(2·−8)=16 = 4²
+        assert!(!iso(&[1, -2])); // −(−2)=2, not a square
+        assert!(!iso(&[1, 1])); // −1 not a square
     }
 
     #[test]
     fn rank_two_square_test_is_exact_near_i128_limit() {
         let a = 3_037_000_499i128;
-        assert!(is_isotropic_q(&[a, -a])); // −a·(−a) = a², exactly.
-        assert!(!is_isotropic_q(&[a, -(a - 1)]));
+        assert!(iso(&[a, -a])); // −a·(−a) = a², exactly.
+        assert!(!iso(&[a, -(a - 1)]));
     }
 
     #[test]
     fn qp_apis_reject_nonprime_places() {
-        assert!(std::panic::catch_unwind(|| is_square_qp(2, 9)).is_err());
-        assert!(std::panic::catch_unwind(|| hilbert_symbol_qp(2, 3, 1)).is_err());
+        assert_eq!(try_is_square_qp(2, 9), None);
+        assert_eq!(try_hilbert_symbol_qp(2, 3, 1), None);
     }
 }

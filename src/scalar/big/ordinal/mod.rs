@@ -148,12 +148,6 @@ impl Ordinal {
         }
     }
 
-    /// Checked nim-field multiplication. This is the non-panicking entry point
-    /// for callers that need to respect the source-verified Kummer boundary.
-    pub fn checked_mul(&self, other: &Ordinal) -> Option<Ordinal> {
-        self.nim_mul(other)
-    }
-
     /// Checked multiplicative inverse on the represented exact subdomains. Finite
     /// nimbers use the `u128` backend; the first transfinite field
     /// `F_4(ω) = F_64` is found by exhaustive search. Larger transfinite
@@ -194,7 +188,7 @@ impl Scalar for Ordinal {
     }
 
     fn mul(&self, rhs: &Self) -> Self {
-        self.checked_mul(rhs).unwrap_or_else(|| {
+        self.nim_mul(rhs).unwrap_or_else(|| {
             panic!(
                 "Ordinal::mul escaped the source-verified nim-product tower: left={self:?}, right={rhs:?}"
             )

@@ -38,7 +38,7 @@
 //! the real place and the finitely many relevant `Q_p` places.
 
 use crate::clifford::Metric;
-use crate::forms::{hasse_at_place, relevant_primes, try_disc_class, try_square_free, Place};
+use crate::forms::{relevant_primes, try_disc_class, try_hasse_at_place, try_square_free, Place};
 use crate::scalar::Surcomplex;
 use crate::scalar::Surreal;
 use crate::scalar::{ExactRoots, Rational, Scalar};
@@ -287,12 +287,12 @@ pub fn classify_rational(metric: &Metric<Rational>) -> Option<RationalCliffordTy
     };
     let mut local_hasse = vec![RationalPlaceInvariant {
         place: Place::Real,
-        hasse: hasse_at_place(&entries, Place::Real),
+        hasse: try_hasse_at_place(&entries, Place::Real)?,
     }];
     for p in relevant_primes(&entries) {
         local_hasse.push(RationalPlaceInvariant {
             place: Place::Prime(p),
-            hasse: hasse_at_place(&entries, Place::Prime(p)),
+            hasse: try_hasse_at_place(&entries, Place::Prime(p))?,
         });
     }
     Some(RationalCliffordType {

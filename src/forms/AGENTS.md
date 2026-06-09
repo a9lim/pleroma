@@ -82,8 +82,8 @@ same periodicity as the char-0 8-fold table, Bott, and `E₈` in `integral/`.
 
 - **`witt/class.rs`** — `WittClass`: the Witt group `W_q(F) ≅ ℤ/2` of a finite
   char-2 field/window, Arf-classified with `u128` bits. Plus `WittClassG`: the
-  Char0/OddChar/Char2 trichotomy enum (odd-char is order-4) with the ring `mul`
-  (Char2 panics — `W_q` is a module, not a ring).
+  Char0/OddChar/Char2 trichotomy enum (odd-char is order-4) with checked group and
+  ring operations; `try_mul` rejects Char2 because `W_q` is a module, not a ring.
 - **`witt/ring.rs`** — the Witt RING: `tensor_form`, Pfister forms, fundamental
   ideal Iⁿ, the eₙ staircase (e0=dim, e1=disc, e2=Hasse). Stabilization per field
   (I²=0 over F_q; infinite ℝ tower via `e_real`). DON'T claim Arf=e2 (char-2
@@ -149,8 +149,8 @@ treatment of `oddchar/`/`char2/`/`local_global/`/`integral/`.
   abstraction (a global field carries all places at once, like `RationalFunction`/
   `Adele`). The mirror of what `ResidueField` did for the discrete Springer engine.
 - **`local_global/padic.rs`** — the GENUINE Hilbert symbol over Q_p (odd-p + p=2 mod-8) — nontrivial
-  unlike oddchar's +1 — + Hasse–Minkowski `is_isotropic_q` over ℚ. Oracle: Hilbert
-  reciprocity `∏_v=+1`.
+  unlike oddchar's +1 — + checked Hasse–Minkowski `try_is_isotropic_q` over ℚ.
+  Oracle: Hilbert reciprocity `∏_v=+1`.
 - **`local_global/adelic.rs`** — local–global rational helpers: `hilbert_product` over all places,
   rank≥3 adelic Hasse–Minkowski breakdown (`isotropy_over_adeles`/`AdelicIsotropy`),
   Brauer local invariant sums. Reuses `local_global/padic.rs`.
@@ -158,7 +158,7 @@ treatment of `oddchar/`/`char2/`/`local_global/`/`integral/`.
   `local_global/padic.rs` + `local_global/adelic.rs` over the global function field
   `F_q(t)` (`scalar::RationalFunction`). Places
   `FFPlace{Infinite, Finite(π)}` (monic irreducibles + the degree place), the **tame**
-  Hilbert symbol `hilbert_symbol_ff` (the odd-`p` `hilbert_symbol_qp` branch with the
+  Hilbert symbol `hilbert_symbol_ff` (the odd-`p` `try_hilbert_symbol_qp` branch with the
   residue Legendre → `χ_κ`; **no `p=2` branch** since `q` is odd), reciprocity
   `hilbert_reciprocity_product_ff`, `is_isotropic_ff`/`is_isotropic_at_place`/
   `isotropy_over_ff_adeles` (Hasse–Minkowski, u-invariant 4 like `Q_p`, but **no

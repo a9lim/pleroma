@@ -156,7 +156,7 @@ fn chi_kappa<S: FiniteOddField>(unit: &Poly<S>, place: &FFPlace<S>) -> i128 {
 
 /// Whether a **nonzero** `a` is a square in the local field at `place`: the
 /// valuation is even **and** the residue unit is a square in `κ`. The mirror of
-/// [`is_square_qp`](crate::forms::is_square_qp).
+/// [`try_is_square_qp`](crate::forms::try_is_square_qp).
 pub fn is_local_square<S: FiniteOddField>(a: &RationalFunction<S>, place: &FFPlace<S>) -> bool {
     if a.is_zero() {
         return false;
@@ -170,7 +170,7 @@ pub fn is_local_square<S: FiniteOddField>(a: &RationalFunction<S>, place: &FFPla
 /// **nonzero** `a, b` — the **tame symbol**. With `α = v(a)`, `β = v(b)` and
 /// residue units `ā, b̄`,
 /// `(a,b)_v = χ_κ((−1)^{αβ}) · χ_κ(ā)^β · χ_κ(b̄)^α`,
-/// exactly the odd-`p` branch of [`hilbert_symbol_qp`](crate::forms::hilbert_symbol_qp)
+/// exactly the odd-`p` branch of [`try_hilbert_symbol_qp`](crate::forms::try_hilbert_symbol_qp)
 /// with the residue Legendre symbol replaced by the residue character `χ_κ`. No
 /// `p = 2` branch exists because every residue field has odd characteristic.
 pub fn hilbert_symbol_ff<S: FiniteOddField>(
@@ -288,7 +288,7 @@ pub(crate) fn is_global_square_ff<S: FiniteOddField>(x: &RationalFunction<S>) ->
 
 /// Local isotropy of a nondegenerate diagonal form `⟨a_1,…,a_n⟩` over the
 /// completion of `F_q(t)` at `place`, by rank — the exact mirror of
-/// [`is_isotropic_at_p`](crate::forms::padic) (`F_q(t)` and `Q_p` share the
+/// [`try_is_isotropic_at_p`](crate::forms::padic) (`F_q(t)` and `Q_p` share the
 /// u-invariant `4`, so the thresholds match): `n≤1` never, `n=2` iff `−a_1a_2` is a
 /// local square, `n=3`/`4` the Hilbert conditions, `n≥5` always. Entries nonzero.
 pub fn is_isotropic_at_place<S: FiniteOddField>(

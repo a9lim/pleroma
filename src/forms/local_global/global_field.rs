@@ -155,11 +155,12 @@ impl GlobalField for Rational {
     }
 
     fn hilbert_symbol_at(a: &Self, b: &Self, place: &Self::Place) -> i128 {
-        crate::forms::padic::hilbert_symbol_at(rat_square_class(a), rat_square_class(b), *place)
+        crate::forms::padic::try_hilbert_symbol_at(rat_square_class(a), rat_square_class(b), *place)
+            .expect("GlobalField over Q needs bounded nonzero square classes")
     }
 
     fn is_local_square(x: &Self, place: &Self::Place) -> bool {
-        use crate::forms::padic::{is_square_qp, Place};
+        use crate::forms::padic::{try_is_square_qp, Place};
         if x.is_zero() {
             return false;
         }
@@ -167,7 +168,9 @@ impl GlobalField for Rational {
         match place {
             // a real number is a square iff it is ≥ 0 (its square-class sign).
             Place::Real => c >= 0,
-            Place::Prime(p) => is_square_qp(c, *p),
+            Place::Prime(p) => {
+                try_is_square_qp(c, *p).expect("GlobalField over Q needs a bounded prime place")
+            }
         }
     }
 
@@ -179,7 +182,7 @@ impl GlobalField for Rational {
     }
 
     fn is_isotropic_at_place(entries: &[Self], place: &Self::Place) -> bool {
-        use crate::forms::padic::{is_isotropic_at_p, Place};
+        use crate::forms::padic::{try_is_isotropic_at_p, Place};
         match place {
             // archimedean place: isotropic iff a null direction or indefinite.
             Place::Real => {
@@ -193,7 +196,8 @@ impl GlobalField for Rational {
                     .map(rat_square_class)
                     .filter(|&c| c != 0)
                     .collect();
-                is_isotropic_at_p(&nz, *p)
+                try_is_isotropic_at_p(&nz, *p)
+                    .expect("GlobalField over Q needs bounded local square classes")
             }
         }
     }
@@ -283,7 +287,7 @@ mod tests {
     fn global_isotropy_matches_q_field_facade() {
         // The generic Hasse-Minkowski route and the Q-specific facade are the
         // same theorem package, exposed at different abstraction levels.
-        use crate::forms::is_isotropic_q;
+        use crate::forms::try_is_isotropic_q;
         let forms: &[&[i128]] = &[
             &[1, 1, 1],
             &[1, 1, -1],
@@ -303,7 +307,7 @@ mod tests {
             let rats: Vec<Rational> = f.iter().map(|&n| Rational::int(n)).collect();
             assert_eq!(
                 Rational::is_isotropic_global(&rats),
-                is_isotropic_q(f),
+                try_is_isotropic_q(f).expect("test square classes fit i128"),
                 "generic vs Q-specific isotropy disagree on {f:?}"
             );
         }

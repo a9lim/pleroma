@@ -120,5 +120,5 @@ core is split by concept under `engine/`:
   than as methods on `Multivector`.
 - **`Ordinal` is a Clifford scalar only inside its checked nim-product boundary.**
   `Scalar::mul` panics if a product escapes the source-verified Kummer tower; use
-  `Ordinal::checked_mul` before constructing computations that need an explicit
-  `Option` boundary.
+  `Ordinal::nim_mul` before constructing computations that need an explicit `Option`
+  boundary.

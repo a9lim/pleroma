@@ -5379,7 +5379,7 @@ impl PyOrdinal {
         match parse_ordinal(other) {
             Ok(rhs) => self
                 .inner
-                .checked_mul(&rhs)
+                .nim_mul(&rhs)
                 .map(|inner| PyOrdinal { inner })
                 .ok_or_else(|| {
                     PyValueError::new_err(
@@ -5392,7 +5392,7 @@ impl PyOrdinal {
     }
     fn __rmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyOrdinal> {
         parse_ordinal(other)?
-            .checked_mul(&self.inner)
+            .nim_mul(&self.inner)
             .map(|inner| PyOrdinal { inner })
             .ok_or_else(|| {
                 PyValueError::new_err(
@@ -5412,7 +5412,7 @@ impl PyOrdinal {
             .checked_inv()
             .ok_or_else(|| PyValueError::new_err("ordinal divisor has no represented inverse"))?;
         self.inner
-            .checked_mul(&rinv)
+            .nim_mul(&rinv)
             .map(|inner| PyOrdinal { inner })
             .ok_or_else(|| {
                 PyValueError::new_err(
@@ -5426,7 +5426,7 @@ impl PyOrdinal {
             .checked_inv()
             .ok_or_else(|| PyValueError::new_err("ordinal divisor has no represented inverse"))?;
         parse_ordinal(other)?
-            .checked_mul(&si)
+            .nim_mul(&si)
             .map(|inner| PyOrdinal { inner })
             .ok_or_else(|| {
                 PyValueError::new_err(
@@ -5446,12 +5446,6 @@ impl PyOrdinal {
         self.inner
             .nim_mul(&other.inner)
             .map(|o| PyOrdinal { inner: o })
-    }
-    /// Alias for checked nim-field multiplication.
-    fn checked_mul(&self, other: &PyOrdinal) -> Option<PyOrdinal> {
-        self.inner
-            .checked_mul(&other.inner)
-            .map(|inner| PyOrdinal { inner })
     }
     /// Alias for the represented inverse boundary.
     fn checked_inv(&self) -> Option<PyOrdinal> {

@@ -51,7 +51,7 @@ Split per pillar:
   `as_finite`),
   plus the ordinal embedding/projection and lazy analytic helpers
   (`sqrt_to_terms`, `nth_root_to_terms`); `Ordinal` exposes CNF terms, Python ordinal ordering, the
-  `<ω³` coefficient bridge, checked/staged nim operations, and feeds the
+  `<ω³` coefficient bridge, staged `nim_mul` and `checked_inv`, and feeds the
   `OrdinalAlgebra` backend; the
   finite-field classes expose the shipped `Fp`/`Fpn` scalar monomorphs, exact
   `Fpn::from_coeffs`/`into_coeffs` coefficient round-trips, exact

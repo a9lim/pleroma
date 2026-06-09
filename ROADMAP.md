@@ -258,7 +258,7 @@ exactly as `NimberGame` completed it at the games layer. A metric like
 `q = [ω, ω+1]` would carry genuinely **infinite nimber squares**.
 
 `Ordinal` now implements `Scalar`, but the totality issue remains explicit:
-`Scalar::mul` is panic-on-escape and `Ordinal::checked_mul` is the non-panicking
+`Scalar::mul` is panic-on-escape and `Ordinal::nim_mul` is the non-panicking
 mathematical surface. Products inside the source-verified Kummer tower are exact;
 products past the verified table or outside the staged segment are rejected.
 
@@ -267,8 +267,8 @@ products past the verified table or outside the staged segment are rejected.
 `Scalar for Ordinal` follows the **`Rational` precedent** (`Rational` is already an
 overflow-prone `i128` engine-validation scalar, not the "real" char-0 home — that
 is `Surreal`). The `mul` panic message names the verified-tower escape, while
-`checked_mul` / `checked_inv` are available for callers that need an explicit
-`Option` boundary.
+`nim_mul` / `checked_inv` are available for callers that need an explicit `Option`
+boundary.
 
 ### What it actually adds (be honest)
 
@@ -293,7 +293,7 @@ This bridge does not try to classify every `Metric<Ordinal>`.
 ### Implemented surface
 
 - `scalar/big/ordinal/` — `impl Scalar for Ordinal` (panic-on-escape `mul`,
-  `neg = id`, `characteristic() = 2`, `checked_mul`, and `checked_inv`).
+  `neg = id`, `characteristic() = 2`, `nim_mul`, and `checked_inv`).
 - `clifford` tests build `CliffordAlgebra<Ordinal>` over `q = [ω, ω+1]`, check the
   Clifford relations, and exercise associativity over the transfinite metric.
 - `forms/char2/arf.rs` and the classifier façade expose finite-window

@@ -55,12 +55,6 @@ impl WittClass {
         Ok(WittClass { arf: arf.arf })
     }
 
-    /// The Witt class of a nonsingular nimber Clifford metric.
-    pub fn from_metric(metric: &Metric<Nimber>) -> Self {
-        Self::try_from_metric(metric)
-            .expect("WittClass::from_metric needs a nonsingular quadratic form")
-    }
-
     /// The group operation: the class of the orthogonal sum `⊥` of two forms.
     /// Arf is additive, hyperbolics vanish, so this is XOR of the Arf invariants.
     pub fn add(&self, other: &WittClass) -> WittClass {
@@ -150,12 +144,6 @@ impl WittClassG {
         })
     }
 
-    /// Char-2 Witt class from a nonsingular nimber metric (the Arf invariant).
-    pub fn char2_from_metric(metric: &Metric<Nimber>) -> Self {
-        Self::try_char2_from_metric(metric)
-            .expect("WittClassG::char2_from_metric needs a nonsingular quadratic form")
-    }
-
     /// The identity of the odd-char group with the given `kappa`.
     pub fn oddchar_zero(field_order: u128, kappa: u128) -> Self {
         WittClassG::OddChar {
@@ -166,12 +154,8 @@ impl WittClassG {
         }
     }
 
-    /// The group operation `⊥`. Panics if the two classes are in different
-    /// characteristic regimes (you cannot add across characteristics).
-    pub fn add(&self, other: &WittClassG) -> WittClassG {
-        self.try_add(other).expect("invalid Witt-class addition")
-    }
-
+    /// The group operation `⊥`, checked because classes from different
+    /// characteristic regimes cannot be added.
     pub fn try_add(&self, other: &WittClassG) -> Result<WittClassG, &'static str> {
         match (*self, *other) {
             (WittClassG::Char0 { signature: a }, WittClassG::Char0 { signature: b }) => {
@@ -220,14 +204,9 @@ impl WittClassG {
     ///   (`kappa = 0`), via `(a,b) = (e0 ⊕ sclass, sclass)` with `t² = 1`. (Both ring
     ///   laws are pinned by `witt::ring`'s test against the concrete `tensor_form`.)
     ///
-    /// **Panics on `Char2`:** in characteristic 2 the *quadratic* Witt group `W_q` is
-    /// a **module over** the bilinear Witt ring, not a ring — so there is no
-    /// quadratic-form ring product to return. (See `forms/witt/ring.rs` for why.)
-    pub fn mul(&self, other: &WittClassG) -> WittClassG {
-        self.try_mul(other)
-            .expect("invalid Witt-class multiplication")
-    }
-
+    /// In characteristic 2 the *quadratic* Witt group `W_q` is a **module over**
+    /// the bilinear Witt ring, not a ring, so char-2 operands are rejected instead
+    /// of forcing an infallible product.
     pub fn try_mul(&self, other: &WittClassG) -> Result<WittClassG, &'static str> {
         match (*self, *other) {
             (WittClassG::Char0 { signature: a }, WittClassG::Char0 { signature: b }) => {
@@ -283,7 +262,7 @@ impl WittClassG {
     }
 
     /// The ring unit `⟨1⟩` of the odd-char Witt ring with the given `kappa`
-    /// (`e0 = 1`, `sclass = 0`). The identity for [`mul`](Self::mul).
+    /// (`e0 = 1`, `sclass = 0`). The identity for [`try_mul`](Self::try_mul).
     pub fn oddchar_one(field_order: u128, kappa: u128) -> Self {
         WittClassG::OddChar {
             field_order,
@@ -310,8 +289,10 @@ mod tests {
 
     #[test]
     fn hyperbolic_is_identity_anisotropic_is_order_two() {
-        let h = WittClass::from_metric(&metric(&[0, 0], &[((0, 1), 1)])); // Arf 0
-        let a = WittClass::from_metric(&metric(&[1, 1], &[((0, 1), 1)])); // Arf 1
+        let h = WittClass::try_from_metric(&metric(&[0, 0], &[((0, 1), 1)]))
+            .expect("hyperbolic plane is nonsingular"); // Arf 0
+        let a = WittClass::try_from_metric(&metric(&[1, 1], &[((0, 1), 1)]))
+            .expect("anisotropic plane is nonsingular"); // Arf 1
         assert!(h.is_hyperbolic());
         assert!(!a.is_hyperbolic());
         assert_eq!(h, WittClass::zero());
@@ -330,7 +311,8 @@ mod tests {
         assert_eq!(h.add(&h), h);
         // direct_sum of the underlying forms agrees with the abstract group law.
         let am = metric(&[1, 1], &[((0, 1), 1)]);
-        let combined = WittClass::from_metric(&am.direct_sum(&am));
+        let combined = WittClass::try_from_metric(&am.direct_sum(&am))
+            .expect("orthogonal sum of nonsingular planes is nonsingular");
         assert_eq!(combined, a.add(&a)); // both are 0
     }
 
@@ -338,8 +320,10 @@ mod tests {
     fn witt_class_over_f4() {
         // From the char-2 F₄ facts: q=[2,2],b=1 is anisotropic (Arf 1); q=[2,3],b=1
         // is hyperbolic-class (Arf 0). Their Witt classes add to the nonzero class.
-        let aniso = WittClass::from_metric(&metric(&[2, 2], &[((0, 1), 1)]));
-        let split = WittClass::from_metric(&metric(&[2, 3], &[((0, 1), 1)]));
+        let aniso = WittClass::try_from_metric(&metric(&[2, 2], &[((0, 1), 1)]))
+            .expect("F4 anisotropic plane is nonsingular");
+        let split = WittClass::try_from_metric(&metric(&[2, 3], &[((0, 1), 1)]))
+            .expect("F4 split plane is nonsingular");
         assert_eq!(aniso.arf, 1);
         assert_eq!(split.arf, 0);
         assert_eq!(aniso.add(&split), aniso);

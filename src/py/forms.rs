@@ -4003,7 +4003,9 @@ fn hasse_at_place(entries: Vec<i128>, place: Option<Bound<'_, PyAny>>) -> PyResu
 fn hilbert_product(a: (i128, i128), b: (i128, i128)) -> PyResult<i128> {
     let a = parse_q_pair(a, "first rational")?;
     let b = parse_q_pair(b, "second rational")?;
-    Ok(crate::forms::hilbert_product(&a, &b))
+    crate::forms::hilbert_product(&a, &b).ok_or_else(|| {
+        PyValueError::new_err("Hilbert product overflowed bounded rational square classes")
+    })
 }
 
 fn parse_q_pair(raw: (i128, i128), name: &str) -> PyResult<Rational> {
@@ -4022,7 +4024,11 @@ fn hilbert_reciprocity_product(a: i128, b: i128) -> PyResult<i128> {
             "Hilbert reciprocity product needs nonzero arguments",
         ));
     }
-    Ok(crate::forms::hilbert_reciprocity_product(a, b))
+    crate::forms::try_hilbert_reciprocity_product(a, b).ok_or_else(|| {
+        PyValueError::new_err(
+            "Hilbert reciprocity product needs nonzero arguments and bounded square classes",
+        )
+    })
 }
 
 /// Local Brauer invariants `inv_v(a,b) ∈ {0, 1/2}` of the quaternion algebra
@@ -4035,6 +4041,9 @@ fn brauer_local_invariants(
     let a = parse_q_pair(a, "first rational")?;
     let b = parse_q_pair(b, "second rational")?;
     Ok(crate::forms::brauer_local_invariants(&a, &b)
+        .ok_or_else(|| {
+            PyValueError::new_err("Brauer local invariants overflowed bounded square classes")
+        })?
         .into_iter()
         .map(|(place, inv)| (wrap_rational_place(place), wrap_rational(inv)))
         .collect())
@@ -4046,7 +4055,11 @@ fn brauer_local_invariants(
 fn brauer_invariant_sum(a: (i128, i128), b: (i128, i128)) -> PyResult<PyRational> {
     let a = parse_q_pair(a, "first rational")?;
     let b = parse_q_pair(b, "second rational")?;
-    Ok(wrap_rational(crate::forms::brauer_invariant_sum(&a, &b)))
+    crate::forms::brauer_invariant_sum(&a, &b)
+        .map(wrap_rational)
+        .ok_or_else(|| {
+            PyValueError::new_err("Brauer invariant sum overflowed bounded square classes")
+        })
 }
 
 /// The per-place isotropy breakdown of a `ℚ`-form (rank ≥ 3): isotropy at `ℝ` and
@@ -4094,7 +4107,9 @@ fn isotropy_over_adeles(entries: Vec<i128>) -> PyResult<PyAdelicIsotropy> {
         ));
     }
     Ok(PyAdelicIsotropy {
-        inner: crate::forms::isotropy_over_adeles(&entries),
+        inner: crate::forms::isotropy_over_adeles(&entries).ok_or_else(|| {
+            PyValueError::new_err("adelic isotropy overflowed bounded square classes")
+        })?,
     })
 }
 

@@ -393,7 +393,7 @@ fn ordinal_f64_trace_to_f2(x: &Ordinal) -> Option<u128> {
     for i in 0..6 {
         acc = acc.add(&y);
         if i != 5 {
-            y = y.checked_mul(&y)?;
+            y = y.nim_mul(&y)?;
             if !ordinal_f64_element(&y) {
                 return None;
             }

@@ -5,7 +5,7 @@
 //! (same signature) and over `ℤ_p` for every prime `p`. The genus is the natural
 //! arithmetic coarsening of the isometry class, and it is exactly the place where
 //! the local-global machinery the crate already carries
-//! (`local_global/padic.rs`'s square classes, `is_square_qp`) acts on a *lattice*
+//! (`local_global/padic.rs`'s square classes, `try_is_square_qp`) acts on a *lattice*
 //! rather than a field-level square class.
 //!
 //! The engine is the **p-adic Jordan decomposition**. Over `ℤ_p` a lattice splits
@@ -30,7 +30,7 @@
 //! integral quadratic forms* (the corrected 2-adic sign-walking calculus).
 
 use crate::forms::lattice::IntegralForm;
-use crate::forms::padic::is_square_qp;
+use crate::forms::padic::try_is_square_qp;
 use crate::scalar::{Rational, Scalar};
 use std::collections::BTreeMap;
 
@@ -96,7 +96,7 @@ fn unit_sign_odd(r: &Rational, p: i128) -> i128 {
     let a = unit_part_i128(r.numer(), p).rem_euclid(p);
     let b = unit_part_i128(r.denom(), p).rem_euclid(p);
     let m = (a * b).rem_euclid(p);
-    if is_square_qp(m, p as u128) {
+    if try_is_square_qp(m, p as u128).expect("odd genus prime must be supported") {
         1
     } else {
         -1

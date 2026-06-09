@@ -6,20 +6,42 @@ use super::engine::IntegerMV;
 use super::scalars::{parse_surreal, PyOrdinal, PySurreal};
 use crate::clifford::CliffordAlgebra;
 use crate::games::{
-    thermography, AbstractGame, Color, Game, GameExterior, Hackenbush, LoopyGraph, LoopyNimber,
-    NimberGame, NumberGame, Outcome, Quotient,
+    thermography, AbstractGame, Color, Game, GameExterior, Hackenbush, LoopyGraph,
+    LoopyNimCertificate, LoopyNimber, NimberGame, NumberGame, Outcome, Quotient,
 };
 use crate::scalar::{Integer, Rational, Surreal};
 use pyo3::basic::CompareOp;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 type PyRelationCertificate = (i128, bool, Option<usize>, Vec<(Vec<i128>, String, bool)>);
+type PyThermograph = (
+    PySurreal,
+    PySurreal,
+    Vec<(PySurreal, PySurreal)>,
+    Vec<(PySurreal, PySurreal)>,
+);
 
 /// Wrap a dyadic `Rational` (a thermograph coordinate) as a `Surreal` for Python.
 fn rat_to_py(r: Rational) -> PySurreal {
     PySurreal::from_inner(Surreal::from_rational(r))
+}
+
+fn thermograph_to_py(th: crate::games::thermography::Thermograph) -> PyThermograph {
+    let wall = |w: &thermography::Pl| {
+        w.points()
+            .iter()
+            .map(|(t, v)| (rat_to_py(t.clone()), rat_to_py(v.clone())))
+            .collect::<Vec<_>>()
+    };
+    (
+        rat_to_py(th.mast.clone()),
+        rat_to_py(th.temperature.clone()),
+        wall(&th.left_wall),
+        wall(&th.right_wall),
+    )
 }
 
 /// Nim-multiplication via Conway's Turning-Corners game recurrence (the
@@ -27,6 +49,101 @@ fn rat_to_py(r: Rational) -> PySurreal {
 #[pyfunction]
 fn nim_mul_mex(x: u128, y: u128) -> u128 {
     crate::games::nim_mul_mex(x, y)
+}
+
+#[derive(Clone, Copy)]
+enum CoinFamily {
+    Singleton,
+    Turtles,
+}
+
+fn parse_coin_family(name: &str) -> PyResult<CoinFamily> {
+    match name.trim().to_ascii_lowercase().as_str() {
+        "singleton" | "singletons" | "turning-corners" | "turning_corners" | "corners" => {
+            Ok(CoinFamily::Singleton)
+        }
+        "turtles" | "turning-turtles" | "turning_turtles" => Ok(CoinFamily::Turtles),
+        other => Err(PyValueError::new_err(format!(
+            "unknown coin-turning family {other:?}; expected 'singleton' or 'turtles'"
+        ))),
+    }
+}
+
+fn check_coin_index(n: u128, label: &str) -> PyResult<()> {
+    if n >= 128 {
+        Err(PyValueError::new_err(format!(
+            "{label} must be < 128 because companion sets are u128 bitmasks"
+        )))
+    } else {
+        Ok(())
+    }
+}
+
+/// Legal companion masks for the named 1-D coin-turning family at coin `n`.
+/// Families: `"singleton"` (turn exactly one lower coin) and `"turtles"`
+/// (turn optionally one lower coin).
+#[pyfunction]
+fn coin_companions(kind: &str, n: u128) -> PyResult<Vec<u128>> {
+    check_coin_index(n, "n")?;
+    Ok(match parse_coin_family(kind)? {
+        CoinFamily::Singleton => crate::games::singleton_companions(n),
+        CoinFamily::Turtles => crate::games::turtles_companions(n),
+    })
+}
+
+/// Single-coin Grundy value of a named 1-D coin-turning family.
+#[pyfunction]
+fn coin_turning_grundy(kind: &str, n: u128) -> PyResult<u128> {
+    check_coin_index(n, "n")?;
+    let mut memo = HashMap::new();
+    Ok(match parse_coin_family(kind)? {
+        CoinFamily::Singleton => {
+            crate::games::grundy_1d(&crate::games::singleton_companions, n, &mut memo)
+        }
+        CoinFamily::Turtles => {
+            crate::games::grundy_1d(&crate::games::turtles_companions, n, &mut memo)
+        }
+    })
+}
+
+/// Single-cell Grundy value of the Tartan product of two named 1-D coin-turning
+/// families, computed directly from the 2-D excludant.
+#[pyfunction]
+fn tartan_grundy(kind_a: &str, kind_b: &str, x: u128, y: u128) -> PyResult<u128> {
+    check_coin_index(x, "x")?;
+    check_coin_index(y, "y")?;
+    let (a, b) = (parse_coin_family(kind_a)?, parse_coin_family(kind_b)?);
+    let mut memo = HashMap::new();
+    Ok(match (a, b) {
+        (CoinFamily::Singleton, CoinFamily::Singleton) => crate::games::tartan_grundy(
+            &crate::games::singleton_companions,
+            &crate::games::singleton_companions,
+            x,
+            y,
+            &mut memo,
+        ),
+        (CoinFamily::Singleton, CoinFamily::Turtles) => crate::games::tartan_grundy(
+            &crate::games::singleton_companions,
+            &crate::games::turtles_companions,
+            x,
+            y,
+            &mut memo,
+        ),
+        (CoinFamily::Turtles, CoinFamily::Singleton) => crate::games::tartan_grundy(
+            &crate::games::turtles_companions,
+            &crate::games::singleton_companions,
+            x,
+            y,
+            &mut memo,
+        ),
+        (CoinFamily::Turtles, CoinFamily::Turtles) => crate::games::tartan_grundy(
+            &crate::games::turtles_companions,
+            &crate::games::turtles_companions,
+            x,
+            y,
+            &mut memo,
+        ),
+    })
 }
 
 /// Sprague–Grundy values of a finite **acyclic** impartial game graph given as
@@ -146,6 +263,66 @@ fn loopy_nim_values(succ: Vec<Vec<usize>>) -> PyResult<Vec<Option<u128>>> {
                     LoopyNimber::Side => None,
                 })
                 .collect()
+        })
+        .ok_or_else(|| {
+            PyValueError::new_err("cyclic non-Draw subgraph has no unique bounded sidling solution")
+        })
+}
+
+#[pyclass(name = "LoopyNimCertificate", module = "pleroma")]
+struct PyLoopyNimCertificate {
+    inner: LoopyNimCertificate,
+}
+
+#[pymethods]
+impl PyLoopyNimCertificate {
+    #[getter]
+    fn outcomes(&self) -> Vec<String> {
+        self.inner
+            .outcomes
+            .iter()
+            .copied()
+            .map(outcome_name)
+            .collect()
+    }
+    #[getter]
+    fn side_positions(&self) -> Vec<usize> {
+        self.inner.side_positions.clone()
+    }
+    #[getter]
+    fn used_sidling_solver(&self) -> bool {
+        self.inner.used_sidling_solver
+    }
+    #[getter]
+    fn sidling_assignments_examined(&self) -> usize {
+        self.inner.sidling_assignments_examined
+    }
+    fn __repr__(&self) -> String {
+        format!(
+            "LoopyNimCertificate(side_positions={:?}, used_sidling_solver={}, sidling_assignments_examined={})",
+            self.inner.side_positions,
+            self.inner.used_sidling_solver,
+            self.inner.sidling_assignments_examined
+        )
+    }
+}
+
+/// Loopy nim-values plus a certificate explaining Draw/Side promotion and
+/// whether the bounded sidling solver was needed.
+#[pyfunction]
+fn loopy_nim_values_certified(
+    succ: Vec<Vec<usize>>,
+) -> PyResult<(Vec<Option<u128>>, PyLoopyNimCertificate)> {
+    crate::games::loopy_nim_values_certified(&succ)
+        .map(|(vs, inner)| {
+            let values = vs
+                .into_iter()
+                .map(|x| match x {
+                    LoopyNimber::Value(n) => Some(n),
+                    LoopyNimber::Side => None,
+                })
+                .collect();
+            (values, PyLoopyNimCertificate { inner })
         })
         .ok_or_else(|| {
             PyValueError::new_err("cyclic non-Draw subgraph has no unique bounded sidling solution")
@@ -328,28 +505,24 @@ impl PyGame {
     }
     /// The thermograph as `(mean, temperature, left_wall, right_wall)`, where each
     /// wall is a list of `(t, value)` breakpoints. `None` if undefined.
-    #[allow(clippy::type_complexity)]
-    fn thermograph(
-        &self,
-    ) -> Option<(
-        PySurreal,
-        PySurreal,
-        Vec<(PySurreal, PySurreal)>,
-        Vec<(PySurreal, PySurreal)>,
-    )> {
-        let th = thermography::thermograph(&self.inner)?;
-        let wall = |w: &thermography::Pl| {
-            w.points()
-                .iter()
-                .map(|(t, v)| (rat_to_py(t.clone()), rat_to_py(v.clone())))
-                .collect::<Vec<_>>()
-        };
-        Some((
-            rat_to_py(th.mast.clone()),
-            rat_to_py(th.temperature.clone()),
-            wall(&th.left_wall),
-            wall(&th.right_wall),
-        ))
+    fn thermograph(&self) -> Option<PyThermograph> {
+        thermography::thermograph(&self.inner).map(thermograph_to_py)
+    }
+    /// The same thermograph, routed through the named tropical max-plus/min-plus
+    /// wall folds and pinned equal to `thermograph` in the Rust tests.
+    fn thermograph_via_tropical(&self) -> Option<PyThermograph> {
+        crate::games::tropical_thermography::thermograph_via_tropical(&self.inner)
+            .map(thermograph_to_py)
+    }
+    /// Cooled stops `(LS(G_t), RS(G_t))` at the rational temperature `num/den`.
+    #[pyo3(signature = (num, den=1))]
+    fn cooled_stops(&self, num: i128, den: i128) -> PyResult<Option<(PySurreal, PySurreal)>> {
+        let t = Rational::try_new(num, den)
+            .ok_or_else(|| PyValueError::new_err("zero denominator or bounded i128 overflow"))?;
+        Ok(thermography::thermograph(&self.inner).map(|th| {
+            let (l, r) = th.cooled_stops(&t);
+            (rat_to_py(l), rat_to_py(r))
+        }))
     }
     fn __repr__(&self) -> String {
         self.inner.display()
@@ -558,10 +731,25 @@ impl PyNumberGame {
     fn birthday_finite(&self) -> Option<u128> {
         self.inner.birthday().and_then(|o| o.as_finite())
     }
+    /// The birthday as an `Ordinal`, when the value is in the representable
+    /// sign-expansion subclass.
+    fn birthday_ordinal(&self) -> Option<PyOrdinal> {
+        self.inner.birthday().map(PyOrdinal::from_inner)
+    }
     /// The birthday as an ordinal string (`None` outside the representable
     /// subclass, e.g. `√ω`).
     fn birthday_repr(&self) -> Option<String> {
         self.inner.birthday().map(|o| format!("{o:?}"))
+    }
+    /// The transfinite sign expansion as runs `(sign, length)` (`True = +`,
+    /// length an `Ordinal`), the finite encoding of the number-game tree.
+    fn sign_expansion(&self) -> Option<Vec<(bool, PyOrdinal)>> {
+        self.inner.sign_expansion().map(|se| {
+            se.runs()
+                .iter()
+                .map(|(s, l)| (*s, PyOrdinal::from_inner(l.clone())))
+                .collect()
+        })
     }
     /// The short `Game`, if the value is dyadic; `None` for transfinite numbers.
     fn to_finite_game(&self) -> Option<PyGame> {
@@ -812,7 +1000,11 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyQuotient>()?;
     m.add_class::<PyAbstractGame>()?;
     m.add_class::<PyLoopyGraph>()?;
+    m.add_class::<PyLoopyNimCertificate>()?;
     m.add_function(wrap_pyfunction!(nim_mul_mex, m)?)?;
+    m.add_function(wrap_pyfunction!(coin_companions, m)?)?;
+    m.add_function(wrap_pyfunction!(coin_turning_grundy, m)?)?;
+    m.add_function(wrap_pyfunction!(tartan_grundy, m)?)?;
     m.add_function(wrap_pyfunction!(grundy_graph, m)?)?;
     m.add_function(wrap_pyfunction!(mex, m)?)?;
     m.add_function(wrap_pyfunction!(outcomes, m)?)?;
@@ -824,5 +1016,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(octal_moves, m)?)?;
     m.add_function(wrap_pyfunction!(octal_misere_quotient, m)?)?;
     m.add_function(wrap_pyfunction!(loopy_nim_values, m)?)?;
+    m.add_function(wrap_pyfunction!(loopy_nim_values_certified, m)?)?;
     Ok(())
 }

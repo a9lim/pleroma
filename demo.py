@@ -178,6 +178,17 @@ print("  (ω+1)³       =", w1.nim_mul(w1).nim_mul(w1), "  (= ω² + ω + nim_ad
 print("  ω³ ⊗ ω       :", pl.Ordinal.omega_pow(pl.Ordinal(3)).nim_mul(omega))
 print("  ω^ω staged   :", pl.Ordinal.omega_pow(omega).nim_mul(omega))
 
+section("coin-turning games — the game-built nim product")
+print("  singleton companions at n=4:", pl.coin_companions("singleton", 4))
+print("  singleton Grundy g(n):", [pl.coin_turning_grundy("singleton", n) for n in range(6)])
+print("  turtles Grundy g(n)  :", [pl.coin_turning_grundy("turtles", n) for n in range(6)])
+print("  Tartan singleton×singleton (2,4):",
+      pl.tartan_grundy("singleton", "singleton", 2, 4),
+      "= nim_mul_mex", pl.nim_mul_mex(2, 4))
+print("  Tartan singleton×turtles (3,2):",
+      pl.tartan_grundy("singleton", "turtles", 3, 2),
+      "=", pl.nim_mul_mex(3, pl.coin_turning_grundy("turtles", 2)))
+
 section("outermorphisms + determinant — Grassmann's def, char-faithful")
 R = pl.SurrealAlgebra(q=[1, 1])
 print("  det [[2,1],[3,4]] = 2·4−1·3 =", R.determinant([[2, 3], [1, 4]]))  # columns f(e_i)
@@ -239,12 +250,29 @@ e0, e1, e2, stab = pl.e_staircase_oddchar(5, [1, 2, 3])
 print(f"  ⟨1,2,3⟩/F5: e0={e0} (dim) e1={e1} (disc) e2={e2:+} (Hasse), I^{stab}=0")
 # Over ℝ the tower is infinite: eₙ reads the 2-adic expansion of the signature.
 print("  ⟨1,1,1,1⟩/ℝ (sig 4): eₙ for n=0..3 =", [pl.e_real(4, n) for n in range(4)])
+print("  numeric invariants of F5:",
+      "level", pl.finite_field_level(5),
+      "pythagoras", pl.finite_field_pythagoras_number(5),
+      "u", pl.finite_field_u_invariant(5))
+print("  2 is a sum of two squares in F3:", pl.is_sum_of_n_squares(3, 2, 2))
+
+section("symplectic and Hermitian forms — form + involution siblings")
+print("  2 hyperbolic symplectic planes:", pl.SymplecticForm.hyperbolic(2).classify())
+print("  char-2 alternating [[0,1],[1,0]]:", pl.classify_symplectic_nimber([[0, 1], [1, 0]]))
+H = pl.HermitianForm([[pl.Surcomplex(2, 0), pl.Surcomplex(0, 1)],
+                      [pl.Surcomplex(0, -1), pl.Surcomplex(2, 0)]])
+print("  Hermitian [[2,i],[-i,2]]:", H.signature(), "diagonal", H.diagonalize())
+print("  diagonal Hermitian ⟨1,-1,0⟩:", pl.HermitianForm.diagonal([1, -1, 0]).signature())
 
 section("p-adic Hilbert symbol + Hasse–Minkowski over Q")
 print("  (−1,−1)_2 =", pl.hilbert_symbol_qp(-1, -1, 2),
       " — Hamilton's quaternions ramify at 2 (finite fields can't show this)")
 for f in ([1, 1, 1], [1, 1, -1], [1, 1, -3], [1, 1, 1, 1, -1]):
     print(f"  ⟨{','.join(map(str, f))}⟩ isotropic over Q:", pl.is_isotropic_q(f))
+
+section("loopy impartial games — Side values with a certificate")
+values, cert = pl.loopy_nim_values_certified([[1], [0], []])
+print("  2-cycle plus terminal:", values, cert, "outcomes", cert.outcomes)
 
 section("Brauer–Wall group — BW(ℝ)=ℤ/8 is the Bott clock")
 # walk ⟨−1⟩⊗̂…⊗̂⟨−1⟩: the Bott index cycles mod 8.
@@ -323,6 +351,9 @@ for g, name in [(pl.Game.switch(1, -1), "{1|-1}"),
                 (pl.Game.star(), "*"), (pl.Game.up(), "↑")]:
     print(f"  {name:8} temp={g.temperature()!r:>4}  mean={g.mean_value()!r:>4}"
           f"  stops=({g.left_stop()!r},{g.right_stop()!r})")
+hot = pl.Game.switch(3, -1)
+print("  cooled stops at t=1        :", hot.cooled_stops(1),
+      " tropical mirror equal:", hot.thermograph() == hot.thermograph_via_tropical())
 
 section("surreal sign-expansion & floor (the omnific bridge)")
 print("  sign expansion of 3/4    :", pl.rational(3, 4).sign_expansion(), " (+ − +)")
@@ -361,6 +392,7 @@ section("NumberGame — games of transfinite birthday (numbers only)")
 ng = pl.NumberGame.from_surreal(w)
 print("  value =", ng.value(), " birthday =", ng.birthday_repr(),
       " short game? =", ng.to_finite_game())
+print("  sign-exp(ω) as runs         :", ng.sign_expansion())
 print("  ω + 1 (delegated to surreal) :", (ng + pl.NumberGame.from_surreal(pl.surreal(1))).value())
 
 section("NimberGame — the char-2 mirror: transfinite Nim heaps ⋆α (No ↔ On₂)")
@@ -413,6 +445,42 @@ section("local–global — Hasse–Minkowski + Hilbert reciprocity over ℚ")
 ai = pl.isotropy_over_adeles([1, 1, 1])           # ⟨1,1,1⟩ anisotropic over ℚ
 print("  ⟨1,1,1⟩ isotropy by place    :", ai, " global:", ai.is_global())
 print("  ∏_v (−1,−1)_v = +1 (recip.)  :", pl.hilbert_product((-1, 1), (-1, 1)))
+
+section("runtime p-adic cells + adeles — the scalar side of local–global")
+k3 = pl.Adele.finite_precision(3)
+third_3 = pl.LocalQp.from_rational(3, k3, 1, 3)
+two_3 = pl.LocalQp(3, k3, 2)
+print("  1/3 in Q₃ has valuation     :", third_3.valuation(), " unit:", third_3.unit)
+print("  2·(1/3) in Q₃               :", two_3 * third_3)
+adelic = pl.Adele.from_rational(2, 3)
+print("  diagonal 2/3 local at 3      :", adelic.local_at(3),
+      " norm:", adelic.idele_norm(), " product formula:", adelic.satisfies_product_formula())
+print("  adding a 3-adic correction   :", adelic.with_correction(3, pl.LocalQp(3, k3, 1)).local_at(3))
+
+section("tropical semirings — the dual walls behind thermography")
+mx3, mx5 = pl.MaxPlusTropical.finite(3, 1), pl.MaxPlusTropical.finite(5, 1)
+mn3, mn5 = pl.MinPlusTropical.finite(3, 1), pl.MinPlusTropical.finite(5, 1)
+print("  max-plus 3 ⊕ 5, 3 ⊗ 5       :", mx3 + mx5, mx3 * mx5)
+print("  min-plus 3 ⊕ 5, 3 ⊗ 5       :", mn3 + mn5, mn3 * mn5)
+
+section("quadric fitting + Gold forms — the Python research bench")
+fit = pl.fit_f2_quadratic([0, 1, 2], 2)            # Q=x0x1 zero set
+print("  fit zero-set {00,01,10}     :", fit, " genuine:", fit.is_genuinely_quadratic())
+gold = pl.gold_form_arf(8, 1)
+print("  Gold Q₁ over F₂⁸             :", gold, " rank/rad:", (gold.rank, gold.radical_dim))
+gold_alg = pl.gold_form_algebra(4, 1)
+print("  same Gold form as Cl metric  :", pl.arf_invariant(gold_alg))
+
+section("integral lattices — ADE, genus, mass, Leech constants")
+A2 = pl.IntegralForm.a(2)
+E8 = pl.root_lattice_e8()
+print("  A₂ det/min/kissing/Coxeter   :",
+      A2.determinant(), A2.minimum(), A2.kissing_number(), A2.coxeter_number())
+print("  E₈ even unimodular aut order :", E8.is_even(), E8.is_unimodular(), E8.automorphism_group_order())
+gen = A2.genus()
+print("  genus(A₂) primes/symbol@3    :", gen.primes(), gen.symbol_at(3))
+print("  mass rank 8 even unimodular  :", pl.mass_even_unimodular(8),
+      " Leech |Aut|:", pl.leech_aut_order())
 
 section("nimber Galois — Frobenius x↦x² and its inverse, the nim √")
 n = pl.Nimber(5)

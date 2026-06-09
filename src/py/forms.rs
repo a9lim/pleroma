@@ -4,11 +4,15 @@
 //! These consume the `pub(crate)` algebra types stamped by [`super::engine`].
 
 use super::engine::{NimberAlgebra, NimberMV, SurcomplexAlgebra, SurrealAlgebra};
-use crate::clifford::Metric;
-use crate::forms::{FiniteOddField, WittClass, WittClassG};
-use crate::scalar::{Fp, Fpn, Rational};
+use super::scalars::{parse_surcomplex, parse_surreal, wrap_surreal, PySurreal};
+use crate::clifford::{CliffordAlgebra, Metric};
+use crate::forms::{
+    FiniteOddField, HermitianForm, IntegralForm, SymplecticForm, WittClass, WittClassG,
+};
+use crate::scalar::{Fp, Fpn, Nimber, Rational, Surcomplex, Surreal};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use std::sync::Arc;
 
 #[pyclass(name = "ArfResult", module = "pleroma")]
 struct PyArfResult {
@@ -49,6 +53,41 @@ impl PyArfResult {
     }
 }
 
+#[pyclass(name = "QuadricFit", module = "pleroma")]
+struct PyQuadricFit {
+    inner: crate::forms::QuadricFit,
+}
+
+#[pymethods]
+impl PyQuadricFit {
+    #[getter]
+    fn constant(&self) -> bool {
+        self.inner.constant
+    }
+    #[getter]
+    fn diagonal(&self) -> Vec<bool> {
+        self.inner.qd.clone()
+    }
+    #[getter]
+    fn polar_rows(&self) -> Vec<u128> {
+        self.inner.bmat.clone()
+    }
+    fn arf(&self) -> PyArfResult {
+        PyArfResult {
+            inner: self.inner.arf.clone(),
+        }
+    }
+    fn is_genuinely_quadratic(&self) -> bool {
+        self.inner.is_genuinely_quadratic()
+    }
+    fn __repr__(&self) -> String {
+        format!(
+            "QuadricFit(constant={}, diagonal={:?}, polar_rows={:?}, arf={:?})",
+            self.inner.constant, self.inner.qd, self.inner.bmat, self.inner.arf
+        )
+    }
+}
+
 /// Arf invariant (the char-2 Clifford classifier) of a nimber algebra whose
 /// metric has F₂ entries.
 #[pyfunction]
@@ -57,6 +96,56 @@ fn arf_invariant(alg: &NimberAlgebra) -> PyResult<PyArfResult> {
         PyValueError::new_err("Arf invariant is undefined for general-bilinear metrics")
     })?;
     Ok(PyArfResult { inner })
+}
+
+/// Fit an F₂ quadratic form to a subset of `F_2^k`, returning the recovered
+/// coefficients and Arf data if the set is a quadric.
+#[pyfunction]
+fn fit_f2_quadratic(set: Vec<u128>, k: usize) -> PyResult<Option<PyQuadricFit>> {
+    const MAX_ANF_DIM: usize = 20;
+    if k > MAX_ANF_DIM {
+        return Err(PyValueError::new_err(format!(
+            "fit_f2_quadratic is exponential in k; max supported k is {MAX_ANF_DIM}"
+        )));
+    }
+    let domain_mask = if k == 0 { 0 } else { (1u128 << k) - 1 };
+    if set.iter().any(|&v| v & !domain_mask != 0) {
+        return Err(PyValueError::new_err(format!(
+            "point outside F_2^{k} in fit_f2_quadratic input"
+        )));
+    }
+    Ok(crate::forms::fit_f2_quadratic(&set, k).map(|inner| PyQuadricFit { inner }))
+}
+
+fn validate_gold_args(m: usize) -> PyResult<()> {
+    if !m.is_power_of_two() || m > 128 {
+        return Err(PyValueError::new_err(
+            "Gold form needs m a positive power of two <= 128",
+        ));
+    }
+    Ok(())
+}
+
+/// The Arf data of the Gold form `Q_a(x)=Tr(x^(1+2^a))` on the nim subfield
+/// `F_{2^m}`.
+#[pyfunction]
+fn gold_form_arf(m: usize, a: usize) -> PyResult<PyArfResult> {
+    validate_gold_args(m)?;
+    let metric = crate::forms::gold_form(m, a);
+    crate::forms::arf_invariant(&metric)
+        .map(|inner| PyArfResult { inner })
+        .ok_or_else(|| PyValueError::new_err("Gold form unexpectedly failed Arf classification"))
+}
+
+/// The Gold form as a `NimberAlgebra`, so Python can inspect the underlying
+/// Clifford product as well as its Arf invariant.
+#[pyfunction]
+fn gold_form_algebra(m: usize, a: usize) -> PyResult<NimberAlgebra> {
+    validate_gold_args(m)?;
+    let metric = crate::forms::gold_form(m, a);
+    Ok(NimberAlgebra {
+        inner: Arc::new(CliffordAlgebra::new(metric.q.len(), metric)),
+    })
 }
 // ---------------------------------------------------------------------------
 // Char-0 classifier
@@ -201,6 +290,210 @@ fn dickson_of_versor(v: &NimberMV) -> PyResult<u8> {
     crate::forms::dickson_of_versor(&v.alg, &v.mv)
         .ok_or_else(|| PyValueError::new_err("not an invertible homogeneous versor"))
 }
+
+// ---------------------------------------------------------------------------
+// Alternating and Hermitian forms (the "form + involution" siblings)
+// ---------------------------------------------------------------------------
+
+#[pyclass(name = "SymplecticClass", module = "pleroma")]
+struct PySymplecticClass {
+    inner: crate::forms::SymplecticClass,
+}
+
+#[pymethods]
+impl PySymplecticClass {
+    #[getter]
+    fn rank(&self) -> usize {
+        self.inner.rank
+    }
+    #[getter]
+    fn radical_dim(&self) -> usize {
+        self.inner.radical_dim
+    }
+    fn planes(&self) -> usize {
+        self.inner.planes()
+    }
+    fn __repr__(&self) -> String {
+        format!(
+            "SymplecticClass(rank={}, radical_dim={}, planes={})",
+            self.inner.rank,
+            self.inner.radical_dim,
+            self.inner.planes()
+        )
+    }
+}
+
+fn rational_gram(gram: Vec<Vec<i128>>) -> Vec<Vec<Rational>> {
+    gram.into_iter()
+        .map(|row| row.into_iter().map(Rational::int).collect())
+        .collect()
+}
+
+#[pyclass(name = "SymplecticForm", module = "pleroma", from_py_object)]
+#[derive(Clone)]
+struct PySymplecticForm {
+    inner: SymplecticForm<Rational>,
+}
+
+#[pymethods]
+impl PySymplecticForm {
+    #[new]
+    fn new(gram: Vec<Vec<i128>>) -> PyResult<Self> {
+        SymplecticForm::from_gram(rational_gram(gram))
+            .map(|inner| PySymplecticForm { inner })
+            .ok_or_else(|| PyValueError::new_err("Gram matrix must be square and alternating"))
+    }
+    #[staticmethod]
+    fn hyperbolic(r: usize) -> PySymplecticForm {
+        PySymplecticForm {
+            inner: SymplecticForm::hyperbolic(r),
+        }
+    }
+    #[getter]
+    fn dim(&self) -> usize {
+        self.inner.dim()
+    }
+    fn direct_sum(&self, other: &PySymplecticForm) -> PySymplecticForm {
+        PySymplecticForm {
+            inner: self.inner.direct_sum(&other.inner),
+        }
+    }
+    fn classify(&self) -> PySymplecticClass {
+        PySymplecticClass {
+            inner: self.inner.classify(),
+        }
+    }
+    fn __repr__(&self) -> String {
+        format!("SymplecticForm(dim={})", self.inner.dim())
+    }
+}
+
+/// Classify an integer/rational alternating Gram matrix: complete invariant
+/// `(rank, radical_dim)`.
+#[pyfunction]
+fn classify_symplectic(gram: Vec<Vec<i128>>) -> PyResult<PySymplecticClass> {
+    crate::forms::classify_symplectic(rational_gram(gram))
+        .map(|inner| PySymplecticClass { inner })
+        .ok_or_else(|| PyValueError::new_err("Gram matrix must be square and alternating"))
+}
+
+/// The same alternating-form classifier over the nimber backend, where
+/// alternating means symmetric with zero diagonal because `-1 = 1`.
+#[pyfunction]
+fn classify_symplectic_nimber(gram: Vec<Vec<u128>>) -> PyResult<PySymplecticClass> {
+    let gram: Vec<Vec<Nimber>> = gram
+        .into_iter()
+        .map(|row| row.into_iter().map(Nimber).collect())
+        .collect();
+    crate::forms::classify_symplectic(gram)
+        .map(|inner| PySymplecticClass { inner })
+        .ok_or_else(|| PyValueError::new_err("Nimber Gram matrix must be square and alternating"))
+}
+
+#[pyclass(name = "HermitianSignature", module = "pleroma")]
+struct PyHermitianSignature {
+    inner: crate::forms::HermitianSignature,
+}
+
+#[pymethods]
+impl PyHermitianSignature {
+    #[getter]
+    fn pos(&self) -> usize {
+        self.inner.pos
+    }
+    #[getter]
+    fn neg(&self) -> usize {
+        self.inner.neg
+    }
+    #[getter]
+    fn radical(&self) -> usize {
+        self.inner.radical
+    }
+    fn as_tuple(&self) -> (usize, usize, usize) {
+        (self.inner.pos, self.inner.neg, self.inner.radical)
+    }
+    fn __repr__(&self) -> String {
+        format!(
+            "HermitianSignature(pos={}, neg={}, radical={})",
+            self.inner.pos, self.inner.neg, self.inner.radical
+        )
+    }
+}
+
+#[pyclass(name = "HermitianForm", module = "pleroma", from_py_object)]
+#[derive(Clone)]
+struct PyHermitianForm {
+    inner: HermitianForm<Surreal>,
+}
+
+fn parse_surcomplex_gram(
+    gram: Vec<Vec<Bound<'_, PyAny>>>,
+) -> PyResult<Vec<Vec<Surcomplex<Surreal>>>> {
+    let n = gram.len();
+    let mut out = Vec::with_capacity(n);
+    for row in &gram {
+        if row.len() != n {
+            return Err(PyValueError::new_err("Gram matrix must be square"));
+        }
+        let mut r = Vec::with_capacity(n);
+        for x in row {
+            r.push(parse_surcomplex(x)?);
+        }
+        out.push(r);
+    }
+    Ok(out)
+}
+
+#[pymethods]
+impl PyHermitianForm {
+    #[new]
+    fn new(gram: Vec<Vec<Bound<'_, PyAny>>>) -> PyResult<Self> {
+        HermitianForm::from_gram(parse_surcomplex_gram(gram)?)
+            .map(|inner| PyHermitianForm { inner })
+            .ok_or_else(|| PyValueError::new_err("Gram matrix must be Hermitian"))
+    }
+    #[staticmethod]
+    fn from_skew(gram: Vec<Vec<Bound<'_, PyAny>>>) -> PyResult<PyHermitianForm> {
+        HermitianForm::from_skew(parse_surcomplex_gram(gram)?)
+            .map(|inner| PyHermitianForm { inner })
+            .ok_or_else(|| PyValueError::new_err("Gram matrix must be skew-Hermitian"))
+    }
+    #[staticmethod]
+    fn diagonal(reals: Vec<Bound<'_, PyAny>>) -> PyResult<PyHermitianForm> {
+        let mut ds = Vec::with_capacity(reals.len());
+        for x in &reals {
+            ds.push(parse_surreal(x)?);
+        }
+        Ok(PyHermitianForm {
+            inner: HermitianForm::diagonal(ds),
+        })
+    }
+    #[getter]
+    fn dim(&self) -> usize {
+        self.inner.dim()
+    }
+    fn direct_sum(&self, other: &PyHermitianForm) -> PyHermitianForm {
+        PyHermitianForm {
+            inner: self.inner.direct_sum(&other.inner),
+        }
+    }
+    fn diagonalize(&self) -> Vec<PySurreal> {
+        self.inner
+            .diagonalize()
+            .into_iter()
+            .map(wrap_surreal)
+            .collect()
+    }
+    fn signature(&self) -> PyHermitianSignature {
+        PyHermitianSignature {
+            inner: self.inner.signature(|x| x.sign()),
+        }
+    }
+    fn __repr__(&self) -> String {
+        format!("HermitianForm(dim={})", self.inner.dim())
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Odd-characteristic classifier (the trichotomy's third leg)
 // ---------------------------------------------------------------------------
@@ -579,6 +872,77 @@ fn is_square_mod(p: u128, x: i128, degree: usize) -> PyResult<bool> {
     PyFiniteFieldForm::new(p, Vec::new(), degree)?.is_square(x)
 }
 
+fn unsupported_prime_field_err() -> PyErr {
+    PyValueError::new_err("supported prime fields: F_2, F_3, F_5, F_7, F_11, F_13")
+}
+
+macro_rules! with_prime_field {
+    ($p:expr, $body:ident) => {{
+        match $p {
+            2 => $body::<2>(),
+            3 => $body::<3>(),
+            5 => $body::<5>(),
+            7 => $body::<7>(),
+            11 => $body::<11>(),
+            13 => $body::<13>(),
+            _ => return Err(unsupported_prime_field_err()),
+        }
+    }};
+}
+
+fn level_for_prime<const P: u128>() -> PyResult<Option<usize>> {
+    Ok(crate::forms::level::<P>())
+}
+
+fn pythagoras_for_prime<const P: u128>() -> PyResult<Option<usize>> {
+    Ok(crate::forms::pythagoras_number::<P>())
+}
+
+fn u_invariant_for_prime<const P: u128>() -> PyResult<Option<usize>> {
+    Ok(crate::forms::u_invariant::<P>())
+}
+
+fn sum_of_squares_for_prime<const P: u128>(x: i128, n: usize) -> PyResult<bool> {
+    Ok(crate::forms::is_sum_of_n_squares::<P>(Fp::<P>::new(x), n))
+}
+
+/// The level/Stufe of the prime field `F_p`: least `n` with `-1` a sum of `n`
+/// squares. Returns `None` only for the char-2/degenerate cases where the Rust
+/// invariant deliberately declines; supported dispatch primes are finite.
+#[pyfunction]
+fn finite_field_level(p: u128) -> PyResult<Option<usize>> {
+    with_prime_field!(p, level_for_prime)
+}
+
+/// The Pythagoras number of the prime field `F_p`: least `n` such that every sum
+/// of squares is already a sum of `n` squares.
+#[pyfunction]
+fn finite_field_pythagoras_number(p: u128) -> PyResult<Option<usize>> {
+    with_prime_field!(p, pythagoras_for_prime)
+}
+
+/// The u-invariant of the prime field `F_p`: largest dimension of an anisotropic
+/// quadratic form. In characteristic 2 this returns `None` because the diagonal
+/// odd-characteristic model is not the right form theory.
+#[pyfunction]
+fn finite_field_u_invariant(p: u128) -> PyResult<Option<usize>> {
+    with_prime_field!(p, u_invariant_for_prime)
+}
+
+/// Is `x` a sum of exactly `n` squares in the prime field `F_p`?
+#[pyfunction]
+fn is_sum_of_n_squares(p: u128, x: i128, n: usize) -> PyResult<bool> {
+    match p {
+        2 => sum_of_squares_for_prime::<2>(x, n),
+        3 => sum_of_squares_for_prime::<3>(x, n),
+        5 => sum_of_squares_for_prime::<5>(x, n),
+        7 => sum_of_squares_for_prime::<7>(x, n),
+        11 => sum_of_squares_for_prime::<11>(x, n),
+        13 => sum_of_squares_for_prime::<13>(x, n),
+        _ => Err(unsupported_prime_field_err()),
+    }
+}
+
 /// The Hasse–Witt invariant of a diagonal form `q` over `F_p` (always +1 over a
 /// finite field).
 #[pyfunction]
@@ -790,6 +1154,283 @@ fn isotropy_over_adeles(entries: Vec<i128>) -> PyResult<PyAdelicIsotropy> {
 }
 
 // ---------------------------------------------------------------------------
+// Integral lattices, genus, ADE catalogue, mass / Leech
+// ---------------------------------------------------------------------------
+
+#[pyclass(name = "ScaleSymbol", module = "pleroma", skip_from_py_object)]
+#[derive(Clone)]
+struct PyScaleSymbol {
+    inner: crate::forms::ScaleSymbol,
+}
+
+#[pymethods]
+impl PyScaleSymbol {
+    #[getter]
+    fn scale(&self) -> u32 {
+        self.inner.scale
+    }
+    #[getter]
+    fn dim(&self) -> usize {
+        self.inner.dim
+    }
+    #[getter]
+    fn sign(&self) -> i8 {
+        self.inner.sign
+    }
+    #[getter]
+    fn det_mod8(&self) -> i64 {
+        self.inner.det_mod8
+    }
+    #[getter]
+    fn type_ii(&self) -> bool {
+        self.inner.type_ii
+    }
+    #[getter]
+    fn oddity(&self) -> i64 {
+        self.inner.oddity
+    }
+    fn __repr__(&self) -> String {
+        format!("{:?}", self.inner)
+    }
+}
+
+#[pyclass(name = "Genus", module = "pleroma", skip_from_py_object)]
+#[derive(Clone)]
+struct PyGenus {
+    inner: crate::forms::Genus,
+}
+
+#[pymethods]
+impl PyGenus {
+    #[getter]
+    fn dim(&self) -> usize {
+        self.inner.dim
+    }
+    #[getter]
+    fn signature(&self) -> (usize, usize) {
+        self.inner.signature
+    }
+    #[getter]
+    fn det(&self) -> i128 {
+        self.inner.det
+    }
+    fn primes(&self) -> Vec<u128> {
+        self.inner.primes()
+    }
+    fn symbol_at(&self, p: u128) -> Vec<PyScaleSymbol> {
+        self.inner
+            .symbol_at(p)
+            .iter()
+            .cloned()
+            .map(|inner| PyScaleSymbol { inner })
+            .collect()
+    }
+    fn __repr__(&self) -> String {
+        format!(
+            "Genus(dim={}, signature={:?}, det={}, primes={:?})",
+            self.inner.dim,
+            self.inner.signature,
+            self.inner.det,
+            self.inner.primes()
+        )
+    }
+}
+
+#[pyclass(name = "IntegralForm", module = "pleroma", from_py_object)]
+#[derive(Clone)]
+struct PyIntegralForm {
+    inner: IntegralForm,
+}
+
+fn check_lattice_vec(l: &IntegralForm, v: &[i128], name: &str) -> PyResult<()> {
+    if v.len() != l.dim() {
+        Err(PyValueError::new_err(format!(
+            "{name} has length {}, expected {}",
+            v.len(),
+            l.dim()
+        )))
+    } else {
+        Ok(())
+    }
+}
+
+#[pymethods]
+impl PyIntegralForm {
+    #[new]
+    fn new(gram: Vec<Vec<i128>>) -> PyResult<Self> {
+        IntegralForm::new(gram)
+            .map(|inner| PyIntegralForm { inner })
+            .ok_or_else(|| PyValueError::new_err("Gram matrix must be square and symmetric"))
+    }
+    #[staticmethod]
+    fn diagonal(diag: Vec<i128>) -> PyIntegralForm {
+        PyIntegralForm {
+            inner: IntegralForm::diagonal(&diag),
+        }
+    }
+    #[staticmethod]
+    fn a(n: usize) -> PyResult<PyIntegralForm> {
+        if n < 1 {
+            return Err(PyValueError::new_err("A_n requires n >= 1"));
+        }
+        Ok(PyIntegralForm {
+            inner: crate::forms::a_n(n),
+        })
+    }
+    #[staticmethod]
+    fn d(n: usize) -> PyResult<PyIntegralForm> {
+        if n < 2 {
+            return Err(PyValueError::new_err("D_n requires n >= 2"));
+        }
+        Ok(PyIntegralForm {
+            inner: crate::forms::d_n(n),
+        })
+    }
+    #[staticmethod]
+    fn e6() -> PyIntegralForm {
+        PyIntegralForm {
+            inner: crate::forms::e_6(),
+        }
+    }
+    #[staticmethod]
+    fn e7() -> PyIntegralForm {
+        PyIntegralForm {
+            inner: crate::forms::e_7(),
+        }
+    }
+    #[staticmethod]
+    fn e8() -> PyIntegralForm {
+        PyIntegralForm {
+            inner: crate::forms::e_8(),
+        }
+    }
+    #[staticmethod]
+    fn leech() -> PyIntegralForm {
+        PyIntegralForm {
+            inner: crate::forms::leech(),
+        }
+    }
+    #[getter]
+    fn dim(&self) -> usize {
+        self.inner.dim()
+    }
+    #[getter]
+    fn gram(&self) -> Vec<Vec<i128>> {
+        self.inner.gram().to_vec()
+    }
+    fn inner(&self, x: Vec<i128>, y: Vec<i128>) -> PyResult<i128> {
+        check_lattice_vec(&self.inner, &x, "x")?;
+        check_lattice_vec(&self.inner, &y, "y")?;
+        Ok(self.inner.inner(&x, &y))
+    }
+    fn norm(&self, x: Vec<i128>) -> PyResult<i128> {
+        check_lattice_vec(&self.inner, &x, "x")?;
+        Ok(self.inner.norm(&x))
+    }
+    fn determinant(&self) -> i128 {
+        self.inner.determinant()
+    }
+    fn is_unimodular(&self) -> bool {
+        self.inner.is_unimodular()
+    }
+    fn is_even(&self) -> bool {
+        self.inner.is_even()
+    }
+    fn is_positive_definite(&self) -> bool {
+        self.inner.is_positive_definite()
+    }
+    fn invariant_factors(&self) -> Vec<i128> {
+        self.inner.invariant_factors()
+    }
+    fn level(&self) -> Option<i128> {
+        self.inner.level()
+    }
+    fn direct_sum(&self, other: &PyIntegralForm) -> PyIntegralForm {
+        PyIntegralForm {
+            inner: self.inner.direct_sum(&other.inner),
+        }
+    }
+    fn short_vectors(&self, bound: i128) -> Option<Vec<Vec<i128>>> {
+        self.inner.short_vectors(bound)
+    }
+    fn minimum(&self) -> Option<i128> {
+        self.inner.minimum()
+    }
+    fn minimal_vectors(&self) -> Option<Vec<Vec<i128>>> {
+        self.inner.minimal_vectors()
+    }
+    fn kissing_number(&self) -> Option<usize> {
+        self.inner.kissing_number()
+    }
+    fn automorphism_group_order(&self) -> Option<u128> {
+        self.inner.automorphism_group_order()
+    }
+    fn automorphism_group_order_bounded(&self, node_budget: u64) -> Option<u128> {
+        self.inner.automorphism_group_order_bounded(node_budget)
+    }
+    fn coxeter_number(&self) -> Option<i128> {
+        crate::forms::coxeter_number(&self.inner)
+    }
+    fn is_root_lattice(&self) -> bool {
+        crate::forms::is_root_lattice(&self.inner)
+    }
+    fn genus(&self) -> Option<PyGenus> {
+        crate::forms::Genus::of(&self.inner).map(|inner| PyGenus { inner })
+    }
+    fn same_genus(&self, other: &PyIntegralForm) -> bool {
+        crate::forms::are_in_same_genus(&self.inner, &other.inner)
+    }
+    fn __repr__(&self) -> String {
+        format!("IntegralForm(gram={:?})", self.inner.gram())
+    }
+}
+
+#[pyfunction]
+fn root_lattice_a(n: usize) -> PyResult<PyIntegralForm> {
+    PyIntegralForm::a(n)
+}
+
+#[pyfunction]
+fn root_lattice_d(n: usize) -> PyResult<PyIntegralForm> {
+    PyIntegralForm::d(n)
+}
+
+#[pyfunction]
+fn root_lattice_e6() -> PyIntegralForm {
+    PyIntegralForm::e6()
+}
+
+#[pyfunction]
+fn root_lattice_e7() -> PyIntegralForm {
+    PyIntegralForm::e7()
+}
+
+#[pyfunction]
+fn root_lattice_e8() -> PyIntegralForm {
+    PyIntegralForm::e8()
+}
+
+#[pyfunction]
+fn leech_lattice() -> PyIntegralForm {
+    PyIntegralForm::leech()
+}
+
+#[pyfunction]
+fn are_in_same_genus(a: &PyIntegralForm, b: &PyIntegralForm) -> bool {
+    crate::forms::are_in_same_genus(&a.inner, &b.inner)
+}
+
+#[pyfunction]
+fn mass_even_unimodular(n: u32) -> Option<(i128, i128)> {
+    crate::forms::mass_even_unimodular(n)
+}
+
+#[pyfunction]
+fn leech_aut_order() -> u128 {
+    crate::forms::LEECH_AUT_ORDER
+}
+
+// ---------------------------------------------------------------------------
 // Brauer–Wall group
 // ---------------------------------------------------------------------------
 
@@ -880,30 +1521,56 @@ fn bw_class_oddchar(p: u128, q: Vec<i128>) -> PyResult<PyBrauerWallClass> {
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyArfResult>()?;
+    m.add_class::<PyQuadricFit>()?;
     m.add_class::<PyCliffordType>()?;
     m.add_class::<PyWittClass>()?;
     m.add_class::<PyOddCharType>()?;
     m.add_class::<PyFiniteFieldForm>()?;
     m.add_class::<PyWittClassG>()?;
+    m.add_class::<PySymplecticClass>()?;
+    m.add_class::<PySymplecticForm>()?;
+    m.add_class::<PyHermitianSignature>()?;
+    m.add_class::<PyHermitianForm>()?;
     m.add_class::<PySpringerDecomp>()?;
     m.add_class::<PyBrauerWallClass>()?;
     m.add_class::<PyAdelicIsotropy>()?;
+    m.add_class::<PyIntegralForm>()?;
+    m.add_class::<PyScaleSymbol>()?;
+    m.add_class::<PyGenus>()?;
     m.add_function(wrap_pyfunction!(arf_invariant, m)?)?;
+    m.add_function(wrap_pyfunction!(fit_f2_quadratic, m)?)?;
+    m.add_function(wrap_pyfunction!(gold_form_arf, m)?)?;
+    m.add_function(wrap_pyfunction!(gold_form_algebra, m)?)?;
     m.add_function(wrap_pyfunction!(classify_surreal, m)?)?;
     m.add_function(wrap_pyfunction!(classify_surcomplex, m)?)?;
     m.add_function(wrap_pyfunction!(classify_real, m)?)?;
     m.add_function(wrap_pyfunction!(classify_complex, m)?)?;
     m.add_function(wrap_pyfunction!(hilbert_product, m)?)?;
     m.add_function(wrap_pyfunction!(isotropy_over_adeles, m)?)?;
+    m.add_function(wrap_pyfunction!(root_lattice_a, m)?)?;
+    m.add_function(wrap_pyfunction!(root_lattice_d, m)?)?;
+    m.add_function(wrap_pyfunction!(root_lattice_e6, m)?)?;
+    m.add_function(wrap_pyfunction!(root_lattice_e7, m)?)?;
+    m.add_function(wrap_pyfunction!(root_lattice_e8, m)?)?;
+    m.add_function(wrap_pyfunction!(leech_lattice, m)?)?;
+    m.add_function(wrap_pyfunction!(are_in_same_genus, m)?)?;
+    m.add_function(wrap_pyfunction!(mass_even_unimodular, m)?)?;
+    m.add_function(wrap_pyfunction!(leech_aut_order, m)?)?;
     m.add_function(wrap_pyfunction!(witt_class, m)?)?;
     m.add_function(wrap_pyfunction!(dickson_matrix, m)?)?;
     m.add_function(wrap_pyfunction!(dickson_of_versor, m)?)?;
+    m.add_function(wrap_pyfunction!(classify_symplectic, m)?)?;
+    m.add_function(wrap_pyfunction!(classify_symplectic_nimber, m)?)?;
     m.add_function(wrap_pyfunction!(classify_oddchar, m)?)?;
     m.add_function(wrap_pyfunction!(oddchar_witt, m)?)?;
     m.add_function(wrap_pyfunction!(witt_decompose_oddchar, m)?)?;
     m.add_function(wrap_pyfunction!(witt_decompose_real, m)?)?;
     m.add_function(wrap_pyfunction!(is_isometric_oddchar, m)?)?;
     m.add_function(wrap_pyfunction!(is_square_mod, m)?)?;
+    m.add_function(wrap_pyfunction!(finite_field_level, m)?)?;
+    m.add_function(wrap_pyfunction!(finite_field_pythagoras_number, m)?)?;
+    m.add_function(wrap_pyfunction!(finite_field_u_invariant, m)?)?;
+    m.add_function(wrap_pyfunction!(is_sum_of_n_squares, m)?)?;
     m.add_function(wrap_pyfunction!(hasse_invariant, m)?)?;
     m.add_function(wrap_pyfunction!(springer_decompose, m)?)?;
     m.add_function(wrap_pyfunction!(e_staircase_oddchar, m)?)?;

@@ -8,10 +8,15 @@ appear — keeping it out of the core is what stops `cargo test` linking libpyth
 Split per pillar:
 
 - **`scalars.rs`** — the scalar pyclasses (`Nimber`, `Surreal`, `Surcomplex`,
-  `Integer`, `Omnific`, `Ordinal`) + constructors + nim-field free fns. Threads the
+  `Integer`, `Omnific`, `Ordinal`, `LocalQp`, `Adele`, `MaxPlusTropical`,
+  `MinPlusTropical`) + constructors + nim-field free fns. Threads the
   `parse_*`/`wrap_*` hooks the `backend!` macro consumes. Surreal also exposes the
   simplicity bridge; Nimber exposes `pow`/`__pow__`/`frobenius`/`sqrt` alongside the
-  `nim_*` Galois free fns.
+  `nim_*` Galois free fns. `LocalQp` is the runtime-prime p-adic cell (validated
+  before calling the panic-guarded Rust constructors); `Adele` exposes the diagonal
+  embedding, finite-place corrections, local components, idele predicates, and the
+  product-formula surface; the tropical classes expose the dual semiring endpoints
+  that thermography names.
 - **`engine.rs`** — the `backend!` macro → `<World>Algebra` + `<World>MV` pairs
   (Nimber/Surreal/Surcomplex/Integer/Omnific) + conformal GA (`Cga`). MV methods
   cover the full Arc-C suite (clifford_conjugate, scalar_product, commutator,
@@ -22,14 +27,23 @@ Split per pillar:
   (the RUNTIME Fp/Fpn form wrapper — the pattern that sidesteps const generics for
   the odd-char leg), the Brauer–Wall classes (`bw_class_real`, `bw_class_complex`,
   `bw_class_nimber`, `bw_class_oddchar`), `classify_real`/`classify_complex`,
-  `hilbert_product`, and `isotropy_over_adeles`/`AdelicIsotropy`.
+  `hilbert_product`, `isotropy_over_adeles`/`AdelicIsotropy`, `SymplecticForm`,
+  `HermitianForm`, the finite-prime-field numeric invariants (`level`,
+  `pythagoras_number`, `u_invariant`, sum-of-squares), the quadric bench
+  (`fit_f2_quadratic`, `QuadricFit`), Gold-form helpers (`gold_form_arf`,
+  `gold_form_algebra`), and the integral-lattice layer (`IntegralForm`, ADE
+  constructors, `Genus`/`ScaleSymbol`, even-unimodular mass, Leech constants).
 - **`games.rs`** — `Game` / `NumberGame` / `NimberGame` (the char-2 transfinite
   Nim-heap mirror) / `GameExterior` / `Hackenbush` +
-  `nim_mul_mex` / `grundy_graph` / `mex`; the kernel outcome surface
+  `nim_mul_mex` / concrete coin-turning and Tartan probes (`coin_companions`,
+  `coin_turning_grundy`, `tartan_grundy`) / `grundy_graph` / `mex`; the kernel outcome surface
   (`outcomes`/`p_positions`/`scoring_values`, Win/Loss/Draw as strings); the misère/
   octal surface (`nim_canonical`, `misere_nim_p_predicted`, `nim_moves`,
   `octal_moves`, `octal_misere_quotient`, `Quotient`, `AbstractGame`); and the loopy
-  graph engine (`LoopyGraph`, `loopy_nim_values` with Side→None).
+  graph engine (`LoopyGraph`, `loopy_nim_values` with Side→None, and
+  `loopy_nim_values_certified` / `LoopyNimCertificate`). NumberGame exposes the
+  transfinite birthday/sign-expansion bridge; `Game` exposes the ordinary thermograph
+  plus the named tropical mirror and cooled stops.
 
 ## Binding policy & the two structural walls
 
@@ -43,9 +57,13 @@ not gaps, structural limits documented here so nobody re-audits them:
    runtime. There is no `Qp(p=5, k=20)` without a dispatch macro enumerating
    instances or a runtime redesign. Where a runtime entry point was worth it, the
    project already built one — `FiniteFieldForm` (runtime Fp/Fpn for the odd-char
-   forms leg) and `scalar::LocalQp` (runtime-prime p-adic). The rest stay Rust-only.
+   forms leg) and `LocalQp`/`Adele` (runtime-prime p-adic and adelic cells, now
+   bound). The rest stay Rust-only.
    Consequently `springer_padic`/`springer_laurent` and the const-generic field
-   invariants (`level`/`pythagoras_number`/`u_invariant`) are also Rust-only.
+   invariants beyond the fixed Python dispatch set are also Rust-only. The prime
+   field numeric invariants for `F_2`, `F_3`, `F_5`, `F_7`, `F_11`, and `F_13`
+   are exposed as `finite_field_level`, `finite_field_pythagoras_number`,
+   `finite_field_u_invariant`, and `is_sum_of_n_squares`.
 2. **Closure-taking higher-order fns need callback adapters.** `grundy_1d`,
    `tartan_grundy`, the generic `grundy`, and the generic `misere_is_*`/
    `loopy_decision_sets`/`loopy_quadric_probe` take Rust closures. The concrete
@@ -59,15 +77,17 @@ Other deliberate omissions:
   (every rational embeds via `Surreal::from_rational`). The `rational(num, den)`
   helper returns a `Surreal`. So ℚ char-0 Clifford goes through `SurrealAlgebra`,
   not a separate `RationalAlgebra`.
+- **No `Poly` / `RationalFunction` pyclass yet.** The exact global function field
+  `F_q(t)` is generic over a compile-time finite field (`Fp<P>` / `Fpn<P,N>`).
+  Binding it honestly needs either fixed-prime wrapper classes or a runtime
+  finite-field enum. Until that design lands, the function-field scalar and its
+  local-global form layer stay Rust-only rather than exposing a misleading partial
+  dynamic API.
 - **`divided_power.rs`** (Γ(V), the symmetric mirror of the exterior Hopf algebra)
   is a standalone parallel algebra and stays Rust-only — binding it means a second
   `DividedPowerAlgebra` + `DpVector` class hierarchy, not worth it.
 - **The `LoopyValue` stopper catalogue** (on/off/over/under/dud hand-arithmetic) is
   Rust-only; the computational loopy core (`LoopyGraph`, `loopy_nim_values`) is bound.
-- **Full `HermitianForm`/`SymplecticForm`** need Gram-matrix-of-scalars construction
-  in Python; only the signature/classify read-outs would be ergonomic, so they stay
-  Rust-only for now.
-
 ## Rules
 
 - **Never `use pyo3` outside this module; never make it non-optional.** A green

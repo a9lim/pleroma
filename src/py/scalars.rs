@@ -5,8 +5,8 @@
 //! as the per-backend parse/wrap hooks.
 
 use crate::scalar::{
-    ExactRoots, FiniteField, Integer, Nimber, Omnific, Ordinal, Rational, Scalar, Surcomplex,
-    Surreal,
+    Adele, ExactRoots, FiniteField, Integer, LocalQp, MaxPlus, MinPlus, Nimber, Omnific, Ordinal,
+    Rational, Scalar, Surcomplex, Surreal, Tropical,
 };
 use pyo3::basic::CompareOp;
 use pyo3::exceptions::{PyTypeError, PyValueError};
@@ -677,6 +677,454 @@ pub(crate) fn wrap_omnific(o: Omnific) -> PyOmnific {
     PyOmnific { inner: o }
 }
 
+// --- Runtime local/global precision models: LocalQp and Adele ---------------
+
+fn is_prime_u128(p: u128) -> bool {
+    if p < 2 {
+        return false;
+    }
+    if p.is_multiple_of(2) {
+        return p == 2;
+    }
+    let mut d = 3u128;
+    while d <= p / d {
+        if p.is_multiple_of(d) {
+            return false;
+        }
+        d += 2;
+    }
+    true
+}
+
+fn checked_pow_u128(base: u128, exp: u128) -> Option<u128> {
+    if exp > 128 {
+        return None;
+    }
+    let mut acc = 1u128;
+    for _ in 0..exp {
+        acc = acc.checked_mul(base)?;
+    }
+    Some(acc)
+}
+
+fn validate_local_qp_world(p: u128, k: u128) -> PyResult<()> {
+    if !is_prime_u128(p) || k == 0 {
+        return Err(PyValueError::new_err(
+            "LocalQp needs a prime p and positive precision k",
+        ));
+    }
+    if p > i128::MAX as u128 {
+        return Err(PyValueError::new_err(
+            "LocalQp prime must fit the bounded i128 arithmetic model",
+        ));
+    }
+    if checked_pow_u128(p, k).is_none() {
+        return Err(PyValueError::new_err("LocalQp modulus p^k exceeds u128"));
+    }
+    let Some(double_k) = k.checked_mul(2) else {
+        return Err(PyValueError::new_err(
+            "LocalQp precision is too large for checked arithmetic",
+        ));
+    };
+    if checked_pow_u128(p, double_k).is_none() {
+        return Err(PyValueError::new_err(
+            "LocalQp needs (p^k)^2 to fit u128 for safe mantissa arithmetic",
+        ));
+    }
+    Ok(())
+}
+
+fn rational_from_pair(num: i128, den: i128) -> PyResult<Rational> {
+    Rational::try_new(num, den)
+        .ok_or_else(|| PyValueError::new_err("zero denominator or bounded i128 overflow"))
+}
+
+fn rational_pair(q: &Rational) -> (i128, i128) {
+    (q.numer(), q.denom())
+}
+
+fn adele_precision_for_prime(p: u128) -> PyResult<u128> {
+    if !is_prime_u128(p) || p > i128::MAX as u128 {
+        return Err(PyValueError::new_err(
+            "adele finite-place precision needs a prime p within i128",
+        ));
+    }
+    Ok(crate::scalar::global::adele::adele_prec(p))
+}
+
+#[pyclass(name = "LocalQp", module = "pleroma", from_py_object)]
+#[derive(Clone)]
+pub(crate) struct PyLocalQp {
+    inner: LocalQp,
+}
+
+fn parse_local_qp_in_world(obj: &Bound<'_, PyAny>, p: u128, k: u128) -> PyResult<LocalQp> {
+    validate_local_qp_world(p, k)?;
+    if let Ok(x) = obj.cast::<PyLocalQp>() {
+        let x = x.borrow().inner;
+        if x.prime() != p || x.precision() != k {
+            return Err(PyValueError::new_err(format!(
+                "cannot mix LocalQp worlds Q_{}@{} and Q_{}@{}",
+                p,
+                k,
+                x.prime(),
+                x.precision()
+            )));
+        }
+        return Ok(x);
+    }
+    if let Ok(v) = obj.extract::<i128>() {
+        return Ok(LocalQp::from_i128(p, k, v));
+    }
+    Err(PyTypeError::new_err(
+        "expected LocalQp from the same (p,k) world or int",
+    ))
+}
+
+#[pymethods]
+impl PyLocalQp {
+    #[new]
+    #[pyo3(signature = (p, k, value=0))]
+    fn new(p: u128, k: u128, value: i128) -> PyResult<Self> {
+        validate_local_qp_world(p, k)?;
+        Ok(PyLocalQp {
+            inner: LocalQp::from_i128(p, k, value),
+        })
+    }
+    #[staticmethod]
+    fn zero(p: u128, k: u128) -> PyResult<PyLocalQp> {
+        validate_local_qp_world(p, k)?;
+        Ok(PyLocalQp {
+            inner: LocalQp::zero(p, k),
+        })
+    }
+    #[staticmethod]
+    fn one(p: u128, k: u128) -> PyResult<PyLocalQp> {
+        validate_local_qp_world(p, k)?;
+        Ok(PyLocalQp {
+            inner: LocalQp::one(p, k),
+        })
+    }
+    #[staticmethod]
+    fn from_p_power(p: u128, k: u128, v: i128) -> PyResult<PyLocalQp> {
+        validate_local_qp_world(p, k)?;
+        Ok(PyLocalQp {
+            inner: LocalQp::from_p_power(p, k, v),
+        })
+    }
+    #[staticmethod]
+    fn from_rational(p: u128, k: u128, num: i128, den: i128) -> PyResult<PyLocalQp> {
+        validate_local_qp_world(p, k)?;
+        let q = rational_from_pair(num, den)?;
+        Ok(PyLocalQp {
+            inner: LocalQp::from_rational(p, k, &q),
+        })
+    }
+    #[getter]
+    fn prime(&self) -> u128 {
+        self.inner.prime()
+    }
+    #[getter]
+    fn precision(&self) -> u128 {
+        self.inner.precision()
+    }
+    #[getter]
+    fn unit(&self) -> u128 {
+        self.inner.unit()
+    }
+    fn modulus(&self) -> u128 {
+        self.inner.modulus()
+    }
+    fn valuation(&self) -> Option<i128> {
+        self.inner.valuation()
+    }
+    fn is_zero(&self) -> bool {
+        self.inner.is_zero()
+    }
+    fn inv(&self) -> PyResult<PyLocalQp> {
+        self.inner
+            .inv()
+            .map(|inner| PyLocalQp { inner })
+            .ok_or_else(|| PyValueError::new_err("0 has no p-adic inverse"))
+    }
+    fn __add__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyLocalQp> {
+        let rhs = parse_local_qp_in_world(other, self.inner.prime(), self.inner.precision())?;
+        Ok(PyLocalQp {
+            inner: self.inner.add(&rhs),
+        })
+    }
+    fn __radd__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyLocalQp> {
+        self.__add__(other)
+    }
+    fn __sub__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyLocalQp> {
+        let rhs = parse_local_qp_in_world(other, self.inner.prime(), self.inner.precision())?;
+        Ok(PyLocalQp {
+            inner: self.inner.add(&rhs.neg()),
+        })
+    }
+    fn __rsub__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyLocalQp> {
+        let lhs = parse_local_qp_in_world(other, self.inner.prime(), self.inner.precision())?;
+        Ok(PyLocalQp {
+            inner: lhs.add(&self.inner.neg()),
+        })
+    }
+    fn __neg__(&self) -> PyLocalQp {
+        PyLocalQp {
+            inner: self.inner.neg(),
+        }
+    }
+    fn __mul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyLocalQp> {
+        let rhs = parse_local_qp_in_world(other, self.inner.prime(), self.inner.precision())?;
+        Ok(PyLocalQp {
+            inner: self.inner.mul(&rhs),
+        })
+    }
+    fn __rmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyLocalQp> {
+        self.__mul__(other)
+    }
+    fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyLocalQp> {
+        let rhs = parse_local_qp_in_world(other, self.inner.prime(), self.inner.precision())?;
+        let rinv = rhs
+            .inv()
+            .ok_or_else(|| PyValueError::new_err("division by 0 in LocalQp"))?;
+        Ok(PyLocalQp {
+            inner: self.inner.mul(&rinv),
+        })
+    }
+    fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
+        matches!(other.cast::<PyLocalQp>(), Ok(x) if x.borrow().inner == self.inner)
+    }
+    fn __repr__(&self) -> String {
+        format!("{:?}", self.inner)
+    }
+}
+
+fn parse_adele(obj: &Bound<'_, PyAny>) -> PyResult<Adele> {
+    if let Ok(a) = obj.cast::<PyAdele>() {
+        return Ok(a.borrow().inner.clone());
+    }
+    if let Ok(v) = obj.extract::<i128>() {
+        return Ok(Adele::from_rational(&Rational::int(v)));
+    }
+    Err(PyTypeError::new_err("expected Adele or int"))
+}
+
+#[pyclass(name = "Adele", module = "pleroma", from_py_object)]
+#[derive(Clone)]
+pub(crate) struct PyAdele {
+    inner: Adele,
+}
+
+#[pymethods]
+impl PyAdele {
+    #[new]
+    #[pyo3(signature = (num=0, den=1))]
+    fn new(num: i128, den: i128) -> PyResult<Self> {
+        let q = rational_from_pair(num, den)?;
+        Ok(PyAdele {
+            inner: Adele::from_rational(&q),
+        })
+    }
+    #[staticmethod]
+    fn from_rational(num: i128, den: i128) -> PyResult<PyAdele> {
+        PyAdele::new(num, den)
+    }
+    #[staticmethod]
+    fn finite_precision(p: u128) -> PyResult<u128> {
+        adele_precision_for_prime(p)
+    }
+    fn with_correction(&self, p: u128, dev: &PyLocalQp) -> PyResult<PyAdele> {
+        let expected = adele_precision_for_prime(p)?;
+        if dev.inner.prime() != p || dev.inner.precision() != expected {
+            return Err(PyValueError::new_err(format!(
+                "Adele correction at p={p} must be LocalQp(p={p}, k={expected})"
+            )));
+        }
+        Ok(PyAdele {
+            inner: self.inner.clone().with_correction(p, dev.inner),
+        })
+    }
+    fn with_archimedean(&self, num: i128, den: i128) -> PyResult<PyAdele> {
+        Ok(PyAdele {
+            inner: self
+                .inner
+                .clone()
+                .with_archimedean(rational_from_pair(num, den)?),
+        })
+    }
+    #[getter]
+    fn principal(&self) -> (i128, i128) {
+        rational_pair(self.inner.principal())
+    }
+    #[getter]
+    fn archimedean(&self) -> (i128, i128) {
+        rational_pair(self.inner.archimedean())
+    }
+    fn local_at(&self, p: u128) -> PyResult<PyLocalQp> {
+        adele_precision_for_prime(p)?;
+        Ok(PyLocalQp {
+            inner: self.inner.local_at(p),
+        })
+    }
+    fn is_principal(&self) -> bool {
+        self.inner.is_principal()
+    }
+    fn is_idele(&self) -> bool {
+        self.inner.is_idele()
+    }
+    fn is_integral(&self) -> bool {
+        self.inner.is_integral()
+    }
+    fn absolute_value_real(&self) -> (i128, i128) {
+        rational_pair(
+            &self
+                .inner
+                .absolute_value_at(crate::scalar::AdelePlace::Real),
+        )
+    }
+    fn absolute_value_at(&self, p: u128) -> PyResult<(i128, i128)> {
+        adele_precision_for_prime(p)?;
+        Ok(rational_pair(
+            &self
+                .inner
+                .absolute_value_at(crate::scalar::AdelePlace::Prime(p)),
+        ))
+    }
+    fn idele_norm(&self) -> (i128, i128) {
+        rational_pair(&self.inner.idele_norm())
+    }
+    fn satisfies_product_formula(&self) -> bool {
+        self.inner.satisfies_product_formula()
+    }
+    fn inv(&self) -> PyResult<PyAdele> {
+        self.inner
+            .inv()
+            .map(|inner| PyAdele { inner })
+            .ok_or_else(|| PyValueError::new_err("adele is not an idele"))
+    }
+    fn __add__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyAdele> {
+        Ok(PyAdele {
+            inner: self.inner.add(&parse_adele(other)?),
+        })
+    }
+    fn __radd__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyAdele> {
+        self.__add__(other)
+    }
+    fn __sub__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyAdele> {
+        Ok(PyAdele {
+            inner: self.inner.sub(&parse_adele(other)?),
+        })
+    }
+    fn __rsub__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyAdele> {
+        Ok(PyAdele {
+            inner: parse_adele(other)?.sub(&self.inner),
+        })
+    }
+    fn __neg__(&self) -> PyAdele {
+        PyAdele {
+            inner: self.inner.neg(),
+        }
+    }
+    fn __mul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyAdele> {
+        Ok(PyAdele {
+            inner: self.inner.mul(&parse_adele(other)?),
+        })
+    }
+    fn __rmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyAdele> {
+        self.__mul__(other)
+    }
+    fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyAdele> {
+        let rhs = parse_adele(other)?;
+        let rinv = rhs
+            .inv()
+            .ok_or_else(|| PyValueError::new_err("Adele divisor is not an idele"))?;
+        Ok(PyAdele {
+            inner: self.inner.mul(&rinv),
+        })
+    }
+    fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
+        matches!(other.cast::<PyAdele>(), Ok(a) if a.borrow().inner == self.inner)
+    }
+    fn __repr__(&self) -> String {
+        format!("{:?}", self.inner)
+    }
+}
+
+macro_rules! tropical_pyclass {
+    ($py:ident, $name:literal, $conv:ty) => {
+        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[derive(Clone)]
+        pub(crate) struct $py {
+            inner: Tropical<$conv>,
+        }
+
+        #[pymethods]
+        impl $py {
+            #[new]
+            #[pyo3(signature = (num=None, den=1))]
+            fn new(num: Option<i128>, den: i128) -> PyResult<Self> {
+                match num {
+                    Some(num) => Ok($py {
+                        inner: Tropical::<$conv>::finite(rational_from_pair(num, den)?),
+                    }),
+                    None => Ok($py {
+                        inner: Tropical::<$conv>::infinity(),
+                    }),
+                }
+            }
+            #[staticmethod]
+            fn finite(num: i128, den: i128) -> PyResult<$py> {
+                Ok($py {
+                    inner: Tropical::<$conv>::finite(rational_from_pair(num, den)?),
+                })
+            }
+            #[staticmethod]
+            fn infinity() -> $py {
+                $py {
+                    inner: Tropical::<$conv>::infinity(),
+                }
+            }
+            #[staticmethod]
+            fn zero() -> $py {
+                $py {
+                    inner: Tropical::<$conv>::zero(),
+                }
+            }
+            #[staticmethod]
+            fn one() -> $py {
+                $py {
+                    inner: Tropical::<$conv>::one(),
+                }
+            }
+            fn value(&self) -> Option<(i128, i128)> {
+                self.inner.value().map(|q| rational_pair(&q))
+            }
+            fn is_infinity(&self) -> bool {
+                self.inner.is_infinity()
+            }
+            fn __add__(&self, other: &$py) -> $py {
+                $py {
+                    inner: self.inner.add(&other.inner),
+                }
+            }
+            fn __mul__(&self, other: &$py) -> $py {
+                $py {
+                    inner: self.inner.mul(&other.inner),
+                }
+            }
+            fn __eq__(&self, other: &$py) -> bool {
+                self.inner == other.inner
+            }
+            fn __repr__(&self) -> String {
+                format!("{:?}", self.inner)
+            }
+        }
+    };
+}
+
+tropical_pyclass!(PyMaxPlusTropical, "MaxPlusTropical", MaxPlus);
+tropical_pyclass!(PyMinPlusTropical, "MinPlusTropical", MinPlus);
+
 /// The omnific integer `n`.
 #[pyfunction]
 fn omnific(n: i128) -> PyOmnific {
@@ -916,6 +1364,10 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PySurcomplex>()?;
     m.add_class::<PyInteger>()?;
     m.add_class::<PyOmnific>()?;
+    m.add_class::<PyLocalQp>()?;
+    m.add_class::<PyAdele>()?;
+    m.add_class::<PyMaxPlusTropical>()?;
+    m.add_class::<PyMinPlusTropical>()?;
     m.add_class::<PyOrdinal>()?;
     m.add_function(wrap_pyfunction!(omnific, m)?)?;
     m.add_function(wrap_pyfunction!(omnific_omega, m)?)?;

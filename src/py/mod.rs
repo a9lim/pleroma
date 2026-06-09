@@ -17,6 +17,8 @@
 
 use pyo3::prelude::*;
 
+#[macro_use]
+mod catalog;
 mod engine;
 mod forms;
 mod games;

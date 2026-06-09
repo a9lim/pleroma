@@ -6,6 +6,7 @@
 //! `forms` module re-exports both the modules and their public items flat.
 
 pub mod codes;
+pub(crate) mod diagonal;
 pub mod discriminant;
 pub mod genus;
 pub mod lattice;

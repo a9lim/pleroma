@@ -39,6 +39,9 @@
 //! [`automorphism_group_order_bounded`](IntegralForm::automorphism_group_order_bounded)
 //! to choose the budget explicitly.
 
+use crate::forms::integral::diagonal::{
+    rational_congruence_diagonal, signature_from_diagonal, DegenerateBehavior,
+};
 use crate::linalg::field::inverse_matrix;
 use crate::linalg::integer::smith_normal_form;
 use crate::scalar::{Nimber, Rational, Scalar};
@@ -79,10 +82,6 @@ fn lcm_i128(a: i128, b: i128) -> i128 {
         .checked_mul(b)
         .expect("lattice level exceeds i128")
         .abs()
-}
-
-fn rdiv(a: &Rational, b: &Rational) -> Rational {
-    a.mul(&b.inv().expect("division by zero rational"))
 }
 
 fn checked_factorial(n: usize) -> Option<u128> {
@@ -427,54 +426,8 @@ impl IntegralForm {
     /// rational congruence diagonalization. Degenerate directions, if any, are
     /// omitted from the pair.
     pub fn signature(&self) -> (usize, usize) {
-        let n = self.dim();
-        let mut a: Vec<Vec<Rational>> = self
-            .gram
-            .iter()
-            .map(|row| row.iter().map(|&x| Rational::int(x)).collect())
-            .collect();
-        let mut active: Vec<usize> = (0..n).collect();
-        let (mut pos, mut neg) = (0usize, 0usize);
-        while !active.is_empty() {
-            if !active.iter().any(|&r| !a[r][r].is_zero()) {
-                let mut pair = None;
-                'find: for (ai, &r) in active.iter().enumerate() {
-                    for &s in &active[ai + 1..] {
-                        if !a[r][s].is_zero() {
-                            pair = Some((r, s));
-                            break 'find;
-                        }
-                    }
-                }
-                let Some((r, s)) = pair else {
-                    break; // remaining block is the radical
-                };
-                for &c in &active {
-                    a[r][c] = a[r][c].add(&a[s][c].clone());
-                }
-                for &rr in &active {
-                    a[rr][r] = a[rr][r].add(&a[rr][s].clone());
-                }
-            }
-            let Some(i) = active.iter().copied().find(|&r| !a[r][r].is_zero()) else {
-                break;
-            };
-            match a[i][i].sign() {
-                std::cmp::Ordering::Greater => pos += 1,
-                std::cmp::Ordering::Less => neg += 1,
-                std::cmp::Ordering::Equal => unreachable!(),
-            }
-            let pivot = a[i][i].clone();
-            let rest: Vec<usize> = active.iter().copied().filter(|&r| r != i).collect();
-            for &r in &rest {
-                for &s in &rest {
-                    let corr = rdiv(&a[r][i].mul(&a[i][s]), &pivot);
-                    a[r][s] = a[r][s].sub(&corr);
-                }
-            }
-            active = rest;
-        }
-        (pos, neg)
+        let diag = rational_congruence_diagonal(&self.gram, DegenerateBehavior::StopAtRadical);
+        signature_from_diagonal(&diag)
     }
 
     /// The invariant factors `d₀ | d₁ | …` of the discriminant group (Smith

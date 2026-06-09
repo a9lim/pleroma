@@ -10,6 +10,7 @@
 //!
 //! The normalized Gauss sum of `q_L` has phase `exp(2*pi*i*signature/8)`.
 
+use crate::forms::integral::diagonal::{rational_congruence_diagonal, DegenerateBehavior};
 use crate::forms::integral::{Genus, IntegralForm};
 use crate::linalg::field::inverse_matrix;
 use crate::linalg::integer::{normalize_relation_rows, reduce_integer_vector};
@@ -502,48 +503,10 @@ fn diagonal_entries(lattice: &IntegralForm) -> Option<Vec<Rational>> {
     if lattice.determinant() == 0 {
         return None;
     }
-    let n = lattice.dim();
-    let mut a: Vec<Vec<Rational>> = lattice
-        .gram()
-        .iter()
-        .map(|row| row.iter().map(|&x| Rational::int(x)).collect())
-        .collect();
-    let mut active: Vec<usize> = (0..n).collect();
-    let mut out = Vec::with_capacity(n);
-    while !active.is_empty() {
-        if !active.iter().any(|&r| !a[r][r].is_zero()) {
-            let mut pair = None;
-            'find: for (ai, &r) in active.iter().enumerate() {
-                for &s in &active[ai + 1..] {
-                    if !a[r][s].is_zero() {
-                        pair = Some((r, s));
-                        break 'find;
-                    }
-                }
-            }
-            let (r, s) = pair?;
-            for &c in &active {
-                a[r][c] = a[r][c].add(&a[s][c].clone());
-            }
-            for &rr in &active {
-                a[rr][r] = a[rr][r].add(&a[rr][s].clone());
-            }
-        }
-        let i = active.iter().copied().find(|&r| !a[r][r].is_zero())?;
-        let pivot = a[i][i].clone();
-        out.push(pivot.clone());
-        let rest: Vec<usize> = active.iter().copied().filter(|&r| r != i).collect();
-        for &r in &rest {
-            for &s in &rest {
-                let corr = a[r][i]
-                    .mul(&a[i][s])
-                    .mul(&pivot.inv().expect("nonzero rational pivot has inverse"));
-                a[r][s] = a[r][s].sub(&corr);
-            }
-        }
-        active = rest;
-    }
-    Some(out)
+    Some(rational_congruence_diagonal(
+        lattice.gram(),
+        DegenerateBehavior::RequireNonsingular,
+    ))
 }
 
 fn relevant_odd_primes(det: i128) -> Vec<u128> {

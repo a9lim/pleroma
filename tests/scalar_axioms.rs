@@ -11,22 +11,13 @@ use pleroma::scalar::{
 };
 use proptest::prelude::*;
 
+mod common;
+use common::proptest_config;
+
 // Default CI/local runs are smoke-sized; deterministic sentinels below own the
 // expensive boundary cases. Set `PLEROMA_PROPTEST_CASES=N` for deeper fuzzing.
 const FAST_CASES: u32 = 2;
 const HEAVY_CASES: u32 = 1;
-
-fn proptest_config(default_cases: u32) -> ProptestConfig {
-    let cases = std::env::var("PLEROMA_PROPTEST_CASES")
-        .or_else(|_| std::env::var("PROPTEST_CASES"))
-        .ok()
-        .and_then(|raw| raw.parse::<u32>().ok())
-        .filter(|&n| n > 0)
-        .unwrap_or(default_cases);
-    let mut config = ProptestConfig::with_cases(cases);
-    config.failure_persistence = None;
-    config
-}
 
 /// Every commutative-ring law, checked on one triple `(a, b, c)`.
 fn ring_axioms<S: Scalar>(a: &S, b: &S, c: &S) {

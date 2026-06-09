@@ -29,6 +29,9 @@
 //! References: Conway–Sloane *SPLAG* Ch. 15 §7; Allcock, *On the classification of
 //! integral quadratic forms* (the corrected 2-adic sign-walking calculus).
 
+use crate::forms::integral::diagonal::{
+    rational_congruence_diagonal, signature_from_diagonal, DegenerateBehavior,
+};
 use crate::forms::lattice::IntegralForm;
 use crate::forms::padic::try_is_square_qp;
 use crate::scalar::{Rational, Scalar};
@@ -304,52 +307,8 @@ fn aggregate(blocks: &[RawBlock], p: i128) -> Vec<ScaleSymbol> {
 /// The signature `(p₊, p₋)` of a nondegenerate symmetric integer matrix, by exact
 /// rational congruence diagonalization (Jacobi/Sylvester): the sign of each pivot.
 fn signature(gram: &[Vec<i128>]) -> (usize, usize) {
-    let n = gram.len();
-    let mut a = to_rational(gram);
-    let mut active: Vec<usize> = (0..n).collect();
-    let (mut pos, mut neg) = (0usize, 0usize);
-    while !active.is_empty() {
-        // Find a nonzero diagonal pivot; if none, a nondegenerate form still has a
-        // nonzero off-diagonal a[r][s], and e_r ← e_r + e_s makes a[r][r] nonzero.
-        if !active.iter().any(|&r| !a[r][r].is_zero()) {
-            let mut pair = None;
-            'find: for (ai, &r) in active.iter().enumerate() {
-                for &s in &active[ai + 1..] {
-                    if !a[r][s].is_zero() {
-                        pair = Some((r, s));
-                        break 'find;
-                    }
-                }
-            }
-            let (r, s) = pair.expect("nondegenerate form has a nonzero entry");
-            for &c in &active {
-                a[r][c] = a[r][c].add(&a[s][c].clone());
-            }
-            for &rr in &active {
-                a[rr][r] = a[rr][r].add(&a[rr][s].clone());
-            }
-        }
-        let i = active
-            .iter()
-            .copied()
-            .find(|&r| !a[r][r].is_zero())
-            .expect("a diagonal pivot now exists");
-        match a[i][i].sign() {
-            std::cmp::Ordering::Greater => pos += 1,
-            std::cmp::Ordering::Less => neg += 1,
-            std::cmp::Ordering::Equal => unreachable!(),
-        }
-        let pivot = a[i][i].clone();
-        let rest: Vec<usize> = active.iter().copied().filter(|&r| r != i).collect();
-        for &r in &rest {
-            for &s in &rest {
-                let corr = rdiv(&a[r][i].mul(&a[i][s]), &pivot);
-                a[r][s] = a[r][s].sub(&corr);
-            }
-        }
-        active = rest;
-    }
-    (pos, neg)
+    let diag = rational_congruence_diagonal(gram, DegenerateBehavior::RequireNonsingular);
+    signature_from_diagonal(&diag)
 }
 
 /// The primes that can carry a nontrivial local invariant: `2` and every odd prime

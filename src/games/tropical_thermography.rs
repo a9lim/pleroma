@@ -24,17 +24,14 @@
 //! Ways*; Conway *ONAG*; Siegel *Combinatorial Game Theory*) made explicit at the
 //! type level — **claim level: standard math, implemented-and-tested**.
 //!
-//! [`thermograph_via_tropical`] is a *parallel* recursion that routes the two
-//! folds through the **named** [`Pl::oplus_max`]/[`Pl::oplus_min`] and then reuses
-//! the *identical* `freeze`/`meeting_temperature` tail from
-//! [`crate::games::thermography`]. Its sole job is to prove the `⊕`-naming is
-//! faithful, so it is pinned **equal** to [`thermograph`] — it is not a second
-//! implementation of cooling.
+//! [`thermograph_via_tropical`] runs the shared thermograph recursion with the
+//! two option folds routed through the **named** [`Pl::oplus_max`]/[`Pl::oplus_min`]
+//! wrappers. Its sole job is to prove the `⊕`-naming is faithful, so it is pinned
+//! **equal** to [`thermograph`] — it is not a second implementation of cooling.
 
-use crate::games::piecewise::{add_pl, combine, sub_pl, Pl};
-use crate::games::thermography::{freeze, meeting_temperature, Thermograph};
+use crate::games::piecewise::{add_pl, combine, Pl};
+use crate::games::thermography::{walls_with, Thermograph};
 use crate::games::Game;
-use crate::scalar::{Rational, Scalar};
 
 impl Pl {
     /// Tropical `⊕` in the **(max, +)** convention — the exact pointwise maximum
@@ -59,55 +56,18 @@ impl Pl {
     }
 }
 
-/// Internal recursion mirroring [`crate::games::thermography`]'s `walls`, but
-/// with the two option folds routed through the **named** tropical `⊕` wrappers
-/// ([`Pl::oplus_max`]/[`Pl::oplus_min`]) and the same `freeze`/
-/// `meeting_temperature` tail. Returns `(left_wall, right_wall, mast, temperature)`.
-fn walls_via_tropical(g: &Game) -> Option<(Pl, Pl, Rational, Rational)> {
-    let g = g.canonical();
-    if g.is_number() {
-        let v = g.number_value()?.as_rational()?; // dyadic ⇒ rational
-        let c = Pl::constant(v.clone());
-        return Some((c.clone(), c, v, Rational::int(-1)));
-    }
-    if g.left().is_empty() || g.right().is_empty() {
-        return None;
-    }
-    // left_raw = ⊕_max over Left options of the option's RIGHT wall
-    let mut left_raw: Option<Pl> = None;
-    for l in g.left() {
-        let rw = walls_via_tropical(l)?.1;
-        left_raw = Some(match left_raw {
-            None => rw,
-            Some(acc) => acc.oplus_max(&rw),
-        });
-    }
-    // right_raw = ⊕_min over Right options of the option's LEFT wall
-    let mut right_raw: Option<Pl> = None;
-    for r in g.right() {
-        let lw = walls_via_tropical(r)?.0;
-        right_raw = Some(match right_raw {
-            None => lw,
-            Some(acc) => acc.oplus_min(&lw),
-        });
-    }
-    let (left_raw, right_raw) = (left_raw.unwrap(), right_raw.unwrap());
-    // The cooling tail is reused verbatim from `thermography` — the naming claim
-    // is about the ⊕ folds above, not a reimplementation of freeze.
-    let e = sub_pl(&left_raw, &right_raw);
-    let tau = meeting_temperature(&e);
-    let mast = left_raw.value_at(&tau).sub(&tau);
-    let left_wall = freeze(&left_raw, &tau, &mast, true);
-    let right_wall = freeze(&right_raw, &tau, &mast, false);
-    Some((left_wall, right_wall, mast, tau))
-}
-
 /// The thermograph of `g`, computed with the option folds named as tropical `⊕`
 /// in the dual `(max, +)`/`(min, +)` semirings. Pinned **equal** to
 /// [`thermograph`] (the inline tests are the proof); `None` on the same
 /// degenerate positions.
 pub fn thermograph_via_tropical(g: &Game) -> Option<Thermograph> {
-    let (left_wall, right_wall, mast, temperature) = walls_via_tropical(g)?;
+    let (left_wall, right_wall, mast, temperature) = walls_with(g, |acc, wall, is_max| {
+        if is_max {
+            acc.oplus_max(wall)
+        } else {
+            acc.oplus_min(wall)
+        }
+    })?;
     Some(Thermograph {
         mast,
         temperature,
@@ -121,6 +81,7 @@ mod tests {
     use super::*;
     use crate::games::piecewise::req;
     use crate::games::thermography::thermograph;
+    use crate::scalar::Rational;
 
     /// Two thermographs are equal iff their masts, temperatures, and both walls
     /// (as breakpoint lists) agree. The walls are byte-identical here because the

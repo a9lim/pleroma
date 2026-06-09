@@ -31,25 +31,7 @@ script confirms the obstruction is exactly B and measures how far {Q=0} is from 
 subspace, for the game-built Gold forms.
 """
 
-import pleroma as pl
-
-
-def gold(v: int, a: int, m: int) -> int:
-    x = pl.Nimber(v)
-    g = x
-    for _ in range(a):
-        g = g * g
-    s = x * g
-    acc, t = s, s
-    for _ in range(m - 1):
-        t = t * t
-        acc = acc + t
-    return acc.value
-
-
-def polar(u: int, v: int, a: int, m: int) -> int:
-    """B(u,v) = Q(u⊕v) ⊕ Q(u) ⊕ Q(v) — the polar form of the Gold form."""
-    return gold(u ^ v, a, m) ^ gold(u, a, m) ^ gold(v, a, m)
+from common import gold, polar
 
 
 if __name__ == "__main__":

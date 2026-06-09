@@ -24,6 +24,8 @@ realized in code from actual games. Only the quadratic play rule is missing.
 
 import pleroma as pl
 
+from common import gold
+
 
 def nim_sq_game(x: int) -> int:
     return pl.nim_mul_mex(x, x)          # the diagonal of Turning Corners
@@ -48,19 +50,6 @@ def b_game(i: int, j: int, a: int, m: int) -> int:
     ei, ej = 1 << i, 1 << j
     term = pl.nim_mul_mex(ei, frob_game(ej, a)) ^ pl.nim_mul_mex(ej, frob_game(ei, a))
     return trace_game(term, m)
-
-
-def gold(v: int, a: int, m: int) -> int:
-    x = pl.Nimber(v)
-    g = x
-    for _ in range(a):
-        g = g * g
-    s = x * g
-    acc, t = s, s
-    for _ in range(m - 1):
-        t = t * t
-        acc = acc + t
-    return acc.value
 
 
 def b_form(i: int, j: int, a: int, m: int) -> int:

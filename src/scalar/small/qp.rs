@@ -33,7 +33,7 @@
 //! layer (valuation + residue square class, both robust to relative precision)
 //! and is deliberately **excluded from the exact-ring fuzz suite**.
 
-use crate::scalar::{Fp, Rational, Scalar};
+use crate::scalar::{mod_inverse_u128, Fp, Rational, Scalar};
 use std::fmt;
 
 /// An element of `Q_p` to precision `k`: `p^{val} · unit` with `p ∤ unit` carried
@@ -243,20 +243,7 @@ impl<const P: u128, const K: u128> Scalar for Qp<P, K> {
         if self.unit == 0 {
             return None;
         }
-        let m = Self::modulus() as i128;
-        let (mut t, mut newt) = (0i128, 1i128);
-        let (mut r, mut newr) = (m, self.unit as i128);
-        while newr != 0 {
-            let quot = r / newr;
-            t -= quot * newt;
-            std::mem::swap(&mut t, &mut newt);
-            r -= quot * newr;
-            std::mem::swap(&mut r, &mut newr);
-        }
-        if r != 1 {
-            return None;
-        }
-        let uinv = (((t % m) + m) % m) as u128;
+        let uinv = mod_inverse_u128(self.unit, Self::modulus())?;
         Some(Qp {
             unit: uinv,
             val: -self.val,

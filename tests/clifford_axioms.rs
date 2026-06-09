@@ -17,24 +17,15 @@ use pleroma::scalar::{Nimber, Rational, Scalar};
 use proptest::prelude::*;
 use std::collections::BTreeMap;
 
+mod common;
+use common::proptest_config;
+
 const DIM: usize = 3;
 const BLADES: usize = 1 << DIM; // 8
 
 // Default CI/local runs are smoke-sized; the explicit sentinel below owns the
 // high-bit nimber path. Set `PLEROMA_PROPTEST_CASES=N` for deeper fuzzing.
 const CASES: u32 = 2;
-
-fn proptest_config(default_cases: u32) -> ProptestConfig {
-    let cases = std::env::var("PLEROMA_PROPTEST_CASES")
-        .or_else(|_| std::env::var("PROPTEST_CASES"))
-        .ok()
-        .and_then(|raw| raw.parse::<u32>().ok())
-        .filter(|&n| n > 0)
-        .unwrap_or(default_cases);
-    let mut config = ProptestConfig::with_cases(cases);
-    config.failure_persistence = None;
-    config
-}
 
 /// Build a multivector from coefficients indexed by blade mask `0..2^DIM`.
 fn build_mv<S: Scalar>(alg: &CliffordAlgebra<S>, coeffs: &[S]) -> Multivector<S> {

@@ -20,34 +20,10 @@
 //! rules tried, how close their P-sets come to {Q=0}, and what they are instead.
 
 use pleroma::forms::fit_f2_quadratic;
-use pleroma::games::{outcomes, Outcome};
-use pleroma::scalar::{nim_add, nim_mul, nim_square, nim_trace};
+use pleroma::scalar::nim_add;
 
-/// Gold form Q_a(v) = Tr(v^{1+2^a}) over F_{2^m}, valued in {0,1}.
-fn gold(v: u128, a: u128, m: u128) -> u128 {
-    let mut g = v;
-    for _ in 0..a {
-        g = nim_square(g);
-    }
-    nim_trace(nim_mul(v, g), m)
-}
-
-/// Polar form B(u,v) = Q(u⊕v) ⊕ Q(u) ⊕ Q(v) ∈ {0,1}.
-fn polar(u: u128, v: u128, a: u128, m: u128) -> u128 {
-    gold(nim_add(u, v), a, m) ^ gold(u, a, m) ^ gold(v, a, m)
-}
-
-fn p_set(succ: &[Vec<usize>]) -> (Vec<u128>, usize) {
-    let out = outcomes(succ);
-    let draws = out.iter().filter(|&&o| o == Outcome::Draw).count();
-    let p = out
-        .iter()
-        .enumerate()
-        .filter(|(_, o)| **o == Outcome::Loss)
-        .map(|(i, _)| i as u128)
-        .collect();
-    (p, draws)
-}
+mod common;
+use common::{gold, p_set, polar};
 
 fn agreement(p: &[u128], zero: &[u128], n: usize) -> usize {
     let ps: std::collections::HashSet<u128> = p.iter().copied().collect();

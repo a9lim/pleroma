@@ -25,19 +25,7 @@ F_{2^{2^k}}:
 
 import pleroma as pl
 
-
-def gold(v: int, a: int, m: int) -> int:
-    """The game-built Gold form Q_a(v) = Tr(v^{1+2^a}) over F_{2^m}."""
-    x = pl.Nimber(v)
-    g = x
-    for _ in range(a):
-        g = g * g            # Frobenius^a
-    s = x * g                # v^{1+2^a}
-    acc, t = s, s
-    for _ in range(m - 1):   # trace = Σ squarings
-        t = t * t
-        acc = acc + t
-    return acc.value
+from common import gold
 
 
 def twisted_square(v: int, a: int) -> int:

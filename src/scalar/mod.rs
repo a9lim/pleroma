@@ -116,6 +116,23 @@ pub use valued::*;
 use std::fmt::Debug;
 use std::ops::{Add, Mul, Neg, Sub};
 
+pub(crate) fn mod_inverse_u128(a: u128, modulus: u128) -> Option<u128> {
+    if modulus <= 1 {
+        return None;
+    }
+    let m = i128::try_from(modulus).ok()?;
+    let (mut t, mut new_t) = (0i128, 1i128);
+    let (mut r, mut new_r) = (m, i128::try_from(a % modulus).ok()?);
+    while new_r != 0 {
+        let quotient = r / new_r;
+        t -= quotient * new_t;
+        std::mem::swap(&mut t, &mut new_t);
+        r -= quotient * new_r;
+        std::mem::swap(&mut r, &mut new_r);
+    }
+    (r == 1).then_some(t.rem_euclid(m) as u128)
+}
+
 /// Generate the owned-value operators `+`, `-` (binary and unary), and `*` for a
 /// [`Scalar`] backend by forwarding to its trait methods, so downstream code can
 /// write `a + b`, `a * b`, `-a` instead of `a.add(&b)`, `a.mul(&b)`, `a.neg()`.

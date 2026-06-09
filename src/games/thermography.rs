@@ -108,10 +108,15 @@ impl Thermograph {
     }
 }
 
-/// Internal recursion: returns `(left_wall, right_wall, mast, temperature)`, or
+/// Shared recursion: returns `(left_wall, right_wall, mast, temperature)`, or
 /// `None` if a non-number canonical position has an empty option side (outside
-/// the domain of ordinary temperature theory).
-fn walls(g: &Game) -> Option<(Pl, Pl, Rational, Rational)> {
+/// the domain of ordinary temperature theory). The caller supplies the fold used
+/// to combine option walls; ordinary thermography uses `combine`, while the
+/// tropical naming layer routes the same recursion through `oplus_max/min`.
+pub(crate) fn walls_with<F>(g: &Game, fold: F) -> Option<(Pl, Pl, Rational, Rational)>
+where
+    F: Fn(&Pl, &Pl, bool) -> Pl + Copy,
+{
     let g = g.canonical();
     if g.is_number() {
         let v = g.number_value()?.as_rational()?; // dyadic ⇒ rational
@@ -124,19 +129,19 @@ fn walls(g: &Game) -> Option<(Pl, Pl, Rational, Rational)> {
     // left_raw = max over Left options of the option's RIGHT wall
     let mut left_raw: Option<Pl> = None;
     for l in g.left() {
-        let rw = walls(l)?.1;
+        let rw = walls_with(l, fold)?.1;
         left_raw = Some(match left_raw {
             None => rw,
-            Some(acc) => combine(&acc, &rw, true),
+            Some(acc) => fold(&acc, &rw, true),
         });
     }
     // right_raw = min over Right options of the option's LEFT wall
     let mut right_raw: Option<Pl> = None;
     for r in g.right() {
-        let lw = walls(r)?.0;
+        let lw = walls_with(r, fold)?.0;
         right_raw = Some(match right_raw {
             None => lw,
-            Some(acc) => combine(&acc, &lw, false),
+            Some(acc) => fold(&acc, &lw, false),
         });
     }
     let (left_raw, right_raw) = (left_raw.unwrap(), right_raw.unwrap());
@@ -146,6 +151,10 @@ fn walls(g: &Game) -> Option<(Pl, Pl, Rational, Rational)> {
     let left_wall = freeze(&left_raw, &tau, &mast, true);
     let right_wall = freeze(&right_raw, &tau, &mast, false);
     Some((left_wall, right_wall, mast, tau))
+}
+
+fn walls(g: &Game) -> Option<(Pl, Pl, Rational, Rational)> {
+    walls_with(g, combine)
 }
 
 /// The thermograph of `g`, or `None` for the (rare, post-canonicalization)

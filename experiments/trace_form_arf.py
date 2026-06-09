@@ -18,23 +18,7 @@ its own research question.
 
 import pleroma as pl
 
-
-def nim_trace(x: int, m: int) -> int:
-    """Tr_{F_{2^m}/F_2}(x) = x + x^2 + ... + x^{2^{m-1}}, in {0,1}."""
-    acc = pl.Nimber(x)
-    t = pl.Nimber(x)
-    for _ in range(m - 1):
-        t = t * t
-        acc = acc + t
-    assert acc.value in (0, 1), f"trace not in F2: {acc.value}"
-    return acc.value
-
-
-def frob(x: pl.Nimber, a: int) -> pl.Nimber:
-    """Frobenius^a: x -> x^{2^a}."""
-    for _ in range(a):
-        x = x * x
-    return x
+from common import frob, nim_trace
 
 
 def trace_form(m: int, a: int):

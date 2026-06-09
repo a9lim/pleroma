@@ -39,21 +39,9 @@ from math import gcd
 
 import pleroma as pl
 
+from common import gold
+
 # ----------------------------------------------------------------------------- helpers
-
-
-def gold(v, a, m):
-    """Gold form Q_a(v) = Tr(v^{1+2^a}) over F_2^m, valued in {0,1}."""
-    x = pl.Nimber(v)
-    g = x
-    for _ in range(a):
-        g = g * g
-    s = x * g
-    acc, t = s, s
-    for _ in range(m - 1):
-        t = t * t
-        acc = acc + t
-    return acc.value
 
 
 def gold_pairs(a, m):

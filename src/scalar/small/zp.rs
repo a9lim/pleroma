@@ -21,7 +21,7 @@
 //! modulus `p^k` (the additive order of `1`), even though it is a truncation of
 //! the characteristic-0 ring `Z_p` and not a field of characteristic `p`.
 
-use crate::scalar::{Fp, Scalar};
+use crate::scalar::{mod_inverse_u128, Fp, Scalar};
 use std::fmt;
 
 /// An element of `Z/p^k` (the `p`-adic integers to precision `k`): the residue in
@@ -134,21 +134,7 @@ impl<const P: u128, const K: u128> Scalar for Zp<P, K> {
         if !self.is_unit() {
             return None;
         }
-        let m = Self::modulus() as i128;
-        let (mut t, mut newt) = (0i128, 1i128);
-        let (mut r, mut newr) = (m, self.0 as i128);
-        while newr != 0 {
-            let quot = r / newr;
-            t -= quot * newt;
-            std::mem::swap(&mut t, &mut newt);
-            r -= quot * newr;
-            std::mem::swap(&mut r, &mut newr);
-        }
-        if r != 1 {
-            return None;
-        }
-        // r = gcd = 1 for a unit; t is the inverse.
-        Some(Zp((((t % m) + m) % m) as u128))
+        Some(Zp(mod_inverse_u128(self.0, Self::modulus())?))
     }
 }
 

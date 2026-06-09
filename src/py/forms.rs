@@ -1195,181 +1195,48 @@ fn finite_char2_metric<F: FiniteChar2Field>(
 
 macro_rules! with_finite_char2_metric {
     ($degree:expr, $q:expr, $b:expr, |$metric:ident| $body:expr) => {{
-        match $degree {
-            1 => {
-                let $metric = finite_char2_metric::<Fpn<2, 1>>($q, $b)?;
-                $body
-            }
-            2 => {
-                let $metric = finite_char2_metric::<Fpn<2, 2>>($q, $b)?;
-                $body
-            }
-            3 => {
-                let $metric = finite_char2_metric::<Fpn<2, 3>>($q, $b)?;
-                $body
-            }
-            4 => {
-                let $metric = finite_char2_metric::<Fpn<2, 4>>($q, $b)?;
-                $body
-            }
-            _ => return Err(unsupported_char2_finite_field_err()),
-        }
+        with_finite_char2_field!($degree, |Field| {
+            let $metric = finite_char2_metric::<Field>($q, $b)?;
+            $body
+        })
     }};
 }
 
 macro_rules! with_finite_char2_metrics {
     ($degree:expr, $q1:expr, $b1:expr, $q2:expr, $b2:expr, |$m1:ident, $m2:ident| $body:expr) => {{
-        match $degree {
-            1 => {
-                let $m1 = finite_char2_metric::<Fpn<2, 1>>($q1, $b1)?;
-                let $m2 = finite_char2_metric::<Fpn<2, 1>>($q2, $b2)?;
-                $body
-            }
-            2 => {
-                let $m1 = finite_char2_metric::<Fpn<2, 2>>($q1, $b1)?;
-                let $m2 = finite_char2_metric::<Fpn<2, 2>>($q2, $b2)?;
-                $body
-            }
-            3 => {
-                let $m1 = finite_char2_metric::<Fpn<2, 3>>($q1, $b1)?;
-                let $m2 = finite_char2_metric::<Fpn<2, 3>>($q2, $b2)?;
-                $body
-            }
-            4 => {
-                let $m1 = finite_char2_metric::<Fpn<2, 4>>($q1, $b1)?;
-                let $m2 = finite_char2_metric::<Fpn<2, 4>>($q2, $b2)?;
-                $body
-            }
-            _ => return Err(unsupported_char2_finite_field_err()),
-        }
+        with_finite_char2_field!($degree, |Field| {
+            let $m1 = finite_char2_metric::<Field>($q1, $b1)?;
+            let $m2 = finite_char2_metric::<Field>($q2, $b2)?;
+            $body
+        })
     }};
 }
 
 macro_rules! with_finite_odd_metric {
     ($p:expr, $degree:expr, $q:expr, |$metric:ident| $body:expr) => {{
-        match ($p, $degree) {
-            (3, 1) => {
-                let $metric = finite_diag::<Fp<3>>($q);
-                $body
-            }
-            (5, 1) => {
-                let $metric = finite_diag::<Fp<5>>($q);
-                $body
-            }
-            (7, 1) => {
-                let $metric = finite_diag::<Fp<7>>($q);
-                $body
-            }
-            (11, 1) => {
-                let $metric = finite_diag::<Fp<11>>($q);
-                $body
-            }
-            (13, 1) => {
-                let $metric = finite_diag::<Fp<13>>($q);
-                $body
-            }
-            (3, 2) => {
-                let $metric = finite_diag::<Fpn<3, 2>>($q);
-                $body
-            }
-            (5, 2) => {
-                let $metric = finite_diag::<Fpn<5, 2>>($q);
-                $body
-            }
-            (3, 3) => {
-                let $metric = finite_diag::<Fpn<3, 3>>($q);
-                $body
-            }
-            _ => return Err(unsupported_finite_field_err()),
-        }
+        with_finite_odd_field!($p, $degree, |Field| {
+            let $metric = finite_diag::<Field>($q);
+            $body
+        })
     }};
 }
 
 macro_rules! with_finite_odd_metrics {
     ($p:expr, $degree:expr, $q1:expr, $q2:expr, |$m1:ident, $m2:ident| $body:expr) => {{
-        match ($p, $degree) {
-            (3, 1) => {
-                let $m1 = finite_diag::<Fp<3>>($q1);
-                let $m2 = finite_diag::<Fp<3>>($q2);
-                $body
-            }
-            (5, 1) => {
-                let $m1 = finite_diag::<Fp<5>>($q1);
-                let $m2 = finite_diag::<Fp<5>>($q2);
-                $body
-            }
-            (7, 1) => {
-                let $m1 = finite_diag::<Fp<7>>($q1);
-                let $m2 = finite_diag::<Fp<7>>($q2);
-                $body
-            }
-            (11, 1) => {
-                let $m1 = finite_diag::<Fp<11>>($q1);
-                let $m2 = finite_diag::<Fp<11>>($q2);
-                $body
-            }
-            (13, 1) => {
-                let $m1 = finite_diag::<Fp<13>>($q1);
-                let $m2 = finite_diag::<Fp<13>>($q2);
-                $body
-            }
-            (3, 2) => {
-                let $m1 = finite_diag::<Fpn<3, 2>>($q1);
-                let $m2 = finite_diag::<Fpn<3, 2>>($q2);
-                $body
-            }
-            (5, 2) => {
-                let $m1 = finite_diag::<Fpn<5, 2>>($q1);
-                let $m2 = finite_diag::<Fpn<5, 2>>($q2);
-                $body
-            }
-            (3, 3) => {
-                let $m1 = finite_diag::<Fpn<3, 3>>($q1);
-                let $m2 = finite_diag::<Fpn<3, 3>>($q2);
-                $body
-            }
-            _ => return Err(unsupported_finite_field_err()),
-        }
+        with_finite_odd_field!($p, $degree, |Field| {
+            let $m1 = finite_diag::<Field>($q1);
+            let $m2 = finite_diag::<Field>($q2);
+            $body
+        })
     }};
 }
 
 macro_rules! with_finite_odd_value {
     ($p:expr, $degree:expr, $x:expr, |$value:ident| $body:expr) => {{
-        match ($p, $degree) {
-            (3, 1) => {
-                let $value = <Fp<3> as FiniteOddField>::from_i128($x);
-                $body
-            }
-            (5, 1) => {
-                let $value = <Fp<5> as FiniteOddField>::from_i128($x);
-                $body
-            }
-            (7, 1) => {
-                let $value = <Fp<7> as FiniteOddField>::from_i128($x);
-                $body
-            }
-            (11, 1) => {
-                let $value = <Fp<11> as FiniteOddField>::from_i128($x);
-                $body
-            }
-            (13, 1) => {
-                let $value = <Fp<13> as FiniteOddField>::from_i128($x);
-                $body
-            }
-            (3, 2) => {
-                let $value = <Fpn<3, 2> as FiniteOddField>::from_i128($x);
-                $body
-            }
-            (5, 2) => {
-                let $value = <Fpn<5, 2> as FiniteOddField>::from_i128($x);
-                $body
-            }
-            (3, 3) => {
-                let $value = <Fpn<3, 3> as FiniteOddField>::from_i128($x);
-                $body
-            }
-            _ => return Err(unsupported_finite_field_err()),
-        }
+        with_finite_odd_field!($p, $degree, |Field| {
+            let $value = <Field as FiniteOddField>::from_i128($x);
+            $body
+        })
     }};
 }
 
@@ -2815,20 +2682,26 @@ macro_rules! isometric_char2_finite_alg {
     };
 }
 
+macro_rules! finite_algebra_cases {
+    ($char2:ident, $odd:ident, $($args:tt)*) => {
+        $char2!($($args)* Fp2Algebra);
+        $odd!($($args)* Fp3Algebra);
+        $odd!($($args)* Fp5Algebra);
+        $odd!($($args)* Fp7Algebra);
+        $odd!($($args)* Fp11Algebra);
+        $odd!($($args)* Fp13Algebra);
+        $char2!($($args)* F4Algebra);
+        $char2!($($args)* F8Algebra);
+        $char2!($($args)* F16Algebra);
+        $odd!($($args)* F9Algebra);
+        $odd!($($args)* F25Algebra);
+        $odd!($($args)* F27Algebra);
+    };
+}
+
 #[pyfunction]
 fn classify_finite_algebra(py: Python<'_>, alg: Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
-    classify_char2_finite_alg!(py, alg, Fp2Algebra);
-    classify_odd_finite_alg!(py, alg, Fp3Algebra);
-    classify_odd_finite_alg!(py, alg, Fp5Algebra);
-    classify_odd_finite_alg!(py, alg, Fp7Algebra);
-    classify_odd_finite_alg!(py, alg, Fp11Algebra);
-    classify_odd_finite_alg!(py, alg, Fp13Algebra);
-    classify_char2_finite_alg!(py, alg, F4Algebra);
-    classify_char2_finite_alg!(py, alg, F8Algebra);
-    classify_char2_finite_alg!(py, alg, F16Algebra);
-    classify_odd_finite_alg!(py, alg, F9Algebra);
-    classify_odd_finite_alg!(py, alg, F25Algebra);
-    classify_odd_finite_alg!(py, alg, F27Algebra);
+    finite_algebra_cases!(classify_char2_finite_alg, classify_odd_finite_alg, py, alg,);
     Err(PyTypeError::new_err(
         "expected one of the fixed finite-field Algebra classes",
     ))
@@ -2836,18 +2709,11 @@ fn classify_finite_algebra(py: Python<'_>, alg: Bound<'_, PyAny>) -> PyResult<Py
 
 #[pyfunction]
 fn classify_finite_algebra_class(alg: Bound<'_, PyAny>) -> PyResult<PyFiniteFieldClass> {
-    classify_char2_finite_alg_class!(alg, Fp2Algebra);
-    classify_odd_finite_alg_class!(alg, Fp3Algebra);
-    classify_odd_finite_alg_class!(alg, Fp5Algebra);
-    classify_odd_finite_alg_class!(alg, Fp7Algebra);
-    classify_odd_finite_alg_class!(alg, Fp11Algebra);
-    classify_odd_finite_alg_class!(alg, Fp13Algebra);
-    classify_char2_finite_alg_class!(alg, F4Algebra);
-    classify_char2_finite_alg_class!(alg, F8Algebra);
-    classify_char2_finite_alg_class!(alg, F16Algebra);
-    classify_odd_finite_alg_class!(alg, F9Algebra);
-    classify_odd_finite_alg_class!(alg, F25Algebra);
-    classify_odd_finite_alg_class!(alg, F27Algebra);
+    finite_algebra_cases!(
+        classify_char2_finite_alg_class,
+        classify_odd_finite_alg_class,
+        alg,
+    );
     Err(PyTypeError::new_err(
         "expected one of the fixed finite-field Algebra classes",
     ))
@@ -2855,18 +2721,7 @@ fn classify_finite_algebra_class(alg: Bound<'_, PyAny>) -> PyResult<PyFiniteFiel
 
 #[pyfunction]
 fn witt_finite_algebra(alg: Bound<'_, PyAny>) -> PyResult<PyWittClassG> {
-    witt_char2_finite_alg!(alg, Fp2Algebra);
-    witt_odd_finite_alg!(alg, Fp3Algebra);
-    witt_odd_finite_alg!(alg, Fp5Algebra);
-    witt_odd_finite_alg!(alg, Fp7Algebra);
-    witt_odd_finite_alg!(alg, Fp11Algebra);
-    witt_odd_finite_alg!(alg, Fp13Algebra);
-    witt_char2_finite_alg!(alg, F4Algebra);
-    witt_char2_finite_alg!(alg, F8Algebra);
-    witt_char2_finite_alg!(alg, F16Algebra);
-    witt_odd_finite_alg!(alg, F9Algebra);
-    witt_odd_finite_alg!(alg, F25Algebra);
-    witt_odd_finite_alg!(alg, F27Algebra);
+    finite_algebra_cases!(witt_char2_finite_alg, witt_odd_finite_alg, alg,);
     Err(PyTypeError::new_err(
         "expected one of the fixed finite-field Algebra classes",
     ))
@@ -2874,18 +2729,7 @@ fn witt_finite_algebra(alg: Bound<'_, PyAny>) -> PyResult<PyWittClassG> {
 
 #[pyfunction]
 fn bw_class_finite_algebra(alg: Bound<'_, PyAny>) -> PyResult<PyBrauerWallClass> {
-    bw_char2_finite_alg!(alg, Fp2Algebra);
-    bw_odd_finite_alg!(alg, Fp3Algebra);
-    bw_odd_finite_alg!(alg, Fp5Algebra);
-    bw_odd_finite_alg!(alg, Fp7Algebra);
-    bw_odd_finite_alg!(alg, Fp11Algebra);
-    bw_odd_finite_alg!(alg, Fp13Algebra);
-    bw_char2_finite_alg!(alg, F4Algebra);
-    bw_char2_finite_alg!(alg, F8Algebra);
-    bw_char2_finite_alg!(alg, F16Algebra);
-    bw_odd_finite_alg!(alg, F9Algebra);
-    bw_odd_finite_alg!(alg, F25Algebra);
-    bw_odd_finite_alg!(alg, F27Algebra);
+    finite_algebra_cases!(bw_char2_finite_alg, bw_odd_finite_alg, alg,);
     Err(PyTypeError::new_err(
         "expected one of the fixed finite-field Algebra classes",
     ))
@@ -2893,18 +2737,7 @@ fn bw_class_finite_algebra(alg: Bound<'_, PyAny>) -> PyResult<PyBrauerWallClass>
 
 #[pyfunction]
 fn isometric_finite_algebra(a: Bound<'_, PyAny>, b: Bound<'_, PyAny>) -> PyResult<bool> {
-    isometric_char2_finite_alg!(a, b, Fp2Algebra);
-    isometric_odd_finite_alg!(a, b, Fp3Algebra);
-    isometric_odd_finite_alg!(a, b, Fp5Algebra);
-    isometric_odd_finite_alg!(a, b, Fp7Algebra);
-    isometric_odd_finite_alg!(a, b, Fp11Algebra);
-    isometric_odd_finite_alg!(a, b, Fp13Algebra);
-    isometric_char2_finite_alg!(a, b, F4Algebra);
-    isometric_char2_finite_alg!(a, b, F8Algebra);
-    isometric_char2_finite_alg!(a, b, F16Algebra);
-    isometric_odd_finite_alg!(a, b, F9Algebra);
-    isometric_odd_finite_alg!(a, b, F25Algebra);
-    isometric_odd_finite_alg!(a, b, F27Algebra);
+    finite_algebra_cases!(isometric_char2_finite_alg, isometric_odd_finite_alg, a, b,);
     Err(PyTypeError::new_err(
         "expected two fixed finite-field Algebra classes over the same field",
     ))

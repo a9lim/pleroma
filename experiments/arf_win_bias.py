@@ -24,18 +24,7 @@ Arf invariant *is* the win-bias, exactly, in the counting sense.
 
 import pleroma as pl
 
-
-def gold(v: int, a: int, m: int) -> int:
-    x = pl.Nimber(v)
-    g = x
-    for _ in range(a):
-        g = g * g
-    s = x * g
-    acc, t = s, s
-    for _ in range(m - 1):
-        t = t * t
-        acc = acc + t
-    return acc.value
+from common import gold
 
 
 def predicted_zeros(arf: int, rank: int, radical_dim: int, radical_aniso: bool, m: int) -> int:

@@ -22,21 +22,9 @@
 
 use pleroma::forms::{fit_f2_quadratic, QuadricFit};
 use pleroma::games::loopy_decision_sets;
-use pleroma::scalar::{nim_add, nim_mul, nim_square, nim_trace};
 
-/// Gold form Q_a(v) = Tr(v^{1+2^a}) over F_{2^m}, valued in {0,1}.
-fn gold(v: u128, a: u128, m: u128) -> u128 {
-    let mut g = v;
-    for _ in 0..a {
-        g = nim_square(g);
-    }
-    nim_trace(nim_mul(v, g), m)
-}
-
-/// Polar form B(u,v) = Q(u⊕v) ⊕ Q(u) ⊕ Q(v) ∈ {0,1}.
-fn polar(u: u128, v: u128, a: u128, m: u128) -> u128 {
-    gold(nim_add(u, v), a, m) ^ gold(u, a, m) ^ gold(v, a, m)
-}
+mod common;
+use common::{gold, polar};
 
 /// The radical R(B) = { v : B(v,d) = 0 for every direction d }.
 fn radical(a: u128, m: u128) -> Vec<u128> {

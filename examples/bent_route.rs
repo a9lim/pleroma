@@ -23,37 +23,10 @@
 //! bent Gold COMPONENT Tr(λ x^{1+2^a}) (bent for 2/3 of λ; see gold_family_survey).
 
 use pleroma::forms::fit_f2_quadratic;
-use pleroma::games::{loopy_decision_sets, outcomes, Outcome};
-use pleroma::scalar::{nim_mul, nim_square, nim_trace};
+use pleroma::games::loopy_decision_sets;
 
-fn frob(mut x: u128, a: u128) -> u128 {
-    for _ in 0..a {
-        x = nim_square(x);
-    }
-    x
-}
-
-/// Bent Gold component Q(v) = Tr(λ · v^{1+2^a}) over F_{2^m}, valued in {0,1}.
-fn gold(v: u128, lam: u128, a: u128, m: u128) -> u128 {
-    nim_trace(nim_mul(lam, nim_mul(v, frob(v, a))), m)
-}
-
-/// Polar form B(u,v) = Q(u⊕v) ⊕ Q(u) ⊕ Q(v) ∈ {0,1}.
-fn polar(u: u128, v: u128, lam: u128, a: u128, m: u128) -> u128 {
-    gold(u ^ v, lam, a, m) ^ gold(u, lam, a, m) ^ gold(v, lam, a, m)
-}
-
-fn p_set(succ: &[Vec<usize>]) -> (Vec<u128>, usize) {
-    let out = outcomes(succ);
-    let draws = out.iter().filter(|&&o| o == Outcome::Draw).count();
-    let p = out
-        .iter()
-        .enumerate()
-        .filter(|(_, o)| **o == Outcome::Loss)
-        .map(|(i, _)| i as u128)
-        .collect();
-    (p, draws)
-}
+mod common;
+use common::{bent_gold as gold, bent_polar as polar, p_set};
 
 fn describe(label: &str, p: &[u128], zero: &[u128], draws: usize, m: u128) {
     let n = 1usize << m;

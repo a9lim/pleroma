@@ -11,40 +11,10 @@
 //! summary records how close anything got.
 
 use pleroma::forms::fit_f2_quadratic;
-use pleroma::games::{octal_misere_quotient, Quotient};
+use pleroma::games::octal_misere_quotient;
 
-/// If the quotient on atoms `1..=k` is a full-rank `(ℤ/2)^k` (the `2^k` squarefree
-/// subsets hit all `2^k` classes bijectively), return its P-set as `F₂^k` masks.
-fn p_set_as_f2(q: &Quotient, k: usize) -> Option<Vec<u128>> {
-    if q.num_classes != (1 << k) {
-        return None;
-    }
-    let class_of_subset = |mask: u128| -> Option<usize> {
-        let mut ms: Vec<usize> = (0..k)
-            .filter(|&i| mask & (1 << i) != 0)
-            .map(|i| i + 1)
-            .collect();
-        ms.sort_unstable();
-        q.elements
-            .iter()
-            .position(|e| *e == ms)
-            .map(|idx| q.class_of[idx])
-    };
-    let mut hit = std::collections::HashSet::new();
-    let mut pset = Vec::new();
-    for v in 0u128..(1 << k) {
-        let c = class_of_subset(v)?;
-        hit.insert(c);
-        if q.class_is_p[c] {
-            pset.push(v);
-        }
-    }
-    if hit.len() == (1 << k) {
-        Some(pset)
-    } else {
-        None
-    }
-}
+mod common;
+use common::p_set_as_f2;
 
 fn code_str(code: &[u128]) -> String {
     format!(
@@ -84,7 +54,8 @@ fn main() {
         for k in 2..=max_heap {
             let q = octal_misere_quotient(code, k, elem, test);
             *order_hist.entry(q.num_classes).or_insert(0) += 1;
-            if let Some(pset) = p_set_as_f2(&q, k) {
+            let atoms: Vec<usize> = (1..=k).collect();
+            if let Some(pset) = p_set_as_f2(&q, &atoms) {
                 two_groups += 1;
                 if let Some(fit) = fit_f2_quadratic(&pset, k) {
                     if fit.is_genuinely_quadratic() {

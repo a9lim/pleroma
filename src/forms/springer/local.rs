@@ -14,7 +14,7 @@
 //!
 //! | field | char | value group | residue `k` | second layer |
 //! |---|---|---|---|---|
-//! | `No`        (surreal) | 0 | `No` (2-divisible) | ℝ | collapses — `W(No)=W(ℝ)`, see [`springer`](crate::forms::springer) |
+//! | `No`        (surreal) | 0 | `No` (2-divisible) | ℝ | collapses — `W(No)=W(ℝ)`, see [`springer_decompose`](crate::forms::springer_decompose) |
 //! | `Q_p`       (p-adic)  | 0 | ℤ | `F_p` | survives — `W(Q_p)=W(F_p)²` |
 //! | `Q_q`       (unramified p-adic) | 0 | ℤ | `F_q` | survives — `W(Q_q)=W(F_q)²` |
 //! | `F_q((t))`  (Laurent) | `p` | ℤ | `F_q` | survives — `W(F_q((t)))=W(F_q)²` |
@@ -23,8 +23,8 @@
 //! of the symmetry, not a gap: its value group `No` is 2-divisible, so the second
 //! residue map vanishes and the residue is ℝ (a signature, not a finite
 //! square-class). It is `Valued` only in the loose ω-adic sense and is deliberately
-//! not a [`ResidueField`], so it keeps its own engine in
-//! [`springer`](crate::forms::springer).
+//! not a [`ResidueField`], so it keeps its own engine — the surreal
+//! [`springer_decompose`](crate::forms::springer_decompose).
 //!
 //! Among the three that *do* fit, the residue field is `F_p` only for the bare
 //! `Q_p`; for `Q_q` (unramified, residue degree `F`) and `F_q((t))` it is a general

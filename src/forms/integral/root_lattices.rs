@@ -16,7 +16,7 @@
 //! not tabulated.
 //!
 //! `E_8` is the unique rank-8 even unimodular lattice — the first place the char-0
-//! mod-8 story (`brauer_wall::bw_class_real`, `BW(ℝ) = ℤ/8`) and the lattice world
+//! mod-8 story (`witt::bw_class_real`, `BW(ℝ) = ℤ/8`) and the lattice world
 //! visibly coincide; see root AGENTS.md. Its automorphism group is the Weyl group
 //! `W(E_8)` of order 696729600, far past brute force but returned by
 //! [`IntegralForm::automorphism_group_order`] from the standard Cartan basis or

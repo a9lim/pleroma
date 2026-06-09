@@ -16,7 +16,7 @@
 //! Characteristic is **0** (it is a genuine char-0 field), distinguishing it
 //! from `Zp`, whose `characteristic()` is the modulus `p^k`. A Clifford algebra
 //! over `Q_p` is therefore semisimple — the companion
-//! [`forms::padic`](crate::forms::padic) / `springer_padic` modules read their
+//! [`forms::padic`](crate::forms::padic) / `springer::padic` modules read their
 //! Hilbert-symbol / residue-form payoff off this backend.
 //!
 //! ## Precision contract (capped-relative — read this)

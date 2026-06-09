@@ -1,7 +1,8 @@
 //! Springer decomposition over the **equal-characteristic** local field `F_q((t))`
-//! — the third discretely-valued sibling, beside [`springer`](crate::forms::springer)
-//! (surreals) and [`springer_padic`](crate::forms::springer_padic) (`Q_p`/`Q_q`),
-//! and a named entry point into the generic engine
+//! — the third discretely-valued sibling, beside the surreal leg
+//! ([`springer_decompose`](crate::forms::springer_decompose)) and the `Q_p`/`Q_q`
+//! leg ([`springer_decompose_qp`](crate::forms::springer_decompose_qp)), and a named
+//! entry point into the generic engine
 //! [`springer_decompose_local`](crate::forms::springer_decompose_local). See that
 //! engine for the full discrete-valuation trichotomy table.
 //!
@@ -30,11 +31,11 @@
 //! `(q, b)` metric, not through this valuation filtration.
 
 use crate::clifford::Metric;
-use crate::forms::springer_local::springer_decompose_local;
 use crate::forms::FiniteOddField;
 use crate::scalar::Laurent;
 
-pub use crate::forms::springer_local::{
+use super::local::springer_decompose_local;
+pub use super::local::{
     LocalResidueForm as LaurentResidueForm, LocalSpringerDecomp as LaurentSpringerDecomp,
 };
 

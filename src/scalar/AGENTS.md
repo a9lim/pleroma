@@ -72,7 +72,7 @@ exact-vs-capped-precision boundary in `exactness.rs`.
   `None` only for 0) + the multiplicative Teichmuller section `τ : k → 𝒪`. Impl'd
   for the local fields/functors (Qp→Fp, Qq→Fq, Laurent→S, Ramified→base residue,
   Gauss→k(tbar)), the last piece of the local-field package `(K,𝒪,𝔪,k,Γ,ϖ)`. It's
-  what lets `forms/springer_local.rs` write the discrete Springer decomposition once.
+  what lets `forms/springer/local.rs` write the discrete Springer decomposition once.
   Globals (Adele/RationalFunction) stay out — per-place residues live at the forms
   layer. NOT a `Scalar` supertrait, like `Valued`.
 - **`exactness.rs`** — marker traits for the representation contract: `ExactScalar`,

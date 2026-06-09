@@ -1,7 +1,7 @@
 //! The **characteristic-2 local Witt/Springer decomposition** over `F_q(t)` — the
 //! Aravire–Jacob structure theorem, and the rank-by-rank local isotropy it powers.
 //! This is the equal-characteristic-2 mirror of the odd-`q`
-//! [`springer_local`](crate::forms::springer_local) engine, but it is **not** the
+//! [`springer_decompose_local`](crate::forms::springer_decompose_local) engine, but it is **not** the
 //! odd story at `p = 2`: in char 2 a third, *wild* summand appears that the
 //! `W = W(k) ⊕ W(k)` grading misses (see root AGENTS.md "the wild-term finding").
 //!

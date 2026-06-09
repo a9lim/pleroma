@@ -2,7 +2,8 @@
 //! (residue `F_p`) and its unramified extensions `Q_q` (residue `F_q`) — two named
 //! entry points into the generic engine
 //! [`springer_decompose_local`](crate::forms::springer_decompose_local), and the
-//! discretely-valued mirror of [`springer`](crate::forms::springer) (the surreals).
+//! discretely-valued mirror of the surreal leg
+//! ([`springer_decompose`](crate::forms::springer_decompose)).
 //!
 //! `Q_p` is Henselian with residue field `F_p` and value group `ℤ`. Springer's
 //! theorem gives `W(Q_p) ≅ W(F_p) ⊕ (W(F_p) ⊗ ℤ/2ℤ)`. The genuine novelty against
@@ -17,7 +18,8 @@
 //! same story with residue field `F_q = F_{p^F}` in place of `F_p` — and `Q_q` with
 //! `F = 1` *is* `Q_p`. Adding it is what makes the mixed-characteristic leg reach
 //! general `F_q` residues, matching the equal-characteristic Laurent leg
-//! ([`springer_laurent`](crate::forms::springer_laurent)) which already did: the
+//! ([`springer_decompose_laurent`](crate::forms::springer_decompose_laurent)) which
+//! already did: the
 //! per-layer discriminant square-class then lives in `F_q*/(F_q*)²` and genuinely
 //! exercises the extension-field square-class, not just `F_p`.
 //!
@@ -29,10 +31,10 @@
 //! sibling.
 
 use crate::clifford::Metric;
-use crate::forms::springer_local::springer_decompose_local;
 use crate::scalar::{Qp, Qq};
 
-pub use crate::forms::springer_local::{
+use super::local::springer_decompose_local;
+pub use super::local::{
     LocalResidueForm as PadicResidueForm, LocalSpringerDecomp as PadicSpringerDecomp,
 };
 

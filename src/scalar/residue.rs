@@ -19,7 +19,7 @@
 //! [`valued`](crate::scalar::valued), root-taking by
 //! [`analytic`](crate::scalar::analytic). This trait closes the column the same
 //! way, and it is what lets the discrete-valuation Springer decomposition
-//! ([`forms::springer_local`](crate::forms::springer_local)) be written **once**,
+//! ([`forms::springer_decompose_local`](crate::forms::springer_decompose_local)) be written **once**,
 //! generic over the residue field, instead of once per local field.
 //!
 //! # The two maps

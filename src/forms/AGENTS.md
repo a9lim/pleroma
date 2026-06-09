@@ -6,11 +6,21 @@ the **characteristic trichotomy**: the classification of a quadratic form
 by `char F`. This axis cuts ACROSS the place table that organizes `scalar/`.
 
 > Read root `OPEN.md` before touching `char2/`, `quadric_fit.rs`, `char0.rs`,
-> `witt.rs`, or anything feeding the open play-semantics question.
+> `witt/`, or anything feeding the open play-semantics question.
 
-`mod.rs` re-exports the legs + `classify` + diagonalize/equivalence + witt/
-witt_ring + brauer_wall + `local_global/` + `integral/` + springer + the
-symplectic/hermitian "form + involution" siblings, all flat.
+`mod.rs` re-exports the legs + `classify` + diagonalize/equivalence + the `witt/`
+invariant-group shelf (Witt group/ring + Brauer–Wall) + the `springer/`
+valuation-graded (local↔global) decomposition + `local_global/` + `integral/` +
+`field_invariants` + the symplectic/hermitian "form + involution" siblings, all
+flat.
+
+The directory groups the cross-cutting machinery into shelves that mirror how
+`scalar/` is grouped by place: the trichotomy legs (`char0.rs`/`oddchar/`/`char2/`),
+the invariant **groups** (`witt/`), the valuation-graded **decomposition**
+(`springer/`), the **local↔global** layer (`local_global/`), and the **integral**
+arithmetic view (`integral/`). Each multi-file cluster is its own subdir with a hub
+`mod.rs` that re-exports flat, so public paths stay shallow (`forms::bw_class_real`,
+`forms::springer_decompose_qp`, …) regardless of which shelf a symbol lives on.
 
 ## The façade
 
@@ -54,44 +64,64 @@ symplectic/hermitian "form + involution" siblings, all flat.
 The char0↔char2 classifier **symmetry** (the real 8-fold table mirrored by the
 char-2 Arf/Brauer–Wall story) is one of the project's central threads.
 
-## Witt / Brauer–Wall
+## `witt/` — the invariant groups (Witt group, Witt ring, Brauer–Wall)
 
-- **`witt.rs`** — `WittClass`: the Witt group `W_q(F) ≅ ℤ/2` of a finite nim-field,
-  Arf-classified. Plus `WittClassG`: the Char0/OddChar/Char2 trichotomy enum (odd-
-  char is order-4) with the ring `mul` (Char2 panics — `W_q` is a module, not a ring).
-- **`witt_ring.rs`** — the Witt RING: `tensor_form`, Pfister forms, fundamental
+The three abelian groups the classifiers land in, grouped into one shelf (`mod.rs`
+re-exports flat). This is the home of the **mod-8 spine**: `BW(ℝ) ≅ ℤ/8` is the
+same periodicity as the char-0 8-fold table, Bott, and `E₈` in `integral/`.
+
+- **`witt/class.rs`** — `WittClass`: the Witt group `W_q(F) ≅ ℤ/2` of a finite
+  nim-field, Arf-classified. Plus `WittClassG`: the Char0/OddChar/Char2 trichotomy
+  enum (odd-char is order-4) with the ring `mul` (Char2 panics — `W_q` is a module,
+  not a ring).
+- **`witt/ring.rs`** — the Witt RING: `tensor_form`, Pfister forms, fundamental
   ideal Iⁿ, the eₙ staircase (e0=dim, e1=disc, e2=Hasse). Stabilization per field
   (I²=0 over F_q; infinite ℝ tower via `e_real`). DON'T claim Arf=e2 (char-2
   indexing is Kato's, pinned).
-- **`brauer_wall.rs`** — the Brauer–Wall group BW(F): `bw_class_real` (Bott index
-  (q−p) mod 8 ⇒ BW(ℝ)=ℤ/8), `bw_class_complex` (ℤ/2), `bw_class_oddchar` (order-4 ≅
-  W(F_q), DISCOVERED not asserted), and `bw_class_nimber` (char-2 Arf/Witt class
-  `ℤ/2`, nonsingular metrics only). Law = graded_tensor.
+- **`witt/brauer_wall.rs`** — the Brauer–Wall group BW(F): `bw_class_real` (Bott
+  index (q−p) mod 8 ⇒ BW(ℝ)=ℤ/8), `bw_class_complex` (ℤ/2), `bw_class_oddchar`
+  (order-4 ≅ W(F_q), DISCOVERED not asserted), and `bw_class_nimber` (char-2
+  Arf/Witt class `ℤ/2`, nonsingular metrics only). Law = graded_tensor.
 
-## Springer — the discrete-valuation decomposition (a local–global symmetry)
+(The *numeric* field invariants the ring implies — level, u-invariant — live
+separately in `field_invariants.rs`, not here; the name was disambiguated from the
+old top-level `invariants.rs` for exactly that reason.)
 
-One generic engine for the discretely-valued legs + the surreal odd-one-out:
+## `springer/` — the discrete-valuation decomposition (a local–global symmetry)
 
-- **`springer_local.rs`** — the GENERIC engine `springer_decompose_local<K:
+One generic engine for the discretely-valued legs + the surreal odd-one-out +
+the char-2 mirror, grouped into one shelf (`mod.rs` re-exports flat). The five
+files were promoted from flat `springer_*.rs` at the `forms/` top level into this
+subdir so the cluster reads as one local↔global story, matching the subdir
+treatment of `oddchar/`/`char2/`/`local_global/`/`integral/`.
+
+- **`springer/local.rs`** — the GENERIC engine `springer_decompose_local<K:
   ResidueField>` (+ `LocalResidueForm`/`LocalSpringerDecomp`/`parity_layer`), keyed
   off the `scalar::ResidueField` trait. ONE implementation; the residue field `k` is
   read through the trait (`residue_unit` = the angular component), the square-class
-  via `is_square_finite`. Odd residue char only.
-- **`springer_padic.rs`** — the **mixed-characteristic** named entry points (thin
+  via `is_square_finite`. Odd residue char only. (The siblings reach it via
+  `super::local`, not the flat re-export, since they consume its types directly.)
+- **`springer/padic.rs`** — the **mixed-characteristic** named entry points (thin
   wrappers + `Padic*` aliases): `springer_decompose_qp` over `Q_p` (residue F_p) AND
   `springer_decompose_qq` over `Q_q` (residue F_q, the unramified extension — `F=1`
   recovers Q_p). Value group ℤ NOT 2-divisible ⇒ TWO residue layers survive
   (`parity_layer`) = W=W(k)². Adding Q_q makes this leg reach general F_q residues,
   matching the Laurent leg.
-- **`springer_laurent.rs`** — the **equal-characteristic** entry point (wrapper +
+- **`springer/laurent.rs`** — the **equal-characteristic** entry point (wrapper +
   `Laurent*` aliases): `springer_decompose_laurent` over `F_q((t))` (char p, residue
   F_q). Same two-layer story; residue char 2 REJECTED (the char-2 Witt boundary).
   Used by `local_global/function_field.rs` as an independent oracle.
-- **`springer.rs`** — over the surreals (char 0, residue ℝ). The ONE that does NOT
-  fit the generic engine: value group 2-divisible ⇒ W(No)=W(ℝ)=ℤ (second layer
-  collapses), residue ℝ is a signature not a finite square-class. Keeps its own
-  engine (owns the flat `ResidueForm`/`SpringerDecomp`/`springer_decompose` names) —
-  that mismatch IS the symmetry, not a gap. So it stays out of `ResidueField`.
+- **`springer/surreal.rs`** — over the surreals (char 0, residue ℝ). The ONE that
+  does NOT fit the generic engine: value group 2-divisible ⇒ W(No)=W(ℝ)=ℤ (second
+  layer collapses), residue ℝ is a signature not a finite square-class. Keeps its
+  own engine (owns the flat `ResidueForm`/`SpringerDecomp`/`springer_decompose`
+  names) — that mismatch IS the symmetry, not a gap. So it stays out of
+  `ResidueField`.
+- **`springer/char2.rs`** — the **char-2 local Witt/Springer decomposition**
+  (Aravire–Jacob `(φ₀, ψ, φ₁)`) + global isotropy over `F_q(t)`. Detailed below in
+  the local–global section, because it is tightly coupled to
+  `local_global/function_field_char2.rs` (it reuses that engine's `pub(crate)`
+  helpers).
 
 ## Local–global (`local_global/`)
 
@@ -139,9 +169,9 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   `char2_monic_irreducible_factors` — a thin wrapper over the shared
   `poly_factor` finite-field factorizer, renamed off the odd-char
   `monic_irreducible_factors` so the flat `forms::*` glob stays unambiguous) are
-  `pub(crate)` so `springer_char2.rs` reuses them.
-- **`springer_char2.rs`** — the **char-2 local Witt/Springer decomposition**, the
-  equal-char-2 mirror of `springer_local.rs` (but NOT the odd story at `p=2`: the wild
+  `pub(crate)` so `springer/char2.rs` reuses them.
+- **`springer/char2.rs`** — the **char-2 local Witt/Springer decomposition**, the
+  equal-char-2 mirror of `springer/local.rs` (but NOT the odd story at `p=2`: the wild
   `R_π` summand the `W=W(k)²` grading misses). `springer_decompose_local_char2(form,
   place)` gives the **Aravire–Jacob** `(φ₀, ψ, φ₁)` (`Char2LocalDecomp`): split each
   block coeff by Laurent-parity (`K=K²⊕πK²`), apply `[a,b]≅[1,a_ev·b]⊥⟨π⟩[1,a_odd·b]`,
@@ -178,9 +208,11 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
 
 ## Field invariants + the game bench
 
-- **`invariants.rs`** — numeric FIELD invariants the Witt ring implies: level/Stufe
-  s(F), pythagoras_number, u_invariant, is_sum_of_n_squares — computed over finite
-  F_p (level≤2, u=2); ℝ/Q_p textbook constants documented.
+- **`field_invariants.rs`** — numeric FIELD invariants the Witt ring implies:
+  level/Stufe s(F), pythagoras_number, u_invariant, is_sum_of_n_squares — computed
+  over finite F_p (level≤2, u=2); ℝ/Q_p textbook constants documented. (Renamed from
+  the old top-level `invariants.rs` to disambiguate from the `witt/` invariant-group
+  shelf and `oddchar/invariants.rs`.)
 - **`quadric_fit.rs`** — the "is this P-set a quadric?" research BENCH (split from the
   char2 classifier): `fit_f2_quadratic` (Boolean ANF/Mobius transform over the
   2^k membership table) + `QuadricFit` + `is_genuinely_quadratic`. The instrument the game

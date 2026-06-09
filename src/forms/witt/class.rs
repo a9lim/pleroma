@@ -218,11 +218,11 @@ impl WittClassG {
     /// * `OddChar`: `W(F_q)` is the order-4 ring — `ℤ/4` when `−1` is a nonsquare
     ///   (`kappa = 1`), via `z = e0 + 2·sclass`; and `F₂[ℤ/2]` when `−1` is a square
     ///   (`kappa = 0`), via `(a,b) = (e0 ⊕ sclass, sclass)` with `t² = 1`. (Both ring
-    ///   laws are pinned by `witt_ring`'s test against the concrete `tensor_form`.)
+    ///   laws are pinned by `witt::ring`'s test against the concrete `tensor_form`.)
     ///
     /// **Panics on `Char2`:** in characteristic 2 the *quadratic* Witt group `W_q` is
     /// a **module over** the bilinear Witt ring, not a ring — so there is no
-    /// quadratic-form ring product to return. (See `forms/witt_ring.rs` for why.)
+    /// quadratic-form ring product to return. (See `forms/witt/ring.rs` for why.)
     pub fn mul(&self, other: &WittClassG) -> WittClassG {
         self.try_mul(other)
             .expect("invalid Witt-class multiplication")

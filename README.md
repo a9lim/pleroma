@@ -217,8 +217,8 @@ file-by-file breakdown:
 - `src/py/` — the optional PyO3 bindings behind the `python` feature.
 
 See `AGENTS.md` for the working-notes summary, `OPEN.md` for the genuine research
-problems, and `writeups/goldarf.tex` for the narrow draft note on the Gold/Arf
-game thread.
+problems, `ROADMAP.md` for the ambitious cross-pillar bridges planned next, and
+`writeups/goldarf.tex` for the narrow draft note on the Gold/Arf game thread.
 
 ## Research thread
 

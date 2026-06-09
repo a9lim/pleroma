@@ -36,7 +36,8 @@ Each pillar's `mod.rs` re-exports its children flat, so public paths stay shallo
 Beyond the library: `examples/` (Rust demos + the open-question probes:
 `interactive_kernel`, `octal_hunt`, `loopy_quadric`, `misere_quotient`,
 `bent_route`, `tour`), `experiments/` (Python research probes on top of the shipped
-lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems), and
+lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems),
+`ROADMAP.md` (the ambitious cross-pillar bridges planned next), and
 `writeups/goldarf.tex` (the narrow draft note on the Gold/Arf game thread).
 
 ## Claim levels and non-claims
@@ -216,4 +217,4 @@ The narrow Gold/Arf game thread and the genuine open problems now live in
 `OPEN.md`; the current draft note is `writeups/goldarf.tex`. Read `OPEN.md` before
 touching `forms/char2/`, `forms/quadric_fit.rs`, `forms/char0.rs`,
 `games/coin_turning.rs`, `games/kernel.rs`, `games/misere.rs`, `games/loopy.rs`,
-`forms/witt.rs`, `experiments/`, or the open-question example probes.
+`forms/witt/`, `experiments/`, or the open-question example probes.

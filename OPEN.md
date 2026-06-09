@@ -178,21 +178,25 @@ Relevant surfaces:
 ## Ordinal nim multiplication beyond the verified excess table
 
 Push transfinite nim multiplication beyond the source-verified Lenstra-DiMuro
-excess table, especially at the first unverified Kummer carry such as `alpha_47`.
+excess table. Historically the first missing carry in this checkout was
+`alpha_47`; a local fixed-base finite-field oracle now verifies that carry, but
+the general closed-form problem remains open.
 
 What is implemented:
 - The algebraic closure of `F_2` is represented by ordinals `< omega^(omega^omega)`
   under nim-arithmetic.
 - The prime-power generator tower is implemented in `src/scalar/big/ordinal/tower.rs`.
-  Products are exact when every Kummer carry uses a source-verified excess
-  `alpha_u` for an odd prime `u <= 43`.
+  Products are exact when every Kummer carry uses a verified excess `alpha_u` for
+  an odd prime `u <= 47`: DiMuro Table 1 through `43`, plus the local
+  `ordinal_excess_probe.py` verification for `47`.
 - Stage 1 handles scalar excesses such as `alpha_3 = 2`, `alpha_5 = 4`, and
   `alpha_17 = 16`; Stage 2 handles nonscalar excesses such as `alpha_7 = omega+1`
   by branching the monomial and recursing to lower places.
-- The table values are from DiMuro's source table, not inferred from the engine.
-  Field-axiom sweeps test engine consistency, not the truth of the table values.
+- Rows through `43` are from DiMuro's source table; `47` is from the independent
+  local fixed-base probe. Field-axiom sweeps test engine consistency, not the
+  truth of the table values.
 
-The source-verified rows currently used are:
+The verified rows currently used are:
 
 | u | alpha_u | u | alpha_u | u | alpha_u |
 |---|---|---|---|---|---|
@@ -200,7 +204,27 @@ The source-verified rows currently used are:
 | 5 | 4 | 17 | 16 | 31 | omega^omega+1 |
 | 7 | omega+1 | 19 | omega^3+4 | 37 | omega^3+4 |
 | 11 | omega^omega+1 | 23 | omega^(omega^3)+1 | 41 | omega^omega+1 |
-| | | | | 43 | omega^(omega^2)+1 |
+| | | 43 | omega^(omega^2)+1 | 47 | omega^(omega^7)+1 |
+
+Current external state:
+- The first OEIS unknown in the extended table is now `p = 719`, where
+  `f(719) = 359` and `Q(359) = {359}`. The calculator notes the required finite
+  exponent as `e_719 = 1258230380`, which is the practical wall for the direct
+  Lenstra power test.
+- A tempting pattern matches the checked OEIS/calculator records from this pass:
+  `m_p = 0` when `Q(f(p))` is not a singleton odd prime-power; `m_p = 1` for a
+  singleton odd `Q(f(p))`, except the observed `f(p) = 2*3^k` cases have
+  `m_p = 4`. A local audit matched this rule against the 950 calculator records
+  with known `Q`-sets, and against every OEIS-known row covered by those `Q`-sets.
+  This is still only a candidate rule, not a theorem.
+- The exact finite-field reformulation is sharper than root-search language. If
+  `beta = kappa_{f(p)} + m` lies in the component field `F_{2^E}`, then `beta`
+  has no `p`-th root exactly when `p` divides the multiplicative order of `beta`.
+  Thus the excess is the least `m` such that
+  `p | ord(kappa_{f(p)} + m)`.
+- The local fixed-base probe uses that criterion to verify `m_47 = 1` from the
+  lower verified rows. Since `f(47) = 23` and `Q(23) = {23}`, this gives the newly
+  shipped carry `alpha_47 = omega^(omega^7)+1`.
 
 Why this is research:
 - Rewriting the current table-driven code to compute the known shape
@@ -209,6 +233,19 @@ Why this is research:
 - Extending past the verified table is different. DiMuro's theorem proves that the
   excess has a formulaic transfinite shape plus a finite correction, but the finite
   correction has no closed form in the cited theorem.
+- Weaker "closed forms" already fail: `Q(f(p))` alone does not determine the
+  excess, since `Q = {9}` gives `m_19 = 4` but `m_73 = 1`; similarly
+  `Q = {81}` gives `m_163 = 4` but `m_2593 = 1`, and `Q = {243}` gives
+  `m_1459 = 4` but `m_487 = 1`.
+- The candidate `0/1/4` rule above would imply a global bound `m_p <= 4`. Lenstra
+  explicitly left absolute boundedness open after proving lower-bound rules such
+  as singleton-odd `Q(f(p))` forcing positive excess and `f(p)=2*3^k` forcing
+  excess at least `4`.
+- The order formulation explains the first weak-formula failures without appealing
+  to the production table. In the independent probe, `ord(kappa_9 + 1) =
+  3^3*(2^9 - 1)`, so `73 | ord(kappa_9 + 1)` but `19` does not divide it; adding
+  `4` changes the order and picks up `19`. This is why the same `Q = {9}` gives
+  both `m_73 = 1` and `m_19 = 4`.
 - Shipping new values would require an independent oracle, a root-search theorem,
   or a new algorithmic proof. Otherwise the project would be numerology with a
   pleasant API.
@@ -217,12 +254,22 @@ Concrete progress targets:
 - Implement the principled same-coverage route: compute `f(u) = ord_u(2)`,
   compute `Q(f(u))`, construct the `chi`-sum, and hardcode only the finite excess
   integer. This should independently cross-check the published rows.
+- Decide whether to import more known OEIS/calculator values through `p <= 709` as
+  cited data, or keep requiring a local finite-field oracle for each shipped row.
 - Derive or certify finite excess terms beyond the published table.
+- Prove or find a counterexample to the candidate `0/1/4` rule. The smallest
+  pressure point is `p = 719`, where the rule predicts `m_719 = 1` but the direct
+  calculator path is too large for ordinary local verification.
+- Turn the order-divisibility criterion into an actual theorem about the prime
+  divisors of `ord(kappa_q + m)`, especially for singleton odd `Q = {q}` and for
+  the exceptional tower `q = 3^k`.
 - Build a verified `u`-th-power/root-search oracle for the transfinite field.
 - Prove enough about the search to avoid merely empirical extensions.
-- Decide what evidence is acceptable for shipping `alpha_47` and beyond.
+- Decide what evidence is acceptable for shipping `alpha_53` and beyond.
 
 Relevant surfaces:
+- `OPEN-3.md`
+- `experiments/ordinal_excess_probe.py`
 - `src/scalar/big/ordinal/tower.rs`
 - `src/scalar/big/ordinal/mod.rs`
 - `src/scalar/AGENTS.md`

@@ -64,11 +64,11 @@ impl Ordinal {
     /// `α_11 = ω^ω+1`, …) branch a Kummer carry into a *sum*, which is nim-multiplied
     /// back in recursively — descending by place, since every `α_{p(m)}` lives at places
     /// `< m`. Exact for every pair of ordinals `< ω^(ω^ω)` whose product triggers Kummer
-    /// carries only at primes `≤ 43` (the source-verified `α_u` table, DiMuro Table 1).
+    /// carries only at primes `≤ 47` (DiMuro through `43`, plus locally verified `47`).
     ///
     /// Returns `None` when an operand reaches `≥ ω^(ω^ω)` (an infinite exponent place,
     /// outside the algebraically-closed segment) **or** when a level-0 carry would need
-    /// an `α_u` past the verified table (`α_47` and beyond) — the staged boundary.
+    /// an `α_u` past the verified table (`α_53` and beyond) — the staged boundary.
     pub fn nim_mul(&self, other: &Ordinal) -> Option<Ordinal> {
         // Zero is absorbing in any field.
         if self.is_zero() || other.is_zero() {
@@ -314,7 +314,7 @@ mod tests {
     #[test]
     fn multiplication_reaches_past_omega_omega() {
         // The prime-power tower (`tower.rs`) reaches every ordinal whose Kummer carries
-        // stay at primes ≤ 43 — well past ω^ω. Spot-checks of source-verified landmarks
+        // stay at primes ≤ 47 — well past ω^ω. Spot-checks of verified landmarks
         // (full coverage lives in `tower::tests`):
         let omega = Ordinal::omega();
         let ww = Ordinal::omega_pow(omega.clone()); // ω^ω = χ_5
@@ -337,7 +337,7 @@ mod tests {
             q = q.nim_mul(&chi7).unwrap();
         }
         assert_eq!(q, omega.nim_add(&fin(1))); // ω + 1
-                                               // The boundary now sits past prime 43, and ≥ ω^(ω^ω) is out of range.
+                                               // The boundary now sits past prime 47, and ≥ ω^(ω^ω) is out of range.
         assert_eq!(Ordinal::omega_pow(ww.clone()).nim_mul(&omega), None); // ω^(ω^ω)
     }
 }

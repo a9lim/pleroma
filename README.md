@@ -262,8 +262,8 @@ Scope boundaries worth stating plainly:
 - `Ordinal` nim-addition is general on the represented CNF terms and it implements
   `Scalar` for Clifford experiments inside the checked Kummer boundary.
   Nim-multiplication is implemented below `ω^(ω^ω)` when every carry uses the
-  source-verified DiMuro excess table through `alpha_u` for `u <= 43`; a carry past
-  that table returns `None`.
+  verified excess table: DiMuro through `alpha_u` for `u <= 43`, plus the local
+  fixed-base oracle value `alpha_47`; a carry past that table returns `None`.
 - `Surreal` uses finite support and rational coefficients — the honest truncation of
   true CNF. Non-monomial inverses are infinite Hahn series and are not represented.
 - `Qp`, `Qq`, `Laurent`, `Ramified`, `Gauss`, and `Adele` are finite-precision

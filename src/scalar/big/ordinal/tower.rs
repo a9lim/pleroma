@@ -52,12 +52,13 @@
 //!
 //! ## Staging (honest scope)
 //!
-//! We carry the **source-verified** excesses `α_u` for primes `u ≤ 43` (DiMuro Table 1;
-//! see `OPEN.md`). The product of any two ordinals `< ω^(ω^ω)` is therefore exact
-//! whenever every Kummer carry it triggers is at a prime `≤ 43`; a carry needing `α_47`
-//! or beyond returns `None` — the honest operational boundary, moved up from the earlier
-//! "any non-scalar `α_u`" cut. (Anything `≥ ω^(ω^ω)`, an infinite exponent place, is out
-//! of range outright.)
+//! We carry the DiMuro Table 1 excesses through `α_43` plus the locally verified
+//! `α_47 = ω^(ω^7)+1` from `experiments/ordinal_excess_probe.py` (see `OPEN.md`).
+//! The product of any two ordinals `< ω^(ω^ω)` is therefore exact whenever every
+//! Kummer carry it triggers is at a prime `≤ 47`; a carry needing `α_53` or beyond
+//! returns `None` — the honest operational boundary, moved up from the earlier
+//! "any non-scalar `α_u`" cut. (Anything `≥ ω^(ω^ω)`, an infinite exponent place,
+//! is out of range outright.)
 
 use super::Ordinal;
 use crate::scalar::nim_mul;
@@ -102,10 +103,11 @@ fn place_prime(m: u128) -> u128 {
 }
 
 /// The excess `α_u` (`χ_u^u = α_u`, the Kummer relation) as an ordinal, or `None` for
-/// primes beyond the source-verified table (`u > 43` — the staged boundary). Every
+/// primes beyond the verified table (`u > 47` — the staged boundary). Every
 /// `α_u` is built from generators at strictly-lower places than `χ_u`'s own, which is
-/// what makes the branching reduction descend and terminate. Values: DiMuro Table 1
-/// (see `OPEN.md`); square brackets there are ordinary ordinal exponentiation, already
+/// what makes the branching reduction descend and terminate. Values through `43`:
+/// DiMuro Table 1; value `47`: local fixed-base finite-field oracle (see `OPEN.md`);
+/// square brackets in the source table are ordinary ordinal exponentiation, already
 /// resolved (`[2^ω]=ω`, `[2^{ω²}]=ω^ω`, …).
 fn alpha_ordinal(u: u128) -> Option<Ordinal> {
     let fin = Ordinal::from_u128;
@@ -125,6 +127,7 @@ fn alpha_ordinal(u: u128) -> Option<Ordinal> {
         37 => wpow(fin(3)).nim_add(&fin(4)),       // ω³ + 4
         41 => wpow(w()).nim_add(&fin(1)),          // ω^ω + 1
         43 => wpow(wpow(fin(2))).nim_add(&fin(1)), // ω^(ω²) + 1
+        47 => wpow(wpow(fin(7))).nim_add(&fin(1)), // ω^(ω⁷) + 1
         _ => return None,
     };
     Some(val)
@@ -234,7 +237,7 @@ fn reduce_keys(a: &GenKey, b: &GenKey) -> Option<(GenKey, BTreeMap<u128, u128>)>
 /// ordinal (a *sum*, once a non-scalar Kummer carry branches it). Adds the generator
 /// powers, reduces, then nim-multiplies in the excess `α` factors the level-0 carries
 /// owe — recursively, since `α_u` is itself a (strictly-lower-place) ordinal. `None` if
-/// some owed `α_u` is past the verified table (`u > 43`).
+/// some owed `α_u` is past the verified table (`u > 47`).
 fn mul_mono(ka: &GenKey, ca: u128, kb: &GenKey, cb: u128) -> Option<Ordinal> {
     let (base_key, overflow) = reduce_keys(ka, kb)?;
     let coeff = nim_mul(ca, cb);
@@ -259,7 +262,7 @@ fn mul_mono(ka: &GenKey, ca: u128, kb: &GenKey, cb: u128) -> Option<Ordinal> {
 }
 
 /// Nim-multiply two ordinals `< ω^(ω^ω)`, or `None` outside that range / when a Kummer
-/// carry needs an excess `α_u` past the verified table (`u > 43`). Distributes over CNF
+/// carry needs an excess `α_u` past the verified table (`u > 47`). Distributes over CNF
 /// (char-2 field addition = nim-add); each monomial pair is handled by [`mul_mono`].
 pub(super) fn mul(a: &Ordinal, b: &Ordinal) -> Option<Ordinal> {
     let mut acc = Ordinal::zero();
@@ -316,6 +319,7 @@ mod tests {
             (11, 41),
             (12, 43),
             (13, 47),
+            (14, 53),
         ] {
             assert_eq!(place_prime(m), p);
         }
@@ -326,7 +330,7 @@ mod tests {
         // The termination invariant: every verified α_u is built from generators at
         // places strictly below χ_u's own place (the (u)-index in the odd primes). This
         // is what makes `base ⊗ excess` descend; a typo that violated it would loop.
-        for m in 0..=12u128 {
+        for m in 0..=13u128 {
             let u = place_prime(m);
             let alpha = alpha_ordinal(u).unwrap();
             // the highest place appearing anywhere in α_u must be < m.
@@ -408,6 +412,22 @@ mod tests {
     }
 
     #[test]
+    fn locally_verified_alpha_47_landmark() {
+        // `experiments/ordinal_excess_probe.py` independently verifies Lenstra excess
+        // m_47 = 1 by a fixed-base finite-field power test. Since f(47)=23, this gives
+        // α_47 = κ_23 + 1 = ω^(ω^7) + 1.
+        let chi47 = Ordinal::omega_pow(Ordinal::omega_pow(fin(13)));
+        let mut pow = fin(1);
+        for _ in 0..47 {
+            pow = mul(&pow, &chi47).unwrap();
+        }
+        assert_eq!(
+            pow,
+            Ordinal::omega_pow(Ordinal::omega_pow(fin(7))).nim_add(&fin(1))
+        );
+    }
+
+    #[test]
     fn quintic_stage_field_axioms() {
         // The prime-3/prime-5 (scalar-α) commutative-ring sweep on a sample of ordinals
         // < ω^(ω²) spanning both the place-ω⁰ and place-ω¹ towers, coeffs in F_4. Every
@@ -437,7 +457,7 @@ mod tests {
         // The decisive Stage-2 check: the commutative-ring axioms on a sample built from
         // χ_7 = ω^(ω²) (the first non-scalar-α generator), its powers 1..6, ω (= χ_3,
         // which α_7 = ω+1 drags in), F_4 scalars, and mixed sums. Every pairwise product
-        // stays within primes {3, 7} (both ≤ 43 ⇒ all `Some`), and associativity /
+        // stays within primes {3, 7} (well inside the verified range ⇒ all `Some`), and associativity /
         // distributivity through the α_7 branching is exactly what a mis-mixed carry
         // would break. The α_7 = ω+1 *value* is source-pinned in `septic_kummer_landmark`.
         let mut elems: Vec<Ordinal> = vec![fin(1), fin(2), fin(3), w(), w().nim_add(&fin(1))];
@@ -472,15 +492,15 @@ mod tests {
     }
 
     #[test]
-    fn boundary_returns_none_past_prime_43() {
-        // Everything through prime 43 is defined: e.g. χ_43 = ω^(ω^12), free powers fine.
-        let chi43 = Ordinal::omega_pow(Ordinal::omega_pow(fin(12)));
-        assert!(mul(&chi43, &chi43).is_some()); // (ω^(ω^12))⊗² — free, no carry
+    fn boundary_returns_none_past_prime_47() {
+        // Everything through prime 47 is defined: e.g. χ_47 = ω^(ω^13), free powers fine.
+        let chi47 = Ordinal::omega_pow(Ordinal::omega_pow(fin(13)));
+        assert!(mul(&chi47, &chi47).is_some()); // (ω^(ω^13))⊗² — free, no carry
 
-        // But a Kummer carry at place 13 (prime 47) is past the verified table ⇒ None.
-        // ω^(ω^13·40) = χ_47^⊗40; squaring drives the place-13 digit to 80 ≥ 47, owing
-        // the unverified α_47.
-        let big = Ordinal::omega_pow(Ordinal::monomial(fin(13), 40)); // ω^(ω^13·40)
+        // But a Kummer carry at place 14 (prime 53) is past the verified table ⇒ None.
+        // ω^(ω^14·50) = χ_53^⊗50; squaring drives the place-14 digit to 100 ≥ 53, owing
+        // the unverified α_53.
+        let big = Ordinal::omega_pow(Ordinal::monomial(fin(14), 50)); // ω^(ω^14·50)
         assert_eq!(mul(&big, &big), None);
 
         // And anything ≥ ω^(ω^ω) (an infinite exponent place) is out of range outright.

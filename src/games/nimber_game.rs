@@ -87,7 +87,7 @@ impl NimberGame {
     /// nim-multiplication (the transfinite extension of
     /// [`coin_turning::nim_mul_mex`](crate::games::nim_mul_mex)). Defined across the
     /// `On₂` prime-power tower, including the non-scalar Kummer branching (`α_7 = ω+1`,
-    /// …); `None` only when a Kummer carry needs a prime `> 43` (past the source-verified
+    /// …); `None` only when a Kummer carry needs a prime `> 47` (past the verified
     /// excess table) or at `≥ ⋆ω^(ω^ω)` (see [`big::ordinal`](crate::scalar::big)).
     /// Unlike the surreal leg — where the product is field multiplication — for nimbers
     /// the product is a *separate* game from the disjunctive sum; this is the seam where

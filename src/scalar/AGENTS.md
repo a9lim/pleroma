@@ -158,8 +158,8 @@ array lengths, dimensions, and const-generic sizes that are inherently indices.
   - `tower.rs` — the prime-power generator tower (Conway/Lenstra/DiMuro): a monomial
     `ω^E` keyed by `place m ↦ base-p(m) digit vector`; `⊗` adds digit vectors and
     reduces with the Kummer carries `χ_u^u = α_u`. Non-scalar `α_u` (`α_7=ω+1`, …)
-    branch a carry into a *sum*, recursed in by descending place. Carries source-verified
-    `α_u` for primes `u ≤ 43`; `None` past that or at `≥ ω^(ω^ω)` (see root `OPEN.md`).
+    branch a carry into a *sum*, recursed in by descending place. Carries verified
+    `α_u` for primes `u ≤ 47`; `None` past that or at `≥ ω^(ω^ω)` (see root `OPEN.md`).
   - `cantor.rs` — ORDINARY (Cantor) `ord_add`/`ord_mul` (ω+ω=ω·2, 1+ω=ω) — the
     surreal birthday's run-length arithmetic. A distinct algebra, sharing only CNF.
 

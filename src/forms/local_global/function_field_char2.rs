@@ -41,13 +41,13 @@
 //! (Even-order poles contribute through the higher `u`-coefficients — there is no
 //! "only the simple pole matters" shortcut in char 2. The odd-order tail that
 //! Hermite reduction *cannot* remove is the same wild `R_π` phenomenon that
-//! Aravire–Jacob's Witt decomposition carries; see NOTES.md.) At the degree place
+//! Aravire–Jacob's Witt decomposition carries; see root AGENTS.md.) At the degree place
 //! `∞` (`κ = F_q`) the substitution `u = 1/t`, `dt = u⁻²du` (the char-2 sign
 //! vanishes) gives `Res_∞(g dt) = [u⁻¹]( g(1/u)·u⁻² )`.
 //!
 //! Scope: this layer is the symbol + reciprocity + quaternion-ramification package.
 //! The full char-2 Witt/Springer decomposition of an arbitrary form (the wild
-//! `R_π` term) is a separate, larger build tracked in NOTES.md.
+//! `R_π` term) is a separate, larger build tracked in root AGENTS.md.
 
 use crate::forms::{artin_schreier_class_finite, FiniteChar2Field};
 use crate::scalar::{Poly, RationalFunction, Scalar};

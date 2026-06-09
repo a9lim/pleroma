@@ -1,6 +1,6 @@
 """The framing obstruction probe: why the Gold quadric needs more than B alone.
 
-This probe stress-tests the structure of NOTES.md's open question — "a game whose
+This probe stress-tests the structure of OPEN.md's open question — "a game whose
 moves are built from B (coin-turning) alone, not from Q itself, with P-set the
 Gold quadric {Q=0}" — by organizing the obstruction into a symmetry-breaking
 ladder, using two classical facts:

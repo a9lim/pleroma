@@ -4,7 +4,7 @@
 //! `interactive_kernel` orients moves strictly downward so the game terminates —
 //! an acyclic graph, hence no Draws, a Win/Loss bit per position. A *loopy* rule
 //! keeps both flip directions, so positions sit on cycles and a third outcome
-//! appears: **Draw**. NOTES.md's Tier-2 obstruction is that normal-play P-sets are
+//! appears: **Draw**. OPEN.md's Tier-2 obstruction is that normal-play P-sets are
 //! XOR-linear; the Draw-set of a cyclic rule is a new degree of freedom, not bound
 //! by that linearity. `loopy_decision_sets` exposes both the Loss-set and the
 //! Draw-set; `fit_f2_quadratic` names each.

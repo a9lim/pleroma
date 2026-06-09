@@ -51,9 +51,11 @@ lives in the type system rather than the comments.
 **char 0 ↔ char 2.** Classifying a quadratic form is one theory split by `char F`.
 Over a real-closed field it is the 8-fold periodic Cl(p,q) table (`M_n(ℝ/ℂ/ℍ)`);
 in characteristic 2 the quadratic and polar forms part ways and the same role is
-played by the Arf invariant and the Brauer–Wall group. The classifier façade picks
-the leg from the scalar type at compile time, so `metric.classify()` is one call
-across all three legs.
+played by the Arf invariant and the Brauer–Wall group. On the nimber leg,
+nonsingular forms now have both the Arf classifier and the `BW(F_{2^m}) ≅ Z/2`
+Brauer-Wall class, with the same XOR law. The classifier façade picks the leg from
+the scalar type at compile time, so `metric.classify()` / `.bw_class()` are one
+call across the implemented legs.
 
 **surreal No ↔ ordinal On₂.** The surreals (a char-0 field) and the ordinal
 nimbers (a char-2 non-field) are mirror images: both are Cantor-normal-form towers
@@ -133,6 +135,15 @@ characteristic-2 example noncommutative. Collapsing `q` and `b` into one symmetr
 form would silently throw away the entire point of the nimber backend. (An optional
 third field `a` lifts the engine to a general, non-symmetric bilinear form.)
 
+On nonsingular nimber metrics, the form layer also exposes the Brauer-Wall class
+as the same Arf/Witt `Z/2` datum: hyperbolic planes are zero, the anisotropic
+plane has class one, and orthogonal sum / graded tensor adds by XOR. The spinor
+module has a separate characteristic-2 representation path: it never uses the
+char-0 `1/2(1+w)` idempotent, accepts nonsingular polar forms such as the
+hyperbolic plane with null-square generators, uses blade idempotents like
+`e_i e_j` when they shrink a left ideal, and otherwise falls back honestly to the
+complete left-regular action.
+
 ## Quickstart
 
 Requires Rust and Python ≥ 3.9.
@@ -163,6 +174,7 @@ pl.Hackenbush.string(["green", "green"]).grundy()   # a nimber (all-green = Nim)
 # char 0 <-> char 2: a classification on each leg
 pl.classify_real(1, 3)              # Cl(1,3) over R, the 8-fold table
 pl.arf_invariant(A)                 # the char-2 mirror invariant
+pl.bw_class_nimber(A)               # the char-2 Brauer-Wall class, if nonsingular
 
 # local <-> global: Hasse-Minkowski + Hilbert reciprocity over Q
 pl.is_isotropic_q([1, 1, 1])        # False (anisotropic over Q)
@@ -194,7 +206,7 @@ file-by-file breakdown:
 - `src/scalar/` — the `Scalar` trait and every coefficient world, grouped by place.
 - `src/clifford/` — the multivector engine, geometric product, and the GA layer
   (versors, outermorphisms, Hopf/divided-power structures, conformal/projective GA,
-  spinors).
+  spinors, including characteristic-2 regular/left-ideal nimber spinors).
 - `src/forms/` — the quadratic-form classifiers and invariants across the
   characteristic trichotomy, plus Witt/Brauer–Wall, the Springer trio,
   `local_global/` for Hasse–Minkowski/Hilbert symbols, and `integral/` for
@@ -204,13 +216,14 @@ file-by-file breakdown:
   game group.
 - `src/py/` — the optional PyO3 bindings behind the `python` feature.
 
-See `AGENTS.md` for the working-notes summary and `NOTES.md` for the mathematical
-thread.
+See `AGENTS.md` for the working-notes summary, `OPEN.md` for the genuine research
+problems, and `writeups/goldarf.tex` for the narrow draft note on the Gold/Arf
+game thread.
 
 ## Research thread
 
-The narrow mathematical thread in `NOTES.md` and `writeup/pleroma.tex` is not a
-claim of a new Clifford classification theorem. It is a draft investigation of
+The narrow mathematical thread in `OPEN.md` and `writeups/goldarf.tex` is not a
+claim of a new Clifford classification theorem. It is an investigation of
 game-built quadratic forms in the nimber backend:
 
 1. Turning-Corners games realize nim multiplication.
@@ -218,10 +231,11 @@ game-built quadratic forms in the nimber backend:
 3. Gold-style trace forms `Tr(λ · x^(1+2^a))` are therefore expressible from
    game-value operations.
 4. The Arf invariant gives the standard zero-count bias for a quadratic zero set.
-5. The open question is whether a natural game rule has such a zero set as its
-   P-positions. Current probes span normal-play, misère quotient, interactive
-   (`kernel`), loopy (Draw-set), and bent-form searches; they narrow the target but
-   do not solve it.
+5. The open question is whether a natural, non-tautological game rule has such a
+   zero set as its P-positions. Current probes span normal-play, misère quotient,
+   interactive (`kernel`), loopy (Draw-set), and bent-form searches; they narrow
+   the target but do not solve it. The detailed problem statement and probe map are
+   in `OPEN.md`.
 
 ## Status and limits
 
@@ -235,7 +249,9 @@ Scope boundaries worth stating plainly:
 - `Nimber(u128)` is exactly `F_{2^128}`. It contains the nim subfields of degree
   dividing 128; it is not the proper-class field of all nimbers.
 - `Ordinal` nim-addition is general on the represented CNF terms; nim-multiplication
-  is implemented below `ω^ω` through the current degree-3 tower (returns `None` above).
+  is implemented below `ω^(ω^ω)` when every Kummer carry uses the source-verified
+  DiMuro excess table through `alpha_u` for `u <= 43`. A carry needing `alpha_47`
+  or beyond returns `None`.
 - `Surreal` uses finite support and rational coefficients — the honest truncation of
   true CNF. Non-monomial inverses are infinite Hahn series and are not represented.
 - `Qp`, `Qq`, `Laurent`, `Ramified`, `Gauss`, and `Adele` are finite-precision

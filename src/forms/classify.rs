@@ -17,8 +17,8 @@
 
 use crate::clifford::{CliffordAlgebra, Metric};
 use crate::forms::{
-    arf_invariant, bw_class_complex, bw_class_finite_odd, bw_class_real, classify_finite_odd,
-    classify_rational, classify_surcomplex, classify_surreal, finite_odd_witt,
+    arf_invariant, bw_class_complex, bw_class_finite_odd, bw_class_nimber, bw_class_real,
+    classify_finite_odd, classify_rational, classify_surcomplex, classify_surreal, finite_odd_witt,
     isometric_finite_odd, isometric_nimber, isometric_rational, isometric_real,
     isometric_surcomplex, witt_decompose_finite_odd, witt_decompose_real, ArfResult,
     BrauerWallClass, CliffordType, OddCharType, OddWittDecomp, RationalCliffordType,
@@ -229,6 +229,12 @@ impl<const P: u128, const N: usize> BrauerWallClassify for Fpn<P, N> {
     }
 }
 
+impl BrauerWallClassify for Nimber {
+    fn bw_class(metric: &Metric<Self>) -> Option<BrauerWallClass> {
+        bw_class_nimber(metric)
+    }
+}
+
 /// Ergonomic methods so callers can write `metric.classify()` /
 /// `algebra.classify()` instead of `S::classify(&metric)`.
 impl<S: ClassifyForm> Metric<S> {
@@ -317,6 +323,7 @@ mod tests {
         let n = Metric::diagonal(vec![Nimber::one(), Nimber::one()]);
         assert_eq!(n.classify(), arf_invariant(&n));
         assert_eq!(n.witt_class(), WittClassG::try_char2_from_metric(&n).ok());
+        assert_eq!(n.bw_class(), bw_class_nimber(&n));
 
         // odd char: F_5 dispatch produces the odd-char datum.
         let f = Metric::diagonal(vec![Fp::<5>::new(1), Fp::<5>::new(2)]);
@@ -354,5 +361,10 @@ mod tests {
         assert_eq!(f9.isometric_to(&g9), isometric_finite_odd(&f9, &g9));
         assert_eq!(f9.witt_decompose(), witt_decompose_finite_odd(&f9));
         assert_eq!(f9.bw_class(), bw_class_finite_odd(&f9));
+
+        let mut b = std::collections::BTreeMap::new();
+        b.insert((0usize, 1usize), Nimber::one());
+        let n = Metric::new(vec![Nimber::zero(), Nimber::zero()], b);
+        assert_eq!(n.bw_class(), bw_class_nimber(&n));
     }
 }

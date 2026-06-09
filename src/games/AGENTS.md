@@ -6,7 +6,7 @@ number/nimber subclasses, where Conway multiplication is defined). Games under
 disjunctive sum are an abelian GROUP, not a ring; that constraint is *why* the
 Clifford story lives on the scalar backends and not on all games.
 
-> Read `NOTES.md` before touching `coin_turning.rs`, `kernel.rs`, `misere.rs`, or
+> Read root `OPEN.md` before touching `coin_turning.rs`, `kernel.rs`, `misere.rs`, or
 > the example probes — they feed the open play-semantics question.
 
 `mod.rs` re-exports every module below flat.

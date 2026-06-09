@@ -5,7 +5,7 @@ the **characteristic trichotomy**: the classification of a quadratic form
 (equivalently, of the Clifford algebra it builds) is *one* theory split three ways
 by `char F`. This axis cuts ACROSS the place table that organizes `scalar/`.
 
-> Read `NOTES.md` before touching `char2/`, `quadric_fit.rs`, `char0.rs`,
+> Read root `OPEN.md` before touching `char2/`, `quadric_fit.rs`, `char0.rs`,
 > `witt.rs`, or anything feeding the open play-semantics question.
 
 `mod.rs` re-exports the legs + `classify` + diagonalize/equivalence + witt/
@@ -18,9 +18,10 @@ symplectic/hermitian "form + involution" siblings, all flat.
   `IsometryClassify` + `WittDecompose` + `BrauerWallClassify`, keyed on the scalar
   so `metric.classify()` / `.witt_class()` / `.isometric_to()` / `.witt_decompose()`
   / `.bw_class()` pick the right leg **at compile time** (Surreal→CliffordType,
-  Fp/Fpn→OddCharType, Nimber→ArfResult, …). Rational & Surcomplex impl
-  `ClassifyForm` but not `WittClassify` (their Witt data isn't a single `WittClassG`
-  — honest, not a gap).
+  Fp/Fpn→OddCharType, Nimber→ArfResult, …). `BrauerWallClassify` covers Surreal,
+  Surcomplex, odd finite fields, and nonsingular Nimber metrics. Rational &
+  Surcomplex impl `ClassifyForm` but not `WittClassify` (their Witt data isn't a
+  single `WittClassG` — honest, not a gap).
 - **`diagonalize.rs`** — congruence diagonalization (char ≠ 2): `gram`,
   `diagonalize`, `as_diagonal`. Returns `None` in char 2 (nonsingular char-2 forms
   have an alternating polar form and are NOT diagonalizable — use the char-2
@@ -64,7 +65,8 @@ char-2 Arf/Brauer–Wall story) is one of the project's central threads.
   indexing is Kato's, pinned).
 - **`brauer_wall.rs`** — the Brauer–Wall group BW(F): `bw_class_real` (Bott index
   (q−p) mod 8 ⇒ BW(ℝ)=ℤ/8), `bw_class_complex` (ℤ/2), `bw_class_oddchar` (order-4 ≅
-  W(F_q), DISCOVERED not asserted). Law = graded_tensor.
+  W(F_q), DISCOVERED not asserted), and `bw_class_nimber` (char-2 Arf/Witt class
+  `ℤ/2`, nonsingular metrics only). Law = graded_tensor.
 
 ## Springer — the discrete-valuation decomposition (a local–global symmetry)
 
@@ -150,7 +152,7 @@ One generic engine for the discretely-valued legs + the surreal odd-one-out:
   parts, valuation parity for totally-singular tails, and the odd-dimensional
   Clifford invariant `Σ s_v(a_i b_i, c/a_i)` for one-class radical tails;
   `u(K_v)=4` ⇒ rank ≥ 5 isotropic). The form is `Char2QuadForm` (binary blocks + a
-  totally-singular tail). **Read NOTES.md** before touching: this is the corrected
+  totally-singular tail). **Read root AGENTS.md and OPEN.md** before touching: this is the corrected
   three-layer decomposition (the naive `W_q(k)²` was rightly avoided), pinned to
   source-derived oracles. **Global isotropy** `is_isotropic_global_char2(form) →
   Option<bool>` is Hasse–Minkowski over `F_q(t)` itself, on three ingredients past the
@@ -243,7 +245,7 @@ equivalence at every place), which reuses the `local_global/padic.rs` and
   (computed, not tabulated — an irreducible root system has `n·h` roots). `is_root_lattice`
   (min 2 + roots generate `L`, index read off the HNF pivots). `E_8` is the unique rank-8
   even unimodular lattice — the visible meeting point of the char-0 mod-8 Bott /
-  `brauer_wall` BW(ℝ)=ℤ/8 story and the lattice world (NOTES line). Det/kissing/Coxeter
+  `brauer_wall` BW(ℝ)=ℤ/8 story and the lattice world (root AGENTS.md). Det/kissing/Coxeter
   oracles protect every construction; |Aut| oracles only on the small ones
   (`A_n`→`2(n+1)!`, `D_4`→1152, `D_5`→3840; `E_8`→`None`, past the budget).
 - **`integral/genus.rs`** (M3) — the **genus** = (signature, det, per-prime Conway–Sloane
@@ -272,7 +274,7 @@ equivalence at every place), which reuses the `local_global/padic.rs` and
   even unimodular with **no roots** *is* Leech (Niemeier), so the test checks `det=1`,
   even, `short_vectors(2)` empty (cheap — bound 2 < min 4; the full kissing 196560 is
   not enumerated). `|Aut(Λ₂₄)| = |Co₀|` is the recorded constant `LEECH_AUT_ORDER` (far
-  past brute force). Monster stays a NOTES remark (moonshine, not a form computation).
+  past brute force). Monster stays a thematic remark (moonshine, not a form computation).
 
 ## Things that look like bugs but are not (forms layer)
 

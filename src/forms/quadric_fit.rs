@@ -8,7 +8,7 @@
 //! [Arf](crate::forms::ArfResult) — distinguishing a genuine quadric (nonzero
 //! polar rank) from a mere affine flat (the XOR-linear case normal play already
 //! produces). It is the bench behind the `misere_quotient` and `octal_hunt`
-//! examples and the open-question probes; see `NOTES.md`.
+//! examples and the open-question probes; see root `OPEN.md`.
 
 use crate::forms::{arf_f2, ArfResult};
 

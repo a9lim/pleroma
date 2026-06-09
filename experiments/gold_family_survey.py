@@ -1,7 +1,7 @@
 """Broadening the form: a game-realizable quadratic trace family, and where it
 goes BENT in the sampled cases.
 
-NOTES.md fixes one form, the Gold form Q_a(x) = Tr(x^{1+2^a}), and hunts for a
+OPEN.md starts from one form, the Gold form Q_a(x) = Tr(x^{1+2^a}), and hunts for a
 natural game with P-set {Q_a=0}. This probe broadens the *form* side. The general
 quadratic Boolean function on F_{2^m} has the trace representation (Carlet; e.g.
 arXiv:1305.3700)

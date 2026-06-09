@@ -16,10 +16,12 @@ Split per pillar:
   (Nimber/Surreal/Surcomplex/Integer/Omnific) + conformal GA (`Cga`). MV methods
   cover the full Arc-C suite (clifford_conjugate, scalar_product, commutator,
   anticommutator, undual, meet, is_blade, factor_blade, cayley); algebra methods add
-  trace/char_poly/determinant/outermorphism/spinor_rep.
+  trace/char_poly/determinant/outermorphism/spinor_rep. `spinor_rep` reaches the
+  nonsingular nimber char-2 path as well as the supported char-0 path.
 - **`forms.rs`** — classify / witt / dickson / springer bindings, `FiniteFieldForm`
   (the RUNTIME Fp/Fpn form wrapper — the pattern that sidesteps const generics for
-  the odd-char leg), the Brauer–Wall classes, `classify_real`/`classify_complex`,
+  the odd-char leg), the Brauer–Wall classes (`bw_class_real`, `bw_class_complex`,
+  `bw_class_nimber`, `bw_class_oddchar`), `classify_real`/`classify_complex`,
   `hilbert_product`, and `isotropy_over_adeles`/`AdelicIsotropy`.
 - **`games.rs`** — `Game` / `NumberGame` / `NimberGame` (the char-2 transfinite
   Nim-heap mirror) / `GameExterior` / `Hackenbush` +

@@ -814,7 +814,27 @@ impl PyBrauerWallClass {
         self.inner == other.inner
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner)
+        match self.inner {
+            crate::forms::BrauerWallClass::Real(s) => {
+                format!("BrauerWallClass::Real({s})")
+            }
+            crate::forms::BrauerWallClass::Complex(p) => {
+                format!("BrauerWallClass::Complex({p})")
+            }
+            crate::forms::BrauerWallClass::OddChar {
+                field_order,
+                kappa,
+                e0,
+                sclass,
+            } => {
+                format!(
+                    "BrauerWallClass::OddChar(field_order={field_order}, kappa={kappa}, e0={e0}, sclass={sclass})"
+                )
+            }
+            crate::forms::BrauerWallClass::Char2 { arf } => {
+                format!("BrauerWallClass::Char2(arf={arf})")
+            }
+        }
     }
 }
 
@@ -836,6 +856,19 @@ fn bw_class_complex(alg: &SurcomplexAlgebra) -> PyResult<PyBrauerWallClass> {
     crate::forms::bw_class_complex(&alg.inner.metric)
         .map(|c| PyBrauerWallClass { inner: c })
         .ok_or_else(|| PyValueError::new_err("Brauer–Wall class needs a diagonal metric"))
+}
+
+/// The Brauer-Wall class of a nonsingular nimber Clifford algebra in
+/// `BW(F_{2^m}) ≅ W_q(F_{2^m}) ≅ Z/2` (the Arf/Witt class).
+#[pyfunction]
+fn bw_class_nimber(alg: &NimberAlgebra) -> PyResult<PyBrauerWallClass> {
+    crate::forms::bw_class_nimber(&alg.inner.metric)
+        .map(|c| PyBrauerWallClass { inner: c })
+        .ok_or_else(|| {
+            PyValueError::new_err(
+                "char-2 Brauer-Wall class needs a nonsingular non-general-bilinear nimber metric",
+            )
+        })
 }
 
 /// The Brauer–Wall class of a diagonal odd-char form `q` over `F_p` (the order-4
@@ -881,6 +914,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_isotropic_q, m)?)?;
     m.add_function(wrap_pyfunction!(bw_class_real, m)?)?;
     m.add_function(wrap_pyfunction!(bw_class_complex, m)?)?;
+    m.add_function(wrap_pyfunction!(bw_class_nimber, m)?)?;
     m.add_function(wrap_pyfunction!(bw_class_oddchar, m)?)?;
     Ok(())
 }

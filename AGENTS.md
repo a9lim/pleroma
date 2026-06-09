@@ -36,7 +36,37 @@ Each pillar's `mod.rs` re-exports its children flat, so public paths stay shallo
 Beyond the library: `examples/` (Rust demos + the open-question probes:
 `interactive_kernel`, `octal_hunt`, `loopy_quadric`, `misere_quotient`,
 `bent_route`, `tour`), `experiments/` (Python research probes on top of the shipped
-lib), `demo.py` (the Python tour), and `NOTES.md` (the mathematical thread).
+lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems), and
+`writeups/goldarf.tex` (the narrow draft note on the Gold/Arf game thread).
+
+## Claim levels and non-claims
+
+Use these labels when changing prose, papers, examples, or comments:
+
+- **Standard math**: external facts such as Sprague-Grundy, the Turning-Corners
+  product theorem, Arf classification of nonsingular binary quadratic forms, the
+  Gold rank formula, zero-count formulas over `F_2`, local Hilbert/Artin-Schreier
+  reciprocity, and Conway-Sloane lattice theory.
+- **Implemented and tested**: statements backed by the Rust tests, examples, Python
+  experiments, or the `demo.py` tour in this checkout.
+- **Interpretation**: bridges such as "Arf is a win-bias" are conditional on a
+  game whose P-set is the corresponding quadratic zero set.
+- **Open**: the natural Gold-quadric game rule, genuine game-native quadratic
+  deformation of `GameExterior`, and transfinite nim multiplication beyond the
+  source-verified DiMuro excess table. These live in `OPEN.md`.
+
+Scope boundaries to preserve:
+
+- Not a Clifford algebra over arbitrary partizan games. A Clifford algebra needs a
+  commutative scalar ring; the full game group is only an abelian group.
+- Not a new classification theorem for all characteristic-2 Clifford algebras over
+  arbitrary fields. The code computes Arf and Brauer-Wall data for finite nimber
+  subfields, rejects singular metrics where a nonsingular Witt/BW class is required,
+  and keeps rank/radical data explicit.
+- Not a solved game-semantics theorem. Gold forms are built from game operations,
+  but no non-tautological natural game is known whose P-set is their zero set.
+- Not an algebraically closed finite backend. `Nimber(u128)` is `F_{2^128}` and
+  contains only finite nimber subfields whose degrees divide 128.
 
 ## The symmetries (the intellectual spine — see README)
 
@@ -51,15 +81,83 @@ recurring symmetries the project is built around:
 - the **2×2 functor table** (algebraic|transcendental × residue|value-extending).
 - **local ↔ global** (the Springer trio + the local-global Hasse–Minkowski layer).
 
+## Implemented mathematical state
+
+The scalar landscape is broad, but not all backends have the same exactness claim:
+
+| backend | role |
+|---|---|
+| `Nimber(u128)` | finite nim-field `F_{2^128}` with nim add/mul; main char-2 backend |
+| `Surreal` | finite-support Hahn/CNF char-0 backend; real-table classification only on represented exact square classes |
+| `Surcomplex` | `Surreal[i]`; complex-table classification only on represented exact square classes |
+| `Integer`, `Omnific` | coefficient rings for exterior/nilpotent structures |
+| `Fp`, `Fpn`, `Zp`, `WittVec` | comparison scalar worlds for the characteristic trichotomy |
+| `Qp`, `Qq`, `Laurent`, `Ramified`, `Gauss` | local-field-style backends/functors, mostly capped-relative precision models |
+| `Adele`, `LocalQp` | runtime-prime adelic precision model over `Q` |
+| `RationalFunction` | exact global function field `F_q(t)` over `Poly = F_q[t]` |
+| `Ordinal` | staged transfinite nimbers; nim-addition on represented CNF terms and nim-multiplication through source-verified Kummer carries `alpha_u`, `u <= 43` |
+
+The char-2 Clifford point is load-bearing. In characteristic 2, `q` and `b` are
+independent:
+
+```text
+e_i^2              = q_i
+e_i e_j + e_j e_i = b_ij
+```
+
+The polar form is alternating, so `b_ii = 0`, while `q_i` can be nonzero. If the
+engine collapses `q` and `b`, the nimber Clifford product becomes the wrong
+commutative object. The implemented char-2 form layer reports `ArfResult { arf,
+rank, radical_dim, radical_anisotropic, o_type }`; for degenerate forms, Arf of the
+nonsingular core is not the whole form. On nonsingular nimber metrics, the same Arf
+bit is also the implemented Brauer-Wall class `BW(F_{2^m}) ~= Z/2`; hyperbolic
+planes are `0`, the anisotropic plane is `1`, and direct sum / graded tensor adds by
+XOR. `clifford::spinor` has a separate char-2 route: no `1/2(1+w)`, honest blade
+idempotents such as `e_i e_j` when they shrink a left ideal, and otherwise the full
+regular/lazy left action. Singular polar forms and general-bilinear `a` metrics are
+rejected.
+
+The game-built Gold-form bridge is implemented, but the play rule is not. The
+standard chain is:
+
+```text
+x + y      = XOR = disjunctive sum of impartial game values
+x * y      = nim product = Turning-Corners product value
+x -> x^2   = Frobenius = diagonal product x*x
+Tr(x)      = x + x^2 + ... + x^(2^(m-1))
+Q_a(x)     = Tr(x * x^(2^a))
+```
+
+Implemented probes verify Gold ranks, Arf zero-count bias, literal
+Turning-Corners reconstruction on small fields, frame-obstruction experiments,
+misere-kernel obstruction examples, loopy Draw/Loss-set experiments, and bent
+Gold-component route probes. The conditional statement is: if a game has
+P-positions `{Q = 0}`, Arf gives the sign and size of the second-player win-bias.
+The existence of a non-tautological natural rule is open; details live in `OPEN.md`.
+
+Appendix-grade shipped layers that should not be mistaken for new Gold/Arf claims:
+tropical thermography (`Semiring` + dual `Tropical<MaxPlus/MinPlus>`), the
+source-verified ordinal nim Kummer tower below `omega^(omega^omega)` with `u <= 43`
+excesses, the characteristic-2 Artin-Schreier local-global layer over `F_{2^m}(t)`
+including the Aravire-Jacob wild summand, and the integral lattice/genus/mass/Leech
+chain. These are standard-math implementations and useful infrastructure; cite
+them as such.
+
 ## Commands
 
 ```sh
 cargo test                                    # the math core (pure Rust, no Python)
 cargo clippy --all-targets                    # lint (kept warning-clean)
 cargo run --example tour                      # Rust demo
+cargo run --example interactive_kernel        # open-problem probe
+cargo run --example loopy_quadric             # open-problem probe
+cargo run --example bent_route                # open-problem probe
 python3 -m venv .venv && .venv/bin/pip install maturin
 VIRTUAL_ENV=.venv .venv/bin/maturin develop   # build + install the abi3 extension
 .venv/bin/python demo.py
+.venv/bin/python experiments/framing_obstruction.py
+.venv/bin/python experiments/gold_family_survey.py
+.venv/bin/python experiments/misere_kernel.py
 ```
 
 `maturin develop` needs `VIRTUAL_ENV` set (or a `.venv` in cwd) and `cargo` on PATH
@@ -114,8 +212,8 @@ mark that boundary without becoming `Scalar` supertraits. (serde is intentionall
 shipped — the invariant-carrying types need custom deserialization, not a naive
 derive.)
 
-The narrow math thread (Arf↔Clifford, the games bridge, the char-0/char-2 classifier
-symmetry, the open play-semantics question) is written up in `NOTES.md` — read it
-before touching `forms/char2/`, `forms/quadric_fit.rs`, `forms/char0.rs`,
+The narrow Gold/Arf game thread and the genuine open problems now live in
+`OPEN.md`; the current draft note is `writeups/goldarf.tex`. Read `OPEN.md` before
+touching `forms/char2/`, `forms/quadric_fit.rs`, `forms/char0.rs`,
 `games/coin_turning.rs`, `games/kernel.rs`, `games/misere.rs`, `games/loopy.rs`,
 `forms/witt.rs`, `experiments/`, or the open-question example probes.

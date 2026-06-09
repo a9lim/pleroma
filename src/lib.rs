@@ -20,7 +20,7 @@
 //!   and the exterior algebra of the game group.
 //! - `py` — PyO3 per-backend bindings (feature = "python").
 //!
-//! See `NOTES.md` for the mathematical thread and `AGENTS.md` for the layout.
+//! See `AGENTS.md` for the mathematical layout and `OPEN.md` for the open problems.
 
 // This crate is matrix/algebra-heavy throughout: linalg solves, Gram matrices,
 // Witt/carry formulas, Dickson/symplectic reductions, and spinor reps all walk

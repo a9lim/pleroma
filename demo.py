@@ -67,7 +67,7 @@ print("  ~(e0 e1)  (reversion) =", ~R)
 print("  e0 ⌟ (e0∧e1)          =", e0 << (e0 ^ e1))
 print("  dual(e0) in 3D        =", e0.dual(), "  (a bivector)")
 
-section("Arf invariant — the char-2 Clifford classifier (see NOTES.md)")
+section("Arf invariant — the char-2 Clifford classifier (see README.md)")
 def arf(qs, bs):
     A = pl.NimberAlgebra(q=[pl.Nimber(x) for x in qs], b={k: 1 for k in bs})
     return pl.arf_invariant(A)
@@ -207,6 +207,9 @@ M0sq = _matmul(M[0], M[0])
 holds = all(M0sq[i][j] == pl.surreal(1 if i == j else 0)
             for i in range(len(basis)) for j in range(len(basis)))
 print("  M0² = q0·I (the Clifford relation, on the spinor matrices):", holds)
+H2 = pl.NimberAlgebra(q=[0, 0], b={(0, 1): 1})
+_idem2, basis2, _M2 = H2.spinor_rep()
+print("  char-2 hyperbolic plane spinor ideal dim:", len(basis2), "(idempotent e0e1)")
 
 section("conformal GA over the surreals — exact ∞ and infinitesimal radii")
 cga = pl.Cga(2)
@@ -251,6 +254,8 @@ for _ in range(8):
     walk.append(repr(cur)); cur = cur.add(g)
 print("  [Cl⟨−1⟩]ⁿ for n=1..8:", " ".join(w.replace("Real(", "").rstrip(")") for w in walk))
 print("  BW(F_3) of ⟨1⟩:", pl.bw_class_oddchar(3, [1]), "(order-4 graded part ≅ W(F_3))")
+A2 = pl.NimberAlgebra(q=[1, 1], b={(0, 1): 1})
+print("  BW(F_2^m) anisotropic nimber plane:", pl.bw_class_nimber(A2), "(Z/2 Arf class)")
 
 
 # ===========================================================================

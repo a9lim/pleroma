@@ -55,9 +55,11 @@ core is split by concept under `engine/`:
 - **`cga.rs`** — conformal (Cl(n+1,1) null basis: up/down/inner/sphere/plane/meet)
   + projective (`pga = Cl(n,0,1)`, exp_nilpotent terminating motor exp) GA. Char-0
   (needs ½); surreal ∞/ε radii are exact.
-- **`spinor.rs`** — concrete minimal left ideals `Cl·f` from a primitive idempotent
-  `∏½(1+w)`; basis + `gen_matrices` realizing `M_d(K)` on column spinors. Ideal dim
-  matches `classify`; Clifford relations hold.
+- **`spinor.rs`** — concrete left-ideal spinor matrices. Char 0 uses the
+  `∏½(1+w)` idempotent search and matches the real-table classifier when it reaches
+  a minimal ideal; char 2 uses a separate no-half path for nonsingular nimber
+  metrics, taking blade idempotents like `e_i e_j` when they shrink the ideal and
+  otherwise keeping the complete left-regular action. Clifford relations hold.
 - **`spinor_norm.rs`** — the spinor norm `N : O(Q)→F*/F*²` (= norm2 mod squares) +
   the generic `versor_grade_parity` (Dickson; `char2::dickson_of_versor` delegates
   here) + `classify_versor`. Char-2 codomain is `F/℘(F)`.

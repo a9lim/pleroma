@@ -3,7 +3,7 @@
 //! This is the equal-characteristic-2 mirror of the odd-`q`
 //! [`springer_local`](crate::forms::springer_local) engine, but it is **not** the
 //! odd story at `p = 2`: in char 2 a third, *wild* summand appears that the
-//! `W = W(k) ⊕ W(k)` grading misses (see NOTES.md "the wild-term finding").
+//! `W = W(k) ⊕ W(k)` grading misses (see root AGENTS.md "the wild-term finding").
 //!
 //! # The decomposition
 //!

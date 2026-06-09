@@ -53,7 +53,7 @@
 //! ## Staging (honest scope)
 //!
 //! We carry the **source-verified** excesses `α_u` for primes `u ≤ 43` (DiMuro Table 1;
-//! see `NOTES.md`). The product of any two ordinals `< ω^(ω^ω)` is therefore exact
+//! see `OPEN.md`). The product of any two ordinals `< ω^(ω^ω)` is therefore exact
 //! whenever every Kummer carry it triggers is at a prime `≤ 43`; a carry needing `α_47`
 //! or beyond returns `None` — the honest operational boundary, moved up from the earlier
 //! "any non-scalar `α_u`" cut. (Anything `≥ ω^(ω^ω)`, an infinite exponent place, is out
@@ -105,7 +105,7 @@ fn place_prime(m: u128) -> u128 {
 /// primes beyond the source-verified table (`u > 43` — the staged boundary). Every
 /// `α_u` is built from generators at strictly-lower places than `χ_u`'s own, which is
 /// what makes the branching reduction descend and terminate. Values: DiMuro Table 1
-/// (see `NOTES.md`); square brackets there are ordinary ordinal exponentiation, already
+/// (see `OPEN.md`); square brackets there are ordinary ordinal exponentiation, already
 /// resolved (`[2^ω]=ω`, `[2^{ω²}]=ω^ω`, …).
 fn alpha_ordinal(u: u128) -> Option<Ordinal> {
     let fin = Ordinal::from_u128;

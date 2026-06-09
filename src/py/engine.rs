@@ -191,15 +191,15 @@ macro_rules! backend {
                 })
             }
 
-            /// A concrete spinor representation: `(idempotent, basis, gen_matrices)`
-            /// realizing the classification on column spinors. Nondegenerate
-            /// orthogonal char-0 metrics only.
+            /// A concrete spinor representation: `(idempotent, basis, gen_matrices)`.
+            /// Supports nondegenerate characteristic-0 metrics and nonsingular
+            /// characteristic-2 nimber metrics; rejects general-bilinear metrics.
             #[allow(clippy::type_complexity)]
             fn spinor_rep(&self) -> PyResult<($mv, Vec<$mv>, Vec<Vec<Vec<$scalar_py>>>)> {
                 let rep = crate::clifford::spinor_rep(&self.inner).ok_or_else(|| {
-                    PyValueError::new_err(
-                        "spinor_rep needs a nondegenerate orthogonal characteristic-0 metric",
-                    )
+	                    PyValueError::new_err(
+	                        "spinor_rep needs a supported nondegenerate metric with no general-bilinear a-part",
+	                    )
                 })?;
                 let idempotent = $mv {
                     alg: self.inner.clone(),

@@ -54,7 +54,7 @@
 //!   place). (The Artin–Schreier `x²+x+1` relation is the separate `u = 2` Fermat-tower
 //!   case — DiMuro Thm 3.1.7 / Cor 3.11 — handled inside the finite nimber field
 //!   [`finite_field::nimber`](crate::scalar::finite_field).) The `α_u` table is
-//!   primary-source-verified — see `NOTES.md`.
+//!   primary-source-verified — see root `OPEN.md`.
 
 mod cantor;
 mod nim;

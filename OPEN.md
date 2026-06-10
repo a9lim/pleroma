@@ -51,6 +51,28 @@ Why this is research:
   the bilinear/game structure as a quadratic outcome without being a disguised
   evaluator.
 
+The lexicode shadow (standard math + interpretation; the solved linear case):
+
+The degree-1 version of the question is classically solved, and it is rich.
+Conway-Sloane lexicodes ("Lexicographic codes: error-correcting codes from game
+theory", IEEE Trans. Inform. Theory 32 (1986) 337-348) are built by the greedy
+lexicographic rule, which is the mex rule: the codewords are the Grundy-value-0
+positions of an associated turning-game move structure, binary lexicodes are
+linear *because of* Sprague-Grundy theory (XOR-closure is a game theorem, not a
+coding theorem), and the length-24, d = 8 lexicode is the extended binary Golay
+code. More generally, lexicodes over base `2^k` are closed under nim-addition
+and are linear when the base is a Fermat power `2^(2^k)` — exactly the sizes at
+which nim-multiplication makes the ordinals below the base a field. So natural,
+fixed, non-tautological rules demonstrably realize rich *linear* codes as
+P-sets; and the matching no-go (`writeups/RESEARCH-GOLDARF.md`, Theorem A:
+every Winning Ways coin-turning P-set is the kernel of an `F_2`-linear map)
+says linearity is also the ceiling for that architecture. Floor and ceiling
+coincide at linear. Problem 1 is exactly whether the lexicode phenomenon admits
+a quadratic refinement — a rule producing the XOR-closure failure that the
+polar form `B` measures. Bridge O (`roadmap/TBD.md`) proposes making the
+lexicode chain executable (greedy = mex -> Golay -> Construction A -> theta);
+that is context for this problem, not progress on it.
+
 Current probe map:
 
 - `forms::quadric_fit::fit_f2_quadratic` asks whether a subset of `F_2^k` is the

@@ -9,8 +9,9 @@ three companion documents:
   mathematical contract, implemented surface, oracles, and honest boundaries. The
   formalization-pass proofs for Bridge J are appended at the end.
 - **`roadmap/TBD.md`** — *proposed* and *deferred* bridges not yet built: the
-  spinor-genus bridge G, the cyclic-algebra Brauer bridge K, and the large
-  Drinfeld/Carlitz bridge L.
+  spinor-genus bridge G, the cyclic-algebra Brauer bridge K, the large
+  Drinfeld/Carlitz bridge L, and the fourth-wave proposals M (the Brown `ℤ/8`
+  invariant), N (the unification pass), and O (lexicodes).
 - **`OPEN.md`** — *genuine research problems* with no known answer (the natural
   Gold-quadric game rule, a game-native quadratic deformation of `GameExterior`,
   transfinite nim excesses past the verified table, and the transfinite Arf/Witt

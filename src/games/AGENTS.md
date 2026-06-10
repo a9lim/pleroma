@@ -79,7 +79,9 @@ indices, and collection lengths.
   layers: `LoopyGraph` (a thin computable wrapper over `kernel::outcomes` —
   loss/win/draw sets), `loopy_nim_values`/`loopy_nim_values_certified`
   (+ `LoopyNimCertificate`: Draw ⇒ `Side`/∞, else a nimber; exact on an acyclic
-  non-Draw subgraph), and the `LoopyValue` stopper catalogue
+  non-Draw subgraph; **not additive over sums when Draw options are present** —
+  values are Grundy values of the Draw-deleted subgraph, not Smith/Conway loopy
+  nim-values), and the `LoopyValue` stopper catalogue
   (on/off/over/under/dud with outcome/neg/partial order/partial sum). The payoff is
   `loopy_decision_sets`/`loopy_quadric_probe`: read a cyclic rule's Loss-set AND
   Draw-set, each fit by `fit_f2_quadratic`.

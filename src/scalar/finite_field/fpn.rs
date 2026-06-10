@@ -54,9 +54,10 @@ pub enum ReductionPolynomialKind {
 }
 
 /// Low coefficients `r` of the reduction rule `x^N = Σ_i r_i x^i` for the supported
-/// `(P, N)` fields. Each returned slice has length `N`. Unsupported pairs are a
-/// compile-time error (the `panic!` fires in a `const`-evaluable position when the
-/// field is monomorphised through the engine, and at first use otherwise).
+/// `(P, N)` fields. Each returned slice has length `N`. Unsupported pairs panic at
+/// first use (the `panic!` is in a `const fn`, but the stable compiler does not
+/// guarantee compile-time evaluation here — treat it as a runtime panic on the first
+/// call through any method that reaches `assert_supported_field`).
 ///
 /// The chosen reduction polynomials (all verified irreducible by the tests; `C`
 /// marks entries also identified as Conway):

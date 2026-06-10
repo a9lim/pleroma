@@ -471,34 +471,6 @@ fn is_antisquare_2(u: i128) -> bool {
     matches!(u.rem_euclid(8), 3 | 5)
 }
 
-fn mod_pow_u128(mut base: u128, mut exp: u128, modulus: u128) -> u128 {
-    let mut acc = 1u128;
-    base %= modulus;
-    while exp > 0 {
-        if exp & 1 == 1 {
-            acc = (acc * base) % modulus;
-        }
-        base = (base * base) % modulus;
-        exp >>= 1;
-    }
-    acc
-}
-
-fn is_square_mod_odd_p(unit: i128, p: i128) -> bool {
-    let u = unit.rem_euclid(p) as u128;
-    if u == 0 {
-        return true;
-    }
-    mod_pow_u128(u, ((p as u128) - 1) / 2, p as u128) == 1
-}
-
-fn unit_is_antisquare_odd(r: &Rational, p: i128) -> bool {
-    let a = unit_part_i128(r.numer(), p);
-    let b = unit_part_i128(r.denom(), p);
-    let unit = (a.rem_euclid(p) * b.rem_euclid(p)).rem_euclid(p);
-    !is_square_mod_odd_p(unit, p)
-}
-
 fn diagonal_entries(lattice: &IntegralForm) -> Option<Vec<Rational>> {
     if lattice.determinant() == 0 {
         return None;
@@ -507,28 +479,6 @@ fn diagonal_entries(lattice: &IntegralForm) -> Option<Vec<Rational>> {
         lattice.gram(),
         DegenerateBehavior::RequireNonsingular,
     ))
-}
-
-fn relevant_odd_primes(det: i128) -> Vec<u128> {
-    let mut n = det.unsigned_abs();
-    while n.is_multiple_of(2) {
-        n /= 2;
-    }
-    let mut ps = Vec::new();
-    let mut d = 3u128;
-    while d <= n / d {
-        if n.is_multiple_of(d) {
-            ps.push(d);
-            while n.is_multiple_of(d) {
-                n /= d;
-            }
-        }
-        d += 2;
-    }
-    if n > 1 {
-        ps.push(n);
-    }
-    ps
 }
 
 fn two_adic_oddity(diag: &[Rational]) -> i128 {
@@ -540,20 +490,6 @@ fn two_adic_oddity(diag: &[Rational]) -> i128 {
         })
         .sum::<i128>()
         .rem_euclid(8)
-}
-
-fn odd_p_excess(diag: &[Rational], p: u128) -> i128 {
-    let p_i = p as i128;
-    let p_sig = diag
-        .iter()
-        .map(|d| {
-            let v = rat_val(d, p_i).unsigned_abs();
-            let pow = pow_mod8(p as i128, v);
-            (pow + if unit_is_antisquare_odd(d, p_i) { 4 } else { 0 }).rem_euclid(8)
-        })
-        .sum::<i128>()
-        .rem_euclid(8);
-    ((diag.len() as i128) - p_sig).rem_euclid(8)
 }
 
 fn symbol_p_excess_mod8(p: u128, scale: u128, dim: usize, sign: i128) -> i128 {
@@ -581,15 +517,6 @@ pub fn genus_signature_mod8(lattice: &IntegralForm) -> Option<i128> {
         .sum::<i128>()
         .rem_euclid(8);
     Some((oddity - p_excess).rem_euclid(8))
-}
-
-#[allow(dead_code)]
-fn rational_p_excess_mod8(lattice: &IntegralForm, diag: &[Rational]) -> i128 {
-    relevant_odd_primes(lattice.determinant())
-        .into_iter()
-        .map(|p| odd_p_excess(diag, p))
-        .sum::<i128>()
-        .rem_euclid(8)
 }
 
 /// Verify Milgram/van der Blij for an even lattice, comparing the discriminant

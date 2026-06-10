@@ -47,20 +47,40 @@ pub enum FiniteFieldWittDecomp {
 }
 
 /// Witt-decomposition data for a characteristic-2 finite-field form.
+///
+/// **Basis-dependence caveat for defective forms.** When `radical_anisotropic`
+/// is `true` (the polar radical carries a nonzero `Q`-value), the fields
+/// `witt_index`, `core_anisotropic_dim`, and `arf` describe the **chosen**
+/// symplectic complement of the radical, not an isometry invariant of the
+/// whole form.  Different choices of symplectic complement can yield different
+/// Arf bits and hence different `witt_index`/`core_anisotropic_dim` values.
+/// This matches the semantics of [`crate::forms::ArfResult::o_type`], which
+/// carries the same caveat.  Callers that need isometry-invariant data for
+/// defective forms should use [`crate::forms::ArfResult`] directly and
+/// check the `radical_anisotropic` flag before relying on the Arf bit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Char2WittDecomp {
     /// Extension degree `m` for `F_{2^m}`.
     pub field_degree: u128,
     /// Number of hyperbolic planes split from the nonsingular core.
+    ///
+    /// **Not an isometry invariant when `radical_anisotropic` is true** — see
+    /// the struct-level caveat.
     pub witt_index: usize,
-    /// Dimension of the anisotropic nonsingular core: `0` for hyperbolic, `2` for
-    /// the anisotropic plane.
+    /// Dimension of the anisotropic nonsingular core: `0` for hyperbolic, `2`
+    /// for the anisotropic plane.
+    ///
+    /// **Not an isometry invariant when `radical_anisotropic` is true** — see
+    /// the struct-level caveat.
     pub core_anisotropic_dim: usize,
     /// Dimension of the polar radical.
     pub radical_dim: usize,
-    /// Whether the quadratic form is nonzero on the radical.
+    /// Whether the quadratic form is nonzero on the radical (defective form).
     pub radical_anisotropic: bool,
-    /// Arf bit of the nonsingular core.
+    /// Arf bit of the **chosen** symplectic complement's nonsingular core.
+    ///
+    /// **Not an isometry invariant when `radical_anisotropic` is true** — see
+    /// the struct-level caveat.
     pub arf: u128,
 }
 

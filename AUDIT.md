@@ -7,6 +7,10 @@ review fleet with per-finding adversarial verification. **52 findings confirmed*
 (3 critical, 10 major, 25 minor, 14 doc), 4 raw findings refuted in verification,
 2 areas left unaudited (see [Coverage](#coverage-map)).
 
+A later **second-pass re-audit** — the *fable assault* (2026-06-10, 27 findings,
+high/medium/low scale) — and its full resolution are folded in at
+[Second pass — fable assault](#second-pass--fable-assault-2026-06-10) below.
+
 Severity vocabulary (as used throughout):
 
 - **critical** — wrong results from core operations on mainline inputs
@@ -784,3 +788,290 @@ not a systematic pass.
 descriptions, verifier transcripts, and reproduction scripts are preserved in
 the session transcript directory; raw structured output in
 `/tmp/ogdoad-audit-result.json`.*
+
+---
+
+## Second pass — fable assault (2026-06-10)
+
+A later re-audit, run as a single-author parallel "fable assault" against `dev`
+@ `4daf58a` — independent of the 16-agent fleet above. It uses a **high / medium
+/ low** severity scale (roughly high ≈ critical, medium ≈ major, low ≈ minor/doc)
+rather than the first pass's critical/major/minor/doc. The original
+adversarial-verification caveat carried at the top of the source report: *triage
+residual false positives before relying on findings.* All 27 enumerated findings
+were resolved on 2026-06-10 (composed from six parallel per-unit fix agents,
+validated by the same gate discipline as the batches above); the resolution
+status, full writeups, per-unit tables, and remaining next-checks follow.
+### 0. Resolution Status (2026-06-10)
+
+All 27 enumerated findings (H-1, H-2, M-1…M-9, L-1…L-16 in §2 — the exec
+summary's "17" is the per-unit-deduplicated count; the §2 list is authoritative)
+were triaged and dispatched as six parallel per-unit fix agents, each verified in
+an isolated worktree and then composed into one tree. **Final gate is green:**
+`cargo test --all-targets` (691 lib + property/example suites, 0 failed),
+`cargo clippy --all-targets` (warning-clean), cold `RUSTDOCFLAGS="-D warnings"
+cargo doc --no-deps` (clean), `cargo check/clippy --features python` (clean),
+`maturin develop` + `demo.py` + the three experiment probes (all rc 0). The three
+Python-reachable behavioral fixes (M-6, M-7, L-15) were additionally confirmed
+through the live binding.
+
+| ID | Status | Note |
+|---|---|---|
+| H-1 | **FIXED** | Lucas-theorem `embed_binom` (char-p, O(log n)) + `checked_mul` `binom` (char-0 loud overflow); 3 regression tests. |
+| H-2 | **PRE-EXISTING** | Already resolved upstream (commit `9f41371`): `Qp/Zp/LocalQp::mul` route through `mul_mod_u128`; regression test present. Audit was generated against a pre-fix tree. |
+| M-1 | **FIXED** | `from_ordinal` uses `i128::try_from(...).expect(...)`; `#[should_panic]` test. |
+| M-2 | **FIXED** | Laurent `add`/`coeff` + Qq `add` compare the valuation gap as i128 vs K before any usize cast; regression test. |
+| M-3 | **FIXED** | `reverse` asserts `!metric.has_upper()` (loud, not silent-wrong on a-metrics); panic + symmetric-metric anti-automorphism tests. |
+| M-4 | **FIXED** | `isometric_nimber`/`isometric_ordinal_finite` compute both Arf bits at a common field degree (`min_field_degree(max maxv)`); cross-subfield F4/F16 witness test. |
+| M-5 | **DOC-FIXED** | Additivity caveat added to `loopy_nim_values` + `games/AGENTS.md` (doc-weaken route; behavior unchanged, open-problem-adjacent). |
+| M-6 | **FIXED** | `Hackenbush::new` applies the `grounded()` prune; 2 tests; verified through Python (floating→0, grounded chain→3). |
+| M-7 | **FIXED** | `misere_outcome → Option<bool>`, `None` threaded to `PyValueError`; test; verified through Python (cyclic→ValueError). |
+| M-8 | **DOC-FIXED** | `Pl::otimes` temperature direction corrected (⊗ equals the sum wall *at or above* the lower temperature; below, only an upper bound). |
+| M-9 | **DOC-FIXED** | "number/nimber subclasses" in `partizan.rs` module + `is_number` docs. |
+| L-1 | **DOC-FIXED** | `Fpn` unsupported `(P,N)` reworded to "panic at first use." |
+| L-2 | **DOC-FIXED** | `sqrt_to_terms`/`nth_root_to_terms` docs admit budget-exhaustion `None`. |
+| L-3 | **FIXED** | `Integer` `add`/`mul`/`neg` use `checked_*` + `expect`; 3 `#[should_panic]` tests. |
+| L-4 | **FIXED** | Dead `(8*base+32).min(12)` replaced with literal `12` + overflow-cliff comment. |
+| L-5 | **DOC-FIXED** | `RationalFunction` test comment corrected to "gcd-reduced on construction." |
+| L-6 | **DOC-FIXED** | `HasFractionField` doc: `to_fraction` is a section of `to_integer`, ring hom only on the three exact rows. |
+| L-7 | **DOC-FIXED** | `ramified.rs`: E=2 inverse exact; E≥3 inverse/products to retained relative precision. |
+| L-8 | **DOC-FIXED** | `Char2WittDecomp` carries the basis-dependence caveat for defective (`radical_anisotropic`) forms (mirrors `ArfResult.o_type`). |
+| L-9 | **DOC-FIXED** | `bw_class_{real,complex,finite_odd}` rustdocs say `Cl(Q/rad)`; cross-leg asymmetry recorded in `forms/AGENTS.md`. |
+| L-10 | **DOC-FIXED** | `forms/AGENTS.md`: `Fp→OddCharType` (odd primes only; `Fp<2>` outside the façade). |
+| L-11 | **PARTIAL** | `ldl()` returns `None` on a non-positive pivot, threaded through `short_vectors_raw`; three doc sites softened to direction-only; guard test. **Residual:** proven-eps backward-error bound / exact-rational LDL not implemented. The cited "root `AGENTS.md` line 133" claim does not exist there (misattribution); the two real sites are fixed. |
+| L-12 | **FIXED** | `theta.rs` expect message corrected; `|Aut(E8⊕E8)| = 2·|W(E8)|²`; exact rank-16 Siegel-Weil mass-identity assertion added; `integral/AGENTS.md` updated. |
+| L-13 | **DOC-FIXED** | `level()` modular-form gloss scoped to even lattices. |
+| L-14 | **FIXED** | Dead `mod_pow_u128` chain deleted outright (confirmed unreferenced); live `is_antisquare_2` kept. |
+| L-15 | **FIXED** | Shared `check_succ_bounds` on 7 Python list-input entry points → `PyValueError`; verified through Python (oob→ValueError). |
+| L-16 | **DOC-FIXED** | `number_game.rs` "a transfinite class" + pointer to `NimberGame` mirror. |
+
+Also fixed (named in §3's per-unit summaries but not enumerated in §2): clifford
+`even_subalgebra` now requires a **unit** pivot (`q_p.inv().is_some()`) so it no
+longer returns a non-isomorphic algebra over ring backends; `clifford_conjugate`
+doc scoped to orthogonal metrics.
+
+The agents' verdicts were skeptical-by-default per the false-positive warning; the
+only "no real bug" verdict was **H-2** (already fixed upstream). Three stale
+"before-fix" reproduction test modules the agents left behind
+(`reverse_m3_witness_tests`, `test_misere_cycle_m7`, `test_floating_m6`) were
+removed during integration — each is superseded by an after-fix test in the same
+file.
+
+---
+
+### 1. Executive Summary
+
+The adversarial kill-panels confirmed **17 findings** across five units: **1 high**, **7 medium**, **9 low**. Zero high-severity findings in the math-core semantics (Clifford product, Sprague-Grundy, form classification over exact fields) — the engineered-for-correctness layers hold up. The high-severity finding is an infrastructure overflow in the p-adic scalar backends that panics on validator-sanctioned inputs. The medium findings split between a silent-wrong surreal cast, two p-adic arithmetic overflows/wraps, three doc-contract mismatch cases with executable wrong-answer witnesses (char-2 isometry comparator, loopy nim values, Hackenbush constructor), and two doc inversions with no behavioral wrong answer. The low findings are concentrated in documentation overclaims, boundary-condition contract drift, and one dead-code arithmetic bug. Across all units cargo test passes and CI is green, but four of the seventeen confirmed findings produce wrong data or panics on inputs that are validator-sanctioned, fully in-domain, or Python-reachable in the shipped release pipeline.
+
+---
+
+### 2. Top Findings (Highest Severity First)
+
+#### HIGH
+
+**H-1.** `DividedPowerAlgebra::mul` overflows u128 computing binomial structure constants; `embed_int` hangs at moderate exponents.
+`src/clifford/divided_power.rs` — `fn binom` line 68 (bare `mult *= …`), `fn embed_int` lines 76–83.
+Fix: replace raw u128 binomial with Lucas'-theorem digit-by-digit reduction for char-p; use `checked_mul` with a panic boundary for char 0.
+
+**H-2.** `Qp`/`Zp`/`LocalQp` validators sanction moduli up to `i128::MAX` but schoolbook mantissa products overflow u128 — basic add/mul panic on representable inputs (e.g. `Qp::<3,80>::from_i128(-1).mul(&same)`).
+`src/scalar/small/qp.rs` — `assert_supported_field` lines 60–73 vs `mul` lines 222–240; `zp.rs` `mul` lines 120–128; `local_qp.rs` `check` lines 46–59, `mul`/`add` lines 264–277 / 215–227.
+Fix: route mantissa arithmetic through the already-exported `mul_mod_u128`, exactly as `to_integer` already does.
+
+---
+
+#### MEDIUM
+
+**M-1.** `Surreal::from_ordinal` silently wraps u128 CNF coefficients ≥ 2^127 via `*c as i128`, mapping positive ordinals to negative surreals and breaking the documented round-trip.
+`src/scalar/big/surreal/sign_expansion.rs` — `fn from_ordinal` line 97, doc at lines 87–92.
+Fix: replace the cast with `i128::try_from(*c).expect("ordinal coefficient exceeds surreal i128 range")`.
+
+**M-2.** `Laurent::add`, `Qq::add`, and `Laurent::coeff` truncate the i128 valuation gap with `as usize`, wrapping mod 2^64 and folding far terms into the window instead of discarding them.
+`src/scalar/functor/laurent.rs` — `add` line 222, `coeff` lines 155–160; `src/scalar/small/qq.rs` — `add` line 155.
+Fix: compare the gap as i128/u128 against K before any usize cast, mirroring `qp.rs:191–193`.
+
+**M-3.** `reverse()` is not the reversion anti-automorphism on general-bilinear (`a != 0`) metrics; all versor/spinor-norm ops built on it silently fail or return wrong data.
+`src/clifford/engine/algebra.rs` — `fn reverse` lines 144–156; consumers in `src/clifford/versor.rs` and `src/clifford/spinor_norm.rs`.
+Fix: implement true wedge-basis reversion for a-metrics, or gate `reverse` and all consumers on `!metric.has_upper()` matching `spinor.rs`'s documented rejection.
+
+**M-4.** `isometric_nimber`/`isometric_ordinal_finite` compare Arf invariants computed over each form's own field of definition with no field-degree guard; isometric forms over different fields are falsely declared equivalent.
+`src/forms/equivalence.rs` — `isometric_nimber` lines 62–66, `isometric_ordinal_finite` lines 89–93, `same_char2_isometry_invariant` lines 95–103.
+Fix: require `nimber_metric_field_degree(m1) == nimber_metric_field_degree(m2)` before comparing, returning `None` on mismatch.
+
+**M-5.** `loopy_nim_values` assigns finite nimbers without the Smith/Conway recovery condition when a position has Draw (Side) options; the emitted `Value(k)` is not additive over disjunctive sums.
+`src/games/loopy.rs` — inner dfs lines 357–364; docs lines 296–305, 317–325; `src/games/AGENTS.md` lines 80–82.
+Fix: enforce the recovery condition or weaken docs to "Grundy value of the Draw-deleted subgraph, not additive when Draw options exist."
+
+**M-6.** `Hackenbush::new` never applies the grounded-prune at construction; edges not connected to vertex 0 are counted as legal moves, returning wrong game values.
+`src/games/hackenbush.rs` — `Hackenbush::new` line 49; `to_game` lines 105–120; Python surface `src/py/games.rs PyHackenbush::new`.
+Fix: apply the `grounded()` filter in `Hackenbush::new`.
+
+**M-7.** `AbstractGame::misere_outcome` panics via `expect` on cyclic or out-of-range move graphs that are trivially representable and Python-reachable, contradicting the checked-outcome contract of every sibling path.
+`src/games/misere.rs` — `misere_outcome` line 178; `sum_moves` line 153; Python surface `src/py/games.rs` lines 1710–1748.
+Fix: return `Option<bool>` from `misere_outcome`, threading `None` through to a `PyValueError` at the binding.
+
+**M-8.** `Pl::otimes` doc inverts the temperature-theoretic statement: the wall of a disjunctive sum factors as `⊗` of component walls *at or above* the lower temperature, not below it.
+`src/games/tropical_thermography.rs` — doc lines 50–53; module stamp line 25.
+Fix: flip the doc to "at or above the lower temperature the sum's wall equals the ⊗ of the component walls; below, ⊗ is only an upper bound."
+
+**M-9.** `partizan.rs` restricts the Conway product and the Clifford story to "the numbers," excluding nimbers in contradiction of root `AGENTS.md`, `src/games/AGENTS.md`, and its own header two sentences later.
+`src/games/partizan.rs` — line 4 and lines 191–193.
+Fix: replace "only a congruence on the numbers" with "only a congruence on the number/nimber subclasses."
+
+---
+
+#### LOW
+
+**L-1.** `Fpn` doc claims unsupported `(P,N)` pairs are "a compile-time error"; the crate's own test proves they are runtime panics only.
+`src/scalar/finite_field/fpn.rs` — doc lines 57–59; test `unsupported_parameters_are_rejected`.
+Fix: either introduce a const-position evaluation so the claim is true, or reword to "panic at first use."
+
+**L-2.** `sqrt_to_terms`/`nth_root_to_terms` doc "Some iff" overclaims: series-budget exhaustion returns `None` on radicands that satisfy the stated condition.
+`src/scalar/big/surreal/analytic.rs` — doc lines 67–71, 83–85; `SERIES_POWER_LIMIT` fallthrough line 146.
+Fix: reword to "None unless P; additionally None when the requested window exceeds the series power/term budgets."
+
+**L-3.** `Integer`'s `Scalar` `add`/`mul`/`neg` use unchecked i128 ops; silent wraparound in release builds violates the `ExactScalar` marker and the crate-wide loud-overflow discipline.
+`src/scalar/exact/integer.rs` — `add` line 29, `neg` line 32, `mul` line 35.
+Fix: mirror `rational.rs` — use `checked_add`/`checked_mul`/`checked_neg` with `expect`.
+
+**L-4.** Dead `(8 * base + 32).min(12)` expression in `Surreal ExactRoots::sqrt` is identically 12 for all inputs; the adaptive formula is vestigial after commit 524529a.
+`src/scalar/analytic.rs` — line 296.
+Fix: replace with the literal `12` plus a comment citing the S-3 i128-binomial overflow cliff.
+
+**L-5.** Stale test comment claims `RationalFunction`'s stored form is unreduced; `RationalFunction::from_polys` gcd-reduces on construction.
+`src/scalar/integrality.rs` — test `poly_rational_function_pairing`, comment at line 336.
+Fix: correct the parenthetical to note the stored form is gcd-reduced.
+
+**L-6.** `HasFractionField` doc claims a "canonical ring embedding" but `Zp→Qp` and `WittVec→Qq` `to_fraction` is not a ring homomorphism; the tested law is only the round-trip `frac∘int = id`.
+`src/scalar/integrality.rs` — module doc lines 9–10, trait doc line 58, `impl for Zp` lines 116–121, `impl for WittVec` lines 148–153.
+Fix: state `to_fraction` is a section of `to_integer` and a ring homomorphism only on the three exact rows (ℤ⊂ℚ, O_z⊂No, F_q[t]⊂F_q(t)).
+
+**L-7.** `ramified.rs` module doc claims "mul/inv are exact" while its own E≥3 inverse test proves inv is only correct to relative precision.
+`src/scalar/functor/ramified.rs` — module doc lines 34–40 vs test `e3_inverse_round_trips_via_matrix_solve` comment lines 356–363.
+Fix: replace with "the E=2 inverse is exact; E≥3 inverse and products are correct to retained relative precision."
+
+**L-8.** `WittDecompose` for `Fpn<2,N>` returns basis-dependent `witt_index`/`core_anisotropic_dim`/`arf` for defective singular forms without caveat; isometric metrics produce different "decompositions."
+`src/forms/classify.rs` — `Char2WittDecomp` field docs lines 50–65, `from_arf` lines 67–80.
+Fix: return `None` when `arf.radical_anisotropic`, or document the basis-dependence mirroring `ArfResult.o_type`.
+
+**L-9.** `bw_class_real`/`bw_class_complex`/`bw_class_finite_odd` silently project singular forms to the nondegenerate core while the rustdoc claims the result is "the Brauer-Wall class of Cl(Q)"; the char-2 legs reject the same input.
+`src/forms/witt/brauer_wall.rs` — `bw_class_real` lines 156–165, `bw_class_complex` lines 167–174, `bw_class_finite_odd` lines 176–194.
+Fix: correct the three rustdocs to say the returned class is that of the nondegenerate core/Cl(Q/rad) and record the deliberate cross-leg asymmetry in `forms/AGENTS.md`.
+
+**L-10.** `forms/AGENTS.md` facade dispatch claim is false: "Fp/Fpn→FiniteFieldClass::{Odd, Char2}" — `Fp` never produces `FiniteFieldClass`; `Fp<2>` returns `None` from all four facade methods.
+`src/forms/AGENTS.md` — facade bullet; `src/forms/classify.rs` lines 182–187, 221–225, 281–285, 349–353.
+Fix: correct to "Fp→OddCharType (odd primes only; Fp<2> is outside the facade)."
+
+**L-11.** Short-vector FP enumeration: the "cannot omit a vector" invariant is unbacked; omission-completeness rests on a heuristic 1e-9 epsilon over an unvalidated f64 LDL, with an unguarded `d[idx] <= 0` edge.
+`src/forms/integral/lattice.rs` — `ldl()` doc lines 535–541 and body 541–568; `short_vectors_raw` eps line 750; `fp_search` lines 756–792; `src/forms/integral/AGENTS.md` lines 23–25; root `AGENTS.md` line 133.
+Fix: validate LDL pivots before use (fall back or return `None` on `d[i] <= 0`); soften the three doc sites to admit direction only; compute eps from a proven backward-error bound or exact rational LDL.
+
+**L-12.** AGENTS claims a Siegel-Weil cross-check oracle but the mass-side identity is never tested; the expect message at `theta.rs:106` mislabels |W(E8)|² as |Aut(E8⊕E8)| (missing factor-2 swap).
+`src/forms/integral/theta.rs` — lines 100–110, expect message line 106; `src/forms/integral/AGENTS.md` lines 90–93.
+Fix: add the exact assertion `1/(2·W²) + 1/D16_PLUS_AUT_ORDER == mass_even_unimodular(16)`; correct the expect message to "|Aut(E8⊕E8)| = 2·|W(E8)|²."
+
+**L-13.** `level()` rustdoc unconditionally glosses the lattice level as "the level of the modular form the theta series of L belongs to" — false for the odd lattices the method accepts.
+`src/forms/integral/lattice.rs` — `level()` doc lines 440–443.
+Fix: scope the sentence to even lattices; add "for odd lattices this is the lattice-theoretic level only."
+
+**L-14.** `discriminant.rs` `mod_pow_u128` uses unchecked `u128` multiplication — overflow for moduli ≥ 2^64, duplicating the safe `mul_mod_u128` — reachable only through a dead-code chain that also contains an incorrect antisquare-parity condition.
+`src/forms/integral/discriminant.rs` — `mod_pow_u128` lines 474–485; sole entry `rational_p_excess_mod8` line 586 (`#[allow(dead_code)]`).
+Fix: delete the dead chain outright, or route through `crate::scalar::mul_mod_u128` and add the `v odd` condition before any revival.
+
+**L-15.** `kernel::outcomes`/`grundy_graph` panic on out-of-range successor indices; the Python boundary validates callback-built graphs but not direct adjacency-list inputs.
+`src/games/kernel.rs` — `outcomes` line 37; Python list-input entry points in `src/py/games.rs` lines 524, 739, 748, 784, 864, 944, 1847–1852.
+Fix: add shared bounds-check to all list-input Python entry points returning `PyValueError`.
+
+**L-16.** `number_game.rs` calls numbers "the one transfinite class needing no materialized options," contradicted by the shipped `nimber_game.rs` mirror.
+`src/games/number_game.rs` — lines 8–9.
+Fix: drop "the one" or add "(see nimber_game for the impartial char-2 mirror)."
+
+---
+
+### 3. Per-Unit Detail
+
+#### Unit: scalar-transfinite-finite
+
+| # | Severity | Title |
+|---|---|---|
+| 1 | medium | `from_ordinal` silent i128 wrap on CNF coefficients ≥ 2^127 |
+| 2 | low | `Fpn` doc claims compile-time error; runtime panic only |
+| 3 | low | `sqrt_to_terms`/`nth_root_to_terms` "Some iff" overclaim |
+| 4 | low | `Integer` unchecked i128 ops violate `ExactScalar` marker |
+
+Rejected: `place_prime` trial-division slow path — correct result, no latency contract, adversarial-only input.
+
+#### Unit: scalar-local-global
+
+| # | Severity | Title |
+|---|---|---|
+| 1 | high | Qp/Zp/LocalQp mantissa product overflows u128 on sanctioned inputs |
+| 2 | medium | Laurent/Qq `as usize` gap wrap at 2^64 produces wrong addition |
+| 3 | medium | `HasFractionField` ring-embedding doc false for truncated p-adic rows |
+| 4 | low | `ramified.rs` "mul/inv are exact" contradicted by its own E≥3 test |
+| 5 | low | Dead `(8*base+32).min(12)` expression in `Surreal ExactRoots::sqrt` |
+| 6 | low | Stale `RationalFunction` unreduced-storage comment |
+
+Rejected: `HasFractionField` claims-lens duplicate (merged into M-6/L-6 above); Surreal `is_square` behavior (documented intentional post-524529a).
+
+#### Unit: clifford
+
+| # | Severity | Title |
+|---|---|---|
+| 1 | high | `DividedPowerAlgebra::mul` u128 overflow and `embed_int` hang |
+| 2 | medium | `reverse()` not anti-multiplicative on `a != 0` metrics |
+| 3 | low | `even_subalgebra` returns non-isomorphic algebra over ring backends |
+| 4 | low | `clifford_conjugate` doc blade-sign claim false on nonorthogonal metrics |
+
+Rejected: Cayley-transform AGENTS.md gloss (register difference, rustdoc already hedged, low-dimensional behavior verified); `multivector_inverse` usize-width refusal (intended, tested, computationally infeasible beyond the boundary).
+
+#### Unit: forms-classifiers
+
+| # | Severity | Title |
+|---|---|---|
+| 1 | medium | Char-2 isometry facade compares Arf across different fields of definition |
+| 2 | medium | `WittDecompose` for `Fpn<2,N>` returns basis-dependent data for defective forms |
+| 3 | low | `bw_class_real`/`complex`/`finite_odd` project singular forms silently, char-2 legs reject |
+| 4 | low | `forms/AGENTS.md` false facade dispatch claim for `Fp<2>` |
+
+Rejected: `classify_real` panic at p+q ≥ 256 — deliberate checked-overflow guard, input outside all representable algebra dimensions; claims-lens `HasFractionField` duplicate (merged above).
+
+#### Unit: forms-integral
+
+| # | Severity | Title |
+|---|---|---|
+| 1 | medium | Short-vector FP enumeration omit-direction unbacked; unguarded LDL edge |
+| 2 | low | AGENTS claims Siegel-Weil oracle; mass identity untested; expect message wrong |
+| 3 | low | `level()` modular-form gloss false for odd lattices |
+| 4 | low | Dead `mod_pow_u128` unchecked overflow + incorrect antisquare condition |
+
+Rejected: claims-lens and boundary-lens fp_search duplicates (merged into single finding); `BinaryCode` enumeration panic at dim ≥ 64 (deliberate infeasibility guard, no feasible computation lost).
+
+#### Unit: games
+
+| # | Severity | Title |
+|---|---|---|
+| 1 | medium | `loopy_nim_values` omits recovery condition; emitted `Value(k)` not additive |
+| 2 | medium | `Pl::otimes` doc inverts the temperature-factoring direction |
+| 3 | medium | `partizan.rs` restricts Conway product to numbers, excluding nimbers |
+| 4 | medium | `Hackenbush::new` silently accepts ungrounded edges, wrong game values |
+| 5 | medium | `AbstractGame::misere_outcome` panics on cyclic/out-of-range inputs |
+| 6 | low | `kernel` adjacency-list inputs panic where callback route raises ValueError |
+| 7 | low | `number_game.rs` "one transfinite class" claim contradicted by `nimber_game.rs` |
+
+Rejected: `LoopyGraph::classify` Dud-vs-finite-escape distinction — documented intentional coarseness, not a defect.
+
+---
+
+### 4. Unexplored / Next Checks
+
+From the completeness critique, in priority order:
+
+**1. Char-2 Springer / Aravire-Jacob layer** (`src/forms/springer/char2.rs`, 1424 lines; `src/forms/local_global/function_field_char2.rs`, 589 lines) — zero audit eyes. The confirmed `isometric_nimber` field-degree bug arose from the same cross-convention seam (Arf computed over varying fields) that the Springer wild-summand decomposition exposes at uniformizer-dependent boundaries. Verify: (a) Artin-Schreier reciprocity sum vanishes on randomized forms over F_2(t) including wild places and the place at infinity; (b) wild-part extraction is well-defined in W_q(K_v); (c) no public path compares decompositions at different uniformizers.
+
+**2. Blast-radius mapping of confirmed scalar bugs into upper pillars** — the audit confirmed the Qp/Zp mantissa overflow (H-2) and Laurent gap-wrap (M-2) at the scalar layer but never traced which `forms/springer/padic.rs`, `springer/laurent.rs`, `forms/diagonalize.rs`, or Clifford-over-local-field paths inherit panics or silent wrongs. Specifically: `springer_decompose_local` over `Qp<3,80>` with a unit like `-1` (the confirmed panic input), and geometric product / diagonalize over Laurent with a valuation gap of 2^64.
+
+**3. `clifford/spinor.rs` and the Clifford satellites** (`hopf.rs`, `cga.rs`, `frobenius.rs`, `outermorphism.rs`) — untouched. The confirmed `even_subalgebra` unit-pivot failure (L-3) and the `reverse()` a-metric failure (M-3) both live in adjacent files; `spinor.rs`'s `rref` bails on the first non-unit pivot via `lead.inv()?`, which is the same unit-pivot failure family. Verify: (a) spinor matrices satisfy M_i² = q_i·I and M_iM_j + M_jM_i = b_ij·I on degenerate and char-2 nonorthogonal metrics; (b) `rref` non-unit pivot early exit over Integer/Omnific/Zp backends; (c) precision-zero rows in `is_zero` silently shrink computed ideal dimensions over Qp/Laurent algebras.
+
+**4. `src/py/` as a contract layer** (`scalars.rs` is 5628 lines, zero direct findings) — only used as reachability evidence. Verify: (a) `__hash__`/`__eq__` consistency for precision models where `eq` is window-relative; (b) systematic panic-vs-ValueError sweep of binding entry points — three PanicException leaks were found incidentally in games, implying an unswept class in scalars and forms; (c) hard rule 5 ("mixing worlds raises TypeError") verified pairwise on at least one binary op per world pair.
+
+**5. Property suite generator distributions** (`tests/clifford_axioms.rs`, `tests/scalar_axioms.rs`) — the confirmed `reverse()` finding proved `a != 0` metrics escape the Clifford fuzz; the confirmed `loopy_nim_values` finding relies on a position no test exercised. Verify whether: the metric generator in `clifford_axioms.rs` ever produces `a != 0` or degenerate q; `scalar_axioms`' Ordinal strategy ever produces transfinite values that exercise the partial `nim_mul`/Kummer path rather than reducing to the finite nimber fast path; Surreal generation reaches non-integer or transfinite exponents. Multiple confirmed findings share the signature "the suite cannot see it" — the generator distributions are the common cause.

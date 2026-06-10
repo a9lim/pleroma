@@ -21,19 +21,30 @@ impl<S: Scalar> CliffordAlgebra<S> {
     }
 
     /// The even subalgebra Cl⁰ presented as a Clifford algebra one dimension
-    /// smaller. For a diagonal (orthogonal) metric with a non-null generator
-    /// e_p, the map `f_i = e_i e_p` (i ≠ p) is an algebra isomorphism
-    /// Cl(Q)⁰ ≅ Cl(Q′) with `f_i² = −q_i q_p` — the classical
-    /// `Cl(p,q)⁰ ≅ Cl(p, q−1) ≅ Cl(q, p−1)`. Returns the smaller algebra, or
-    /// `None` if the metric is non-orthogonal (`b`/`a` nonempty) or has no
-    /// non-null generator to pivot on.
+    /// smaller. For a diagonal (orthogonal) metric with an invertible generator
+    /// e_p (i.e. `q_p` is a unit in the scalar ring), the map `f_i = e_i e_p`
+    /// (i ≠ p) is an algebra isomorphism Cl(Q)⁰ ≅ Cl(Q′) with `f_i² = −q_i q_p`
+    /// — the classical `Cl(p,q)⁰ ≅ Cl(p, q−1) ≅ Cl(q, p−1)`.
+    ///
+    /// Returns `None` if:
+    /// - the metric is non-orthogonal (`b` or `a` nonempty),
+    /// - there is no invertible (unit) generator to pivot on — i.e. every `q_i`
+    ///   with `q_i.inv().is_some()` is absent. Over a ring backend such as
+    ///   `Integer`, `q_i = 2` is nonzero but not a unit, so it cannot serve as the
+    ///   pivot; this case returns `None` rather than silently producing a
+    ///   non-isomorphic smaller algebra.
     pub fn even_subalgebra(&self) -> Option<CliffordAlgebra<S>> {
         if !self.metric.b.is_empty() || self.metric.has_upper() {
             return None; // only the orthogonal case has this clean presentation
         }
+        // Require the pivot q_p to be a unit (invertible) in the scalar ring.
+        // A non-zero but non-invertible pivot (e.g. q_p = 2 over Integer) would
+        // produce a map f_i ↦ e_i e_p that scales even-grade basis elements by
+        // q_p^{k/2}, which is not a unit — the resulting algebra would not be
+        // isomorphic to Cl(Q)⁰ over the ring.
         let p = (0..self.dim)
             .rev()
-            .find(|&i| !self.metric.q_val(i).is_zero())?;
+            .find(|&i| self.metric.q_val(i).inv().is_some())?;
         let qp = self.metric.q_val(p);
         let qprime: Vec<S> = (0..self.dim)
             .filter(|&i| i != p)
@@ -179,8 +190,13 @@ impl<S: Scalar> CliffordAlgebra<S> {
 
     /// The **Clifford (main) conjugate** `x̄ = α(x̃)` — reversion composed with
     /// grade involution. The third standard involution alongside
-    /// [`reverse`](Self::reverse) and [`grade_involution`](Self::grade_involution);
-    /// on a grade-`k` blade it is the sign `(−1)^{k(k+1)/2}`.
+    /// [`reverse`](Self::reverse) and [`grade_involution`](Self::grade_involution).
+    ///
+    /// On an **orthogonal metric** the conjugate of a grade-`k` wedge-basis blade is
+    /// `(−1)^{k(k+1)/2}` times the same blade. On a non-orthogonal metric
+    /// (`b ≠ 0`), reversion of a grade-`k` wedge blade can mix in lower-grade
+    /// terms (because `e_j e_i = b_{ij} − e_i∧e_j` introduces a grade-0 scalar),
+    /// so the result need not be a scalar multiple of the original blade.
     pub fn clifford_conjugate(&self, v: &Multivector<S>) -> Multivector<S> {
         self.grade_involution(&self.reverse(v))
     }
@@ -354,6 +370,50 @@ mod tests {
         let xi = alg.multivector_inverse(&x).unwrap();
         assert_eq!(alg.mul(&x, &xi), alg.scalar(Nimber(1)));
         assert_eq!(alg.mul(&xi, &x), alg.scalar(Nimber(1)));
+    }
+
+    /// M-3 regression: `reverse` is gated on `!has_upper()` — calling it on a
+    /// general-bilinear (`a ≠ 0`) metric must panic because the blade-by-blade word
+    /// reversal is not an anti-automorphism when the bilinear form is asymmetric.
+    #[test]
+    #[should_panic(expected = "reverse() is not an anti-automorphism on general-bilinear")]
+    fn reverse_panics_on_general_bilinear_metric() {
+        let mut a = std::collections::BTreeMap::new();
+        a.insert((0usize, 1usize), r(1));
+        let alg = CliffordAlgebra::new(
+            2,
+            Metric::general(vec![r(1), r(1)], std::collections::BTreeMap::new(), a),
+        );
+        // This should panic: reverse(xy) ≠ reverse(y)*reverse(x) for a≠0 metrics.
+        let xy = alg.mul(&alg.gen(0), &alg.gen(1));
+        let _ = alg.reverse(&xy);
+    }
+
+    /// M-3 check: on a symmetric (b-only, a=0) non-orthogonal metric the
+    /// anti-automorphism `reverse(xy) = reverse(y)*reverse(x)` holds.
+    #[test]
+    fn reverse_is_anti_automorphism_on_symmetric_metric() {
+        let mut b = std::collections::BTreeMap::new();
+        b.insert((0usize, 1usize), r(1));
+        let alg = CliffordAlgebra::new(2, Metric::new(vec![r(1), r(1)], b));
+        let e0 = alg.gen(0);
+        let e1 = alg.gen(1);
+        // Check reverse(e0 * e1) == reverse(e1) * reverse(e0)
+        let xy = alg.mul(&e0, &e1);
+        let rev_xy = alg.reverse(&xy);
+        let rev_y_rev_x = alg.mul(&alg.reverse(&e1), &alg.reverse(&e0));
+        assert_eq!(
+            rev_xy, rev_y_rev_x,
+            "reverse(e0*e1) != reverse(e1)*reverse(e0) on symmetric metric"
+        );
+        // Check on a mixed element
+        let biv = alg.wedge(&e0, &e1);
+        let xbiv = alg.mul(&e0, &biv);
+        assert_eq!(
+            alg.reverse(&xbiv),
+            alg.mul(&alg.reverse(&biv), &alg.reverse(&e0)),
+            "reverse(e0*(e0^e1)) != reverse(e0^e1)*reverse(e0)"
+        );
     }
 
     #[test]

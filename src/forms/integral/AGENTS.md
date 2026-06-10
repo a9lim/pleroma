@@ -20,9 +20,11 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   `level` (smallest `N` with `N·G⁻¹` even-integral, via the exact `Rational` inverse),
   `clifford_metric` (rational Clifford metric), `clifford_metric_f2` (even-lattice
   mod-2 char-2 metric), `direct_sum`. The positive-definite geometry: `short_vectors`
-  (unimodular size-reduction, then **Fincke–Pohst**: float LDLᵀ bounds the box, exact
-  i128 norm filters the leaves, vectors mapped back to the original basis — float error
-  can't add/drop a vector), `minimum`/`minimal_vectors`/`kissing_number`, and
+  (unimodular size-reduction, then **Fincke–Pohst**: float LDLᵀ bounds the search box,
+  exact i128 norm filters the leaves, vectors mapped back to the original basis — false
+  positives from the float bound are removed; `ldl()` returns `None` on a non-positive
+  pivot and the search falls back to `None` rather than silently omitting vectors),
+  `minimum`/`minimal_vectors`/`kissing_number`, and
   `automorphism_group_order` (closed-form diagonal/ADE/root-system fast paths, else
   backtracking over basis-vector images — every complete assignment is an
   automorphism, so the count is exact). **Looks like a bug, isn't:** (a) the geometry
@@ -89,5 +91,7 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   positive-definite even-lattice boundary. `eisenstein_e4`, `eisenstein_e6`, `delta`,
   `mk_basis`, `as_modular_form` identify q-expansions exactly in `ℂ[E4,E6]`. Oracles pin
   `theta_E8 = E4`, `theta_{E8+E8} = theta_{D16+} = E4²`, Leech's rootless `q^1`
-  coefficient in `E4³ - 720·Δ`, and the degenerate rank-16 Siegel–Weil consistency using
-  `E8_WEYL_GROUP_ORDER` and `D16_PLUS_AUT_ORDER`.
+  coefficient in `E4³ - 720·Δ`, and the rank-16 Siegel–Weil identity
+  `1/|Aut(E8⊕E8)| + 1/|Aut(D16+)| = mass_even_unimodular(16)` with
+  `|Aut(E8⊕E8)| = 2·|W(E8)|²` (the factor 2 from the swap automorphism),
+  verified by exact cross-multiplication in `siegel_weil_rank16_mass_identity_is_exact`.

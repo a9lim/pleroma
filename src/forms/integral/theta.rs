@@ -41,9 +41,9 @@ impl IntegralForm {
 mod tests {
     use super::*;
     use crate::forms::{
-        as_modular_form, delta, e_8, eisenstein_e4, leech, modular_qexp_mul, modular_qexp_scale,
-        modular_qexp_sub, qexp_from_i128, type_ii_e8_sum_code, type_ii_len16_code,
-        D16_PLUS_AUT_ORDER, E8_WEYL_GROUP_ORDER,
+        as_modular_form, delta, e_8, eisenstein_e4, leech, mass_even_unimodular, modular_qexp_mul,
+        modular_qexp_scale, modular_qexp_sub, qexp_from_i128, type_ii_e8_sum_code,
+        type_ii_len16_code, D16_PLUS_AUT_ORDER, E8_WEYL_GROUP_ORDER,
     };
     use crate::scalar::{Rational, Scalar};
 
@@ -100,13 +100,41 @@ mod tests {
         // Rank 16 Siegel-Weil is degenerate but consistent: the two class
         // representatives already have the same theta series, so the
         // mass-weighted average is the same `E4^2`.
-        assert_eq!(
-            E8_WEYL_GROUP_ORDER
-                .checked_mul(E8_WEYL_GROUP_ORDER)
-                .expect("E8+E8 automorphism order exceeds u128"),
-            485_432_135_516_160_000
-        );
+        //
+        // Pin |Aut(E8⊕E8)| = 2·|W(E8)|² (factor 2 from the swap automorphism).
+        let w2 = E8_WEYL_GROUP_ORDER
+            .checked_mul(E8_WEYL_GROUP_ORDER)
+            .expect("|W(E8)|^2 exceeds u128");
+        assert_eq!(w2, 485_432_135_516_160_000);
+        let aut_e8_e8 = 2u128
+            .checked_mul(w2)
+            .expect("|Aut(E8+E8)| = 2·|W(E8)|^2 exceeds u128");
+        assert_eq!(aut_e8_e8, 970_864_271_032_320_000);
         assert_eq!(D16_PLUS_AUT_ORDER, 685_597_979_049_984_000);
+    }
+
+    #[test]
+    fn siegel_weil_rank16_mass_identity_is_exact() {
+        // For the rank-16 even-unimodular genus with two classes (E8⊕E8 and D16+),
+        // the Siegel-Weil identity requires:
+        //   1/|Aut(E8⊕E8)| + 1/|Aut(D16+)| = mass_even_unimodular(16).
+        // |Aut(E8⊕E8)| = 2·|W(E8)|² because the two summands can be swapped.
+        let w = E8_WEYL_GROUP_ORDER;
+        let aut_e8_e8 = 2u128.checked_mul(w).unwrap().checked_mul(w).unwrap();
+        let d = D16_PLUS_AUT_ORDER;
+        let (mass_num, mass_den) = mass_even_unimodular(16).unwrap();
+        // Clear denominators: mass_num * aut_e8_e8 * d == (d + aut_e8_e8) * mass_den
+        // (all values fit in i128 after the lcm reduction in mass_even_unimodular).
+        let lhs = mass_num
+            .checked_mul(aut_e8_e8 as i128)
+            .and_then(|x| x.checked_mul(d as i128));
+        let rhs = (d as i128)
+            .checked_add(aut_e8_e8 as i128)
+            .and_then(|s| s.checked_mul(mass_den));
+        assert_eq!(
+            lhs, rhs,
+            "Siegel-Weil: 1/|Aut(E8+E8)| + 1/|Aut(D16+)| != mass(16)"
+        );
     }
 
     #[test]

@@ -139,9 +139,25 @@ impl<S: Scalar> CliffordAlgebra<S> {
         Multivector { terms: out }
     }
 
-    /// Reversion: reverse the order of generators in every blade and reduce that
-    /// reversed word through the Clifford product.
+    /// Reversion: the anti-automorphism `ẽᵢ₁⋯ẽᵢₖ = eᵢₖ⋯eᵢ₁`. Implemented by
+    /// reversing the generator list of each wedge-basis blade and reducing through
+    /// the Clifford product.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the metric has a non-zero `a` (in-order / general-bilinear)
+    /// component. In a general-bilinear metric the algebra relations are
+    /// asymmetric (`e_i e_j ≠ e_j e_i + symmetric-part`), so blade-by-blade
+    /// word reversal is **not** an anti-automorphism of the algebra —
+    /// `reverse(xy) ≠ reverse(y)*reverse(x)` in general. Use a symmetric
+    /// metric (`Metric::new`/`::diagonal`/`::grassmann`) for operations
+    /// that depend on reversion.
     pub fn reverse(&self, a: &Multivector<S>) -> Multivector<S> {
+        assert!(
+            !self.metric.has_upper(),
+            "reverse() is not an anti-automorphism on general-bilinear (a≠0) metrics; \
+             use a symmetric metric (Metric::new/diagonal/grassmann)"
+        );
         let mut out = self.zero();
         for (&blade, coeff) in &a.terms {
             let mut rev_blade = self.scalar(S::one());

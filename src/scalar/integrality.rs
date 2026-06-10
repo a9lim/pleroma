@@ -6,8 +6,12 @@
 //! that pairing lived only in doc comments. These two traits promote it to the
 //! type system, so the relationship is checkable rather than merely described:
 //!
-//!   * [`HasFractionField`] — a ring `R` knows its field of fractions and the
-//!     canonical embedding `R ↪ Frac(R)`.
+//!   * [`HasFractionField`] — a ring `R` knows a section `to_fraction : R → Frac(R)`
+//!     that satisfies the round-trip law `to_integer(to_fraction(r)) = r`. On the
+//!     three **exact** rows (`ℤ⊂ℚ`, `Oz⊂No`, `F_q[t]⊂F_q(t)`) this is also a ring
+//!     homomorphism; on the p-adic rows (`Zp⊂Qp`, `W_N(F_q)⊂Q_q`) it is only a
+//!     section — the finite quotient `Zp` has characteristic `p^k` while `Qp` has
+//!     characteristic `0`, so the map cannot be a ring homomorphism.
 //!   * [`HasRingOfIntegers`] — a field `K` knows its ring of integers (the
 //!     valuation / integrality subring) and the integrality test `K → R ∪ {⊥}`.
 //!
@@ -51,11 +55,14 @@ use crate::scalar::{
     Scalar, Surcomplex, Surreal, WittVec, Zp,
 };
 
-/// A (commutative) ring that knows its field of fractions.
+/// A (commutative) ring that knows a section into its field of fractions.
 pub trait HasFractionField: Scalar {
     /// The field of fractions `Frac(R)`.
     type Frac: Scalar;
-    /// The canonical ring embedding `R ↪ Frac(R)`.
+    /// A section of `to_integer`: `to_integer(to_fraction(r)) = r` for all `r`.
+    /// On the exact rows (`ℤ⊂ℚ`, `Oz⊂No`, `F_q[t]⊂F_q(t)`) this is also a ring
+    /// homomorphism; on the p-adic rows (`Zp⊂Qp`, `W_N(F_q)⊂Qq`) it is not —
+    /// the finite quotient and the field have different characteristics.
     fn to_fraction(&self) -> Self::Frac;
 }
 
@@ -112,6 +119,10 @@ impl HasRingOfIntegers for Surreal {
 }
 
 // ───────────────────────── Z_p ⊂ Q_p ─────────────────────────
+//
+// `to_fraction` is a section of `to_integer` (round-trip law holds) but is NOT a
+// ring homomorphism: `Zp` has characteristic `p^k` while `Qp` has characteristic
+// `0`. Specifically `p^k · 1 = 0` in `Zp` but `p^k · 1 ≠ 0` in `Qp`.
 
 impl<const P: u128, const K: u128> HasFractionField for Zp<P, K> {
     type Frac = Qp<P, K>;
@@ -144,6 +155,10 @@ impl<const P: u128, const K: u128> HasRingOfIntegers for Qp<P, K> {
 }
 
 // ───────────────────────── W_N(F_q) ⊂ Q_q ─────────────────────────
+//
+// Same caveat as `Zp⊂Qp`: `to_fraction` is a section of `to_integer` but is NOT a
+// ring homomorphism — `WittVec` has characteristic `p^N` while `Qq` has
+// characteristic `0`.
 
 impl<const P: u128, const N: usize, const F: usize> HasFractionField for WittVec<P, N, F> {
     type Frac = Qq<P, N, F>;
@@ -333,7 +348,8 @@ mod tests {
         let inv_t = RationalFunction::<Fp<5>>::t().inv().unwrap();
         assert!(!inv_t.is_integral());
         assert_eq!(inv_t.to_integer(), None);
-        // t²/t IS integral and recovers the polynomial t (the stored form is unreduced).
+        // t²/t IS integral and recovers the polynomial t (gcd-reduced on construction
+        // by `RationalFunction::from_polys`, so the stored form is already t/1).
         let t2_over_t = RationalFunction::new(
             vec![Fp::<5>::new(0), Fp::<5>::new(0), Fp::<5>::new(1)],
             vec![Fp::<5>::new(0), Fp::<5>::new(1)],

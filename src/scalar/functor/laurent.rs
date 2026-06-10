@@ -153,7 +153,9 @@ impl<S: Scalar, const K: usize> Laurent<S, K> {
             return S::zero();
         }
         let i = exp - self.val;
-        if i < 0 || i as usize >= self.unit.len() {
+        // Guard both ends as i128 before any usize cast: a huge positive i
+        // would truncate-wrap on the cast and alias a small index.
+        if i < 0 || i >= self.unit.len() as i128 {
             S::zero()
         } else {
             self.unit[i as usize].clone()
@@ -219,7 +221,21 @@ impl<S: Scalar, const K: usize> Scalar for Laurent<S, K> {
         } else {
             (rhs, self)
         };
-        let d = (hi.val - lo.val) as usize;
+        // always ≥ 0 by the sort above; compare against K as i128 BEFORE casting:
+        // a gap ≥ K means every hi-coefficient falls outside the retained window (the
+        // same precision guard Qp::add applies). Casting a huge i128 to usize first
+        // truncates-wraps on 64-bit, turning a correct "hi vanishes" into a silently
+        // wrong index offset (and panicking in debug mode).
+        let d_i128 = hi.val - lo.val;
+        if d_i128 >= K as i128 {
+            // hi is entirely outside the relative window — result is lo only.
+            let mut coeffs = vec![S::zero(); lo.unit.len().min(K)];
+            for (i, c) in lo.unit.iter().take(K).enumerate() {
+                coeffs[i] = c.clone();
+            }
+            return Self::normalized(coeffs, lo.val);
+        }
+        let d = d_i128 as usize; // safe: 0 ≤ d_i128 < K ≤ usize::MAX
         let len = lo.unit.len().max(d + hi.unit.len()).min(K);
         let mut coeffs = vec![S::zero(); len];
         for (i, c) in lo.unit.iter().enumerate() {
@@ -410,5 +426,24 @@ mod tests {
         assert!(std::panic::catch_unwind(L0::one).is_err());
         assert!(std::panic::catch_unwind(L0::t).is_err());
         assert!(std::panic::catch_unwind(|| L0::from_coeffs(vec![Rational::one()], 0)).is_err());
+    }
+
+    #[test]
+    fn m2_huge_valuation_gap_does_not_panic_or_corrupt() {
+        // Regression (audit M-2): `(hi.val - lo.val) as usize` for a gap ≥ K (e.g.
+        // i128::MAX) previously overflowed the intermediate `d + hi.unit.len()`
+        // computation and could panic in debug mode or silently corrupt in release.
+        // The fix compares the gap as i128 against K before any usize cast.
+        //
+        // Mathematically: t^0·1 + t^{i128::MAX}·1 = 1 (hi is outside the K=6 window).
+        let one = L::one();
+        let far = L::from_t_power(i128::MAX);
+        assert_eq!(one.add(&far), one, "huge gap: hi term must vanish");
+        assert_eq!(far.add(&one), one, "symmetric");
+        // coeff: the coefficient at t^{i128::MAX} should be 0 for `one`.
+        assert_eq!(one.coeff(i128::MAX), Rational::zero());
+        // A gap equal to K (= 6 here) is the boundary: result is lo only.
+        let at_k = L::from_t_power(6);
+        assert_eq!(one.add(&at_k), one, "gap == K: hi vanishes too");
     }
 }

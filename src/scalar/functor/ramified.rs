@@ -34,10 +34,14 @@
 //! ## Precision contract
 //!
 //! Every [`Valued`] base in this crate (`Qp`/`Qq`/`Laurent`) is a *capped-relative
-//! precision model*, so `Ramified` over it inherits that contract: `mul`/`inv`
-//! are exact, additive cancellation below the retained window reads as `0`. Like
-//! its bases it is therefore **excluded from the exact-ring fuzz suite**. The
-//! *valuation* is nonetheless exact (see [`Ramified::valuation`]).
+//! precision model*, so `Ramified` over it inherits that contract: additive
+//! cancellation below the retained window reads as `0`. The `E = 2` inverse is
+//! exact (norm/conjugate closed form: a single scalar division, no Gaussian
+//! elimination). For `E ≥ 3` the inverse is computed via Gaussian elimination over
+//! the base field, so it is correct only to the retained relative precision —
+//! `x · x⁻¹ = 1` up to a residual of valuation `≫ K`, not bit-exactly. Like its
+//! bases it is therefore **excluded from the exact-ring fuzz suite**. The
+//! *valuation* is nonetheless always exact (see [`Ramified::valuation`]).
 
 use crate::scalar::{ResidueField, Scalar, Valued};
 use std::fmt;

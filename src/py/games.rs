@@ -20,6 +20,26 @@ use pyo3::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+/// Validate an adjacency list: every successor index must be `< n = succ.len()`.
+/// Returns `PyValueError` with the offending position and index on failure.
+/// This is the shared bounds-check for all list-input Python entry points that
+/// forward directly to Rust kernels (which would otherwise panic on out-of-range
+/// indices in the predecessor/successor arrays).
+fn check_succ_bounds(succ: &[Vec<usize>]) -> PyResult<()> {
+    let n = succ.len();
+    for (v, neighbors) in succ.iter().enumerate() {
+        for &w in neighbors {
+            if w >= n {
+                return Err(PyValueError::new_err(format!(
+                    "adjacency list out of range: succ[{v}] contains index {w}, \
+                     but the graph has only {n} positions (0..{n})"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Wrap a dyadic `Rational` (a thermograph coordinate) as a `Surreal` for Python.
 fn rat_to_py(r: Rational) -> PySurreal {
     PySurreal::from_inner(Surreal::from_rational(r))
@@ -522,6 +542,7 @@ fn grundy(pos: u128, moves: Bound<'_, PyAny>) -> PyResult<u128> {
 /// its value is 0.
 #[pyfunction]
 fn grundy_graph(succ: Vec<Vec<usize>>) -> PyResult<Vec<u128>> {
+    check_succ_bounds(&succ)?;
     crate::games::grundy_graph(&succ)
         .ok_or_else(|| PyValueError::new_err("graph has a cycle — Grundy value is undefined"))
 }
@@ -735,18 +756,22 @@ impl PyLoopyNimber {
 /// Normal-play typed [`Outcome`] of every position of a finite
 /// game graph given as adjacency lists (`succ[v]` = positions reachable from `v`).
 /// Retrograde analysis; `Loss` = P-position. Cyclic graphs are fine (→ `Draw`).
+/// Raises `ValueError` if any successor index is out of range.
 #[pyfunction]
-fn outcomes(succ: Vec<Vec<usize>>) -> Vec<PyOutcome> {
-    crate::games::outcomes(&succ)
+fn outcomes(succ: Vec<Vec<usize>>) -> PyResult<Vec<PyOutcome>> {
+    check_succ_bounds(&succ)?;
+    Ok(crate::games::outcomes(&succ)
         .into_iter()
         .map(wrap_outcome)
-        .collect()
+        .collect())
 }
 
 /// The P-positions (Loss positions) of a finite game graph, as node indices.
+/// Raises `ValueError` if any successor index is out of range.
 #[pyfunction]
-fn p_positions(succ: Vec<Vec<usize>>) -> Vec<usize> {
-    crate::games::p_positions(&succ)
+fn p_positions(succ: Vec<Vec<usize>>) -> PyResult<Vec<usize>> {
+    check_succ_bounds(&succ)?;
+    Ok(crate::games::p_positions(&succ))
 }
 
 #[pyclass(name = "ScoreInterval", module = "ogdoad")]
@@ -779,12 +804,14 @@ fn wrap_score_interval(inner: crate::games::ScoreInterval) -> PyScoreInterval {
 /// Milnor scoring-game minimax on a finite **acyclic** graph: the `(left, right)`
 /// value interval of every position (`left` = optimal score with Left/maximizer
 /// to move, `right` with Right/minimizer), where `terminal_score[v]` scores each
-/// move-less position. Errors on a cycle (loopy scoring is out of scope).
+/// move-less position. Errors on a cycle (loopy scoring is out of scope) or if any
+/// successor index is out of range.
 #[pyfunction]
 fn scoring_values(
     succ: Vec<Vec<usize>>,
     terminal_score: Vec<i128>,
 ) -> PyResult<Vec<PyScoreInterval>> {
+    check_succ_bounds(&succ)?;
     crate::games::scoring_values(&succ, &terminal_score)
         .map(|v| v.into_iter().map(wrap_score_interval).collect())
         .ok_or_else(|| PyValueError::new_err("graph has a cycle — scoring value is undefined"))
@@ -859,9 +886,11 @@ fn octal_misere_quotient(
 
 /// Loopy impartial nim-values of a (possibly cyclic) game graph: each position is
 /// a typed `LoopyNimber.Value(n)`, or `LoopyNimber.Side` for a Draw position.
-/// Errors when a cyclic non-Draw subgraph has no unique bounded sidling solution.
+/// Errors when a cyclic non-Draw subgraph has no unique bounded sidling solution,
+/// or when any successor index is out of range.
 #[pyfunction]
 fn loopy_nim_values(succ: Vec<Vec<usize>>) -> PyResult<Vec<PyLoopyNimber>> {
+    check_succ_bounds(&succ)?;
     crate::games::loopy_nim_values(&succ)
         .map(|vs| vs.into_iter().map(wrap_loopy_nimber).collect())
         .ok_or_else(|| {
@@ -940,10 +969,12 @@ impl PyLoopyNimCertificate {
 
 /// Loopy nim-values plus a certificate explaining Draw/Side promotion and
 /// whether the bounded sidling solver was needed.
+/// Raises `ValueError` if any successor index is out of range.
 #[pyfunction]
 fn loopy_nim_values_certified(
     succ: Vec<Vec<usize>>,
 ) -> PyResult<(Vec<PyLoopyNimber>, PyLoopyNimCertificate)> {
+    check_succ_bounds(&succ)?;
     crate::games::loopy_nim_values_certified(&succ)
         .map(|(vs, inner)| {
             let values = vs.into_iter().map(wrap_loopy_nimber).collect();
@@ -1715,9 +1746,13 @@ impl PyAbstractGame {
     }
     /// Misère outcome of a disjunctive sum (a multiset of component positions):
     /// `True` = N (next player / first-player win), `False` = P.
-    fn misere_outcome(&self, pos: Vec<usize>) -> bool {
+    /// Raises `ValueError` if the move graph has a cycle (e.g. a position whose
+    /// option list references itself or forms an indirect cycle).
+    fn misere_outcome(&self, pos: Vec<usize>) -> PyResult<bool> {
         let mut memo = std::collections::HashMap::new();
-        self.inner.misere_outcome(&pos, &mut memo)
+        self.inner.misere_outcome(&pos, &mut memo).ok_or_else(|| {
+            PyValueError::new_err("misere_outcome: move graph has a cycle — outcome is undefined")
+        })
     }
     /// The bounded misère indistinguishability quotient over the generating
     /// `atoms` (elements are sums up to `elem_bound`, tests up to `test_bound`).
@@ -1845,10 +1880,11 @@ struct PyLoopyGraph {
 #[pymethods]
 impl PyLoopyGraph {
     #[new]
-    fn new(succ: Vec<Vec<usize>>) -> Self {
-        PyLoopyGraph {
+    fn new(succ: Vec<Vec<usize>>) -> PyResult<Self> {
+        check_succ_bounds(&succ)?;
+        Ok(PyLoopyGraph {
             inner: LoopyGraph::new(succ),
-        }
+        })
     }
     #[staticmethod]
     fn from_rule(n: usize, moves: Bound<'_, PyAny>) -> PyResult<Self> {

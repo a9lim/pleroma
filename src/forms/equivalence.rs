@@ -15,8 +15,11 @@
 //! Witt group made concrete.
 
 use crate::clifford::Metric;
+use crate::forms::char2::{
+    arf_nimber_at_degree, min_field_degree, nimber_metric_max_val, ordinal_to_nimber_metric,
+};
 use crate::forms::{
-    arf_char2, arf_fpn_char2, arf_invariant, arf_ordinal_finite, as_diagonal, classify_finite_odd,
+    arf_char2, arf_fpn_char2, arf_ordinal_finite, as_diagonal, classify_finite_odd,
 };
 use crate::forms::{FiniteChar2Field, FiniteOddField};
 use crate::scalar::{Fpn, Nimber, Ordinal, Rational, Surcomplex, Surreal};
@@ -59,9 +62,18 @@ pub fn isometric_finite_odd<F: FiniteOddField>(m1: &Metric<F>, m2: &Metric<F>) -
 /// If the polar radical is defective (`Q` nonzero on the radical), adding that
 /// radical direction to a symplectic pair toggles the complement's Arf value, so
 /// the complement Arf is not an isometry invariant and is deliberately ignored.
+///
+/// Both Arf invariants are computed using the **same** field degree — the
+/// smallest nim-subfield containing all entries of *both* metrics — so that the
+/// trace `F_{2^m} → F₂` is consistent.  Computing each independently with its
+/// own minimal field degree can yield different Arf bits for isometric forms
+/// whose entries span different subfields (the trace of a fixed element differs
+/// depending on which extension it is traced from).
 pub fn isometric_nimber(m1: &Metric<Nimber>, m2: &Metric<Nimber>) -> Option<bool> {
-    let a1 = arf_invariant(m1)?;
-    let a2 = arf_invariant(m2)?;
+    let maxv = nimber_metric_max_val(m1).max(nimber_metric_max_val(m2));
+    let m = min_field_degree(maxv);
+    let a1 = arf_nimber_at_degree(m1, m)?;
+    let a2 = arf_nimber_at_degree(m2, m)?;
     Some(same_char2_isometry_invariant(&a1, &a2))
 }
 
@@ -86,7 +98,22 @@ pub fn isometric_fpn_char2<const P: u128, const N: usize>(
 
 /// Are two supported finite-window ordinal-nimber forms isometric? Returns
 /// `None` for ordinal coefficients outside the detected finite subfields.
+///
+/// For forms whose entries are purely finite ordinals (the inner nimber case),
+/// both Arf invariants are computed using the same field degree — the smallest
+/// nim-subfield containing entries of *both* metrics — mirroring the
+/// `isometric_nimber` consistency guarantee.  The F_64 ordinal-transfinite
+/// case uses a fixed six-term trace for both and is unaffected.
 pub fn isometric_ordinal_finite(m1: &Metric<Ordinal>, m2: &Metric<Ordinal>) -> Option<bool> {
+    // Try the pure-finite (inner Nimber) path: compute both using a common m.
+    if let (Some(n1), Some(n2)) = (ordinal_to_nimber_metric(m1), ordinal_to_nimber_metric(m2)) {
+        let maxv = nimber_metric_max_val(&n1).max(nimber_metric_max_val(&n2));
+        let m = min_field_degree(maxv);
+        let a1 = arf_nimber_at_degree(&n1, m)?;
+        let a2 = arf_nimber_at_degree(&n2, m)?;
+        return Some(same_char2_isometry_invariant(&a1, &a2));
+    }
+    // Fall back to the independent-trace path (F_64 or cross-case).
     let a1 = arf_ordinal_finite(m1)?;
     let a2 = arf_ordinal_finite(m2)?;
     Some(same_char2_isometry_invariant(&a1, &a2))
@@ -200,6 +227,7 @@ pub fn witt_decompose_finite_odd<F: FiniteOddField>(m: &Metric<F>) -> Option<Odd
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::forms::arf_invariant;
     use crate::scalar::Fp;
     use std::collections::BTreeMap;
 
@@ -294,6 +322,102 @@ mod tests {
         };
         assert_eq!(isometric_nimber(&plane(1, 1), &plane(1, 1)), Some(true));
         assert_eq!(isometric_nimber(&plane(1, 1), &plane(0, 0)), Some(false));
+    }
+
+    // Witness test for M-4: forms over different nim-subfields must be compared
+    // using the same field degree for the trace.  Key insight: a form that is
+    // anisotropic over F_4 can become isotropic (and hence isometric to the
+    // hyperbolic plane) over F_16, because the Artin-Schreier obstruction
+    // Tr_{F_16/F_2}(q0·q1) can vanish even when Tr_{F_4/F_2}(q0·q1) = 1.
+    //
+    // Before the fix, isometric_nimber used each form's own minimal trace,
+    // causing the same pair to compare unequal depending on how the form's
+    // entries were written — a basis-change invariance failure.
+    #[test]
+    fn nimber_cross_subfield_isometry_witness() {
+        use crate::scalar::nim_mul;
+
+        // Form A (F_4 entries): q=[2,2], b01=1.
+        // Tr_{F_4/F_2}(2*2) = Tr_{F_4/F_2}(3) = 3 XOR 2 = 1 → Arf 1 (anisotropic over F_4).
+        // But Tr_{F_16/F_2}(3) = 3 XOR 2 XOR 3 XOR 2 = 0 → Arf 0 over F_16.
+        // So this form becomes isotropic when viewed over F_16.
+        let plane_f4 = {
+            let mut b = BTreeMap::new();
+            b.insert((0usize, 1usize), Nimber(1));
+            Metric::new(vec![Nimber(2), Nimber(2)], b)
+        };
+
+        // Form B: apply the basis change diag(α, 1) with α = 4 ∈ F_{16} \ F_4.
+        //   q_B[0] = α² * 2 = nim_mul(6, 2),  q_B[1] = 2,  b_B[0,1] = 4.
+        // Form B is isometric to A by construction (change of basis over F_16).
+        let alpha: u128 = 4;
+        let alpha_sq = nim_mul(alpha, alpha); // = 6
+        let q_b0 = nim_mul(alpha_sq, 2); // in F_16
+        let b_b01 = alpha; // = 4, in F_{16} \ F_4
+
+        assert!(q_b0 >= 4 || b_b01 >= 4, "expected F_16 entries");
+
+        let plane_f16 = {
+            let mut b = BTreeMap::new();
+            b.insert((0usize, 1usize), Nimber(b_b01));
+            Metric::new(vec![Nimber(q_b0), Nimber(2)], b)
+        };
+
+        // Standalone arf_invariant uses each form's own minimal field, so the
+        // raw Arf bits can differ (Arf=1 for F_4 minimal, Arf=0 for F_16 minimal).
+        // This is by-design for the standalone classifier; isometric_nimber must
+        // compensate by using the joint field degree.
+        let a_f4_standalone = arf_invariant(&plane_f4).unwrap();
+        let a_f16_standalone = arf_invariant(&plane_f16).unwrap();
+        // They will disagree; record without asserting to document the contrast.
+        let _ = (a_f4_standalone.arf, a_f16_standalone.arf);
+
+        // isometric_nimber uses the joint field degree → correctly reports isometric.
+        assert_eq!(
+            isometric_nimber(&plane_f4, &plane_f16),
+            Some(true),
+            "isometric forms (related by a basis change) must compare equal"
+        );
+
+        // Pure F_2 forms: ⟨1,1⟩ vs ⟨0,0⟩ use joint m=1; should still distinguish.
+        let aniso_f2 = {
+            let mut b = BTreeMap::new();
+            b.insert((0usize, 1usize), Nimber(1));
+            Metric::new(vec![Nimber(1), Nimber(1)], b)
+        };
+        let hyp_f2 = {
+            let mut b = BTreeMap::new();
+            b.insert((0usize, 1usize), Nimber(1));
+            Metric::new(vec![Nimber(0), Nimber(0)], b)
+        };
+        assert_eq!(
+            isometric_nimber(&aniso_f2, &hyp_f2),
+            Some(false),
+            "same-field anisotropic vs hyperbolic must remain distinguished"
+        );
+
+        // plane_f4 viewed jointly with hyp_f2: joint m = max(m_f4, m_f2) = 2.
+        // Over F_4, Tr_{F_4/F_2}(3) = 1 → anisotropic.  Hyp has Arf 0 → not isometric.
+        assert_eq!(
+            isometric_nimber(&plane_f4, &hyp_f2),
+            Some(false),
+            "F_4 anisotropic plane must not be isometric to F_2 hyperbolic (joint m=2)"
+        );
+
+        // plane_f4 vs a hyperbolic plane written with F_16 entries:
+        // joint m=4. Tr_{F_16/F_2}(3)=0, so plane_f4 looks hyperbolic at m=4.
+        // The F_16 hyperbolic plane also has Arf=0 at m=4. → isometric over F_16.
+        let hyp_f16 = {
+            let mut b = BTreeMap::new();
+            b.insert((0usize, 1usize), Nimber(b_b01)); // b01 = 4 ∈ F_16
+            Metric::new(vec![Nimber(0), Nimber(0)], b)
+        };
+        assert_eq!(
+            isometric_nimber(&plane_f4, &hyp_f16),
+            Some(true),
+            "F_4 anisotropic plane is isometric to the F_16 hyperbolic plane (joint m=4 \
+             makes the obstruction vanish)"
+        );
     }
 
     #[test]

@@ -5,8 +5,9 @@ use crate::scalar::{Ordinal, Scalar, SignExpansion, Surreal};
 use std::cmp::Ordering;
 
 /// A transfinite **number-valued** game, carried by its surreal value rather than
-/// a (necessarily infinite) option tree. Numbers are the one transfinite class
-/// needing no materialized options: value, birthday, and the group/order
+/// a (necessarily infinite) option tree. Numbers are a transfinite class needing no
+/// materialized options (see also [`NimberGame`](crate::games::NimberGame) for the
+/// characteristic-2 impartial mirror): value, birthday, and the group/order
 /// operations all come from [`Surreal`]. The finite [`Game`] engine is untouched
 /// — `NumberGame` is a parallel *view*, not a `Game`, the numbers-only honoring
 /// of "games of transfinite birthday" (`ω = {0,1,2,...|}` is a number).

@@ -323,6 +323,15 @@ pub struct LoopyNimCertificate {
 /// non-Draw subgraph is cyclic, a bounded sidling search is accepted only when the
 /// finite mex equations have a **unique** solution; ambiguous or over-budget
 /// cyclic systems return `None` rather than choosing an order-dependent value.
+///
+/// **Additivity caveat**: when a position has Draw (Side) options the emitted
+/// `Value(k)` is the Grundy value of the Draw-deleted subgraph at that vertex.
+/// It is **not** guaranteed to be additive over disjunctive sums in the presence
+/// of Draw options — the full Smith/Conway recovery condition (that the fixed-point
+/// equations on the Draw-eligible non-Side positions have a canonical solution)
+/// is not checked here. For unconditional additivity use only positions where
+/// `Draw` options are absent (all positions are `Side` or have only non-`Side`
+/// successors). The `Side` values themselves have no additive nimber arithmetic.
 pub fn loopy_nim_values(succ: &[Vec<usize>]) -> Option<Vec<LoopyNimber>> {
     loopy_nim_values_certified(succ).map(|(values, _)| values)
 }

@@ -94,7 +94,9 @@ impl Surreal {
         let mut acc = Surreal::zero();
         for (exp, c) in o.terms() {
             let exp_s = Surreal::from_ordinal(exp); // strictly-simpler exponent
-            acc = acc.add(&Surreal::monomial(exp_s, Rational::int(*c as i128)));
+            let c_i128 =
+                i128::try_from(*c).expect("ordinal coefficient exceeds surreal i128 range");
+            acc = acc.add(&Surreal::monomial(exp_s, Rational::int(c_i128)));
         }
         acc
     }
@@ -304,6 +306,16 @@ mod tests {
             ]
         );
         assert_eq!(se.as_finite(), Some(vec![true, true, true, false]));
+    }
+
+    #[test]
+    #[should_panic(expected = "ordinal coefficient exceeds surreal i128 range")]
+    fn from_ordinal_rejects_coefficient_exceeding_i128() {
+        // Coefficients ≥ 2^127 cannot be represented as i128; the old `*c as i128`
+        // cast would silently wrap to a negative value. The fixed code panics loudly.
+        let large_coeff: u128 = (1u128 << 127) + 1;
+        let ord = Ordinal::monomial(Ordinal::from_u128(1), large_coeff);
+        let _ = Surreal::from_ordinal(&ord);
     }
 
     #[test]

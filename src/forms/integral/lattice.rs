@@ -438,9 +438,11 @@ impl IntegralForm {
     }
 
     /// The **level** `N`: the smallest positive integer with `N·G⁻¹` an even
-    /// integral matrix (integral, with even diagonal). This is the level of the
-    /// modular form the theta series of `L` belongs to. Returns `None` if `G` is
-    /// singular. An even unimodular lattice has level 1.
+    /// integral matrix (integral, with even diagonal). Returns `None` if `G` is
+    /// singular. An even unimodular lattice has level 1. For even lattices this
+    /// equals the level of the modular form the theta series of `L` belongs to;
+    /// for odd lattices this is the lattice-theoretic level only — the theta
+    /// series of an odd lattice is not a standard modular form for this level.
     pub fn level(&self) -> Option<i128> {
         let n = self.dim();
         if n == 0 {
@@ -532,13 +534,17 @@ impl IntegralForm {
 
     // ---- positive-definite geometry (Fincke–Pohst + backtracking) ----
 
-    /// The LDLᵀ decomposition in floating point: returns `(d, u)` with `d[i] > 0`
-    /// and an upper unit factor `u[i][j]` (`j > i`) such that
-    /// `Q(x) = Σᵢ d[i]·(x[i] + Σ_{j>i} u[i][j]·x[j])²`. The geometric search uses
-    /// this only to *bound* the integer box; every reported vector is then
-    /// checked with the exact integer norm, so float error cannot admit or omit a
-    /// vector.
-    fn ldl(&self) -> (Vec<f64>, Vec<Vec<f64>>) {
+    /// The LDLᵀ decomposition in floating point: returns `Some((d, u))` where
+    /// `d[i]` is the `i`-th pivot and `u[i][j]` (`j > i`) is the upper unit factor,
+    /// giving `Q(x) ≈ Σᵢ d[i]·(x[i] + Σ_{j>i} u[i][j]·x[j])²`. Returns `None` if
+    /// any pivot is non-positive, which signals unexpected loss of definiteness due to
+    /// floating-point error (the caller already guards against indefinite lattices, so
+    /// this is a safety fallback rather than an expected code path). Every candidate
+    /// vector produced by the float bound is rechecked with the exact integer norm;
+    /// false positives are removed, but when a pivot rounds to zero or below the
+    /// corresponding branch may be skipped — use `short_vectors_exact_bounded` for
+    /// small lattices where the float bound is not needed.
+    fn ldl(&self) -> Option<(Vec<f64>, Vec<Vec<f64>>)> {
         let n = self.dim();
         let mut d = vec![0.0f64; n];
         let mut l = vec![vec![0.0f64; n]; n]; // unit lower triangular
@@ -547,6 +553,9 @@ impl IntegralForm {
             for k in 0..j {
                 dj -= l[j][k] * l[j][k] * d[k];
             }
+            if dj <= 0.0 {
+                return None;
+            }
             d[j] = dj;
             l[j][j] = 1.0;
             for i in j + 1..n {
@@ -554,7 +563,7 @@ impl IntegralForm {
                 for k in 0..j {
                     s -= l[i][k] * l[j][k] * d[k];
                 }
-                l[i][j] = if dj != 0.0 { s / dj } else { 0.0 };
+                l[i][j] = s / dj;
             }
         }
         // u[i][j] = L[j][i] for j > i
@@ -564,7 +573,7 @@ impl IntegralForm {
                 u[i][j] = l[j][i];
             }
         }
-        (d, u)
+        Some((d, u))
     }
 
     fn shear_basis(
@@ -740,13 +749,16 @@ impl IntegralForm {
         if n == 0 || bound <= 0 {
             return Some(Vec::new());
         }
-        let (d, u) = self.ldl();
+        // `ldl` returns None if any pivot rounds to <= 0 (unexpected loss of
+        // definiteness under floating-point). Fall back to None so the caller
+        // can return an error rather than silently omitting vectors.
+        let (d, u) = self.ldl()?;
         let mut out = Vec::new();
         let mut x = vec![0i128; n];
         // Pad the float radius outward; the exact integer filter at the leaf
-        // removes any spurious vectors. Small boxes are handled above by exact
-        // rational bounds, so this path is for larger enumerations where the
-        // floating bound is the practical cutoff.
+        // removes any spurious vectors admitted by the float bound. Small boxes
+        // are handled above by exact rational bounds; this path is for larger
+        // enumerations where the float bound is the practical cutoff.
         let eps = 1e-9 * (bound as f64).max(1.0) + 1e-9;
         self.fp_search(n, bound, &d, &u, eps, 0.0, &mut x, &mut out);
         Some(out)
@@ -1312,5 +1324,19 @@ mod tests {
                 assert_eq!(e8e8.gram()[i][j], 0);
             }
         }
+    }
+
+    #[test]
+    fn ldl_returns_none_on_indefinite_gram() {
+        // The internal ldl() helper must return None rather than producing a
+        // non-positive pivot when called on an indefinite Gram matrix. This
+        // guards against the search silently dropping short vectors due to a
+        // divide-by-zero or negative-sqrt in the float bound.
+        let hyp = IntegralForm::new(vec![vec![0, 1], vec![1, 0]]).unwrap();
+        assert!(hyp.ldl().is_none());
+        // A positive-definite lattice must produce a valid decomposition.
+        assert!(a_n(2).ldl().is_some());
+        let (d, _) = a_n(2).ldl().unwrap();
+        assert!(d.iter().all(|&di| di > 0.0));
     }
 }

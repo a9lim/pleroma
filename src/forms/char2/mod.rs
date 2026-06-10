@@ -20,5 +20,8 @@ mod dickson;
 mod field;
 
 pub use arf::*;
+pub(crate) use arf::{
+    arf_nimber_at_degree, min_field_degree, nimber_metric_max_val, ordinal_to_nimber_metric,
+};
 pub use dickson::*;
 pub use field::*;

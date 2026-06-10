@@ -2,9 +2,9 @@
 //!
 //! Conway's games `G = { G^L | G^R }` form, under disjunctive sum, a partially
 //! ordered abelian group — but *not a ring* (the product is only a congruence on
-//! the numbers). That is the obstruction the whole project lives around: a
-//! Clifford algebra needs a commutative scalar *ring*, so it only reaches the
-//! field-like cores (nimbers, surreals, surcomplex).
+//! the number/nimber subclasses). That is the obstruction the whole project lives
+//! around: a Clifford algebra needs a commutative scalar *ring*, so it only reaches
+//! the field-like cores (nimbers, surreals, surcomplex).
 //!
 //! This module ships the short-game engine — sum, negation, the recursive order,
 //! birthday, the number test, and the **canonical form** (dominated/reversible
@@ -189,8 +189,9 @@ impl Game {
     }
 
     /// Whether `G` is a (surreal) *number*: all options are numbers and every left
-    /// option is strictly below every right option. Numbers are exactly the games
-    /// the Conway product (and hence the Clifford story) can reach.
+    /// option is strictly below every right option. Numbers (and the nimbers, their
+    /// characteristic-2 mirror) are the game subclasses the Conway product and hence
+    /// the Clifford story can reach.
     pub fn is_number(&self) -> bool {
         self.left().iter().all(|g| g.is_number())
             && self.right().iter().all(|g| g.is_number())

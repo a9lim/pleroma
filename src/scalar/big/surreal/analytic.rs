@@ -64,25 +64,28 @@ impl Surreal {
         None
     }
 
-    /// The **truncated real square root** to `n` leading terms, or `None`. `Some`
-    /// iff `self ≥ 0` **and** its leading coefficient is a perfect square in ℚ —
-    /// the deliberate ℚ-coefficient boundary: `√2` and `√(2ω)` are `None`
-    /// (`√2` is not a finite-CNF-with-ℚ-coeffs surreal), while `√ω = ω^{1/2}`
-    /// and `√(ω²+2ω+1) = ω+1` are exact in their leading terms.
+    /// The **truncated real square root** to `n` leading terms, or `None`. `None`
+    /// when `self < 0`, or its leading coefficient is not a perfect square in ℚ
+    /// (the deliberate ℚ-coefficient boundary: `√2` and `√(2ω)` are `None`),
+    /// or when deep cancellation, i128 coefficient overflow, or series-budget
+    /// exhaustion prevents constructing the requested window. `Some` is guaranteed
+    /// when the leading coefficient is an exact ℚ square and the binomial series
+    /// converges within the budget — for example `√ω = ω^{1/2}` (monomial) and
+    /// `√(ω²+2ω+1) = ω+1` are always exact in their leading terms.
     ///
     /// This is the lazy ([`SeriesRoots`](crate::scalar::SeriesRoots)) primitive;
     /// for the *exact* value (no precision argument) see the
     /// [`ExactRoots::sqrt`](crate::scalar::ExactRoots::sqrt) impl, which squares
-    /// these truncations back until one matches. Deep cancellation or i128
-    /// coefficient overflow returns `None` rather than a guessed window.
+    /// these truncations back until one matches.
     pub fn sqrt_to_terms(&self, n: usize) -> Option<Surreal> {
         self.nth_root_to_terms(2, n)
     }
 
     /// The **truncated real `k`-th root** to `n` leading terms (`k ≥ 1`), or
-    /// `None`. `Some` iff the leading coefficient is a perfect ℚ `k`-th power
-    /// (and, for even `k`, `self > 0`). See [`sqrt_to_terms`](Self::sqrt_to_terms)
-    /// for the scope.
+    /// `None`. `None` when `k = 0`, the leading coefficient is not a perfect ℚ
+    /// `k`-th power, for even `k` when `self ≤ 0`, or when deep cancellation,
+    /// i128 coefficient overflow, or series-budget exhaustion prevents constructing
+    /// the requested window. See [`sqrt_to_terms`](Self::sqrt_to_terms) for scope.
     pub fn nth_root_to_terms(&self, k: u128, n: usize) -> Option<Surreal> {
         if k == 0 {
             return None;

@@ -48,9 +48,11 @@ impl Pl {
     }
 
     /// Tropical `⊗` — the pointwise sum of two walls (tropical multiplication is
-    /// ordinary `+` on values). Below the lower of two games' temperatures the
-    /// wall of a disjunctive sum is the `⊗` of the component walls, which is why
-    /// the mean value is additive.
+    /// ordinary `+` on values). At or above the lower of two games' temperatures
+    /// the wall of a disjunctive sum equals the `⊗` of the component walls (their
+    /// pointwise sum), which is why the mean value is additive. Below the lower
+    /// temperature the sum's wall is bounded above by `⊗` but they need not be equal
+    /// — `⊗` is only an upper bound there.
     pub fn otimes(&self, other: &Pl) -> Pl {
         add_pl(self, other)
     }

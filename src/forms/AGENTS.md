@@ -32,15 +32,31 @@ automorphism counts, node budgets. `usize` is for dimensions and matrix indices.
 - **`classify.rs`** — the classifier FAÇADE: `ClassifyForm` + `WittClassify` +
   `IsometryClassify` + `WittDecompose` + `BrauerWallClassify`, keyed on the scalar so
   `metric.classify()` / `.witt_class()` / `.isometric_to()` / `.witt_decompose()` /
-  `.bw_class()` pick the right leg **at compile time** (Surreal→CliffordType,
-  Fp/Fpn→`FiniteFieldClass::{Odd, Char2}`, Nimber→ArfResult, finite-window
-  Ordinal→ArfResult, …). `WittDecompose` returns the leg-specific decomp record
+  `.bw_class()` pick the right leg **at compile time**:
+  - `Surreal` → `CliffordType`
+  - `Fp<P>` (odd primes only) → `OddCharType`. `Fp<2>` is OUTSIDE the façade:
+    `classify_finite_odd` returns `None` for `P=2` (the char-2 Arf path requires
+    the `(q,b)` metric, not the char-0 diagonalizer). Use `Fpn<2,N>` for char-2
+    extension fields.
+  - `Fpn<P,N>` → `FiniteFieldClass::{Odd, Char2}` (dispatched on `P==2` at runtime)
+  - `Nimber` → `ArfResult`
+  - finite-window `Ordinal` → `ArfResult`
+
+  `WittDecompose` returns the leg-specific decomp record
   (`RealWittDecomp` / `OddWittDecomp` / `Char2WittDecomp`, with `Fpn` wrapping the last
   two in `FiniteFieldWittDecomp { Odd, Char2 }`). `BrauerWallClassify`
   covers Surreal, Surcomplex, odd finite fields, nonsingular Nimber metrics,
   supported `Fpn<2,N>` metrics, and the documented finite ordinal windows. Rational &
   Surcomplex impl `ClassifyForm` but not `WittClassify` (their Witt data isn't a
   single `WittClassG` — honest, not a gap).
+
+  **Cross-leg asymmetry in `BrauerWallClassify` for singular metrics.** The
+  char-2 legs (`bw_class_nimber`, `BrauerWallClassify for Fpn<2,N>`) return `None`
+  for singular (non-nonsingular-polar) metrics.  The char-0 legs (`bw_class_real`,
+  `bw_class_complex`) and the odd-char leg (`bw_class_finite_odd`) silently project
+  the radical away and return the Brauer-Wall class of the nondegenerate core
+  `Cl(Q/rad)`. The rustdocs on those three functions state this projection
+  explicitly.
 - **`diagonalize.rs`** — congruence diagonalization (char ≠ 2): `gram`,
   `diagonalize`, `as_diagonal`. Returns `None` in char 2 (nonsingular char-2 forms
   have an alternating polar form and are NOT diagonalizable — use the char-2

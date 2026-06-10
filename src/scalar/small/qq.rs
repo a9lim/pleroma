@@ -152,10 +152,14 @@ impl<const P: u128, const N: usize, const F: usize> Scalar for Qq<P, N, F> {
         } else {
             (rhs, self)
         };
-        let d = (hi.val - lo.val) as usize;
-        let shifted = if d >= N {
+        // always ≥ 0 by the sort above; compare as i128 before casting to usize,
+        // mirroring qp.rs:191-193: a huge gap would truncate-wrap on the cast, making
+        // the guard `d >= N` accidentally correct on 64-bit but semantically wrong.
+        let d_i128 = hi.val - lo.val;
+        let shifted = if d_i128 >= N as i128 {
             WittVec::zero()
         } else {
+            let d = d_i128 as usize; // safe: d_i128 < N ≤ usize::MAX
             let p = WittVec::<P, N, F>::from_int(P as i128);
             let mut s = hi.unit;
             for _ in 0..d {

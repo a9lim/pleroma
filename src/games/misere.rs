@@ -171,11 +171,16 @@ impl AbstractGame {
         v
     }
 
-    /// Misère outcome of a sum (multiset of component positions): `true` = N.
-    pub fn misere_outcome(&self, pos: &[usize], memo: &mut HashMap<Vec<usize>, bool>) -> bool {
+    /// Misère outcome of a sum (multiset of component positions): `Some(true)` = N,
+    /// `Some(false)` = P. Returns `None` if the move graph has a cycle (e.g. a
+    /// component position whose option list points back to itself).
+    pub fn misere_outcome(
+        &self,
+        pos: &[usize],
+        memo: &mut HashMap<Vec<usize>, bool>,
+    ) -> Option<bool> {
         let canon = Self::canon(pos);
         try_misere_is_n(&canon, &|p| self.sum_moves(p), memo)
-            .expect("finite quotient sum graph should be acyclic")
     }
 }
 
@@ -389,7 +394,10 @@ pub fn misere_quotient(
     let elements = multisets(&atoms_sorted, elem_bound);
     let tests = multisets(&atoms_sorted, test_bound);
     let mut memo: HashMap<Vec<usize>, bool> = HashMap::new();
-    build_quotient(elements, &tests, |g| game.misere_outcome(g, &mut memo))
+    build_quotient(elements, &tests, |g| {
+        game.misere_outcome(g, &mut memo)
+            .expect("misere_quotient: bounded element sums should be acyclic")
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -600,5 +608,20 @@ mod tests {
         // (Here the point is structural: outcome is not an XOR-linear function.)
         let three_ones = nim_canonical(vec![1, 1, 1]); // XOR = 1, misère-P (odd count)
         assert!(misere_is_p(&three_ones, &nim_moves, &mut memo).expect("Nim move graph is acyclic"));
+    }
+
+    #[test]
+    fn cyclic_abstract_game_returns_none_not_panic() {
+        // A cyclic move graph: position 1 has a self-loop (1 → 1).
+        // Before the fix this panicked with expect(). Now it returns None.
+        let game = AbstractGame {
+            moves: vec![vec![], vec![1]], // pos 1 self-loops — cyclic
+        };
+        let mut memo = HashMap::new();
+        assert_eq!(
+            game.misere_outcome(&[1], &mut memo),
+            None,
+            "cyclic AbstractGame must return None, not panic"
+        );
     }
 }

@@ -153,10 +153,16 @@ impl BrauerWallClass {
     }
 }
 
-/// The Brauer–Wall class of `Cl(Q)` over the **real-table** surreal subdomain:
-/// `s = (q − p) mod 8`, the Bott index. Reuses [`classify_surreal`]'s checked
-/// signature reading. `None` if the metric cannot be exactly reduced to ±1
-/// squares in the implemented `Surreal` backend.
+/// The Brauer–Wall class of `Cl(Q/rad)` — the Clifford algebra of the
+/// **nondegenerate core** — over the real-table surreal subdomain:
+/// `s = (q − p) mod 8`, the Bott index.  For nonsingular metrics this equals
+/// the class of `Cl(Q)`.  For singular metrics the radical (null directions)
+/// is silently projected away; the returned class is that of the nondegenerate
+/// quotient `Cl(Q/rad)`.
+///
+/// Reuses [`classify_surreal`]'s checked signature reading. `None` if the
+/// metric cannot be exactly reduced to ±1 squares in the implemented `Surreal`
+/// backend.
 pub fn bw_class_real(metric: &Metric<Surreal>) -> Option<BrauerWallClass> {
     let (p, q) = classify_surreal(metric)?.signature;
     Some(BrauerWallClass::Real(
@@ -164,18 +170,28 @@ pub fn bw_class_real(metric: &Metric<Surreal>) -> Option<BrauerWallClass> {
     ))
 }
 
-/// The Brauer–Wall class of `Cl(Q)` over the **complex-table** surcomplex
-/// subdomain: the dimension parity `n mod 2`. `None` if a nonzero square class
-/// cannot be represented by an exact square root in this backend.
+/// The Brauer–Wall class of `Cl(Q/rad)` — the Clifford algebra of the
+/// **nondegenerate core** — over the complex-table surcomplex subdomain:
+/// the dimension parity `n mod 2`.  For nonsingular metrics this equals the
+/// class of `Cl(Q)`.  For singular metrics the radical is silently projected
+/// away; the returned class is that of `Cl(Q/rad)`.
+///
+/// `None` if a nonzero square class cannot be represented by an exact square
+/// root in this backend.
 pub fn bw_class_complex(metric: &Metric<Surcomplex<Surreal>>) -> Option<BrauerWallClass> {
     let ct = classify_surcomplex(metric)?;
     let (p, q) = ct.signature;
     Some(BrauerWallClass::Complex(((p + q) % 2) as u128))
 }
 
-/// The Brauer–Wall class of `Cl(Q)` over any finite field `F_q` of odd
-/// characteristic, carried as the order-4 `oddchar` Witt data (`BW(F_q) ≅ W(F_q)`
-/// over a finite field, since the Brauer group is trivial). `None` if non-diagonal.
+/// The Brauer–Wall class of `Cl(Q/rad)` — the Clifford algebra of the
+/// **nondegenerate core** — over any finite field `F_q` of odd characteristic,
+/// carried as the order-4 `oddchar` Witt data (`BW(F_q) ≅ W(F_q)` over a
+/// finite field, since the Brauer group is trivial).  For nonsingular metrics
+/// this equals the class of `Cl(Q)`.  For singular metrics the radical is
+/// silently projected away; the returned class is that of `Cl(Q/rad)`.
+///
+/// `None` if non-diagonal.
 pub fn bw_class_finite_odd<F: FiniteOddField>(metric: &Metric<F>) -> Option<BrauerWallClass> {
     match finite_odd_witt(metric)? {
         WittClassG::OddChar {

@@ -9,6 +9,40 @@
 use crate::scalar::Scalar;
 use std::fmt;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn integer_basic_ops() {
+        let a = Integer(5);
+        let b = Integer(3);
+        assert_eq!(a.add(&b), Integer(8));
+        assert_eq!(a.mul(&b), Integer(15));
+        assert_eq!(a.neg(), Integer(-5));
+        assert_eq!(Integer(i128::MAX).neg(), Integer(i128::MIN + 1));
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer addition overflowed i128")]
+    fn integer_add_overflows_loudly() {
+        let _ = Integer(i128::MAX).add(&Integer(1));
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer negation overflowed i128")]
+    fn integer_neg_overflows_loudly() {
+        // i128::MIN has no positive counterpart in i128
+        let _ = Integer(i128::MIN).neg();
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer multiplication overflowed i128")]
+    fn integer_mul_overflows_loudly() {
+        let _ = Integer(i128::MAX).mul(&Integer(2));
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Integer(pub i128);
 
@@ -26,13 +60,25 @@ impl Scalar for Integer {
         Integer(1)
     }
     fn add(&self, rhs: &Self) -> Self {
-        Integer(self.0 + rhs.0)
+        Integer(
+            self.0
+                .checked_add(rhs.0)
+                .expect("Integer addition overflowed i128"),
+        )
     }
     fn neg(&self) -> Self {
-        Integer(-self.0)
+        Integer(
+            self.0
+                .checked_neg()
+                .expect("Integer negation overflowed i128"),
+        )
     }
     fn mul(&self, rhs: &Self) -> Self {
-        Integer(self.0 * rhs.0)
+        Integer(
+            self.0
+                .checked_mul(rhs.0)
+                .expect("Integer multiplication overflowed i128"),
+        )
     }
     fn characteristic() -> u128 {
         0

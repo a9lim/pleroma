@@ -292,8 +292,12 @@ impl ExactRoots for Surreal {
         if self.sign() != Ordering::Greater {
             return None;
         }
-        let base = self.terms().len().max(1);
-        let max_terms = (8 * base + 32).min(12);
+        // Search up to 12 truncated terms. The adaptive formula `(8*base+32).min(12)`
+        // that used to appear here was identically 12 for all inputs (base ≥ 1 gives
+        // 8*1+32 = 40 > 12, so `.min(12)` was always the operative bound). 12 is
+        // also the safe ceiling before i128 binomial coefficients overflow in the
+        // underlying `sqrt_to_terms`.
+        let max_terms = 12;
         for n in 1..=max_terms {
             let root = self.sqrt_to_terms(n)?;
             if root.mul(&root) == *self {

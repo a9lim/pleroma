@@ -45,9 +45,18 @@ pub struct Hackenbush {
 
 impl Hackenbush {
     /// A position from an explicit edge list `(u, v, colour)`. Vertex `0` is the
-    /// ground.
+    /// ground. Edges not connected to the ground (directly or through other edges)
+    /// are pruned immediately, as they fall off before play begins.
     pub fn new(edges: Vec<(usize, usize, Color)>) -> Hackenbush {
-        Hackenbush { edges }
+        let raw = Hackenbush { edges };
+        let grounded = raw.grounded();
+        Hackenbush {
+            edges: raw
+                .edges
+                .into_iter()
+                .filter(|&(u, v, _)| grounded.contains(&u) && grounded.contains(&v))
+                .collect(),
+        }
     }
 
     /// A **stalk** rooted at the ground: `0 — 1 — 2 — …`, edge `i` joining
@@ -244,5 +253,43 @@ mod tests {
         let mixed = Hackenbush::new(vec![(0, 1, Green), (1, 2, Blue)]);
         assert_eq!(mixed.value(), None);
         assert!(mixed.grundy().is_none()); // has a coloured edge
+    }
+
+    #[test]
+    fn floating_edges_are_pruned_at_construction() {
+        use Color::*;
+        // A floating blue edge (vertices 1-2) with no path to the ground (vertex 0).
+        // It must fall off at construction; value should be 0 (no legal moves), not 1.
+        let h = Hackenbush::new(vec![(1, 2, Blue)]);
+        assert!(
+            h.edges().is_empty(),
+            "floating edge should be pruned from the position"
+        );
+        assert_eq!(
+            h.value(),
+            Some(Surreal::from_int(0)),
+            "position with no grounded edges is the empty game, value 0"
+        );
+    }
+
+    #[test]
+    fn partially_floating_edges_are_pruned() {
+        use Color::*;
+        // Ground — vertex1 (blue); vertex1 — vertex2 — vertex3 (blue chain).
+        // Also a floating red edge vertex4 — vertex5.
+        // After pruning: the chain from the ground survives; the floating red edge does not.
+        let h = Hackenbush::new(vec![
+            (0, 1, Blue),
+            (1, 2, Blue),
+            (2, 3, Blue),
+            (4, 5, Red), // floating
+        ]);
+        assert_eq!(
+            h.edges().len(),
+            3,
+            "only the 3 grounded edges should survive"
+        );
+        // A 3-edge blue stalk = value 3.
+        assert_eq!(h.value(), Some(Surreal::from_int(3)));
     }
 }

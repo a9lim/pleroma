@@ -126,7 +126,7 @@ pub fn arf_f2(n: usize, qd: &[bool], bmat: &[u128]) -> ArfResult {
 
 /// Smallest extension degree m = 2^k over F₂ such that the nim-subfield
 /// F_{2^m} (the nimbers below 2^m) contains `max_val`.
-fn min_field_degree(max_val: u128) -> u128 {
+pub(crate) fn min_field_degree(max_val: u128) -> u128 {
     let mut m = 1u128; // 2^k, starting k = 0  (F_2)
     loop {
         if m >= 128 {
@@ -281,11 +281,30 @@ where
     })
 }
 
+/// Maximum nim-field entry value across all `q` and `b` scalars of `metric`.
+/// Used by `isometric_nimber` to find a common field degree for two metrics.
+pub(crate) fn nimber_metric_max_val(metric: &Metric<Nimber>) -> u128 {
+    let mut maxv = metric.q.iter().map(|x| x.0).max().unwrap_or(0);
+    for v in metric.b.values() {
+        maxv = maxv.max(v.0);
+    }
+    maxv
+}
+
 /// Arf invariant of a nimber Clifford metric over its field of definition (the
 /// smallest nim-subfield containing all entries), reduced to F₂ via the trace.
 /// Works for any nimber metric — F₂ is the special case where the trace is the
 /// identity. Symplectic reduction normalises each pair with `nim_inv`.
 pub fn arf_nimber(metric: &Metric<Nimber>) -> Option<ArfResult> {
+    let maxv = nimber_metric_max_val(metric);
+    arf_nimber_at_degree(metric, min_field_degree(maxv))
+}
+
+/// Arf invariant of a nimber metric using an explicit field degree `m` (a power
+/// of 2 up to 128) for the F_{2^m} → F₂ trace.  Callers that need to compare
+/// two forms isometrically must pass the same `m` to both — typically
+/// `min_field_degree(max(maxv1, maxv2))`.  General-bilinear metrics return `None`.
+pub(crate) fn arf_nimber_at_degree(metric: &Metric<Nimber>, m: u128) -> Option<ArfResult> {
     if !metric.a.is_empty() {
         return None;
     }
@@ -297,11 +316,7 @@ pub fn arf_nimber(metric: &Metric<Nimber>) -> Option<ArfResult> {
         bmat[j][i] = v.0;
     }
 
-    let mut maxv = q.iter().copied().max().unwrap_or(0);
-    for row in &bmat {
-        maxv = maxv.max(row.iter().copied().max().unwrap_or(0));
-    }
-    let m = min_field_degree(maxv);
+    // (m is already determined by the caller)
 
     let mut vectors: Vec<Vec<u128>> = (0..n)
         .map(|i| {
@@ -406,6 +421,25 @@ fn ordinal_f64_trace_to_f2(x: &Ordinal) -> Option<u128> {
     }
 }
 
+/// Try to convert a pure-finite ordinal metric to a `Metric<Nimber>`.
+/// Returns `None` if any entry is not a finite ordinal.
+pub(crate) fn ordinal_to_nimber_metric(metric: &Metric<Ordinal>) -> Option<Metric<Nimber>> {
+    if !metric.a.is_empty() {
+        return None;
+    }
+    let q = metric
+        .q
+        .iter()
+        .map(|x| x.as_finite().map(Nimber))
+        .collect::<Option<Vec<_>>>()?;
+    let b = metric
+        .b
+        .iter()
+        .map(|(&(i, j), x)| x.as_finite().map(|v| ((i, j), Nimber(v))))
+        .collect::<Option<BTreeMap<_, _>>>()?;
+    Some(Metric::new(q, b))
+}
+
 /// Arf invariant for finite ordinal-nimber windows represented by the `Ordinal`
 /// backend. Purely finite entries delegate to [`arf_nimber`]. Entries in the first
 /// transfinite finite field `F_4(ω) = F_64` use the same generic symplectic
@@ -417,20 +451,8 @@ pub fn arf_ordinal_finite(metric: &Metric<Ordinal>) -> Option<ArfResult> {
         return None;
     }
 
-    if metric.q.iter().all(|x| x.as_finite().is_some())
-        && metric.b.values().all(|x| x.as_finite().is_some())
-    {
-        let q = metric
-            .q
-            .iter()
-            .map(|x| x.as_finite().map(Nimber))
-            .collect::<Option<Vec<_>>>()?;
-        let b = metric
-            .b
-            .iter()
-            .map(|(&(i, j), x)| x.as_finite().map(|v| ((i, j), Nimber(v))))
-            .collect::<Option<BTreeMap<_, _>>>()?;
-        return arf_nimber(&Metric::new(q, b));
+    if let Some(nim) = ordinal_to_nimber_metric(metric) {
+        return arf_nimber(&nim);
     }
 
     if metric.q.iter().all(ordinal_f64_element) && metric.b.values().all(ordinal_f64_element) {

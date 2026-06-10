@@ -453,7 +453,7 @@ impl PyCliffordType {
         wrap_base_field(self.inner.base)
     }
     #[getter]
-    fn matrix_dim(&self) -> usize {
+    fn matrix_dim(&self) -> u128 {
         self.inner.matrix_dim
     }
     #[getter]

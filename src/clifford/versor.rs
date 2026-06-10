@@ -215,13 +215,12 @@ impl<S: Scalar> CliffordAlgebra<S> {
         Some(self.undual(&self.wedge(&da, &db)))
     }
 
-    /// The **Cayley transform** of a bivector `B`: the rotor `(1−B)(1+B)⁻¹`. This
-    /// is the missing *exact* arrow between the Lie algebra (bivectors, with the
-    /// [`commutator`](Self::commutator)) and the Spin group (rotors): it is
-    /// **rational** — no `cos`/`sin`, no `½` — so it works over any char-0 field
-    /// backend (Rational/Surreal/Surcomplex), where [`cga::exp_nilpotent`] needs
-    /// a terminating series and a general `exp` needs transcendentals. The result
-    /// is an even, unit-spinor-norm versor. `None` if `1+B` is not invertible.
+    /// The **Cayley transform** of a bivector `B`: `(1−B)(1+B)⁻¹`. This is a
+    /// rational chart on the even Clifford group near `1` for simple bivectors
+    /// and the low-dimensional cases where unit even elements coincide with
+    /// rotors; in higher dimensions an arbitrary bivector can map to an even
+    /// unit-norm element that is not a versor. The formula is still useful because
+    /// it needs no `cos`/`sin` and no `½`; `None` if `1+B` is not invertible.
     ///
     /// The transform is an **involution** (`cayley∘cayley = id`) for `2`
     /// invertible, so [`cayley_inverse`](Self::cayley_inverse) maps a rotor back

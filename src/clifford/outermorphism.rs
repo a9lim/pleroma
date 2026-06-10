@@ -126,15 +126,25 @@ fn grade_k_masks(n: usize, k: usize) -> Vec<u128> {
     if k > n {
         return vec![];
     }
+    assert!(n <= u128::BITS as usize, "basis masks fit in u128");
+    if k == u128::BITS as usize {
+        return vec![u128::MAX];
+    }
     let mut out = Vec::new();
     let mut c: u128 = (1u128 << k) - 1;
-    let limit_bits = n; // masks must fit in the low `n` bits
-    while (c >> limit_bits) == 0 {
+    let limit = (n < u128::BITS as usize).then(|| 1u128 << n);
+    loop {
         out.push(c);
         let u = c & c.wrapping_neg();
         let v = c.checked_add(u);
         match v {
-            Some(v) if v != 0 => c = v + (((v ^ c) / u) >> 2),
+            Some(v) if v != 0 => {
+                let next = v + (((v ^ c) / u) >> 2);
+                if limit.is_some_and(|lim| next >= lim) {
+                    break;
+                }
+                c = next;
+            }
             _ => break,
         }
     }
@@ -344,6 +354,22 @@ mod tests {
         let id = LinearMap::identity(3);
         assert_eq!(char_poly(&alg, &id), vec![r(1), r(-3), r(3), r(-1)]);
         assert_eq!(trace(&alg, &id), r(3));
+    }
+
+    #[test]
+    fn grade_masks_cover_the_full_u128_basis_window() {
+        let one_blades = grade_k_masks(128, 1);
+        assert_eq!(one_blades.len(), 128);
+        assert_eq!(one_blades[0], 1);
+        assert_eq!(one_blades[127], 1u128 << 127);
+        assert_eq!(grade_k_masks(128, 128), vec![u128::MAX]);
+    }
+
+    #[test]
+    fn trace_of_identity_at_dim_128_is_128() {
+        let alg = euclid(128);
+        let id = LinearMap::identity(128);
+        assert_eq!(trace(&alg, &id), r(128));
     }
 
     #[test]

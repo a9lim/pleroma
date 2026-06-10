@@ -10,7 +10,12 @@ impl<S: Scalar> CliffordAlgebra<S> {
         if v.is_zero() {
             return None;
         }
-        let n = 1usize << self.dim;
+        if v.terms.len() == 1 {
+            if let Some(c) = v.terms.get(&0) {
+                return Some(self.scalar(c.inv()?));
+            }
+        }
+        let n = 1usize.checked_shl(self.dim.try_into().ok()?)?;
         let mut mat = vec![vec![S::zero(); n]; n];
         for col in 0..n {
             let mut t = BTreeMap::new();
@@ -30,5 +35,28 @@ impl<S: Scalar> CliffordAlgebra<S> {
             }
         }
         Some(Multivector { terms })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clifford::Metric;
+    use crate::scalar::Rational;
+
+    #[test]
+    fn inverse_refuses_huge_non_scalar_without_shift_overflow() {
+        let alg: CliffordAlgebra<Rational> = CliffordAlgebra::new(64, Metric::grassmann(64));
+        assert_eq!(alg.multivector_inverse(&alg.gen(0)), None);
+    }
+
+    #[test]
+    fn scalar_inverse_still_works_at_huge_dimension() {
+        let alg = CliffordAlgebra::new(64, Metric::grassmann(64));
+        let two = alg.scalar(Rational::int(2));
+        assert_eq!(
+            alg.multivector_inverse(&two),
+            Some(alg.scalar(Rational::new(1, 2)))
+        );
     }
 }

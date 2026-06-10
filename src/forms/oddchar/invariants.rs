@@ -27,7 +27,7 @@ impl OddCharType {
         let d = if self.disc_is_square { "□" } else { "✶" };
         let field = format!("F_{}", self.field_order);
         let rad = if self.radical_dim > 0 {
-            format!(" ⊗ Λ({}^{})", field, self.radical_dim)
+            format!(" ⊗̂ Λ({}^{})", field, self.radical_dim)
         } else {
             String::new()
         };

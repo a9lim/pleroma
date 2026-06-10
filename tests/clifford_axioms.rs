@@ -3,9 +3,10 @@
 //! and characteristic 2 (`Nimber`).
 //!
 //! The unit suite pins associativity on fixed cases; this fuzzes it. A bug in
-//! `geom_product_blades` (sign handling, the polar/quadratic split, the general
-//! bilinear `a` term) shows up as a random associativity failure here, with a
-//! shrunk counterexample, instead of as a downstream classifier mystery.
+//! `geom_product_blades` (sign handling and the polar/quadratic split) shows up
+//! as a random associativity failure here, with a shrunk counterexample, instead
+//! of as a downstream classifier mystery. The general bilinear `a` term is pinned
+//! by fixed unit tests in the engine module.
 //!
 //! Keep this suite light: the scalar nimber tests pin field arithmetic and
 //! high-bit representation paths separately. Here we need enough coefficient

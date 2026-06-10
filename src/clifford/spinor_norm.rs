@@ -3,11 +3,11 @@
 //!
 //! `forms::char2` already classifies isometries in characteristic 2 by the
 //! **Dickson invariant** (`SO(Q) = ker D`). The companion across the *other*
-//! characteristics is the **spinor norm**: for the exact sequence
-//! `1 → {±1} → Pin(Q) → O(Q) → 1`, a versor `v = v₁⋯v_k` (a product of vectors)
-//! maps to the isometry that is the composite of the reflections in the `v_i`, and
-//! its spinor norm is `N(v) = ∏ q(v_i) ∈ F*/F*²`. Concretely `N(v) = ⟨v ṽ⟩₀` —
-//! exactly [`CliffordAlgebra::norm2`] — read modulo squares. The pair
+//! characteristics is the **spinor norm**: the Pin map sends a versor
+//! `v = v₁⋯v_k` (a product of vectors) to the composite of the reflections in the
+//! `v_i`; the cokernel over a general field is measured by the spinor norm map
+//! `O(Q) → F*/F*²`. Concretely `N(v) = ∏ q(v_i) = ⟨v ṽ⟩₀`, read modulo squares.
+//! The pair
 //! `(Dickson parity, spinor norm)` is what separates the four cosets
 //! `Pin/Spin × ±` of `O(Q)`.
 //!

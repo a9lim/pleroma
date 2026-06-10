@@ -128,7 +128,7 @@ impl GameExterior {
             );
         }
         let relation_certificate =
-            relation_search_certificate(&gens, 0, true, None, &relations, true);
+            relation_search_certificate(&gens, 0, true, None, &relations, false);
         GameExterior {
             alg: CliffordAlgebra::new(n, Metric::grassmann(n)),
             gens,
@@ -356,15 +356,30 @@ fn relation_search_certificate(
         bound,
         exhaustive,
         candidate_count,
-        relations: relations
-            .iter()
-            .map(|rel| GameRelationCertificate {
+        relations: relation_certificates(gens, relations, independent),
+    }
+}
+
+fn relation_certificates(
+    gens: &[Game],
+    relations: &[GameRelation],
+    trust_independent: bool,
+) -> Vec<GameRelationCertificate> {
+    let mut previous = Vec::new();
+    relations
+        .iter()
+        .map(|rel| {
+            let mut reduced = rel.coeffs.clone();
+            reduce_integer_vector(&mut reduced, previous.clone());
+            let independent = trust_independent || reduced.iter().any(|&c| c != 0);
+            previous.push(rel.coeffs.clone());
+            GameRelationCertificate {
                 coeffs: rel.coeffs.clone(),
                 value_key: eval_relation(gens, &rel.coeffs).canonical_string(),
                 independent,
-            })
-            .collect(),
-    }
+            }
+        })
+        .collect()
 }
 
 fn bounded_relation_candidate_count(n: usize, bound: i128) -> Option<usize> {
@@ -531,5 +546,19 @@ mod tests {
             .relations
             .iter()
             .any(|r| r.coeffs == vec![1, -1] || r.coeffs == vec![-1, 1]));
+    }
+
+    #[test]
+    fn explicit_relation_certificate_marks_dependent_rows() {
+        let star = Game::star();
+        let up = Game::up();
+        let ext = GameExterior::with_relations(
+            vec![star, up],
+            vec![GameRelation::new(vec![2, 0]), GameRelation::new(vec![4, 0])],
+        );
+        let cert = ext.relation_search_certificate();
+        assert_eq!(cert.relations.len(), 2);
+        assert!(cert.relations[0].independent);
+        assert!(!cert.relations[1].independent);
     }
 }

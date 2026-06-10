@@ -98,7 +98,7 @@ pub(crate) fn reduce_integer_vector(v: &mut [i128], rows: Vec<Vec<i128>>) {
         let q = v[lead].div_euclid(pivot);
         if q != 0 {
             for i in 0..v.len() {
-                v[i] -= q * row[i];
+                v[i] = ck_sub(v[i], ck_mul(q, row[i]));
             }
         }
     }
@@ -144,7 +144,7 @@ pub(crate) fn ext_gcd(a: i128, b: i128) -> (i128, i128, i128) {
         t1 = t2;
     }
     if r0 < 0 {
-        (-r0, -s0, -t0)
+        (checked_abs(r0), ck_sub(0, s0), ck_sub(0, t0))
     } else {
         (r0, s0, t0)
     }
@@ -298,7 +298,7 @@ pub(crate) fn smith_normal_form(mut m: Vec<Vec<i128>>) -> Vec<i128> {
             }
         }
     }
-    (0..k).map(|i| m[i][i].abs()).collect()
+    (0..k).map(|i| checked_abs(m[i][i])).collect()
 }
 
 #[cfg(test)]
@@ -334,6 +334,25 @@ mod tests {
                 assert_eq!(b % g, 0);
             }
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "integer relation coefficient magnitude exceeds i128")]
+    fn ext_gcd_refuses_unrepresentable_positive_gcd() {
+        let _ = ext_gcd(i128::MIN, 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "integer normal-form multiply exceeds i128")]
+    fn reduce_integer_vector_checks_row_operation_overflow() {
+        let mut v = vec![2, 0];
+        reduce_integer_vector(&mut v, vec![vec![1, i128::MAX]]);
+    }
+
+    #[test]
+    #[should_panic(expected = "integer relation coefficient magnitude exceeds i128")]
+    fn smith_normal_form_checks_final_abs() {
+        let _ = smith_normal_form(vec![vec![i128::MIN]]);
     }
 
     #[test]

@@ -180,9 +180,11 @@ pub fn pga<S: Scalar>(n: usize) -> CliffordAlgebra<S> {
 }
 
 /// `exp(B)` for a **nilpotent** multivector, as the terminating power series
-/// `Σ Bᵏ/k!`. Returns `None` if the series does not terminate within a bound
-/// (i.e. `B` is not nilpotent — a rotational motor needing transcendental
-/// `cos`/`sin`), or if some `k!` is not invertible in the backend.
+/// `Σ Bᵏ/k!`. Returns `None` if the series does not terminate within this
+/// implementation's conservative bound, or if some `k!` is not invertible in the
+/// backend. For the intended PGA translator/motor nilpotents the bound is ample;
+/// in large Clifford algebras, `None` is only a refusal, not proof that `B` is
+/// non-nilpotent.
 pub fn exp_nilpotent<S: Scalar>(
     alg: &CliffordAlgebra<S>,
     b: &Multivector<S>,

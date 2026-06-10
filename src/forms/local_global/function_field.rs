@@ -74,12 +74,15 @@ fn strip_factor<S: Scalar>(mut p: Poly<S>, pi: &Poly<S>) -> (i128, Poly<S>) {
 fn kappa_order<S: FiniteOddField>(place: &FFPlace<S>) -> u128 {
     let q = S::field_order();
     match place {
-        FFPlace::Finite(pi) => q.pow(
-            pi.degree()
+        FFPlace::Finite(pi) => {
+            let deg = pi
+                .degree()
                 .expect("an irreducible has degree ≥ 1")
                 .try_into()
-                .expect("place degree fits the platform exponent type"),
-        ),
+                .expect("place degree fits the platform exponent type");
+            q.checked_pow(deg)
+                .expect("residue field order |kappa| exceeds u128")
+        }
         FFPlace::Infinite => q,
     }
 }
@@ -410,6 +413,13 @@ mod tests {
         assert_eq!(valuation_at(&a, &FFPlace::Infinite), 0); // deg den − deg num = 0
                                                              // 1/t² has a double pole at ∞? no: v_∞(1/t²) = deg(t²) − deg(1) = 2.
         assert_eq!(valuation_at(&rf(&[1], &[0, 0, 1]), &FFPlace::Infinite), 2);
+    }
+
+    #[test]
+    #[should_panic(expected = "residue field order |kappa| exceeds u128")]
+    fn residue_field_order_overflow_is_rejected() {
+        let pi = Poly::<Fp<5>>::monomial(56, Fp::<5>::one()).add(&Poly::one());
+        let _ = kappa_order(&FFPlace::Finite(pi));
     }
 
     #[test]

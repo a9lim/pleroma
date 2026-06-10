@@ -199,7 +199,7 @@ mod tests {
             &[Red, Blue],            // −+  = −1/2
             &[Blue, Blue, Red],      // ++− = 3/2
             &[Blue, Red, Red],       // +−− = 1/4
-            &[Red, Blue, Red, Blue], // −+−+ = −3/8
+            &[Red, Blue, Red, Blue], // −+−+ = −5/8
         ];
         for colors in cases {
             let signs: Vec<bool> = colors.iter().map(|&c| c == Blue).collect();

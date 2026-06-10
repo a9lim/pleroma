@@ -657,11 +657,11 @@ mod tests {
     fn expected_ideal_dim(qs: &[i128]) -> usize {
         let t = classify_rational(&cl(qs).metric).unwrap().real_closure;
         let base = match t.base {
-            BaseField::R => 1,
-            BaseField::C => 2,
-            BaseField::H => 4,
+            BaseField::R => 1u128,
+            BaseField::C => 2u128,
+            BaseField::H => 4u128,
         };
-        t.matrix_dim * base
+        usize::try_from(t.matrix_dim * base).expect("test spinor dimension fits usize")
     }
 
     fn check_clifford_relations(qs: &[i128]) {

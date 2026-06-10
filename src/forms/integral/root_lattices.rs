@@ -56,7 +56,7 @@ fn gram_from_basis(b: &[Vec<i128>]) -> IntegralForm {
 
 /// The root lattice `A_n` (`n ≥ 1`): the Cartan matrix `2I − (adjacency of a path)`.
 /// `det = n+1`, kissing number `n(n+1)`, Coxeter number `n+1`,
-/// `|Aut| = 2·(n+1)!`.
+/// `|Aut| = 2` for `n = 1` and `2·(n+1)!` for `n ≥ 2`.
 pub fn a_n(n: usize) -> IntegralForm {
     assert!(n >= 1, "A_n requires n ≥ 1");
     let edges: Vec<(usize, usize)> = (0..n.saturating_sub(1)).map(|i| (i, i + 1)).collect();
@@ -159,7 +159,8 @@ mod tests {
             assert_eq!(coxeter_number(&l), Some(n as i128 + 1));
             assert!(is_root_lattice(&l));
         }
-        // |Aut(A_n)| = 2·(n+1)! for the small ones we can enumerate.
+        // |Aut(A_1)| = 2; |Aut(A_n)| = 2·(n+1)! for n ≥ 2.
+        assert_eq!(a_n(1).automorphism_group_order(), Some(2));
         assert_eq!(a_n(2).automorphism_group_order(), Some(12)); // 2·3!
         assert_eq!(a_n(3).automorphism_group_order(), Some(48)); // 2·4!
         assert_eq!(a_n(4).automorphism_group_order(), Some(240)); // 2·5!

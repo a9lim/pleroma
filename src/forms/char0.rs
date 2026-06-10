@@ -29,8 +29,9 @@
 //! `Surcomplex<Surreal>` exposes that table only for diagonal entries whose
 //! square roots are actually represented by the finite-support backend.
 //!
-//! The null directions (radical of dim `r`) contribute an exterior factor:
-//! `Cl(p,q,r) ≅ Cl(p,q) ⊗ Λ(F^r)` over the ground field `F ∈ {ℝ, ℂ}`.
+//! The null directions (radical of dim `r`) contribute an exterior factor through
+//! the graded tensor product: `Cl(p,q,r) ≅ Cl(p,q) ⊗̂ Λ(F^r)` over the ground field
+//! `F ∈ {ℝ, ℂ}`.
 //!
 //! The rational backend is **not** treated as real-closed. `classify_rational`
 //! reports the genuine Hasse--Minkowski invariant package: dimension, radical,
@@ -77,7 +78,7 @@ pub struct CliffordType {
     /// The division ring underlying the matrix algebra.
     pub base: BaseField,
     /// `m` such that the (semisimple) core is `M_m(base)` (or two copies of it).
-    pub matrix_dim: usize,
+    pub matrix_dim: u128,
     /// Whether the core is a direct sum of two equal matrix algebras (`⊕`).
     pub doubled: bool,
     /// Dimension of the metric radical (null directions): an `Λ(ground^r)` factor.
@@ -91,7 +92,7 @@ pub struct CliffordType {
 }
 
 impl CliffordType {
-    /// Human-readable name, e.g. `M_2(H)`, `M_4(R) ⊕ M_4(R)`, `C ⊗ Λ(R^1)`.
+    /// Human-readable name, e.g. `M_2(H)`, `M_4(R) ⊕ M_4(R)`, `C ⊗̂ Λ(R^1)`.
     pub fn display(&self) -> String {
         let unit = if self.matrix_dim == 1 {
             self.base.symbol().to_string()
@@ -104,7 +105,7 @@ impl CliffordType {
             unit
         };
         if self.radical_dim > 0 {
-            format!("{core} ⊗ Λ({}^{})", self.ground.symbol(), self.radical_dim)
+            format!("{core} ⊗̂ Λ({}^{})", self.ground.symbol(), self.radical_dim)
         } else {
             core
         }
@@ -168,13 +169,15 @@ impl RationalCliffordType {
 }
 
 /// `2^k`.
-fn p2(k: usize) -> usize {
-    1usize << k
+fn p2(k: usize) -> u128 {
+    1u128
+        .checked_shl(k.try_into().expect("matrix exponent fits u32"))
+        .expect("matrix dimension exceeds u128")
 }
 
 /// Classify the nondegenerate real Clifford algebra `Cl(p,q)` (no radical) by
 /// Bott periodicity. `radical_dim`/`ground` are filled in by the callers.
-fn real_core(p: usize, q: usize) -> (BaseField, usize, bool) {
+fn real_core(p: usize, q: usize) -> (BaseField, u128, bool) {
     let n = p + q;
     let s = (q as i128 - p as i128).rem_euclid(8) as usize;
     let base = match s {
@@ -369,13 +372,13 @@ mod tests {
             for q in 0..=5usize {
                 let t = classify_real(p, q, 0);
                 let unit = match t.base {
-                    BaseField::R => 1,
-                    BaseField::C => 2,
-                    BaseField::H => 4,
+                    BaseField::R => 1u128,
+                    BaseField::C => 2u128,
+                    BaseField::H => 4u128,
                 };
-                let copies = if t.doubled { 2 } else { 1 };
+                let copies = if t.doubled { 2u128 } else { 1u128 };
                 let real_dim = copies * unit * t.matrix_dim * t.matrix_dim;
-                assert_eq!(real_dim, 1usize << (p + q), "Cl({p},{q})");
+                assert_eq!(real_dim, 1u128 << (p + q), "Cl({p},{q})");
             }
         }
     }
@@ -383,9 +386,15 @@ mod tests {
     #[test]
     fn radical_gives_exterior_factor() {
         // Cl(0,1,2): ℂ tensor an exterior algebra on the 2 null directions.
-        assert_eq!(name(&[-1, 0, 0]), "C ⊗ Λ(R^2)");
+        assert_eq!(name(&[-1, 0, 0]), "C ⊗̂ Λ(R^2)");
         // pure Grassmann Λ(R^3) = Cl(0,0,3): trivial core ⊗ Λ.
-        assert_eq!(name(&[0, 0, 0]), "R ⊗ Λ(R^3)");
+        assert_eq!(name(&[0, 0, 0]), "R ⊗̂ Λ(R^3)");
+    }
+
+    #[test]
+    fn matrix_dimension_reaches_dim_128_boundary() {
+        assert_eq!(classify_real(128, 0, 0).matrix_dim, 1u128 << 64);
+        assert_eq!(classify_complex(128, 0).matrix_dim, 1u128 << 64);
     }
 
     #[test]

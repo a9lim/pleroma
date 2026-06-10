@@ -30,7 +30,8 @@ contract. `usize` remains for graph nodes, option indices, and collection length
   games (Nim heaps `⋆α`) carried by their `Ordinal` (On₂) Grundy value — grundy/
   add(=nim-add XOR)/cmp/to_finite_game delegate to `Ordinal`, no infinite option
   tree. `neg` is the identity (char 2: every impartial game is self-inverse);
-  `turning_corners` is the nim-product (Conway's coin game, `ω³=2`), `None` ≥ ω^ω.
+  `turning_corners` is the nim-product (Conway's coin game, `ω³=2`); `None` only
+  when a Kummer carry needs a prime past the verified table or at `≥ ω^(ω^ω)`.
   Closes the `No ↔ On₂` symmetry at the games layer (it had only lived at the scalar
   layer via the shared CNF core, and now reaches Clifford through `Scalar for
   Ordinal` inside the checked Kummer boundary). Bound to Python as `NimberGame`.

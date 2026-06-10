@@ -326,6 +326,21 @@ mod tests {
     }
 
     #[test]
+    fn nonorthogonal_rotor_uses_true_reversion() {
+        let mut b = std::collections::BTreeMap::new();
+        b.insert((0usize, 1usize), r(1));
+        let alg = CliffordAlgebra::new(2, Metric::new(vec![r(1), r(1)], b));
+        let e0 = alg.gen(0);
+        let e1 = alg.gen(1);
+        let rotor = alg.mul(&e0, &alg.add(&e0, &e1));
+
+        assert_eq!(alg.spinor_norm(&rotor), Some(r(3)));
+        let inv = alg.versor_inverse(&rotor).unwrap();
+        assert_eq!(alg.mul(&rotor, &inv), alg.scalar(r(1)));
+        assert_eq!(alg.classify_versor(&rotor).unwrap().spinor_norm, r(3));
+    }
+
+    #[test]
     fn multivector_inverse_in_char_two() {
         use crate::scalar::Nimber;
         // Over a nimber field (char 2, neg = id) the Gauss–Jordan pivots exercise

@@ -200,6 +200,22 @@ mod tests {
     }
 
     #[test]
+    fn reverse_is_metric_aware_on_nonorthogonal_blades() {
+        let mut b = BTreeMap::new();
+        b.insert((0usize, 1usize), r(1));
+        let alg = CliffordAlgebra::new(2, Metric::new(vec![r(1), r(1)], b));
+        let e0 = alg.gen(0);
+        let e1 = alg.gen(1);
+        let e0e1 = alg.mul(&e0, &e1);
+
+        assert_eq!(alg.reverse(&e0e1), alg.mul(&e1, &e0));
+        assert_eq!(
+            alg.reverse(&alg.mul(&e0, &e1)),
+            alg.mul(&alg.reverse(&e1), &alg.reverse(&e0))
+        );
+    }
+
+    #[test]
     fn ordinal_clifford_transfinite_squares_work() {
         let omega = Ordinal::omega();
         let omega_plus_one = omega.nim_add(&Ordinal::one());

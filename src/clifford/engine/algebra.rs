@@ -1,4 +1,4 @@
-use super::basis::{grade, wedge_sign, MAX_BASIS_DIM};
+use super::basis::{bits, grade, wedge_sign, MAX_BASIS_DIM};
 use super::metric::Metric;
 use super::multivector::Multivector;
 use super::terms::{merge, scale};
@@ -139,21 +139,20 @@ impl<S: Scalar> CliffordAlgebra<S> {
         Multivector { terms: out }
     }
 
-    /// Reversion: reverse the order of generators in every blade.
+    /// Reversion: reverse the order of generators in every blade and reduce that
+    /// reversed word through the Clifford product.
     pub fn reverse(&self, a: &Multivector<S>) -> Multivector<S> {
-        let mut terms = BTreeMap::new();
+        let mut out = self.zero();
         for (&blade, coeff) in &a.terms {
-            let k = grade(blade);
-            let c = if (k * (k.wrapping_sub(1)) / 2) & 1 == 1 {
-                coeff.neg()
-            } else {
-                coeff.clone()
-            };
-            if !c.is_zero() {
-                terms.insert(blade, c);
+            let mut rev_blade = self.scalar(S::one());
+            let mut gens = bits(blade);
+            gens.reverse();
+            for g in gens {
+                rev_blade = self.mul(&rev_blade, &self.gen(g));
             }
+            out = self.add(&out, &self.scalar_mul(coeff, &rev_blade));
         }
-        Multivector { terms }
+        out
     }
 
     /// Grade-k projection.

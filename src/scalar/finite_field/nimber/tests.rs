@@ -287,10 +287,14 @@ fn relative_trace_and_norm() {
 #[test]
 fn order_matches_brute_force_in_subfields() {
     for x in 1u128..16 {
-        assert_eq!(nim_order(x), Some(brute_order(x)), "order of {x}");
+        assert_eq!(
+            nim_multiplicative_order(x),
+            Some(brute_order(x)),
+            "order of {x}"
+        );
     }
-    assert_eq!(nim_order(0), None);
-    assert_eq!(nim_order(2), Some(3)); // 2 generates F_4*
+    assert_eq!(nim_multiplicative_order(0), None);
+    assert_eq!(nim_multiplicative_order(2), Some(3)); // 2 generates F_4*
     for x in 1u128..16 {
         assert!(!nim_is_primitive(x)); // all sit in a proper subfield
     }
@@ -305,13 +309,15 @@ fn discrete_log_round_trips() {
     assert_eq!(nim_discrete_log(2, 4), None); // 4 ∉ ⟨2⟩
 
     // a generator of F_256* (order 255 = 3·5·17): exercises Pohlig–Hellman + CRT
-    let g = (16u128..256).find(|&g| nim_order(g) == Some(255)).unwrap();
+    let g = (16u128..256)
+        .find(|&g| nim_multiplicative_order(g) == Some(255))
+        .unwrap();
     for e in 0u128..255 {
         assert_eq!(nim_discrete_log(g, nim_pow(g, e)), Some(e), "log_{g}");
     }
     // a non-generator base (order 51)
     let h = nim_pow(g, 5);
-    assert_eq!(nim_order(h), Some(51));
+    assert_eq!(nim_multiplicative_order(h), Some(51));
     let target = nim_pow(h, 7);
     let e = nim_discrete_log(h, target).unwrap();
     assert!(e < 51 && nim_pow(h, e) == target);
@@ -321,5 +327,5 @@ fn discrete_log_round_trips() {
 fn primitive_element_generates_full_group() {
     let g = nim_primitive_element();
     assert!(nim_is_primitive(g));
-    assert_eq!(nim_order(g), Some(u128::MAX)); // order 2^128 − 1
+    assert_eq!(nim_multiplicative_order(g), Some(u128::MAX)); // order 2^128 − 1
 }

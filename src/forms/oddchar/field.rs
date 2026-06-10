@@ -1,6 +1,6 @@
 //! Odd finite-field capability trait and scalar-level helpers.
 
-use crate::scalar::{Fp, Fpn, Scalar};
+use crate::scalar::{ExactFieldScalar, Fp, Fpn, Scalar};
 
 pub(super) fn assert_odd_prime<const P: u128>() {
     Fp::<P>::assert_prime_modulus();
@@ -11,7 +11,7 @@ pub(super) fn assert_odd_prime<const P: u128>() {
 /// actually need: field-order metadata, base-field constants, and square classes.
 /// This is intentionally narrower than [`Scalar`]: it is a form-theory façade, not
 /// a new scalar-world requirement.
-pub trait FiniteOddField: Scalar + Copy {
+pub trait FiniteOddField: ExactFieldScalar + Copy {
     /// Characteristic prime `p`.
     fn characteristic_prime() -> u128;
 
@@ -69,7 +69,7 @@ impl<const P: u128, const N: usize> FiniteOddField for Fpn<P, N> {
     }
 
     fn field_order() -> u128 {
-        Fpn::<P, N>::order()
+        Fpn::<P, N>::field_order()
     }
 
     fn is_supported_odd_field() -> bool {

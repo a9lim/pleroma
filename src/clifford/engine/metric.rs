@@ -2,6 +2,13 @@ use super::basis::MAX_BASIS_DIM;
 use crate::scalar::Scalar;
 use std::collections::BTreeMap;
 
+/// Owned metric storage: `(q, b, a)`.
+pub type MetricParts<S> = (
+    Vec<S>,
+    BTreeMap<(usize, usize), S>,
+    BTreeMap<(usize, usize), S>,
+);
+
 /// The metric of a Clifford algebra of a (possibly general, possibly degenerate)
 /// bilinear form. We store the full bilinear form `B(e_i, e_j)` factored into
 /// three pieces so the common case is cheap and the general case is reachable:
@@ -13,9 +20,9 @@ use std::collections::BTreeMap;
 ///     contraction** part.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metric<S: Scalar> {
-    pub q: Vec<S>,
-    pub b: BTreeMap<(usize, usize), S>,
-    pub a: BTreeMap<(usize, usize), S>,
+    pub(crate) q: Vec<S>,
+    pub(crate) b: BTreeMap<(usize, usize), S>,
+    pub(crate) a: BTreeMap<(usize, usize), S>,
 }
 
 impl<S: Scalar> Metric<S> {
@@ -59,6 +66,31 @@ impl<S: Scalar> Metric<S> {
         let metric = Metric { q, b, a };
         metric.validate_for_dim(metric.q.len());
         metric
+    }
+
+    /// The represented dimension, i.e. the length of the quadratic diagonal.
+    pub fn dim(&self) -> usize {
+        self.q.len()
+    }
+
+    /// Diagonal quadratic entries `q[i] = e_i^2`.
+    pub fn q(&self) -> &[S] {
+        &self.q
+    }
+
+    /// Polar/anticommutator entries `b[(i,j)] = {e_i,e_j}` with `i < j`.
+    pub fn b(&self) -> &BTreeMap<(usize, usize), S> {
+        &self.b
+    }
+
+    /// Strictly-upper/in-order contraction entries with `i < j`.
+    pub fn a(&self) -> &BTreeMap<(usize, usize), S> {
+        &self.a
+    }
+
+    /// Consume the metric into its invariant-carrying parts.
+    pub fn into_parts(self) -> MetricParts<S> {
+        (self.q, self.b, self.a)
     }
 
     pub(crate) fn validate_for_dim(&self, dim: usize) {

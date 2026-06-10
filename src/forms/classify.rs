@@ -37,6 +37,48 @@ pub enum FiniteFieldClass {
     Char2(ArfResult),
 }
 
+/// Witt-decomposition data for the finite-field tower `Fpn<P,N>`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FiniteFieldWittDecomp {
+    /// Odd-characteristic finite field.
+    Odd(OddWittDecomp),
+    /// Characteristic-2 finite field.
+    Char2(Char2WittDecomp),
+}
+
+/// Witt-decomposition data for a characteristic-2 finite-field form.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Char2WittDecomp {
+    /// Extension degree `m` for `F_{2^m}`.
+    pub field_degree: u128,
+    /// Number of hyperbolic planes split from the nonsingular core.
+    pub witt_index: usize,
+    /// Dimension of the anisotropic nonsingular core: `0` for hyperbolic, `2` for
+    /// the anisotropic plane.
+    pub core_anisotropic_dim: usize,
+    /// Dimension of the polar radical.
+    pub radical_dim: usize,
+    /// Whether the quadratic form is nonzero on the radical.
+    pub radical_anisotropic: bool,
+    /// Arf bit of the nonsingular core.
+    pub arf: u128,
+}
+
+impl Char2WittDecomp {
+    fn from_arf(field_degree: u128, arf: &ArfResult) -> Self {
+        let core_anisotropic_dim = if arf.arf == 0 { 0 } else { 2 };
+        let witt_index = arf.rank.saturating_sub(core_anisotropic_dim) / 2;
+        Char2WittDecomp {
+            field_degree,
+            witt_index,
+            core_anisotropic_dim,
+            radical_dim: arf.radical_dim,
+            radical_anisotropic: arf.radical_anisotropic,
+            arf: arf.arf,
+        }
+    }
+}
+
 impl FiniteFieldClass {
     pub fn display(&self) -> String {
         match self {
@@ -279,9 +321,16 @@ impl<const P: u128> WittDecompose for Fp<P> {
 }
 
 impl<const P: u128, const N: usize> WittDecompose for Fpn<P, N> {
-    type Decomp = OddWittDecomp;
+    type Decomp = FiniteFieldWittDecomp;
     fn witt_decompose(metric: &Metric<Self>) -> Option<Self::Decomp> {
-        witt_decompose_finite_odd(metric)
+        if P == 2 {
+            let arf = arf_fpn_char2(metric)?;
+            Some(FiniteFieldWittDecomp::Char2(Char2WittDecomp::from_arf(
+                N as u128, &arf,
+            )))
+        } else {
+            witt_decompose_finite_odd(metric).map(FiniteFieldWittDecomp::Odd)
+        }
     }
 }
 
@@ -527,12 +576,26 @@ mod tests {
         let f9 = Metric::diagonal(vec![Fpn::<3, 2>::constant(1), Fpn::<3, 2>::constant(1)]);
         let g9 = Metric::diagonal(vec![Fpn::<3, 2>::constant(2), Fpn::<3, 2>::constant(2)]);
         assert_eq!(f9.isometric_to(&g9), isometric_finite_odd(&f9, &g9));
-        assert_eq!(f9.witt_decompose(), witt_decompose_finite_odd(&f9));
+        assert_eq!(
+            f9.witt_decompose(),
+            witt_decompose_finite_odd(&f9).map(FiniteFieldWittDecomp::Odd)
+        );
         assert_eq!(f9.bw_class(), bw_class_finite_odd(&f9));
 
         let mut b = std::collections::BTreeMap::new();
         b.insert((0usize, 1usize), Fpn::<2, 3>::one());
         let f8 = Metric::new(vec![Fpn::<2, 3>::zero(), Fpn::<2, 3>::zero()], b);
+        assert_eq!(
+            f8.witt_decompose(),
+            Some(FiniteFieldWittDecomp::Char2(Char2WittDecomp {
+                field_degree: 3,
+                witt_index: 1,
+                core_anisotropic_dim: 0,
+                radical_dim: 0,
+                radical_anisotropic: false,
+                arf: 0,
+            }))
+        );
         assert_eq!(
             f8.bw_class(),
             Some(BrauerWallClass::Char2 {

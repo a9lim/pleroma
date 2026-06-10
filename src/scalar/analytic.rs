@@ -196,7 +196,7 @@ pub(crate) fn fq_sqrt<const P: u128, const N: usize>(a: Fpn<P, N>) -> Option<Fpn
     }
     let one = Fpn::<P, N>::one();
     // q−1 = q'·2^s with q' odd.
-    let (mut qodd, mut s) = (Fpn::<P, N>::order() - 1, 0u128);
+    let (mut qodd, mut s) = (Fpn::<P, N>::field_order() - 1, 0u128);
     while qodd % 2 == 0 {
         qodd /= 2;
         s += 1;

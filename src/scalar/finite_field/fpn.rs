@@ -109,7 +109,7 @@ impl<const P: u128, const N: usize> Fpn<P, N> {
     }
 
     /// The field order `p^N`.
-    pub fn order() -> u128 {
+    pub fn field_order() -> u128 {
         Self::assert_supported_field();
         let mut acc = 1u128;
         for _ in 0..N {
@@ -193,7 +193,7 @@ impl<const P: u128, const N: usize> Fpn<P, N> {
             return true; // Frobenius is onto in char 2
         }
         // a^{(q−1)/2} == 1
-        let mut e = (Self::order() - 1) / 2;
+        let mut e = (Self::field_order() - 1) / 2;
         let mut base = *self;
         let mut acc = Self::one();
         while e > 0 {
@@ -261,8 +261,8 @@ impl<const P: u128, const N: usize> Fpn<P, N> {
     /// field — cheap for the modest orders in this tower.
     pub fn primitive_element() -> Self {
         Self::assert_supported_field();
-        let target = Self::order() - 1;
-        for code in 1..Self::order() {
+        let target = Self::field_order() - 1;
+        for code in 1..Self::field_order() {
             let el = Self::from_code(code);
             if el.multiplicative_order() == Some(target) {
                 return el;
@@ -305,12 +305,12 @@ impl<const P: u128, const N: usize> FiniteField for Fpn<P, N> {
 
     fn group_order() -> u128 {
         Self::assert_supported_field();
-        Self::order() - 1
+        Self::field_order() - 1
     }
 
     fn group_order_factors() -> Vec<u128> {
         Self::assert_supported_field();
-        distinct_primes(Self::order() - 1)
+        distinct_primes(Self::field_order() - 1)
     }
 }
 
@@ -434,7 +434,7 @@ impl<const P: u128, const N: usize> Scalar for Fpn<P, N> {
             return None;
         }
         // Fermat: a^{p^N − 2} = a^{−1} in F_{p^N}. Square-and-multiply with `mul`.
-        let mut e = Self::order() - 2;
+        let mut e = Self::field_order() - 2;
         let mut base = *self;
         let mut result = Self::one();
         while e > 0 {
@@ -456,7 +456,7 @@ mod tests {
 
     /// Every element of `F_{p^N}`, enumerated by base-`P` digits.
     fn elems<const P: u128, const N: usize>() -> Vec<Fpn<P, N>> {
-        let order = Fpn::<P, N>::order();
+        let order = Fpn::<P, N>::field_order();
         (0..order)
             .map(|mut code| {
                 let mut coeffs = [0u128; N];
@@ -473,7 +473,7 @@ mod tests {
         let es = elems::<P, N>();
         let zero = Fpn::<P, N>::zero();
         let one = Fpn::<P, N>::one();
-        assert_eq!(es.len(), Fpn::<P, N>::order() as usize);
+        assert_eq!(es.len(), Fpn::<P, N>::field_order() as usize);
         for &a in &es {
             // additive identity / inverse
             assert_eq!(a.add(&zero), a);
@@ -533,9 +533,9 @@ mod tests {
     #[test]
     fn characteristic_is_p_not_order() {
         assert_eq!(Fpn::<2, 3>::characteristic(), 2); // F_8 has characteristic 2
-        assert_eq!(Fpn::<2, 3>::order(), 8);
+        assert_eq!(Fpn::<2, 3>::field_order(), 8);
         assert_eq!(Fpn::<3, 3>::characteristic(), 3); // F_27 has characteristic 3
-        assert_eq!(Fpn::<3, 3>::order(), 27);
+        assert_eq!(Fpn::<3, 3>::field_order(), 27);
     }
 
     #[test]

@@ -26,8 +26,8 @@ use crate::forms::{
     HermitianForm, IntegralForm, SymplecticForm, WittClass, WittClassError, WittClassG,
 };
 use crate::scalar::{
-    Fp, Fpn, Laurent, Nimber, Ordinal, Poly, Qp, Qq, Ramified, Rational, RationalFunction,
-    ResidueField, Scalar, Surcomplex, Surreal, WittVec,
+    ExactFieldScalar, Fp, Fpn, Laurent, Nimber, Ordinal, Poly, Qp, Qq, Ramified, Rational,
+    RationalFunction, ResidueField, Scalar, Surcomplex, Surreal, WittVec,
 };
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
@@ -1478,22 +1478,9 @@ fn parse_ff_rational_functions<F: FiniteOddField>(
         .collect()
 }
 
-fn ensure_ff_nonzero<F: Scalar>(x: &RationalFunction<F>, name: &str) -> PyResult<()> {
+fn ensure_ff_nonzero<F: ExactFieldScalar>(x: &RationalFunction<F>, name: &str) -> PyResult<()> {
     if x.is_zero() {
         Err(PyValueError::new_err(format!("{name} must be nonzero")))
-    } else {
-        Ok(())
-    }
-}
-
-fn ensure_ff_entries_nonzero<F: Scalar>(
-    entries: &[RationalFunction<F>],
-    name: &str,
-) -> PyResult<()> {
-    if let Some((i, _)) = entries.iter().enumerate().find(|(_, x)| x.is_zero()) {
-        Err(PyValueError::new_err(format!(
-            "{name}[{i}] must be nonzero"
-        )))
     } else {
         Ok(())
     }
@@ -1796,21 +1783,21 @@ impl PyOddCharType {
     }
 }
 
-#[pyclass(name = "FiniteFieldForm", module = "pleroma", from_py_object)]
+#[pyclass(name = "OddFiniteFieldForm", module = "pleroma", from_py_object)]
 #[derive(Clone)]
-struct PyFiniteFieldForm {
+struct PyOddFiniteFieldForm {
     p: u128,
     degree: usize,
     q: Vec<i128>,
 }
 
 #[pymethods]
-impl PyFiniteFieldForm {
+impl PyOddFiniteFieldForm {
     #[new]
     #[pyo3(signature = (p, q, degree=1))]
     fn new(p: u128, q: Vec<i128>, degree: usize) -> PyResult<Self> {
         finite_field_order(p, degree)?;
-        Ok(PyFiniteFieldForm { p, degree, q })
+        Ok(PyOddFiniteFieldForm { p, degree, q })
     }
 
     #[getter]
@@ -1841,7 +1828,7 @@ impl PyFiniteFieldForm {
             .ok_or_else(|| PyValueError::new_err("non-diagonal metric"))
     }
 
-    fn classify_class(&self) -> PyResult<PyFiniteFieldClass> {
+    fn classify_unified(&self) -> PyResult<PyFiniteFieldClass> {
         let res = with_finite_odd_metric!(self.p, self.degree, &self.q, |m| {
             crate::forms::classify_finite_odd(&m)
         });
@@ -1867,7 +1854,7 @@ impl PyFiniteFieldForm {
         Ok(wrap_odd_witt_decomp(d))
     }
 
-    fn is_isometric(&self, other: &PyFiniteFieldForm) -> PyResult<bool> {
+    fn is_isometric(&self, other: &PyOddFiniteFieldForm) -> PyResult<bool> {
         if self.p != other.p || self.degree != other.degree {
             return Err(PyValueError::new_err(
                 "isometry needs both forms over the same finite field",
@@ -1878,7 +1865,7 @@ impl PyFiniteFieldForm {
                 .ok_or_else(|| PyValueError::new_err("non-diagonal metric"))
         })
     }
-    fn isometric_to(&self, other: &PyFiniteFieldForm) -> PyResult<bool> {
+    fn isometric_to(&self, other: &PyOddFiniteFieldForm) -> PyResult<bool> {
         self.is_isometric(other)
     }
 
@@ -1923,7 +1910,7 @@ impl PyFiniteFieldForm {
 
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!(
-            "FiniteFieldForm(F_{}, diagonal={:?})",
+            "OddFiniteFieldForm(F_{}, diagonal={:?})",
             self.field_order()?,
             self.q
         ))
@@ -2001,7 +1988,7 @@ impl PyChar2FiniteFieldForm {
             .ok_or_else(|| PyValueError::new_err("metric is outside finite char-2 Arf scope"))
     }
 
-    fn classify_class(&self) -> PyResult<PyFiniteFieldClass> {
+    fn classify_unified(&self) -> PyResult<PyFiniteFieldClass> {
         let res = with_finite_char2_metric!(self.degree, &self.q, &self.b, |m| {
             crate::forms::arf_fpn_char2(&m)
         });
@@ -2193,57 +2180,59 @@ fn monic_irreducible_factors(p: u128, poly: PyFFPoly, degree: usize) -> PyResult
     })
 }
 
-/// Relevant places for a diagonal form over `F_{p^degree}(t)`. Each entry is
-/// `(numerator_coeffs, denominator_coeffs)`, with coefficients as field indices.
+/// Checked relevant places for a diagonal form over `F_{p^degree}(t)`. Each entry
+/// is `(numerator_coeffs, denominator_coeffs)`, with coefficients as field indices.
 #[pyfunction]
 #[pyo3(signature = (p, entries, degree=1))]
-fn relevant_places(
+fn try_relevant_places_ff(
     p: u128,
     entries: Vec<PyFFRationalFunction>,
     degree: usize,
-) -> PyResult<Vec<PyFunctionFieldPlace>> {
+) -> PyResult<Option<Vec<PyFunctionFieldPlace>>> {
     with_finite_odd_field!(p, degree, |F| {
         let entries = parse_ff_rational_functions::<F>(&entries)?;
-        ensure_ff_entries_nonzero(&entries, "entries")?;
-        Ok(crate::forms::relevant_places(&entries)
-            .into_iter()
-            .map(wrap_ff_place::<F>)
-            .collect())
+        Ok(
+            crate::forms::try_relevant_places_ff(&entries).map(|places| {
+                places
+                    .into_iter()
+                    .map(wrap_ff_place::<F>)
+                    .collect::<Vec<_>>()
+            }),
+        )
     })
 }
 
-/// Valuation of a nonzero element of `F_{p^degree}(t)` at a place. `place=None`
+/// Checked valuation of an element of `F_{p^degree}(t)` at a place. `place=None`
 /// means the degree place at infinity; otherwise pass a monic irreducible
 /// polynomial's coefficients.
 #[pyfunction]
 #[pyo3(signature = (p, a, place=None, degree=1))]
-fn valuation_at(
+fn try_valuation_at_ff(
     p: u128,
     a: PyFFRationalFunction,
     place: Option<PyFFPoly>,
     degree: usize,
-) -> PyResult<i128> {
+) -> PyResult<Option<i128>> {
     with_finite_odd_field!(p, degree, |F| {
         let a = parse_ff_rational_function::<F>(&a, "a")?;
-        ensure_ff_nonzero(&a, "a")?;
         let place = parse_ff_place::<F>(place)?;
-        Ok(crate::forms::valuation_at(&a, &place))
+        Ok(crate::forms::try_valuation_at_ff(&a, &place))
     })
 }
 
-/// Whether a nonzero element is a square in the local field at `place`.
+/// Checked local squarehood at `place`.
 #[pyfunction]
 #[pyo3(signature = (p, a, place=None, degree=1))]
-fn is_local_square(
+fn try_is_local_square_ff(
     p: u128,
     a: PyFFRationalFunction,
     place: Option<PyFFPoly>,
     degree: usize,
-) -> PyResult<bool> {
+) -> PyResult<Option<bool>> {
     with_finite_odd_field!(p, degree, |F| {
         let a = parse_ff_rational_function::<F>(&a, "a")?;
         let place = parse_ff_place::<F>(place)?;
-        Ok(crate::forms::is_local_square(&a, &place))
+        Ok(crate::forms::try_is_local_square_ff(&a, &place))
     })
 }
 
@@ -2257,121 +2246,118 @@ fn is_global_square_ff(p: u128, x: PyFFRationalFunction, degree: usize) -> PyRes
     })
 }
 
-/// Hilbert symbol `(a,b)_v` over `F_{p^degree}(t)` at `place`.
+/// Checked Hilbert symbol `(a,b)_v` over `F_{p^degree}(t)` at `place`.
 #[pyfunction]
 #[pyo3(signature = (p, a, b, place=None, degree=1))]
-fn hilbert_symbol_ff(
+fn try_hilbert_symbol_ff(
     p: u128,
     a: PyFFRationalFunction,
     b: PyFFRationalFunction,
     place: Option<PyFFPoly>,
     degree: usize,
-) -> PyResult<i128> {
+) -> PyResult<Option<i128>> {
     with_finite_odd_field!(p, degree, |F| {
         let a = parse_ff_rational_function::<F>(&a, "a")?;
         let b = parse_ff_rational_function::<F>(&b, "b")?;
-        ensure_ff_nonzero(&a, "a")?;
-        ensure_ff_nonzero(&b, "b")?;
         let place = parse_ff_place::<F>(place)?;
-        Ok(crate::forms::hilbert_symbol_ff(&a, &b, &place))
+        Ok(crate::forms::try_hilbert_symbol_ff(&a, &b, &place))
     })
 }
 
-/// Hasse invariant of a diagonal form over `F_{p^degree}(t)` at `place`.
+/// Checked Hasse invariant of a diagonal form over `F_{p^degree}(t)` at `place`.
 #[pyfunction]
 #[pyo3(signature = (p, entries, place=None, degree=1))]
-fn hasse_at_place_ff(
+fn try_hasse_at_place_ff(
     p: u128,
     entries: Vec<PyFFRationalFunction>,
     place: Option<PyFFPoly>,
     degree: usize,
-) -> PyResult<i128> {
+) -> PyResult<Option<i128>> {
     with_finite_odd_field!(p, degree, |F| {
         let entries = parse_ff_rational_functions::<F>(&entries)?;
-        ensure_ff_entries_nonzero(&entries, "entries")?;
         let place = parse_ff_place::<F>(place)?;
-        Ok(crate::forms::hasse_at_place_ff(&entries, &place))
+        Ok(crate::forms::try_hasse_at_place_ff(&entries, &place))
     })
 }
 
-/// Hilbert reciprocity product `prod_v (a,b)_v` over all places of `F_q(t)`.
+/// Checked Hilbert reciprocity product `prod_v (a,b)_v` over all places of `F_q(t)`.
 #[pyfunction]
 #[pyo3(signature = (p, a, b, degree=1))]
-fn hilbert_reciprocity_product_ff(
+fn try_hilbert_reciprocity_product_ff(
     p: u128,
     a: PyFFRationalFunction,
     b: PyFFRationalFunction,
     degree: usize,
-) -> PyResult<i128> {
+) -> PyResult<Option<i128>> {
     with_finite_odd_field!(p, degree, |F| {
         let a = parse_ff_rational_function::<F>(&a, "a")?;
         let b = parse_ff_rational_function::<F>(&b, "b")?;
-        ensure_ff_nonzero(&a, "a")?;
-        ensure_ff_nonzero(&b, "b")?;
-        Ok(crate::forms::hilbert_reciprocity_product_ff(&a, &b))
+        Ok(crate::forms::try_hilbert_reciprocity_product_ff(&a, &b))
     })
 }
 
-/// Places where the quaternion algebra `(a,b)` over `F_q(t)` ramifies.
+/// Checked ramified places of the quaternion algebra `(a,b)` over `F_q(t)`.
 #[pyfunction]
 #[pyo3(signature = (p, a, b, degree=1))]
-fn ramified_places_ff(
+fn try_ramified_places_ff(
     p: u128,
     a: PyFFRationalFunction,
     b: PyFFRationalFunction,
     degree: usize,
-) -> PyResult<Vec<PyFunctionFieldPlace>> {
+) -> PyResult<Option<Vec<PyFunctionFieldPlace>>> {
     with_finite_odd_field!(p, degree, |F| {
         let a = parse_ff_rational_function::<F>(&a, "a")?;
         let b = parse_ff_rational_function::<F>(&b, "b")?;
-        ensure_ff_nonzero(&a, "a")?;
-        ensure_ff_nonzero(&b, "b")?;
-        Ok(crate::forms::ramified_places_ff(&a, &b)
-            .into_iter()
-            .map(wrap_ff_place::<F>)
-            .collect())
+        Ok(crate::forms::try_ramified_places_ff(&a, &b).map(|places| {
+            places
+                .into_iter()
+                .map(wrap_ff_place::<F>)
+                .collect::<Vec<_>>()
+        }))
     })
 }
 
-/// Local isotropy of a diagonal form over the completion of `F_q(t)` at `place`.
+/// Checked local isotropy of a diagonal form over the completion of `F_q(t)` at `place`.
 #[pyfunction]
 #[pyo3(signature = (p, entries, place=None, degree=1))]
-fn is_isotropic_at_place(
+fn try_is_isotropic_at_place_ff(
     p: u128,
     entries: Vec<PyFFRationalFunction>,
     place: Option<PyFFPoly>,
     degree: usize,
-) -> PyResult<bool> {
+) -> PyResult<Option<bool>> {
     with_finite_odd_field!(p, degree, |F| {
         let entries = parse_ff_rational_functions::<F>(&entries)?;
         let place = parse_ff_place::<F>(place)?;
-        Ok(crate::forms::is_isotropic_at_place(&entries, &place))
+        Ok(crate::forms::try_is_isotropic_at_place_ff(&entries, &place))
     })
 }
 
-/// Global Hasse-Minkowski isotropy of a diagonal form over `F_q(t)`.
+/// Checked global Hasse-Minkowski isotropy of a diagonal form over `F_q(t)`.
 #[pyfunction]
 #[pyo3(signature = (p, entries, degree=1))]
-fn is_isotropic_ff(p: u128, entries: Vec<PyFFRationalFunction>, degree: usize) -> PyResult<bool> {
-    with_finite_odd_field!(p, degree, |F| {
-        let entries = parse_ff_rational_functions::<F>(&entries)?;
-        Ok(crate::forms::is_isotropic_ff(&entries))
-    })
-}
-
-/// Per-place Hasse-Minkowski breakdown for a diagonal form over `F_q(t)`.
-#[pyfunction]
-#[pyo3(signature = (p, entries, degree=1))]
-fn isotropy_over_ff_adeles(
+fn try_is_isotropic_ff(
     p: u128,
     entries: Vec<PyFFRationalFunction>,
     degree: usize,
-) -> PyResult<PyFunctionFieldAdelicIsotropy> {
+) -> PyResult<Option<bool>> {
     with_finite_odd_field!(p, degree, |F| {
         let entries = parse_ff_rational_functions::<F>(&entries)?;
-        Ok(wrap_ff_adeles(crate::forms::isotropy_over_ff_adeles(
-            &entries,
-        )))
+        Ok(crate::forms::try_is_isotropic_ff(&entries))
+    })
+}
+
+/// Checked per-place Hasse-Minkowski breakdown for a diagonal form over `F_q(t)`.
+#[pyfunction]
+#[pyo3(signature = (p, entries, degree=1))]
+fn try_isotropy_over_ff_adeles(
+    p: u128,
+    entries: Vec<PyFFRationalFunction>,
+    degree: usize,
+) -> PyResult<Option<PyFunctionFieldAdelicIsotropy>> {
+    with_finite_odd_field!(p, degree, |F| {
+        let entries = parse_ff_rational_functions::<F>(&entries)?;
+        Ok(crate::forms::try_isotropy_over_ff_adeles(&entries).map(wrap_ff_adeles))
     })
 }
 
@@ -2709,7 +2695,7 @@ fn classify_finite_algebra(py: Python<'_>, alg: Bound<'_, PyAny>) -> PyResult<Py
 }
 
 #[pyfunction]
-fn classify_finite_algebra_class(alg: Bound<'_, PyAny>) -> PyResult<PyFiniteFieldClass> {
+fn classify_finite_algebra_unified(alg: Bound<'_, PyAny>) -> PyResult<PyFiniteFieldClass> {
     finite_algebra_cases!(
         classify_char2_finite_alg_class,
         classify_odd_finite_alg_class,
@@ -3593,10 +3579,10 @@ fn finite_ext_from_index<const P: u128, const N: usize>(
     code: u128,
     label: &str,
 ) -> PyResult<Fpn<P, N>> {
-    if code >= Fpn::<P, N>::order() {
+    if code >= Fpn::<P, N>::field_order() {
         return Err(PyValueError::new_err(format!(
             "{label} field element index {code} is outside F_{}",
-            Fpn::<P, N>::order()
+            Fpn::<P, N>::field_order()
         )));
     }
     let mut coeffs = Vec::with_capacity(N);
@@ -4863,7 +4849,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyWittClassError>()?;
     m.add_class::<PyWittClass>()?;
     m.add_class::<PyOddCharType>()?;
-    m.add_class::<PyFiniteFieldForm>()?;
+    m.add_class::<PyOddFiniteFieldForm>()?;
     m.add_class::<PyChar2FiniteFieldForm>()?;
     m.add_class::<PyFunctionFieldPlace>()?;
     m.add_class::<PyFunctionFieldLocalIsotropy>()?;
@@ -4914,22 +4900,22 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(isometric_surcomplex, m)?)?;
     m.add_function(wrap_pyfunction!(isometric_nimber, m)?)?;
     m.add_function(wrap_pyfunction!(classify_finite_algebra, m)?)?;
-    m.add_function(wrap_pyfunction!(classify_finite_algebra_class, m)?)?;
+    m.add_function(wrap_pyfunction!(classify_finite_algebra_unified, m)?)?;
     m.add_function(wrap_pyfunction!(witt_finite_algebra, m)?)?;
     m.add_function(wrap_pyfunction!(bw_class_finite_algebra, m)?)?;
     m.add_function(wrap_pyfunction!(isometric_finite_algebra, m)?)?;
     m.add_function(wrap_pyfunction!(monic_irreducible_factors, m)?)?;
-    m.add_function(wrap_pyfunction!(relevant_places, m)?)?;
-    m.add_function(wrap_pyfunction!(valuation_at, m)?)?;
-    m.add_function(wrap_pyfunction!(is_local_square, m)?)?;
+    m.add_function(wrap_pyfunction!(try_relevant_places_ff, m)?)?;
+    m.add_function(wrap_pyfunction!(try_valuation_at_ff, m)?)?;
+    m.add_function(wrap_pyfunction!(try_is_local_square_ff, m)?)?;
     m.add_function(wrap_pyfunction!(is_global_square_ff, m)?)?;
-    m.add_function(wrap_pyfunction!(hilbert_symbol_ff, m)?)?;
-    m.add_function(wrap_pyfunction!(hasse_at_place_ff, m)?)?;
-    m.add_function(wrap_pyfunction!(hilbert_reciprocity_product_ff, m)?)?;
-    m.add_function(wrap_pyfunction!(ramified_places_ff, m)?)?;
-    m.add_function(wrap_pyfunction!(is_isotropic_at_place, m)?)?;
-    m.add_function(wrap_pyfunction!(is_isotropic_ff, m)?)?;
-    m.add_function(wrap_pyfunction!(isotropy_over_ff_adeles, m)?)?;
+    m.add_function(wrap_pyfunction!(try_hilbert_symbol_ff, m)?)?;
+    m.add_function(wrap_pyfunction!(try_hasse_at_place_ff, m)?)?;
+    m.add_function(wrap_pyfunction!(try_hilbert_reciprocity_product_ff, m)?)?;
+    m.add_function(wrap_pyfunction!(try_ramified_places_ff, m)?)?;
+    m.add_function(wrap_pyfunction!(try_is_isotropic_at_place_ff, m)?)?;
+    m.add_function(wrap_pyfunction!(try_is_isotropic_ff, m)?)?;
+    m.add_function(wrap_pyfunction!(try_isotropy_over_ff_adeles, m)?)?;
     m.add_function(wrap_pyfunction!(char2_monic_irreducible_factors, m)?)?;
     m.add_function(wrap_pyfunction!(as_symbol_at, m)?)?;
     m.add_function(wrap_pyfunction!(as_symbol_places, m)?)?;

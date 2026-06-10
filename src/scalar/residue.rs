@@ -47,14 +47,14 @@
 //!     trait in method-call position, so the delegation does not recurse), the same
 //!     discipline as [`valued`](crate::scalar::valued).
 
-use crate::scalar::{Fp, Fpn, Laurent, Qp, Qq, Scalar, Valued};
+use crate::scalar::{ExactFieldScalar, Fp, Fpn, Laurent, Qp, Qq, Scalar, Valued};
 
 /// A discretely-valued field with a residue field `k = 𝒪/𝔪` and the canonical and
 /// angular-component reductions onto it. The piece of the local-field package
 /// `(K, 𝒪, 𝔪, k, Γ, ϖ)` that the rest of the trait layer left in doc comments.
 pub trait ResidueField: Valued {
     /// The residue field `k = 𝒪/𝔪`.
-    type Residue: Scalar;
+    type Residue: ExactFieldScalar;
 
     /// The canonical reduction `𝒪 → k`, `x ↦ x mod 𝔪`. `None` for a non-integral
     /// element (valuation `< 0`); a uniformizer reduces to `0`, a unit to its
@@ -129,7 +129,7 @@ impl<const P: u128, const N: usize, const F: usize> ResidueField for Qq<P, N, F>
 // itself (reduction = "evaluate at t = 0"), and the angular component is the
 // leading coefficient u₀.
 
-impl<S: Scalar, const K: usize> ResidueField for Laurent<S, K> {
+impl<S: ExactFieldScalar, const K: usize> ResidueField for Laurent<S, K> {
     type Residue = S;
     fn residue(&self) -> Option<S> {
         match self.valuation() {

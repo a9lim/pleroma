@@ -175,7 +175,7 @@ fn omega2(u: i128) -> i128 {
 /// Over `Q_p` the residue character is the Legendre symbol; over `F_q(t)` it is
 /// the residue-field character `χ_κ`. The `p = 2` (mod-8) and real branches are the
 /// two genuine exceptions — everything else is this symbol (see
-/// [`hilbert_symbol_ff`](crate::forms::hilbert_symbol_ff)).
+/// [`try_hilbert_symbol_ff`](crate::forms::try_hilbert_symbol_ff)).
 pub(crate) fn tame_hilbert_symbol(
     alpha: i128,
     beta: i128,

@@ -32,18 +32,18 @@
 //! computes per-place valuations from [`num`](RationalFunction::num) and
 //! [`den`](RationalFunction::den).
 
-use crate::scalar::{Poly, Scalar};
+use crate::scalar::{ExactFieldScalar, Poly, Scalar};
 use std::fmt;
 
 /// An element of `F_q(t)` (more generally `S(t)` over any field `S`): `num / den`
 /// with `den` monic.
 #[derive(Clone)]
-pub struct RationalFunction<S: Scalar> {
+pub struct RationalFunction<S: ExactFieldScalar> {
     num: Poly<S>,
     den: Poly<S>,
 }
 
-impl<S: Scalar> RationalFunction<S> {
+impl<S: ExactFieldScalar> RationalFunction<S> {
     /// Assemble `num / den` (already-`Poly`), gcd-reducing and normalizing the
     /// denominator to monic.
     fn from_polys(num: Poly<S>, den: Poly<S>) -> Self {
@@ -105,14 +105,14 @@ impl<S: Scalar> RationalFunction<S> {
     }
 }
 
-impl<S: Scalar> PartialEq for RationalFunction<S> {
+impl<S: ExactFieldScalar> PartialEq for RationalFunction<S> {
     /// Cross-multiplication: `a/b = c/d ⇔ a·d = c·b`.
     fn eq(&self, other: &Self) -> bool {
         self.num.mul(&other.den) == other.num.mul(&self.den)
     }
 }
 
-impl<S: Scalar> fmt::Debug for RationalFunction<S> {
+impl<S: ExactFieldScalar> fmt::Debug for RationalFunction<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.den == Poly::one() {
             write!(f, "{:?}", self.num)
@@ -122,7 +122,7 @@ impl<S: Scalar> fmt::Debug for RationalFunction<S> {
     }
 }
 
-impl<S: Scalar> Scalar for RationalFunction<S> {
+impl<S: ExactFieldScalar> Scalar for RationalFunction<S> {
     fn zero() -> Self {
         RationalFunction {
             num: Poly::zero(),

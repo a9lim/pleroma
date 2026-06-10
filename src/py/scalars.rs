@@ -859,10 +859,10 @@ macro_rules! extension_field_pyclass {
             }
             #[staticmethod]
             fn from_index(code: u128) -> PyResult<Self> {
-                if code >= Fpn::<$p, $n>::order() {
+                if code >= Fpn::<$p, $n>::field_order() {
                     return Err(PyValueError::new_err(format!(
                         "field element index {code} is outside F_{}",
-                        Fpn::<$p, $n>::order()
+                        Fpn::<$p, $n>::field_order()
                     )));
                 }
                 let mut coeffs = Vec::with_capacity($n);
@@ -875,7 +875,7 @@ macro_rules! extension_field_pyclass {
             }
             #[staticmethod]
             fn field_order() -> u128 {
-                Fpn::<$p, $n>::order()
+                Fpn::<$p, $n>::field_order()
             }
             #[staticmethod]
             fn ext_degree() -> usize {
@@ -5188,8 +5188,8 @@ fn nim_relative_norm(x: u128, m: u128, e: u128) -> u128 {
 
 /// Multiplicative order of `x` in F_{2^128}* (`None` for `*0`).
 #[pyfunction]
-fn nim_order(x: u128) -> Option<u128> {
-    crate::scalar::nim_order(x)
+fn nim_multiplicative_order(x: u128) -> Option<u128> {
+    crate::scalar::nim_multiplicative_order(x)
 }
 
 /// Whether `x` generates the full group F_{2^128}*.
@@ -5618,7 +5618,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(nim_min_poly, m)?)?;
     m.add_function(wrap_pyfunction!(nim_relative_trace, m)?)?;
     m.add_function(wrap_pyfunction!(nim_relative_norm, m)?)?;
-    m.add_function(wrap_pyfunction!(nim_order, m)?)?;
+    m.add_function(wrap_pyfunction!(nim_multiplicative_order, m)?)?;
     m.add_function(wrap_pyfunction!(nim_is_primitive, m)?)?;
     m.add_function(wrap_pyfunction!(nim_primitive_element, m)?)?;
     m.add_function(wrap_pyfunction!(nim_discrete_log, m)?)?;

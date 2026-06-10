@@ -240,7 +240,7 @@ Orthogonal to the place table: a 2×2 of (algebraic|transcendental) ×
 the runtime-prime p-adic cell. Useful for product-formula / Hilbert-reciprocity /
 Hasse–Minkowski experiments in `forms/adelic.rs`; not an exact infinite-memory
 adele. `LocalQp` (runtime prime, NOT const-generic) is the analogue of
-`forms`'s runtime `FiniteFieldForm`.
+`forms`'s runtime `OddFiniteFieldForm`.
 
 `RationalFunction<S>` (in `global/function_field.rs`) is the **equal-characteristic
 mirror**: the global function field `F_q(t)`, the char-`p` analogue of `ℚ` as a
@@ -295,7 +295,7 @@ fuzz and carries the `ExactScalar`/`ExactFieldScalar` markers. It feeds
   (the standard p-adic model, like float). No finite-memory exact Q_p exists.
 - **`nim_mul`'s `1u128 << (1u128 << n)` is not overflow-prone** for valid u128:
   bit positions < 128 ⇒ Fermat indices n ≤ 6, shift ≤ 64.
-- **`Fpn::order()` is the field order `p^N` (static, no self); the element's
+- **`Fpn::field_order()` is the field order `p^N` (static, no self); the element's
   multiplicative order is `multiplicative_order(&self)`.** Different things.
 - **The `nim_*` Galois free fns delegate to the `FiniteField` trait; don't re-add
   inherent `Nimber` Galois methods.** An inherent `Nimber::degree` would shadow and

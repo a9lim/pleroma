@@ -47,8 +47,8 @@
 //!     out of the pairing — the same honesty as `Laurent` above.
 
 use crate::scalar::{
-    mul_mod_u128, Integer, Omnific, Poly, Qp, Qq, Rational, RationalFunction, Scalar, Surcomplex,
-    Surreal, WittVec, Zp,
+    mul_mod_u128, ExactFieldScalar, Integer, Omnific, Poly, Qp, Qq, Rational, RationalFunction,
+    Scalar, Surcomplex, Surreal, WittVec, Zp,
 };
 
 /// A (commutative) ring that knows its field of fractions.
@@ -182,14 +182,14 @@ impl<const P: u128, const N: usize, const F: usize> HasRingOfIntegers for Qq<P, 
 // the ring of integers `F_q[t] = Poly<S>` is a genuinely separate backend from the
 // global field `RationalFunction<S> = F_q(t)`, so the pairing is structural.
 
-impl<S: Scalar> HasFractionField for Poly<S> {
+impl<S: ExactFieldScalar> HasFractionField for Poly<S> {
     type Frac = RationalFunction<S>;
     fn to_fraction(&self) -> RationalFunction<S> {
         RationalFunction::from_poly(self.clone())
     }
 }
 
-impl<S: Scalar> HasRingOfIntegers for RationalFunction<S> {
+impl<S: ExactFieldScalar> HasRingOfIntegers for RationalFunction<S> {
     type Int = Poly<S>;
     fn is_integral(&self) -> bool {
         // integral ⟺ a polynomial ⟺ the (monic) denominator divides the numerator.

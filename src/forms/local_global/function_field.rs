@@ -13,7 +13,8 @@
 //!   * **different:** there is **no archimedean place**. The role of `ℝ` is played
 //!     by the **degree place `∞`** (uniformizer `1/t`, residue field `F_q`), which
 //!     is just another tame place — so Hasse–Minkowski over `F_q(t)` has no
-//!     definiteness condition (see [`is_isotropic_ff`](crate::forms::is_isotropic_ff)).
+//!     definiteness condition (see
+//!     [`try_is_isotropic_ff`](crate::forms::try_is_isotropic_ff)).
 //!
 //! The places of `F_q(t)`: the **finite** places are the monic irreducible
 //! polynomials `π(t) ∈ F_q[t]` (residue field `F_{q^{deg π}}`), and the one
@@ -71,7 +72,7 @@ fn strip_factor<S: Scalar>(mut p: Poly<S>, pi: &Poly<S>) -> (i128, Poly<S>) {
 // ───────────────────────── per-place local data ─────────────────────────
 
 /// The residue field order `|κ| = q^{deg π}` (or `q` at the degree place).
-fn kappa_order<S: FiniteOddField>(place: &FFPlace<S>) -> u128 {
+fn try_kappa_order<S: FiniteOddField>(place: &FFPlace<S>) -> Option<u128> {
     let q = S::field_order();
     match place {
         FFPlace::Finite(pi) => {
@@ -79,21 +80,22 @@ fn kappa_order<S: FiniteOddField>(place: &FFPlace<S>) -> u128 {
                 .degree()
                 .expect("an irreducible has degree ≥ 1")
                 .try_into()
-                .expect("place degree fits the platform exponent type");
+                .ok()?;
             q.checked_pow(deg)
-                .expect("residue field order |kappa| exceeds u128")
         }
-        FFPlace::Infinite => q,
+        FFPlace::Infinite => Some(q),
     }
 }
 
 /// The valuation `v_place(a)` of a **nonzero** `a ∈ F_q(t)`.
-pub fn valuation_at<S: FiniteOddField>(a: &RationalFunction<S>, place: &FFPlace<S>) -> i128 {
-    assert!(
-        !a.is_zero(),
-        "valuation_at needs a nonzero rational function"
-    );
-    match place {
+pub fn try_valuation_at_ff<S: FiniteOddField>(
+    a: &RationalFunction<S>,
+    place: &FFPlace<S>,
+) -> Option<i128> {
+    if a.is_zero() {
+        return None;
+    }
+    Some(match place {
         FFPlace::Finite(pi) => {
             let (mn, _) = strip_factor(a.num().clone(), pi);
             let (md, _) = strip_factor(a.den().clone(), pi);
@@ -104,17 +106,19 @@ pub fn valuation_at<S: FiniteOddField>(a: &RationalFunction<S>, place: &FFPlace<
             let dd = a.den().degree().expect("monic nonzero denominator") as i128;
             dd - dn // v_∞ = deg(den) − deg(num)
         }
-    }
+    })
 }
 
 /// The residue unit `(a / ϖ^{v(a)}) mod ϖ ∈ κ*` of a **nonzero** `a`, as an element
 /// of the residue field: a [`Poly`] of degree `< deg π` at a finite place, or a
 /// constant (an `F_q` element) at the degree place.
-fn residue_unit_at<S: FiniteOddField>(a: &RationalFunction<S>, place: &FFPlace<S>) -> Poly<S> {
-    assert!(
-        !a.is_zero(),
-        "residue_unit_at needs a nonzero rational function"
-    );
+fn try_residue_unit_at<S: FiniteOddField>(
+    a: &RationalFunction<S>,
+    place: &FFPlace<S>,
+) -> Option<Poly<S>> {
+    if a.is_zero() {
+        return None;
+    }
     match place {
         FFPlace::Finite(pi) => {
             let (_, num_s) = strip_factor(a.num().clone(), pi);
@@ -122,14 +126,14 @@ fn residue_unit_at<S: FiniteOddField>(a: &RationalFunction<S>, place: &FFPlace<S
             let num_mod = num_s.rem(pi);
             let den_mod = den_s.rem(pi);
             // den_mod⁻¹ in κ* by Fermat: x^{|κ|−2} (κ* is cyclic of order |κ|−1).
-            let den_inv = den_mod.pow_mod(kappa_order(place) - 2, pi);
-            num_mod.mul_mod(&den_inv, pi)
+            let den_inv = den_mod.pow_mod(try_kappa_order(place)?.checked_sub(2)?, pi);
+            Some(num_mod.mul_mod(&den_inv, pi))
         }
         FFPlace::Infinite => {
             // a·t^{v_∞} → (lead num)/(lead den) as t → ∞.
             let ln = *a.num().leading().expect("nonzero numerator");
             let ld = *a.den().leading().expect("monic nonzero denominator");
-            Poly::constant(ln.mul(&ld.inv().expect("a field's nonzero element inverts")))
+            Some(Poly::constant(ln.mul(&ld.inv()?)))
         }
     }
 }
@@ -137,34 +141,38 @@ fn residue_unit_at<S: FiniteOddField>(a: &RationalFunction<S>, place: &FFPlace<S
 /// The residue quadratic character `χ_κ(u) ∈ {+1, −1}` of a **nonzero** residue
 /// unit `u ∈ κ*` — Euler's criterion `u^{(|κ|−1)/2}` in `F_q[t]/(π)` (or in `F_q`
 /// at the degree place).
-fn chi_kappa<S: FiniteOddField>(unit: &Poly<S>, place: &FFPlace<S>) -> i128 {
+fn try_chi_kappa<S: FiniteOddField>(unit: &Poly<S>, place: &FFPlace<S>) -> Option<i128> {
     match place {
         FFPlace::Finite(pi) => {
-            let e = (kappa_order(place) - 1) / 2;
-            if unit.pow_mod(e, pi) == Poly::one() {
+            let e = (try_kappa_order(place)?.checked_sub(1)?) / 2;
+            Some(if unit.pow_mod(e, pi) == Poly::one() {
                 1
             } else {
                 -1 // the unique order-2 element of κ* is −1
-            }
+            })
         }
-        FFPlace::Infinite => {
-            if is_square_finite::<S>(unit.coeff(0)) {
-                1
-            } else {
-                -1
-            }
-        }
+        FFPlace::Infinite => Some(if is_square_finite::<S>(unit.coeff(0)) {
+            1
+        } else {
+            -1
+        }),
     }
 }
 
 /// Whether a **nonzero** `a` is a square in the local field at `place`: the
 /// valuation is even **and** the residue unit is a square in `κ`. The mirror of
 /// [`try_is_square_qp`](crate::forms::try_is_square_qp).
-pub fn is_local_square<S: FiniteOddField>(a: &RationalFunction<S>, place: &FFPlace<S>) -> bool {
+pub fn try_is_local_square_ff<S: FiniteOddField>(
+    a: &RationalFunction<S>,
+    place: &FFPlace<S>,
+) -> Option<bool> {
     if a.is_zero() {
-        return false;
+        return Some(false);
     }
-    valuation_at(a, place).rem_euclid(2) == 0 && chi_kappa(&residue_unit_at(a, place), place) == 1
+    Some(
+        try_valuation_at_ff(a, place)?.rem_euclid(2) == 0
+            && try_chi_kappa(&try_residue_unit_at(a, place)?, place)? == 1,
+    )
 }
 
 // ───────────────────────── the Hilbert symbol ─────────────────────────
@@ -176,24 +184,29 @@ pub fn is_local_square<S: FiniteOddField>(a: &RationalFunction<S>, place: &FFPla
 /// exactly the odd-`p` branch of [`try_hilbert_symbol_qp`](crate::forms::try_hilbert_symbol_qp)
 /// with the residue Legendre symbol replaced by the residue character `χ_κ`. No
 /// `p = 2` branch exists because every residue field has odd characteristic.
-pub fn hilbert_symbol_ff<S: FiniteOddField>(
+pub fn try_hilbert_symbol_ff<S: FiniteOddField>(
     a: &RationalFunction<S>,
     b: &RationalFunction<S>,
     place: &FFPlace<S>,
-) -> i128 {
-    assert!(
-        !a.is_zero() && !b.is_zero(),
-        "Hilbert symbol over F_q(t) needs nonzero arguments"
-    );
-    let al = valuation_at(a, place);
-    let be = valuation_at(b, place);
-    let ca = chi_kappa(&residue_unit_at(a, place), place);
-    let cb = chi_kappa(&residue_unit_at(b, place), place);
+) -> Option<i128> {
+    if a.is_zero() || b.is_zero() {
+        return None;
+    }
+    let al = try_valuation_at_ff(a, place)?;
+    let be = try_valuation_at_ff(b, place)?;
+    let ca = try_chi_kappa(&try_residue_unit_at(a, place)?, place)?;
+    let cb = try_chi_kappa(&try_residue_unit_at(b, place)?, place)?;
     // χ_κ(−1): −1 is a square in κ iff |κ| ≡ 1 (mod 4).
-    let chi_neg1 = if kappa_order(place) % 4 == 1 { 1 } else { -1 };
+    let chi_neg1 = if try_kappa_order(place)? % 4 == 1 {
+        1
+    } else {
+        -1
+    };
     // Exactly the shared tame symbol — the same machine as the odd-`p` Q_p branch,
     // with the residue character `χ_κ` in place of the Legendre symbol.
-    crate::forms::padic::tame_hilbert_symbol(al, be, ca, cb, chi_neg1)
+    Some(crate::forms::padic::tame_hilbert_symbol(
+        al, be, ca, cb, chi_neg1,
+    ))
 }
 
 // ───────────────────────── Hasse invariant + reciprocity ─────────────────────────
@@ -203,11 +216,12 @@ pub fn hilbert_symbol_ff<S: FiniteOddField>(
 /// numerators and denominators), plus the degree place `∞`. At every other place
 /// all entries are units, so every symbol is `+1`. Mirror of
 /// [`relevant_primes`](crate::forms::padic).
-pub fn relevant_places<S: FiniteOddField>(entries: &[RationalFunction<S>]) -> Vec<FFPlace<S>> {
-    assert!(
-        entries.iter().all(|a| !a.is_zero()),
-        "relevant_places over F_q(t) needs nonzero entries"
-    );
+pub fn try_relevant_places_ff<S: FiniteOddField>(
+    entries: &[RationalFunction<S>],
+) -> Option<Vec<FFPlace<S>>> {
+    if entries.iter().any(|a| a.is_zero()) {
+        return None;
+    }
     let mut polys: Vec<Poly<S>> = Vec::new();
     for a in entries {
         let factors = monic_irreducible_factors(a.num())
@@ -221,32 +235,32 @@ pub fn relevant_places<S: FiniteOddField>(entries: &[RationalFunction<S>]) -> Ve
     }
     let mut places: Vec<FFPlace<S>> = polys.into_iter().map(FFPlace::Finite).collect();
     places.push(FFPlace::Infinite);
-    places
+    Some(places)
 }
 
 /// The Hasse invariant `ε_v(⟨a_1,…,a_n⟩) = ∏_{i<j} (a_i, a_j)_v` at `place`. The
 /// `_ff` suffix distinguishes it from the `ℚ` [`hasse_at_place`](crate::forms::hasse_at_place).
-pub fn hasse_at_place_ff<S: FiniteOddField>(
+pub fn try_hasse_at_place_ff<S: FiniteOddField>(
     entries: &[RationalFunction<S>],
     place: &FFPlace<S>,
-) -> i128 {
+) -> Option<i128> {
     let mut h = 1i128;
     for i in 0..entries.len() {
         for j in (i + 1)..entries.len() {
-            h *= hilbert_symbol_ff(&entries[i], &entries[j], place);
+            h *= try_hilbert_symbol_ff(&entries[i], &entries[j], place)?;
         }
     }
-    h
+    Some(h)
 }
 
 /// The **Hilbert reciprocity product** `∏_v (a,b)_v` over all places of `F_q(t)`,
 /// `+1` for every nonzero `a, b` (Weil reciprocity / the product formula). Exact —
 /// the symbols are `+1` at all but the finitely many relevant places.
-pub fn hilbert_reciprocity_product_ff<S: FiniteOddField>(
+pub fn try_hilbert_reciprocity_product_ff<S: FiniteOddField>(
     a: &RationalFunction<S>,
     b: &RationalFunction<S>,
-) -> i128 {
-    <RationalFunction<S> as crate::forms::GlobalField>::reciprocity_product(a, b)
+) -> Option<i128> {
+    <RationalFunction<S> as crate::forms::GlobalField>::try_reciprocity_product(a, b)
 }
 
 // ───────────────────────── Hasse–Minkowski over F_q(t) ─────────────────────────
@@ -294,28 +308,29 @@ pub(crate) fn is_global_square_ff<S: FiniteOddField>(x: &RationalFunction<S>) ->
 /// [`try_is_isotropic_at_p`](crate::forms::padic) (`F_q(t)` and `Q_p` share the
 /// u-invariant `4`, so the thresholds match): `n≤1` never, `n=2` iff `−a_1a_2` is a
 /// local square, `n=3`/`4` the Hilbert conditions, `n≥5` always. Entries nonzero.
-pub fn is_isotropic_at_place<S: FiniteOddField>(
+pub fn try_is_isotropic_at_place_ff<S: FiniteOddField>(
     entries: &[RationalFunction<S>],
     place: &FFPlace<S>,
-) -> bool {
+) -> Option<bool> {
     if entries.iter().any(|a| a.is_zero()) {
-        return true;
+        return Some(true);
     }
-    match entries.len() {
+    Some(match entries.len() {
         0 | 1 => false,
-        2 => is_local_square(&entries[0].mul(&entries[1]).neg(), place),
+        2 => try_is_local_square_ff(&entries[0].mul(&entries[1]).neg(), place)?,
         3 => {
             let d = disc(entries);
-            hilbert_symbol_ff(&neg_one(), &d.neg(), place) == hasse_at_place_ff(entries, place)
+            try_hilbert_symbol_ff(&neg_one(), &d.neg(), place)?
+                == try_hasse_at_place_ff(entries, place)?
         }
         4 => {
             let d = disc(entries);
-            !is_local_square(&d, place)
-                || hasse_at_place_ff(entries, place)
-                    == hilbert_symbol_ff(&neg_one::<S>(), &neg_one::<S>(), place)
+            !try_is_local_square_ff(&d, place)?
+                || try_hasse_at_place_ff(entries, place)?
+                    == try_hilbert_symbol_ff(&neg_one::<S>(), &neg_one::<S>(), place)?
         }
         _ => true,
-    }
+    })
 }
 
 /// Whether a diagonal form over `F_q(t)` is **isotropic**, by **Hasse–Minkowski**:
@@ -324,8 +339,8 @@ pub fn is_isotropic_at_place<S: FiniteOddField>(
 /// relevant places (all other places are unit forms, automatically isotropic for
 /// rank ≥ 3 over a finite residue field). Rank 2 reduces to `−a_1a_2` being a
 /// global square; a zero entry is an isotropic direction.
-pub fn is_isotropic_ff<S: FiniteOddField>(entries: &[RationalFunction<S>]) -> bool {
-    <RationalFunction<S> as crate::forms::GlobalField>::is_isotropic_global(entries)
+pub fn try_is_isotropic_ff<S: FiniteOddField>(entries: &[RationalFunction<S>]) -> Option<bool> {
+    <RationalFunction<S> as crate::forms::GlobalField>::try_is_isotropic_global(entries)
 }
 
 /// The per-place isotropy breakdown of a rank-`≥3` form — the function-field
@@ -344,31 +359,29 @@ impl<S: FiniteOddField> FFAdelicIsotropy<S> {
 }
 
 /// The adelic Hasse–Minkowski breakdown of a rank-`≥3` form over `F_q(t)`.
-pub fn isotropy_over_ff_adeles<S: FiniteOddField>(
+pub fn try_isotropy_over_ff_adeles<S: FiniteOddField>(
     entries: &[RationalFunction<S>],
-) -> FFAdelicIsotropy<S> {
+) -> Option<FFAdelicIsotropy<S>> {
     if entries.iter().any(|a| a.is_zero()) {
-        return FFAdelicIsotropy { local: Vec::new() };
+        return Some(FFAdelicIsotropy { local: Vec::new() });
     }
-    let local = relevant_places(entries)
-        .into_iter()
-        .map(|pl| {
-            let iso = is_isotropic_at_place(entries, &pl);
-            (pl, iso)
-        })
-        .collect();
-    FFAdelicIsotropy { local }
+    let mut local = Vec::new();
+    for pl in try_relevant_places_ff(entries)? {
+        let iso = try_is_isotropic_at_place_ff(entries, &pl)?;
+        local.push((pl, iso));
+    }
+    Some(FFAdelicIsotropy { local })
 }
 
 /// The places where the quaternion algebra `(a, b)` over `F_q(t)` **ramifies** —
 /// where `(a,b)_v = −1`. The count is always **even** (the additive form of
 /// reciprocity / the even-ramification theorem), the function-field mirror of
 /// [`brauer_local_invariants`](crate::forms::brauer_local_invariants).
-pub fn ramified_places_ff<S: FiniteOddField>(
+pub fn try_ramified_places_ff<S: FiniteOddField>(
     a: &RationalFunction<S>,
     b: &RationalFunction<S>,
-) -> Vec<FFPlace<S>> {
-    <RationalFunction<S> as crate::forms::GlobalField>::ramified_places(a, b)
+) -> Option<Vec<FFPlace<S>>> {
+    <RationalFunction<S> as crate::forms::GlobalField>::try_ramified_places(a, b)
 }
 
 #[cfg(test)]
@@ -408,18 +421,26 @@ mod tests {
     fn valuations_at_places() {
         // a = t / (t + 1)
         let a = rf(&[0, 1], &[1, 1]);
-        assert_eq!(valuation_at(&a, &FFPlace::Finite(poly(&[0, 1]))), 1); // at π = t
-        assert_eq!(valuation_at(&a, &FFPlace::Finite(poly(&[1, 1]))), -1); // at π = t+1
-        assert_eq!(valuation_at(&a, &FFPlace::Infinite), 0); // deg den − deg num = 0
-                                                             // 1/t² has a double pole at ∞? no: v_∞(1/t²) = deg(t²) − deg(1) = 2.
-        assert_eq!(valuation_at(&rf(&[1], &[0, 0, 1]), &FFPlace::Infinite), 2);
+        assert_eq!(
+            try_valuation_at_ff(&a, &FFPlace::Finite(poly(&[0, 1]))),
+            Some(1)
+        ); // at π = t
+        assert_eq!(
+            try_valuation_at_ff(&a, &FFPlace::Finite(poly(&[1, 1]))),
+            Some(-1)
+        ); // at π = t+1
+        assert_eq!(try_valuation_at_ff(&a, &FFPlace::Infinite), Some(0)); // deg den − deg num = 0
+                                                                          // 1/t² has a double pole at ∞? no: v_∞(1/t²) = deg(t²) − deg(1) = 2.
+        assert_eq!(
+            try_valuation_at_ff(&rf(&[1], &[0, 0, 1]), &FFPlace::Infinite),
+            Some(2)
+        );
     }
 
     #[test]
-    #[should_panic(expected = "residue field order |kappa| exceeds u128")]
-    fn residue_field_order_overflow_is_rejected() {
+    fn residue_field_order_overflow_returns_none() {
         let pi = Poly::<Fp<5>>::monomial(56, Fp::<5>::one()).add(&Poly::one());
-        let _ = kappa_order(&FFPlace::Finite(pi));
+        assert_eq!(try_kappa_order(&FFPlace::Finite(pi)), None);
     }
 
     #[test]
@@ -440,15 +461,19 @@ mod tests {
             for b in &samples {
                 for pl in &places {
                     assert_eq!(
-                        hilbert_symbol_ff(a, b, pl),
-                        hilbert_symbol_ff(b, a, pl),
+                        try_hilbert_symbol_ff(a, b, pl),
+                        try_hilbert_symbol_ff(b, a, pl),
                         "symmetry"
                     );
                 }
                 // Steinberg: (a, −a)_v = 1.
                 let neg_a = a.mul(&F::from_base(Fp::<5>::new(-1)));
                 for pl in &places {
-                    assert_eq!(hilbert_symbol_ff(a, &neg_a, pl), 1, "(a,−a)_v = 1");
+                    assert_eq!(
+                        try_hilbert_symbol_ff(a, &neg_a, pl),
+                        Some(1),
+                        "(a,−a)_v = 1"
+                    );
                 }
             }
         }
@@ -467,8 +492,8 @@ mod tests {
         for a in &samples {
             for b in &samples {
                 assert_eq!(
-                    hilbert_reciprocity_product_ff(a, b),
-                    1,
+                    try_hilbert_reciprocity_product_ff(a, b),
+                    Some(1),
                     "reciprocity failed at a={a:?} b={b:?}"
                 );
             }
@@ -483,17 +508,19 @@ mod tests {
         // forces).
         let a = rf(&[0, 1], &[1]); // t
         let b = rf(&[2], &[1]); // the nonsquare 2
-        let ram = ramified_places_ff(&a, &b);
+        let ram = try_ramified_places_ff(&a, &b).unwrap();
         assert_eq!(ram.len(), 2, "even number of ramified places");
         assert!(ram.contains(&FFPlace::Finite(poly(&[0, 1])))); // π = t
         assert!(ram.contains(&FFPlace::Infinite)); // ∞
                                                    // a split quaternion (a square second slot) ramifies nowhere.
-        assert!(ramified_places_ff(&a, &rf(&[4], &[1])).is_empty()); // 4 = 2² is a square
+        assert!(try_ramified_places_ff(&a, &rf(&[4], &[1]))
+            .unwrap()
+            .is_empty()); // 4 = 2² is a square
     }
 
     #[test]
     fn hasse_minkowski_global_matches_adelic() {
-        // For rank ≥ 3, is_isotropic_ff agrees with the per-place adelic breakdown.
+        // For rank ≥ 3, try_is_isotropic_ff agrees with the per-place adelic breakdown.
         let forms: [Vec<F>; 4] = [
             vec![rf(&[1], &[1]), rf(&[1], &[1]), rf(&[4], &[1])], // ⟨1,1,−1⟩ isotropic
             vec![rf(&[1], &[1]), rf(&[0, 1], &[1]), rf(&[0, 4], &[1])], // ⟨1,t,−t⟩ isotropic
@@ -515,9 +542,13 @@ mod tests {
         ];
         let expected = [true, true, false, true];
         for (form, &exp) in forms.iter().zip(&expected) {
-            assert_eq!(is_isotropic_ff(form), exp, "global isotropy of {form:?}");
             assert_eq!(
-                isotropy_over_ff_adeles(form).is_global(),
+                try_is_isotropic_ff(form),
+                Some(exp),
+                "global isotropy of {form:?}"
+            );
+            assert_eq!(
+                try_isotropy_over_ff_adeles(form).unwrap().is_global(),
                 exp,
                 "adelic isotropy of {form:?}"
             );
@@ -555,12 +586,12 @@ mod tests {
         for layer in &decomp.graded {
             let at: Vec<&F> = ff
                 .iter()
-                .filter(|e| valuation_at(e, &place) == layer.valuation)
+                .filter(|e| try_valuation_at_ff(e, &place) == Some(layer.valuation))
                 .collect();
             assert_eq!(at.len(), layer.dim, "dim at valuation {}", layer.valuation);
             // discriminant square class = XNOR of the per-entry residue characters.
             let disc_sq = at.iter().fold(true, |acc, e| {
-                acc == (chi_kappa(&residue_unit_at(e, &place), &place) == 1)
+                acc == (try_chi_kappa(&try_residue_unit_at(e, &place).unwrap(), &place) == Some(1))
             });
             assert_eq!(
                 disc_sq, layer.disc_is_square,
@@ -573,12 +604,24 @@ mod tests {
     #[test]
     fn rank_two_is_a_global_square_condition() {
         // ⟨1, −t²⟩: −(1·−t²) = t² is a global square ⇒ isotropic.
-        assert!(is_isotropic_ff(&[rf(&[1], &[1]), rf(&[0, 0, 4], &[1])]));
+        assert_eq!(
+            try_is_isotropic_ff(&[rf(&[1], &[1]), rf(&[0, 0, 4], &[1])]),
+            Some(true)
+        );
         // ⟨1, −t⟩: −(1·−t) = t has an odd-multiplicity place ⇒ not a square ⇒ anisotropic.
-        assert!(!is_isotropic_ff(&[rf(&[1], &[1]), rf(&[0, 4], &[1])]));
+        assert_eq!(
+            try_is_isotropic_ff(&[rf(&[1], &[1]), rf(&[0, 4], &[1])]),
+            Some(false)
+        );
         // ⟨1, −2⟩: −(−2) = 2 is a nonsquare constant ⇒ anisotropic.
-        assert!(!is_isotropic_ff(&[rf(&[1], &[1]), rf(&[3], &[1])]));
+        assert_eq!(
+            try_is_isotropic_ff(&[rf(&[1], &[1]), rf(&[3], &[1])]),
+            Some(false)
+        );
         // ⟨2, −8⟩: −(2·−8) = 16 = 4² is a square ⇒ isotropic.
-        assert!(is_isotropic_ff(&[rf(&[2], &[1]), rf(&[2], &[1])])); // 2 and 2: −(4)=−4≡1=1²
+        assert_eq!(
+            try_is_isotropic_ff(&[rf(&[2], &[1]), rf(&[2], &[1])]),
+            Some(true)
+        ); // 2 and 2: −(4)=−4≡1=1²
     }
 }

@@ -333,7 +333,8 @@ fn dlog_differential<S: FiniteChar2Field>(
 
 /// The Artin–Schreier symbol `s_v(a, b) ∈ {0, 1}` at `place`, for `b ≠ 0`. `0` iff
 /// the cyclic algebra `[a, b)` splits over the completion at `place`. The char-2
-/// mirror of [`hilbert_symbol_ff`](crate::forms::function_field::hilbert_symbol_ff).
+/// mirror of
+/// [`try_hilbert_symbol_ff`](crate::forms::function_field::try_hilbert_symbol_ff).
 pub fn as_symbol_at<S: FiniteChar2Field>(
     a: &RationalFunction<S>,
     b: &RationalFunction<S>,
@@ -378,7 +379,7 @@ pub fn as_symbol_reciprocity_sum<S: FiniteChar2Field>(
 
 /// The places where the cyclic algebra `[a, b)` **ramifies** (symbol `1`), `b ≠ 0`.
 /// The count is always **even** (additive reciprocity), mirroring
-/// [`ramified_places_ff`](crate::forms::function_field::ramified_places_ff).
+/// [`try_ramified_places_ff`](crate::forms::function_field::try_ramified_places_ff).
 pub fn as_symbol_ramified_places<S: FiniteChar2Field>(
     a: &RationalFunction<S>,
     b: &RationalFunction<S>,

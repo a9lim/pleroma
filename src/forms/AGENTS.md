@@ -138,10 +138,11 @@ treatment of `oddchar/`/`char2/`/`local_global/`/`integral/`.
 
 - **`local_global/global_field.rs`** — the `GlobalField` TRAIT: the local–global principle
   written ONCE over the two kinds of global field, `Rational` (ℚ, a number field)
-  and `RationalFunction<S>` (`F_q(t)`, a function field). Five per-field primitives
-  (`relevant_places`/`hilbert_symbol_at`/`is_local_square`/`is_global_square`/
-  `is_isotropic_at_place`) + four DEFAULT theorem methods (`hasse_at_place`/
-  `reciprocity_product`/`ramified_places`/`is_isotropic_global` = Hasse–Minkowski).
+  and `RationalFunction<S>` (`F_q(t)`, a function field). Five checked per-field
+  primitives (`try_relevant_places`/`try_hilbert_symbol_at`/
+  `try_is_local_square`/`try_is_global_square`/`try_is_isotropic_at_place`) + four
+  checked DEFAULT theorem methods (`try_hasse_at_place`/`try_reciprocity_product`/
+  `try_ramified_places`/`try_is_isotropic_global` = Hasse–Minkowski).
   The arithmetic primitives stay per-field (ℚ is i128 number theory with an
   archimedean place; `F_q(t)` is `F_q[t]` factorization with none — the missing
   real place IS the content), so `padic`/`adelic`/`function_field` keep their named
@@ -158,13 +159,14 @@ treatment of `oddchar/`/`char2/`/`local_global/`/`integral/`.
   `local_global/padic.rs` + `local_global/adelic.rs` over the global function field
   `F_q(t)` (`scalar::RationalFunction`). Places
   `FFPlace{Infinite, Finite(π)}` (monic irreducibles + the degree place), the **tame**
-  Hilbert symbol `hilbert_symbol_ff` (the odd-`p` `try_hilbert_symbol_qp` branch with the
-  residue Legendre → `χ_κ`; **no `p=2` branch** since `q` is odd), reciprocity
-  `hilbert_reciprocity_product_ff`, `is_isotropic_ff`/`is_isotropic_at_place`/
-  `isotropy_over_ff_adeles` (Hasse–Minkowski, u-invariant 4 like `Q_p`, but **no
-  archimedean place** ⇒ no definiteness condition), and `ramified_places_ff` (even
+  Hilbert symbol `try_hilbert_symbol_ff` (the odd-`p` `try_hilbert_symbol_qp` branch
+  with the residue Legendre → `χ_κ`; **no `p=2` branch** since `q` is odd),
+  reciprocity `try_hilbert_reciprocity_product_ff`, `try_is_isotropic_ff`/
+  `try_is_isotropic_at_place_ff`/`try_isotropy_over_ff_adeles` (Hasse–Minkowski,
+  u-invariant 4 like `Q_p`, but **no archimedean place** ⇒ no definiteness
+  condition), and `try_ramified_places_ff` (even
   count). Names carry `_ff` where `local_global/padic.rs` collides (e.g.
-  `hasse_at_place_ff`). Exact (the product formula is `deg`-counting); odd residue
+  `try_hasse_at_place_ff`). Exact (the product formula is `deg`-counting); odd residue
   char only — the `springer_laurent` boundary. Cross-checked against
   `springer_decompose_laurent`.
 - **`local_global/function_field_char2.rs`** — the **equal-characteristic-2** mirror: the

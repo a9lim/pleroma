@@ -66,7 +66,7 @@ pub(super) const ORDER_FACTORS: [u128; 9] =
 
 /// The multiplicative order of `x` in F_{2^128}* — the least `k > 0` with the
 /// `k`-fold nim-power `x^{⊗k} = 1`. `None` for `x = 0`. Always divides `2^128−1`.
-pub fn nim_order(x: u128) -> Option<u128> {
+pub fn nim_multiplicative_order(x: u128) -> Option<u128> {
     Nimber(x).multiplicative_order()
 }
 
@@ -181,7 +181,7 @@ pub fn nim_discrete_log(base: u128, x: u128) -> Option<u128> {
     if x == base {
         return Some(1); // cheap shortcut: avoids full Pohlig–Hellman for the trivial log
     }
-    let n = nim_order(base)?;
+    let n = nim_multiplicative_order(base)?;
     let mut moduli = Vec::new();
     let mut residues = Vec::new();
     for &p in &ORDER_FACTORS {

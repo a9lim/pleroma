@@ -396,7 +396,7 @@ fn dpoly<S: Scalar>(p: &Poly<S>) -> Poly<S> {
     Poly::new(out)
 }
 
-fn rational_derivative_is_zero<S: Scalar>(f: &RationalFunction<S>) -> bool {
+fn rational_derivative_is_zero<S: FiniteChar2Field>(f: &RationalFunction<S>) -> bool {
     dpoly(f.num())
         .mul(f.den())
         .add(&f.num().mul(&dpoly(f.den())))

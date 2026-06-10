@@ -143,7 +143,7 @@ Split per pillar:
 	  `multivector_inverse`.
 	  The Python `LazySpinorRep` object delegates back to the owning algebra, so the
 	  existing per-backend type checks still guard every applied vector.
-- **`forms.rs`** — classify / witt / dickson / springer bindings, `FiniteFieldForm`
+- **`forms.rs`** — classify / witt / dickson / springer bindings, `OddFiniteFieldForm`
   (the runtime odd-char Fp/Fpn form wrapper) and `Char2FiniteFieldForm` (the
   runtime `Fpn<2,N>` Arf/Witt/Brauer-Wall/isometry wrapper for supported
   `N=1..4`), the Brauer–Wall classes (`bw_class_real`,
@@ -168,14 +168,16 @@ Split per pillar:
   `hilbert_reciprocity_product`, checked p-adic helpers (`is_square_qp`,
   `hilbert_symbol_qp`, `is_isotropic_at_p`, `is_isotropic_q`), plus rational Brauer
   local-invariant helpers,
-  `classify_finite_algebra`/`witt_finite_algebra`/`bw_class_finite_algebra`/
+  `classify_finite_algebra`/`classify_finite_algebra_unified`/
+  `witt_finite_algebra`/`bw_class_finite_algebra`/
   `isometric_finite_algebra`, raw `arf_f2`, finite odd-characteristic
   discriminants, finite char-2 Artin-Schreier classes, the odd-characteristic
   `F_q(t)` local-global helpers (`monic_irreducible_factors`,
-  `relevant_places`, `valuation_at`, `is_local_square`, `is_global_square_ff`,
-  `hilbert_symbol_ff`, `hasse_at_place_ff`, `hilbert_reciprocity_product_ff`,
-  `ramified_places_ff`, `is_isotropic_at_place`, `is_isotropic_ff`, and
-  `isotropy_over_ff_adeles`) with named `FunctionFieldLocalIsotropy` adelic rows, the
+  `try_relevant_places_ff`, `try_valuation_at_ff`, `try_is_local_square_ff`,
+  `is_global_square_ff`, `try_hilbert_symbol_ff`, `try_hasse_at_place_ff`,
+  `try_hilbert_reciprocity_product_ff`, `try_ramified_places_ff`,
+  `try_is_isotropic_at_place_ff`, `try_is_isotropic_ff`, and
+  `try_isotropy_over_ff_adeles`) with named `FunctionFieldLocalIsotropy` adelic rows, the
   characteristic-2 Artin-Schreier function-field symbol helpers
   (`char2_monic_irreducible_factors`, `as_symbol_at`, `as_symbol_places`,
   `as_symbol_reciprocity_sum`, `as_symbol_ramified_places`, `global_is_pe`) and
@@ -193,7 +195,7 @@ Split per pillar:
 	  `HermitianForm.from_gram`, the
   finite-prime-field numeric invariants (`level`, `pythagoras_number`,
   `u_invariant`, finite-field `hilbert_symbol`, sum-of-squares), the
-  runtime finite-form object façades (`FiniteFieldForm` and `Char2FiniteFieldForm`)
+  runtime finite-form object façades (`OddFiniteFieldForm` and `Char2FiniteFieldForm`)
   for classification, Witt/Brauer-Wall, isometry, square-class, discriminant,
   Hasse, decomposition, and staircase queries, the quadric bench (`fit_f2_quadratic`,
   `QuadricFit`), trace/Gold-form helpers (`trace_twisted_form`,
@@ -277,7 +279,7 @@ ordinary binding backlog:
    arbitrary `Gauss<S>` still take *compile-time* parameters; Python is runtime. There is no general
    `Qp(p=5, k=20)` or `Qq(p=3, k=20, f=7)` Clifford scalar without a dispatch macro
    enumerating instances or a runtime redesign. Where a runtime entry point was
-   worth it, the project already built one — `FiniteFieldForm`/
+   worth it, the project already built one — `OddFiniteFieldForm`/
    `Char2FiniteFieldForm` (runtime Fp/Fpn form façades), `LocalQp` (a scalar-only
    runtime-prime p-adic cell, because it is not a Rust `Scalar`), and `Adele`
    (an adelic `Scalar`, with matching Clifford, divided-power, and CGA backends).

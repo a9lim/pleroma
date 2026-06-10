@@ -226,7 +226,7 @@ matrix helpers, the scalar classes (`Nimber`, `Fp2`,
 `GaussQp*_4`, `NimberPoly`, `NimberRationalFunction`, `Fp*Poly`,
 `Fp*RationalFunction`, `Rational`, `Surreal`,
 `Surcomplex`, `Integer`, `Omnific`, `Ordinal`), the form helpers (`classify_*`, `classify_rational`,
-`arf_nimber`, `arf_ordinal_finite`, `FiniteFieldForm`, `Char2FiniteFieldForm`,
+`arf_nimber`, `arf_ordinal_finite`, `OddFiniteFieldForm`, `Char2FiniteFieldForm`,
 finite-algebra classifiers, base-field isometry helpers, trace/Gold-form helpers,
 `hilbert_symbol_qp`, `hilbert_symbol_at`, `hasse_at_place`, rational Brauer
 local-invariant helpers,

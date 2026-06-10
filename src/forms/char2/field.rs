@@ -25,14 +25,14 @@
 //! place layer needs. Its absolute trace is still available through
 //! [`FieldExtension::trace`](crate::scalar::FieldExtension).
 
-use crate::scalar::{Fp, Fpn, Scalar};
+use crate::scalar::{ExactFieldScalar, Fp, Fpn};
 
 /// Finite fields of characteristic 2, with the operations char-2 form theory needs:
 /// field-order metadata, an enumeration, and the **Artin–Schreier class** (the
 /// additive analogue of the odd-characteristic square class). Intentionally narrower
 /// than [`Scalar`] — a form-theory façade, not a new scalar-world requirement, the
 /// mirror of [`FiniteOddField`](crate::forms::FiniteOddField).
-pub trait FiniteChar2Field: Scalar + Copy {
+pub trait FiniteChar2Field: ExactFieldScalar + Copy {
     /// Characteristic prime — always `2` (provided; the trait is char-2 only).
     fn characteristic_prime() -> u128 {
         2
@@ -91,7 +91,7 @@ impl FiniteChar2Field for Fp<2> {
 
 impl<const N: usize> FiniteChar2Field for Fpn<2, N> {
     fn field_order() -> u128 {
-        Fpn::<2, N>::order()
+        Fpn::<2, N>::field_order()
     }
 
     fn is_supported_char2_field() -> bool {
@@ -135,6 +135,7 @@ pub fn artin_schreier_class_finite<F: FiniteChar2Field>(x: F) -> u128 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scalar::Scalar;
 
     #[test]
     fn f2_class_is_the_identity() {

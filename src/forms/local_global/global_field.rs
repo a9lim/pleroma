@@ -15,12 +15,12 @@
 //!
 //! # What is shared vs. what is per-field
 //!
-//! The **theorem package** — [`hasse_at_place`](GlobalField::hasse_at_place),
-//! [`reciprocity_product`](GlobalField::reciprocity_product),
-//! [`ramified_places`](GlobalField::ramified_places), and
-//! [`is_isotropic_global`](GlobalField::is_isotropic_global) (Hasse–Minkowski) —
-//! are **default methods**, written once and identical across both fields. That is
-//! the symmetry made executable.
+//! The **theorem package** — [`try_hasse_at_place`](GlobalField::try_hasse_at_place),
+//! [`try_reciprocity_product`](GlobalField::try_reciprocity_product),
+//! [`try_ramified_places`](GlobalField::try_ramified_places), and
+//! [`try_is_isotropic_global`](GlobalField::try_is_isotropic_global)
+//! (Hasse–Minkowski) — are **default methods**, written once and identical across
+//! both fields. That is the symmetry made executable.
 //!
 //! The five **arithmetic primitives** stay per-field and delegate to the existing,
 //! tested code, because the underlying arithmetic genuinely differs: `ℚ` is
@@ -50,79 +50,87 @@ pub trait GlobalField: Scalar {
     /// The places that can carry a nontrivial local condition for `entries`
     /// (every other place sees only units): the archimedean place(s) **plus** the
     /// finite places dividing some entry.
-    fn relevant_places(entries: &[Self]) -> Vec<Self::Place>;
+    fn try_relevant_places(entries: &[Self]) -> Option<Vec<Self::Place>>;
 
     /// The Hilbert symbol `(a, b)_v ∈ {+1, −1}` over the completion at `place`.
-    fn hilbert_symbol_at(a: &Self, b: &Self, place: &Self::Place) -> i128;
+    fn try_hilbert_symbol_at(a: &Self, b: &Self, place: &Self::Place) -> Option<i128>;
 
     /// Whether a **nonzero** `x` is a square in the local field at `place`.
-    fn is_local_square(x: &Self, place: &Self::Place) -> bool;
+    fn try_is_local_square(x: &Self, place: &Self::Place) -> Option<bool>;
 
     /// Whether a **nonzero** `x` is a square in the global field.
-    fn is_global_square(x: &Self) -> bool;
+    fn try_is_global_square(x: &Self) -> Option<bool>;
 
     /// Local isotropy of the nondegenerate diagonal form `⟨a_1,…,a_n⟩` over the
     /// completion at `place`, by rank. The archimedean branch (definiteness) and
     /// the finite branch (the Serre rank conditions) live here because the
     /// archimedean place exists only over `ℚ`.
-    fn is_isotropic_at_place(entries: &[Self], place: &Self::Place) -> bool;
+    fn try_is_isotropic_at_place(entries: &[Self], place: &Self::Place) -> Option<bool>;
 
     // ───────────────────── the local↔global theorem (defaults) ─────────────────────
 
     /// The Hasse invariant `ε_v(⟨a_1,…,a_n⟩) = ∏_{i<j} (a_i, a_j)_v` at `place`.
-    fn hasse_at_place(entries: &[Self], place: &Self::Place) -> i128 {
+    fn try_hasse_at_place(entries: &[Self], place: &Self::Place) -> Option<i128> {
         let mut h = 1i128;
         for i in 0..entries.len() {
             for j in (i + 1)..entries.len() {
-                h *= Self::hilbert_symbol_at(&entries[i], &entries[j], place);
+                h *= Self::try_hilbert_symbol_at(&entries[i], &entries[j], place)?;
             }
         }
-        h
+        Some(h)
     }
 
     /// The **Hilbert reciprocity product** `∏_v (a,b)_v` over all places — the
     /// product formula for the quaternion-algebra class `(a,b)`. It is `+1` for
     /// every nonzero `a, b` (Hilbert/Weil reciprocity), the gold oracle.
-    fn reciprocity_product(a: &Self, b: &Self) -> i128 {
-        assert!(
-            !a.is_zero() && !b.is_zero(),
-            "reciprocity_product needs nonzero arguments"
-        );
+    fn try_reciprocity_product(a: &Self, b: &Self) -> Option<i128> {
+        if a.is_zero() || b.is_zero() {
+            return None;
+        }
         let pair = [a.clone(), b.clone()];
-        Self::relevant_places(&pair)
-            .iter()
-            .fold(1i128, |acc, pl| acc * Self::hilbert_symbol_at(a, b, pl))
+        let mut prod = 1i128;
+        for pl in Self::try_relevant_places(&pair)? {
+            prod *= Self::try_hilbert_symbol_at(a, b, &pl)?;
+        }
+        Some(prod)
     }
 
     /// The places where the quaternion algebra `(a, b)` **ramifies** (symbol
     /// `−1`). The count is always **even** — reciprocity, additively.
-    fn ramified_places(a: &Self, b: &Self) -> Vec<Self::Place> {
-        assert!(
-            !a.is_zero() && !b.is_zero(),
-            "ramified_places needs nonzero arguments"
-        );
+    fn try_ramified_places(a: &Self, b: &Self) -> Option<Vec<Self::Place>> {
+        if a.is_zero() || b.is_zero() {
+            return None;
+        }
         let pair = [a.clone(), b.clone()];
-        Self::relevant_places(&pair)
-            .into_iter()
-            .filter(|pl| Self::hilbert_symbol_at(a, b, pl) == -1)
-            .collect()
+        let mut ramified = Vec::new();
+        for pl in Self::try_relevant_places(&pair)? {
+            if Self::try_hilbert_symbol_at(a, b, &pl)? == -1 {
+                ramified.push(pl);
+            }
+        }
+        Some(ramified)
     }
 
     /// Whether `⟨a_1,…,a_n⟩` is **isotropic** over the global field, by
     /// **Hasse–Minkowski**: isotropic globally iff isotropic at every place. A zero
     /// entry is a null direction; rank ≤ 1 is anisotropic; rank 2 needs `−a_1a_2` a
     /// global square; rank ≥ 3 needs local isotropy at every relevant place.
-    fn is_isotropic_global(entries: &[Self]) -> bool {
+    fn try_is_isotropic_global(entries: &[Self]) -> Option<bool> {
         if entries.iter().any(|e| e.is_zero()) {
-            return true;
+            return Some(true);
         }
-        match entries.len() {
+        Some(match entries.len() {
             0 | 1 => false,
-            2 => Self::is_global_square(&entries[0].mul(&entries[1]).neg()),
-            _ => Self::relevant_places(entries)
-                .iter()
-                .all(|pl| Self::is_isotropic_at_place(entries, pl)),
-        }
+            2 => Self::try_is_global_square(&entries[0].mul(&entries[1]).neg())?,
+            _ => {
+                for pl in Self::try_relevant_places(entries)? {
+                    if !Self::try_is_isotropic_at_place(entries, &pl)? {
+                        return Some(false);
+                    }
+                }
+                true
+            }
+        })
     }
 }
 
@@ -135,69 +143,73 @@ fn try_rat_square_class(q: &Rational) -> Option<i128> {
     q.numer().checked_mul(q.denom())
 }
 
-fn rat_square_class(q: &Rational) -> i128 {
-    try_rat_square_class(q).expect("rational square-class representative overflowed i128")
-}
-
 impl GlobalField for Rational {
     type Place = crate::forms::padic::Place;
 
-    fn relevant_places(entries: &[Self]) -> Vec<Self::Place> {
+    fn try_relevant_places(entries: &[Self]) -> Option<Vec<Self::Place>> {
         use crate::forms::padic::{relevant_primes, Place};
-        assert!(
-            entries.iter().all(|x| !x.is_zero()),
-            "relevant_places over Q needs nonzero entries"
-        );
-        let classes: Vec<i128> = entries.iter().map(rat_square_class).collect();
+        if entries.iter().any(|x| x.is_zero()) {
+            return None;
+        }
+        let classes: Vec<i128> = entries
+            .iter()
+            .map(try_rat_square_class)
+            .collect::<Option<Vec<_>>>()?;
         let mut places = vec![Place::Real];
         places.extend(relevant_primes(&classes).into_iter().map(Place::Prime));
-        places
+        Some(places)
     }
 
-    fn hilbert_symbol_at(a: &Self, b: &Self, place: &Self::Place) -> i128 {
-        crate::forms::padic::try_hilbert_symbol_at(rat_square_class(a), rat_square_class(b), *place)
-            .expect("GlobalField over Q needs bounded nonzero square classes")
+    fn try_hilbert_symbol_at(a: &Self, b: &Self, place: &Self::Place) -> Option<i128> {
+        crate::forms::padic::try_hilbert_symbol_at(
+            try_rat_square_class(a)?,
+            try_rat_square_class(b)?,
+            *place,
+        )
     }
 
-    fn is_local_square(x: &Self, place: &Self::Place) -> bool {
+    fn try_is_local_square(x: &Self, place: &Self::Place) -> Option<bool> {
         use crate::forms::padic::{try_is_square_qp, Place};
         if x.is_zero() {
-            return false;
+            return Some(false);
         }
-        let c = rat_square_class(x);
+        let c = try_rat_square_class(x)?;
         match place {
             // a real number is a square iff it is ≥ 0 (its square-class sign).
-            Place::Real => c >= 0,
-            Place::Prime(p) => {
-                try_is_square_qp(c, *p).expect("GlobalField over Q needs a bounded prime place")
-            }
+            Place::Real => Some(c >= 0),
+            Place::Prime(p) => try_is_square_qp(c, *p),
         }
     }
 
-    fn is_global_square(x: &Self) -> bool {
+    fn try_is_global_square(x: &Self) -> Option<bool> {
         if x.is_zero() {
-            return false;
+            return Some(false);
         }
-        crate::forms::padic::is_perfect_square(rat_square_class(x))
+        Some(crate::forms::padic::is_perfect_square(
+            try_rat_square_class(x)?,
+        ))
     }
 
-    fn is_isotropic_at_place(entries: &[Self], place: &Self::Place) -> bool {
+    fn try_is_isotropic_at_place(entries: &[Self], place: &Self::Place) -> Option<bool> {
         use crate::forms::padic::{try_is_isotropic_at_p, Place};
+        if entries.iter().any(|e| e.is_zero()) {
+            return Some(true);
+        }
         match place {
             // archimedean place: isotropic iff a null direction or indefinite.
             Place::Real => {
-                let classes: Vec<i128> = entries.iter().map(rat_square_class).collect();
-                entries.iter().any(|e| e.is_zero())
-                    || (classes.iter().any(|&c| c > 0) && classes.iter().any(|&c| c < 0))
+                let classes: Vec<i128> = entries
+                    .iter()
+                    .map(try_rat_square_class)
+                    .collect::<Option<Vec<_>>>()?;
+                Some(classes.iter().any(|&c| c > 0) && classes.iter().any(|&c| c < 0))
             }
             Place::Prime(p) => {
                 let nz: Vec<i128> = entries
                     .iter()
-                    .map(rat_square_class)
-                    .filter(|&c| c != 0)
-                    .collect();
+                    .map(try_rat_square_class)
+                    .collect::<Option<Vec<_>>>()?;
                 try_is_isotropic_at_p(&nz, *p)
-                    .expect("GlobalField over Q needs bounded local square classes")
             }
         }
     }
@@ -208,24 +220,24 @@ impl GlobalField for Rational {
 impl<S: FiniteOddField> GlobalField for RationalFunction<S> {
     type Place = crate::forms::function_field::FFPlace<S>;
 
-    fn relevant_places(entries: &[Self]) -> Vec<Self::Place> {
-        crate::forms::function_field::relevant_places(entries)
+    fn try_relevant_places(entries: &[Self]) -> Option<Vec<Self::Place>> {
+        crate::forms::function_field::try_relevant_places_ff(entries)
     }
 
-    fn hilbert_symbol_at(a: &Self, b: &Self, place: &Self::Place) -> i128 {
-        crate::forms::function_field::hilbert_symbol_ff(a, b, place)
+    fn try_hilbert_symbol_at(a: &Self, b: &Self, place: &Self::Place) -> Option<i128> {
+        crate::forms::function_field::try_hilbert_symbol_ff(a, b, place)
     }
 
-    fn is_local_square(x: &Self, place: &Self::Place) -> bool {
-        crate::forms::function_field::is_local_square(x, place)
+    fn try_is_local_square(x: &Self, place: &Self::Place) -> Option<bool> {
+        crate::forms::function_field::try_is_local_square_ff(x, place)
     }
 
-    fn is_global_square(x: &Self) -> bool {
-        crate::forms::function_field::is_global_square_ff(x)
+    fn try_is_global_square(x: &Self) -> Option<bool> {
+        Some(crate::forms::function_field::is_global_square_ff(x))
     }
 
-    fn is_isotropic_at_place(entries: &[Self], place: &Self::Place) -> bool {
-        crate::forms::function_field::is_isotropic_at_place(entries, place)
+    fn try_is_isotropic_at_place(entries: &[Self], place: &Self::Place) -> Option<bool> {
+        crate::forms::function_field::try_is_isotropic_at_place_ff(entries, place)
     }
 }
 
@@ -242,12 +254,12 @@ mod tests {
         for a in samples {
             for b in samples {
                 assert_eq!(
-                    G::reciprocity_product(a, b),
-                    1,
+                    G::try_reciprocity_product(a, b),
+                    Some(1),
                     "reciprocity ∏_v (a,b)_v = +1 failed at a={a:?} b={b:?}"
                 );
                 assert_eq!(
-                    G::ramified_places(a, b).len() % 2,
+                    G::try_ramified_places(a, b).unwrap().len() % 2,
                     0,
                     "ramified place count must be even at a={a:?} b={b:?}"
                 );
@@ -306,8 +318,8 @@ mod tests {
         for f in forms {
             let rats: Vec<Rational> = f.iter().map(|&n| Rational::int(n)).collect();
             assert_eq!(
-                Rational::is_isotropic_global(&rats),
-                try_is_isotropic_q(f).expect("test square classes fit i128"),
+                Rational::try_is_isotropic_global(&rats),
+                try_is_isotropic_q(f),
                 "generic vs Q-specific isotropy disagree on {f:?}"
             );
         }
@@ -315,7 +327,7 @@ mod tests {
 
     #[test]
     fn global_isotropy_matches_function_field_facade() {
-        use crate::forms::is_isotropic_ff;
+        use crate::forms::try_is_isotropic_ff;
         type F = RationalFunction<Fp<5>>;
         let rf = |num: &[i128], den: &[i128]| -> F {
             RationalFunction::new(
@@ -337,8 +349,8 @@ mod tests {
         ];
         for f in &forms {
             assert_eq!(
-                RationalFunction::is_isotropic_global(f),
-                is_isotropic_ff(f),
+                RationalFunction::try_is_isotropic_global(f),
+                try_is_isotropic_ff(f),
                 "generic vs function-field-specific isotropy disagree on {f:?}"
             );
         }

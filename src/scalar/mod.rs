@@ -341,7 +341,7 @@ impl_scalar_ops!([S: Scalar, const K: usize] Laurent<S, K>);
 impl_scalar_ops!([S: Valued, const E: usize] Ramified<S, E>);
 impl_scalar_ops!([S: Valued] Gauss<S>);
 impl_scalar_ops!(Adele);
-impl_scalar_ops!([S: Scalar] RationalFunction<S>);
+impl_scalar_ops!([S: crate::scalar::ExactFieldScalar] RationalFunction<S>);
 impl_scalar_ops!([S: Scalar] Poly<S>);
 
 #[cfg(test)]

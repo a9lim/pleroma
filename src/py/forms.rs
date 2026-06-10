@@ -827,13 +827,14 @@ struct PyWittClass {
 #[pymethods]
 impl PyWittClass {
     #[new]
-    #[pyo3(signature = (arf=0))]
-    fn new(arf: u128) -> PyResult<Self> {
+    #[pyo3(signature = (arf=0, field_degree=1))]
+    fn new(arf: u128, field_degree: u128) -> PyResult<Self> {
         if arf > 1 {
             return Err(PyValueError::new_err("WittClass arf must be 0 or 1"));
         }
+        check_positive_field_degree(field_degree)?;
         Ok(PyWittClass {
-            inner: WittClass { arf },
+            inner: WittClass { field_degree, arf },
         })
     }
     #[staticmethod]
@@ -858,10 +859,15 @@ impl PyWittClass {
     fn arf(&self) -> u128 {
         self.inner.arf
     }
-    fn __add__(&self, other: &PyWittClass) -> PyWittClass {
-        PyWittClass {
-            inner: self.inner.add(&other.inner),
-        }
+    #[getter]
+    fn field_degree(&self) -> u128 {
+        self.inner.field_degree
+    }
+    fn __add__(&self, other: &PyWittClass) -> PyResult<PyWittClass> {
+        self.inner
+            .try_add(&other.inner)
+            .map(|inner| PyWittClass { inner })
+            .map_err(PyValueError::new_err)
     }
     fn __neg__(&self) -> PyWittClass {
         PyWittClass {
@@ -2525,12 +2531,21 @@ fn is_isotropic_global_char2(form: &PyChar2FunctionFieldForm) -> PyResult<Option
     form.is_isotropic()
 }
 
-fn char2_witt_from_arf(arf: crate::forms::ArfResult) -> Option<WittClassG> {
-    (arf.radical_dim == 0).then_some(WittClassG::Char2 { arf: arf.arf })
+fn char2_witt_from_arf(arf: crate::forms::ArfResult, field_degree: u128) -> Option<WittClassG> {
+    (arf.radical_dim == 0).then_some(WittClassG::Char2 {
+        field_degree,
+        arf: arf.arf,
+    })
 }
 
-fn char2_bw_from_arf(arf: crate::forms::ArfResult) -> Option<crate::forms::BrauerWallClass> {
-    (arf.radical_dim == 0).then_some(crate::forms::BrauerWallClass::Char2 { arf: arf.arf })
+fn char2_bw_from_arf(
+    arf: crate::forms::ArfResult,
+    field_degree: u128,
+) -> Option<crate::forms::BrauerWallClass> {
+    (arf.radical_dim == 0).then_some(crate::forms::BrauerWallClass::Char2 {
+        field_degree,
+        arf: arf.arf,
+    })
 }
 
 macro_rules! classify_odd_finite_alg {
@@ -2548,7 +2563,7 @@ macro_rules! classify_odd_finite_alg {
 }
 
 macro_rules! classify_char2_finite_alg {
-    ($py:ident, $alg:ident, $ty:ty) => {
+    ($py:ident, $alg:ident, $ty:ty, $field_degree:expr) => {
         if let Ok(a) = $alg.cast::<$ty>() {
             let a = a.borrow();
             if let Some(inner) = crate::forms::arf_char2(&a.inner.metric) {
@@ -2579,7 +2594,7 @@ macro_rules! classify_odd_finite_alg_class {
 }
 
 macro_rules! classify_char2_finite_alg_class {
-    ($alg:ident, $ty:ty) => {
+    ($alg:ident, $ty:ty, $field_degree:expr) => {
         if let Ok(a) = $alg.cast::<$ty>() {
             let a = a.borrow();
             return crate::forms::arf_char2(&a.inner.metric)
@@ -2611,11 +2626,11 @@ macro_rules! witt_odd_finite_alg {
 }
 
 macro_rules! witt_char2_finite_alg {
-    ($alg:ident, $ty:ty) => {
+    ($alg:ident, $ty:ty, $field_degree:expr) => {
         if let Ok(a) = $alg.cast::<$ty>() {
             let a = a.borrow();
             return crate::forms::arf_char2(&a.inner.metric)
-                .and_then(char2_witt_from_arf)
+                .and_then(|arf| char2_witt_from_arf(arf, $field_degree))
                 .map(|inner| PyWittClassG { inner })
                 .ok_or_else(|| {
                     PyValueError::new_err(
@@ -2642,11 +2657,11 @@ macro_rules! bw_odd_finite_alg {
 }
 
 macro_rules! bw_char2_finite_alg {
-    ($alg:ident, $ty:ty) => {
+    ($alg:ident, $ty:ty, $field_degree:expr) => {
         if let Ok(a) = $alg.cast::<$ty>() {
             let a = a.borrow();
             return crate::forms::arf_char2(&a.inner.metric)
-                .and_then(char2_bw_from_arf)
+                .and_then(|arf| char2_bw_from_arf(arf, $field_degree))
                 .map(|inner| PyBrauerWallClass { inner })
                 .ok_or_else(|| {
                     PyValueError::new_err(
@@ -2672,7 +2687,7 @@ macro_rules! isometric_odd_finite_alg {
 }
 
 macro_rules! isometric_char2_finite_alg {
-    ($a:ident, $b:ident, $ty:ty) => {
+    ($a:ident, $b:ident, $ty:ty, $field_degree:expr) => {
         if let (Ok(a), Ok(b)) = ($a.cast::<$ty>(), $b.cast::<$ty>()) {
             let (a, b) = (a.borrow(), b.borrow());
             return crate::forms::isometric_finite_char2(&a.inner.metric, &b.inner.metric)
@@ -2687,15 +2702,15 @@ macro_rules! isometric_char2_finite_alg {
 
 macro_rules! finite_algebra_cases {
     ($char2:ident, $odd:ident, $($args:tt)*) => {
-        $char2!($($args)* Fp2Algebra);
+        $char2!($($args)* Fp2Algebra, 1u128);
         $odd!($($args)* Fp3Algebra);
         $odd!($($args)* Fp5Algebra);
         $odd!($($args)* Fp7Algebra);
         $odd!($($args)* Fp11Algebra);
         $odd!($($args)* Fp13Algebra);
-        $char2!($($args)* F4Algebra);
-        $char2!($($args)* F8Algebra);
-        $char2!($($args)* F16Algebra);
+        $char2!($($args)* F4Algebra, 2u128);
+        $char2!($($args)* F8Algebra, 3u128);
+        $char2!($($args)* F16Algebra, 4u128);
         $odd!($($args)* F9Algebra);
         $odd!($($args)* F25Algebra);
         $odd!($($args)* F27Algebra);
@@ -2760,6 +2775,16 @@ fn check_bit(name: &str, value: u128) -> PyResult<()> {
     }
 }
 
+fn check_positive_field_degree(field_degree: u128) -> PyResult<()> {
+    if field_degree == 0 {
+        Err(PyValueError::new_err(
+            "char-2 field_degree must be positive",
+        ))
+    } else {
+        Ok(())
+    }
+}
+
 #[pymethods]
 impl PyWittClassG {
     #[staticmethod]
@@ -2803,10 +2828,12 @@ impl PyWittClassG {
         })
     }
     #[staticmethod]
-    fn char2(arf: u128) -> PyResult<PyWittClassG> {
+    #[pyo3(signature = (arf, field_degree=1))]
+    fn char2(arf: u128, field_degree: u128) -> PyResult<PyWittClassG> {
         check_bit("arf", arf)?;
+        check_positive_field_degree(field_degree)?;
         Ok(PyWittClassG {
-            inner: WittClassG::Char2 { arf },
+            inner: WittClassG::Char2 { field_degree, arf },
         })
     }
     #[staticmethod]
@@ -2842,6 +2869,12 @@ impl PyWittClassG {
             _ => None,
         }
     }
+    fn field_degree(&self) -> Option<u128> {
+        match self.inner {
+            WittClassG::Char2 { field_degree, .. } => Some(field_degree),
+            _ => None,
+        }
+    }
     fn kappa(&self) -> Option<u128> {
         match self.inner {
             WittClassG::OddChar { kappa, .. } => Some(kappa),
@@ -2862,7 +2895,7 @@ impl PyWittClassG {
     }
     fn arf(&self) -> Option<u128> {
         match self.inner {
-            WittClassG::Char2 { arf } => Some(arf),
+            WittClassG::Char2 { arf, .. } => Some(arf),
             _ => None,
         }
     }
@@ -2896,7 +2929,9 @@ impl PyWittClassG {
                     "WittClassG::OddChar(field_order={field_order}, kappa={kappa}, e0={e0}, sclass={sclass})"
                 )
             }
-            WittClassG::Char2 { arf } => format!("WittClassG::Char2(arf={arf})"),
+            WittClassG::Char2 { field_degree, arf } => {
+                format!("WittClassG::Char2(field_degree={field_degree}, arf={arf})")
+            }
         }
     }
 }
@@ -4749,10 +4784,12 @@ impl PyBrauerWallClass {
         })
     }
     #[staticmethod]
-    fn char2(arf: u128) -> PyResult<PyBrauerWallClass> {
+    #[pyo3(signature = (arf, field_degree=1))]
+    fn char2(arf: u128, field_degree: u128) -> PyResult<PyBrauerWallClass> {
         check_bit("arf", arf)?;
+        check_positive_field_degree(field_degree)?;
         Ok(PyBrauerWallClass {
-            inner: crate::forms::BrauerWallClass::Char2 { arf },
+            inner: crate::forms::BrauerWallClass::Char2 { field_degree, arf },
         })
     }
     fn kind(&self) -> &'static str {
@@ -4781,6 +4818,12 @@ impl PyBrauerWallClass {
             _ => None,
         }
     }
+    fn field_degree(&self) -> Option<u128> {
+        match self.inner {
+            crate::forms::BrauerWallClass::Char2 { field_degree, .. } => Some(field_degree),
+            _ => None,
+        }
+    }
     fn kappa(&self) -> Option<u128> {
         match self.inner {
             crate::forms::BrauerWallClass::OddChar { kappa, .. } => Some(kappa),
@@ -4801,7 +4844,7 @@ impl PyBrauerWallClass {
     }
     fn arf(&self) -> Option<u128> {
         match self.inner {
-            crate::forms::BrauerWallClass::Char2 { arf } => Some(arf),
+            crate::forms::BrauerWallClass::Char2 { arf, .. } => Some(arf),
             _ => None,
         }
     }
@@ -4837,8 +4880,8 @@ impl PyBrauerWallClass {
                     "BrauerWallClass::OddChar(field_order={field_order}, kappa={kappa}, e0={e0}, sclass={sclass})"
                 )
             }
-            crate::forms::BrauerWallClass::Char2 { arf } => {
-                format!("BrauerWallClass::Char2(arf={arf})")
+            crate::forms::BrauerWallClass::Char2 { field_degree, arf } => {
+                format!("BrauerWallClass::Char2(field_degree={field_degree}, arf={arf})")
             }
         }
     }

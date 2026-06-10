@@ -6,17 +6,18 @@
 //! abelian group `W_q(F)` under orthogonal sum `⊥`, with the hyperbolic plane as
 //! identity. Over a *finite* field of characteristic 2 the anisotropic forms are
 //! just two — the zero form (Arf 0) and the unique anisotropic plane (Arf 1) —
-//! so `W_q(F_{2^m}) ≅ ℤ/2`, **classified completely by the Arf invariant**, and
-//! the group law is XOR of Arf invariants. (Over the full algebraically-closed
-//! On₂, or other fields, `W_q` can be richer; for the finite nim-subfields this
-//! engine targets, Arf is the whole story.)
+//! so `W_q(F_{2^m}) ≅ ℤ/2`, **classified completely by the Arf invariant at that
+//! fixed field**, and the group law is XOR of Arf invariants. (Over the full
+//! algebraically-closed On₂, `W_q` is trivial; over other fields such as `F₂(t)`,
+//! `W_q` can be richer. For each finite field this engine targets, Arf is the
+//! whole story.)
 //!
 //! So `WittClass` makes the additivity executable as a group: `w(A) + w(A) = 0`
 //! is the same statement as `A ⊕ A ≅ H ⊕ H`, now a one-liner.
 
 use crate::clifford::Metric;
 use crate::forms::arf_invariant;
-use crate::scalar::Nimber;
+use crate::scalar::{nim_degree, Nimber};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WittClassError {
@@ -31,14 +32,30 @@ pub enum WittClassError {
 /// invariant of a form's anisotropic core (hyperbolic planes are the identity).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WittClass {
+    /// Degree `m` of the finite char-2 field `F_{2^m}` this class lives over.
+    pub field_degree: u128,
     /// The class, 0 or 1 — equivalently the Arf invariant of the nonsingular core.
     pub arf: u128,
 }
 
 impl WittClass {
-    /// The identity: the class of the hyperbolic plane (and of the zero form).
+    /// The identity over `F₂`: the class of the hyperbolic plane (and of the
+    /// zero form). Use [`zero_over`](Self::zero_over) when the ground field is
+    /// a larger finite char-2 field.
     pub fn zero() -> Self {
-        WittClass { arf: 0 }
+        WittClass {
+            field_degree: 1,
+            arf: 0,
+        }
+    }
+
+    /// The identity over `F_{2^field_degree}`.
+    pub fn zero_over(field_degree: u128) -> Self {
+        assert!(field_degree > 0, "char-2 field degree must be positive");
+        WittClass {
+            field_degree,
+            arf: 0,
+        }
     }
 
     /// Checked Witt class of a nimber Clifford metric. The Witt group here is the
@@ -52,15 +69,31 @@ impl WittClass {
                 radical_anisotropic: arf.radical_anisotropic,
             });
         }
-        Ok(WittClass { arf: arf.arf })
+        Ok(WittClass {
+            field_degree: nimber_metric_field_degree(metric),
+            arf: arf.arf,
+        })
     }
 
-    /// The group operation: the class of the orthogonal sum `⊥` of two forms.
-    /// Arf is additive, hyperbolics vanish, so this is XOR of the Arf invariants.
-    pub fn add(&self, other: &WittClass) -> WittClass {
-        WittClass {
-            arf: self.arf ^ other.arf,
+    /// The group operation: the class of the orthogonal sum `⊥` of two forms,
+    /// checked to stay over the same finite field. Arf is additive only after
+    /// the base field is fixed; cross-field sums must first be re-evaluated over
+    /// a common extension.
+    pub fn try_add(&self, other: &WittClass) -> Result<WittClass, &'static str> {
+        if self.field_degree != other.field_degree {
+            return Err("char-2 Witt classes are from different finite fields");
         }
+        Ok(WittClass {
+            field_degree: self.field_degree,
+            arf: self.arf ^ other.arf,
+        })
+    }
+
+    /// Infallible convenience wrapper for callers that already know both
+    /// operands live over the same finite field.
+    pub fn add(&self, other: &WittClass) -> WittClass {
+        self.try_add(other)
+            .expect("char-2 Witt classes are from different finite fields")
     }
 
     /// In `ℤ/2` every element is its own inverse (`w + w = 0`).
@@ -84,12 +117,23 @@ impl WittClass {
     }
 
     pub fn display(&self) -> String {
+        let field = format!("F_2^{}", self.field_degree);
         if self.arf == 0 {
-            "0 (hyperbolic class)".to_string()
+            format!("0 (hyperbolic class over {field})")
         } else {
-            "[anisotropic plane] (Arf 1)".to_string()
+            format!("[anisotropic plane] (Arf 1 over {field})")
         }
     }
+}
+
+fn nimber_metric_field_degree(metric: &Metric<Nimber>) -> u128 {
+    metric
+        .q
+        .iter()
+        .map(|x| nim_degree(x.0))
+        .chain(metric.b.values().map(|x| nim_degree(x.0)))
+        .max()
+        .unwrap_or(1)
 }
 
 impl std::ops::Add for WittClass {
@@ -123,8 +167,8 @@ impl std::ops::Neg for WittClass {
 ///   when `−1` is a square (`q ≡ 1 mod 4`, `kappa = 0`). The `(−1)^{mn}`
 ///   correction in the signed-discriminant sum is exactly the `kappa` term in
 ///   `add`, and is what produces the `ℤ/4` when `kappa = 1`.
-/// * `Char2`: over a finite nim-field `W ≅ ℤ/2`, classified by the Arf invariant
-///   (this is the existing `WittClass`, re-homed as a variant).
+/// * `Char2`: over a fixed finite char-2 field `W ≅ ℤ/2`, classified by the Arf
+///   invariant together with the field degree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WittClassG {
     Char0 {
@@ -141,6 +185,8 @@ pub enum WittClassG {
         sclass: u128,
     },
     Char2 {
+        /// Field degree `m` for `F_{2^m}`.
+        field_degree: u128,
         arf: u128,
     },
 }
@@ -155,8 +201,10 @@ impl WittClassG {
 
     /// Checked char-2 Witt class from a nonsingular nimber metric.
     pub fn try_char2_from_metric(metric: &Metric<Nimber>) -> Result<Self, WittClassError> {
+        let class = WittClass::try_from_metric(metric)?;
         Ok(WittClassG::Char2 {
-            arf: WittClass::try_from_metric(metric)?.arf,
+            field_degree: class.field_degree,
+            arf: class.arf,
         })
     }
 
@@ -177,8 +225,23 @@ impl WittClassG {
             (WittClassG::Char0 { signature: a }, WittClassG::Char0 { signature: b }) => {
                 Ok(WittClassG::Char0 { signature: a + b })
             }
-            (WittClassG::Char2 { arf: a }, WittClassG::Char2 { arf: b }) => {
-                Ok(WittClassG::Char2 { arf: a ^ b })
+            (
+                WittClassG::Char2 {
+                    field_degree: ma,
+                    arf: a,
+                },
+                WittClassG::Char2 {
+                    field_degree: mb,
+                    arf: b,
+                },
+            ) => {
+                if ma != mb {
+                    return Err("char-2 Witt classes are from different finite fields");
+                }
+                Ok(WittClassG::Char2 {
+                    field_degree: ma,
+                    arf: a ^ b,
+                })
             }
             (
                 WittClassG::OddChar {
@@ -320,8 +383,11 @@ mod tests {
 
     #[test]
     fn group_law_is_xor_of_arf() {
-        let h = WittClass { arf: 0 };
-        let a = WittClass { arf: 1 };
+        let h = WittClass::zero();
+        let a = WittClass {
+            field_degree: 1,
+            arf: 1,
+        };
         assert_eq!(a.add(&a), h);
         assert_eq!(a.add(&h), a);
         assert_eq!(h.add(&h), h);
@@ -342,9 +408,45 @@ mod tests {
             .expect("F4 anisotropic plane is nonsingular");
         let split = WittClass::try_from_metric(&metric(&[2, 3], &[((0, 1), 1)]))
             .expect("F4 split plane is nonsingular");
+        assert_eq!(aniso.field_degree, 2);
+        assert_eq!(split.field_degree, 2);
         assert_eq!(aniso.arf, 1);
         assert_eq!(split.arf, 0);
+        assert!(split.is_hyperbolic());
         assert_eq!(aniso.add(&split), aniso);
+    }
+
+    #[test]
+    fn cross_field_char2_witt_addition_is_rejected() {
+        let f2_aniso_metric = metric(&[1, 1], &[((0, 1), 1)]);
+        let f4_aniso_metric = metric(&[2, 2], &[((0, 1), 1)]);
+        let f2_aniso = WittClass::try_from_metric(&f2_aniso_metric)
+            .expect("F2 anisotropic plane is nonsingular");
+        let f4_aniso = WittClass::try_from_metric(&f4_aniso_metric)
+            .expect("F4 anisotropic plane is nonsingular");
+        assert_eq!(
+            (f2_aniso.field_degree, f2_aniso.arf),
+            (1, 1),
+            "the F2 plane has Arf 1 over F2"
+        );
+        assert_eq!(
+            (f4_aniso.field_degree, f4_aniso.arf),
+            (2, 1),
+            "the F4 plane has Arf 1 over F4"
+        );
+
+        assert!(f2_aniso.try_add(&f4_aniso).is_err());
+        assert!(WittClassG::try_char2_from_metric(&f2_aniso_metric)
+            .unwrap()
+            .try_add(&WittClassG::try_char2_from_metric(&f4_aniso_metric).unwrap())
+            .is_err());
+
+        let summed = f2_aniso_metric.direct_sum(&f4_aniso_metric);
+        let re_evaluated = arf_invariant(&summed).expect("direct sum is a nimber metric");
+        assert_eq!(
+            re_evaluated.arf, 1,
+            "bare XOR would predict 0, but the sum re-evaluated over F4 has Arf 1"
+        );
     }
 
     #[test]

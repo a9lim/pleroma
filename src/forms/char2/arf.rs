@@ -1,8 +1,8 @@
 //! The Arf invariant — the complete classifying invariant of a nonsingular
-//! quadratic form over F₂, and (Bertram et al., "Real Clifford algebras and
-//! quadratic forms over F₂", arXiv:1601.07664) the invariant that classifies
-//! the characteristic-2 Clifford algebra the form defines: two such algebras
-//! are isomorphic iff their F₂ forms share an Arf invariant.
+//! quadratic form over F₂ at fixed rank, and the `Z/2` Brauer-Wall/Witt class
+//! carried by the associated **graded** characteristic-2 Clifford algebra. It
+//! does not by itself classify ungraded Clifford algebras or forms of different
+//! ranks.
 //!
 //! A nim-Clifford metric (q, b) restricted to F₂ entries *is* a quadratic form
 //! over F₂ on the generator space: for x ∈ F₂ⁿ,

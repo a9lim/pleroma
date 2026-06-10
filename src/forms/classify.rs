@@ -24,7 +24,7 @@ use crate::forms::{
     witt_decompose_finite_odd, witt_decompose_real, ArfResult, BrauerWallClass, CliffordType,
     OddCharType, OddWittDecomp, RationalCliffordType, RealWittDecomp, WittClassG,
 };
-use crate::scalar::{Fp, Fpn, Nimber, Ordinal, Rational, Scalar, Surcomplex, Surreal};
+use crate::scalar::{nim_degree, Fp, Fpn, Nimber, Ordinal, Rational, Scalar, Surcomplex, Surreal};
 
 /// Classification data for the `Fpn<P,N>` finite-field tower. Odd-characteristic
 /// extension fields land in the usual finite-odd invariant; characteristic-2
@@ -189,7 +189,10 @@ impl<const P: u128, const N: usize> WittClassify for Fpn<P, N> {
             if arf.radical_dim != 0 {
                 return None;
             }
-            Some(WittClassG::Char2 { arf: arf.arf })
+            Some(WittClassG::Char2 {
+                field_degree: N as u128,
+                arf: arf.arf,
+            })
         } else {
             finite_odd_witt(metric)
         }
@@ -208,7 +211,10 @@ impl WittClassify for Ordinal {
         if arf.radical_dim != 0 {
             return None;
         }
-        Some(WittClassG::Char2 { arf: arf.arf })
+        Some(WittClassG::Char2 {
+            field_degree: ordinal_char2_field_degree(metric)?,
+            arf: arf.arf,
+        })
     }
 }
 
@@ -304,7 +310,10 @@ impl<const P: u128, const N: usize> BrauerWallClassify for Fpn<P, N> {
             if arf.radical_dim != 0 {
                 return None;
             }
-            Some(BrauerWallClass::Char2 { arf: arf.arf })
+            Some(BrauerWallClass::Char2 {
+                field_degree: N as u128,
+                arf: arf.arf,
+            })
         } else {
             bw_class_finite_odd(metric)
         }
@@ -323,8 +332,34 @@ impl BrauerWallClassify for Ordinal {
         if arf.radical_dim != 0 {
             return None;
         }
-        Some(BrauerWallClass::Char2 { arf: arf.arf })
+        Some(BrauerWallClass::Char2 {
+            field_degree: ordinal_char2_field_degree(metric)?,
+            arf: arf.arf,
+        })
     }
+}
+
+fn ordinal_char2_field_degree(metric: &Metric<Ordinal>) -> Option<u128> {
+    if metric.q.iter().all(|x| x.as_finite().is_some())
+        && metric.b.values().all(|x| x.as_finite().is_some())
+    {
+        return metric
+            .q
+            .iter()
+            .map(|x| x.as_finite().map(nim_degree))
+            .chain(metric.b.values().map(|x| x.as_finite().map(nim_degree)))
+            .collect::<Option<Vec<_>>>()
+            .map(|degrees| degrees.into_iter().max().unwrap_or(1));
+    }
+
+    if metric.q.iter().chain(metric.b.values()).all(|x| {
+        x.as_below_omega3()
+            .is_some_and(|cs| cs.iter().all(|&c| c < 4))
+    }) {
+        return Some(6);
+    }
+
+    None
 }
 
 /// Ergonomic methods so callers can write `metric.classify()` /
@@ -449,10 +484,19 @@ mod tests {
         let ord = Metric::new(vec![omega.clone(), omega], b);
         let arf = arf_ordinal_finite(&ord).unwrap();
         assert_eq!(ord.classify(), Some(arf.clone()));
-        assert_eq!(ord.witt_class(), Some(WittClassG::Char2 { arf: arf.arf }));
+        assert_eq!(
+            ord.witt_class(),
+            Some(WittClassG::Char2 {
+                field_degree: 6,
+                arf: arf.arf
+            })
+        );
         assert_eq!(
             ord.bw_class(),
-            Some(BrauerWallClass::Char2 { arf: arf.arf })
+            Some(BrauerWallClass::Char2 {
+                field_degree: 6,
+                arf: arf.arf
+            })
         );
 
         let outside_window = Metric::diagonal(vec![Ordinal::omega_pow(Ordinal::omega())]);
@@ -489,7 +533,13 @@ mod tests {
         let mut b = std::collections::BTreeMap::new();
         b.insert((0usize, 1usize), Fpn::<2, 3>::one());
         let f8 = Metric::new(vec![Fpn::<2, 3>::zero(), Fpn::<2, 3>::zero()], b);
-        assert_eq!(f8.bw_class(), Some(BrauerWallClass::Char2 { arf: 0 }));
+        assert_eq!(
+            f8.bw_class(),
+            Some(BrauerWallClass::Char2 {
+                field_degree: 3,
+                arf: 0
+            })
+        );
 
         let mut b = std::collections::BTreeMap::new();
         b.insert((0usize, 1usize), Nimber::one());

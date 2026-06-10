@@ -53,8 +53,13 @@ pub struct Laurent<S: Scalar, const K: usize> {
 }
 
 impl<S: Scalar, const K: usize> Laurent<S, K> {
+    pub fn assert_supported_precision() {
+        assert!(K > 0, "Laurent<S,K> needs positive precision K, got K={K}");
+    }
+
     /// The relative precision (number of retained significant coefficients).
     pub fn precision() -> usize {
+        Self::assert_supported_precision();
         K
     }
 
@@ -62,6 +67,7 @@ impl<S: Scalar, const K: usize> Laurent<S, K> {
     /// significant coefficients, strip trailing zeros, then strip leading zeros
     /// (folding them into the valuation). All-zero ⇒ the zero sentinel.
     fn normalized(coeffs: Vec<S>, val: i128) -> Self {
+        Self::assert_supported_precision();
         // Leading zeros raise the valuation (the relative-precision window slides
         // up; we keep at most K coefficients from the new leading term).
         let lead = coeffs.iter().position(|c| !c.is_zero());
@@ -95,6 +101,7 @@ impl<S: Scalar, const K: usize> Laurent<S, K> {
 
     /// The uniformizer `t = t¹`.
     pub fn t() -> Self {
+        Self::assert_supported_precision();
         Laurent {
             unit: vec![S::one()],
             val: 1,
@@ -103,6 +110,7 @@ impl<S: Scalar, const K: usize> Laurent<S, K> {
 
     /// The pure power `t^v` (unit series `1`). `from_t_power(-1)` is `1/t`.
     pub fn from_t_power(v: i128) -> Self {
+        Self::assert_supported_precision();
         Laurent {
             unit: vec![S::one()],
             val: v,
@@ -180,6 +188,7 @@ impl<S: Scalar, const K: usize> fmt::Debug for Laurent<S, K> {
 
 impl<S: Scalar, const K: usize> Scalar for Laurent<S, K> {
     fn zero() -> Self {
+        Self::assert_supported_precision();
         Laurent {
             unit: Vec::new(),
             val: 0,
@@ -187,6 +196,7 @@ impl<S: Scalar, const K: usize> Scalar for Laurent<S, K> {
     }
 
     fn one() -> Self {
+        Self::assert_supported_precision();
         Laurent {
             unit: vec![S::one()],
             val: 0,
@@ -194,6 +204,7 @@ impl<S: Scalar, const K: usize> Scalar for Laurent<S, K> {
     }
 
     fn add(&self, rhs: &Self) -> Self {
+        Self::assert_supported_precision();
         if self.unit.is_empty() {
             return rhs.clone();
         }
@@ -226,6 +237,7 @@ impl<S: Scalar, const K: usize> Scalar for Laurent<S, K> {
     }
 
     fn neg(&self) -> Self {
+        Self::assert_supported_precision();
         Laurent {
             unit: self.unit.iter().map(|c| c.neg()).collect(),
             val: self.val,
@@ -233,6 +245,7 @@ impl<S: Scalar, const K: usize> Scalar for Laurent<S, K> {
     }
 
     fn mul(&self, rhs: &Self) -> Self {
+        Self::assert_supported_precision();
         if self.unit.is_empty() || rhs.unit.is_empty() {
             return Self::zero();
         }
@@ -257,12 +270,14 @@ impl<S: Scalar, const K: usize> Scalar for Laurent<S, K> {
     }
 
     fn characteristic() -> u128 {
+        Self::assert_supported_precision();
         // Adjoining a transcendental t does not change the characteristic:
         // F_q((t)) has characteristic p, ℚ((t)) characteristic 0.
         S::characteristic()
     }
 
     fn inv(&self) -> Option<Self> {
+        Self::assert_supported_precision();
         // (t^a·U)^{-1} = t^{-a}·U^{-1}. The unit-series inverse is the standard
         // recurrence w₀ = u₀⁻¹, wₙ = −u₀⁻¹·Σ_{i=1}^{n} uᵢ·w_{n−i}, carried to K
         // terms. Total on nonzero iff the leading coeff inverts in S — THE field
@@ -285,6 +300,7 @@ impl<S: Scalar, const K: usize> Scalar for Laurent<S, K> {
     }
 
     fn is_zero(&self) -> bool {
+        Self::assert_supported_precision();
         self.unit.is_empty()
     }
 }
@@ -386,5 +402,13 @@ mod tests {
         let x = Laurent::<Nimber, 4>::from_coeffs(vec![Nimber(3), Nimber(5)], 0);
         assert_eq!(x.add(&x), Ln::zero());
         assert_eq!(x.neg(), x);
+    }
+
+    #[test]
+    fn zero_precision_is_rejected() {
+        type L0 = Laurent<Rational, 0>;
+        assert!(std::panic::catch_unwind(L0::one).is_err());
+        assert!(std::panic::catch_unwind(L0::t).is_err());
+        assert!(std::panic::catch_unwind(|| L0::from_coeffs(vec![Rational::one()], 0)).is_err());
     }
 }

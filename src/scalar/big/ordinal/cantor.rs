@@ -40,7 +40,10 @@ impl Ordinal {
             }
         }
         // Merge at β₀: ordinary natural-number coefficient addition.
-        terms.push((beta0.clone(), self_coeff_at_beta0 + b0));
+        let coeff = self_coeff_at_beta0
+            .checked_add(b0)
+            .expect("ordinary ordinal addition coefficient exceeds u128");
+        terms.push((beta0.clone(), coeff));
         // Then the rest of other (all exponents < β₀).
         terms.extend(other.terms[1..].iter().cloned());
         Ordinal { terms }
@@ -63,7 +66,11 @@ impl Ordinal {
             let contribution = if beta.is_zero() {
                 // Finite factor n = b:  a·n = ω^{α₀}·(a₀·n) ⊕ (rest of a).
                 let mut terms = Vec::with_capacity(self.terms.len());
-                terms.push((alpha0.clone(), a0 * *b));
+                terms.push((
+                    alpha0.clone(),
+                    a0.checked_mul(*b)
+                        .expect("ordinary ordinal multiplication coefficient exceeds u128"),
+                ));
                 terms.extend(self.terms[1..].iter().cloned());
                 Ordinal { terms }
             } else {
@@ -133,5 +140,17 @@ mod tests {
         let rhs = omega.ord_mul(&omega.ord_mul(&omega));
         assert_eq!(lhs, rhs);
         assert_eq!(lhs, Ordinal::omega_pow(fin(3)));
+    }
+
+    #[test]
+    fn ordinary_ordinal_coefficients_do_not_wrap() {
+        let half = 1u128 << 127;
+        let a = Ordinal::monomial(fin(1), half);
+        let b = Ordinal::monomial(fin(1), half);
+        assert!(std::panic::catch_unwind(|| a.ord_add(&b)).is_err());
+        assert!(
+            std::panic::catch_unwind(|| { Ordinal::monomial(fin(1), half).ord_mul(&fin(4)) })
+                .is_err()
+        );
     }
 }

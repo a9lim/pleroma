@@ -7,7 +7,8 @@
 //! [`Integer`](integer::Integer) (ℤ) is the coefficient ring of the exterior
 //! algebra of the game group (games are a ℤ-module). They are the (field, ring of
 //! integers) pair every other place in the table mirrors — `(No, Oz)`,
-//! `(Q_p, Z_p)`, `(F_{p^n}, W_n)`.
+//! `(Q_p, Z_p)`, and the unramified mixed-characteristic pair
+//! `(Q_q, W_n(F_q))`.
 
 pub mod integer;
 pub mod rational;

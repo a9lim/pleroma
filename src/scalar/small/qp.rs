@@ -62,6 +62,14 @@ impl<const P: u128, const K: u128> Qp<P, K> {
             Fp::<P>::modulus_is_prime() && K > 0,
             "Qp<P,K> needs prime P and positive precision K, got P={P}, K={K}"
         );
+        let mut acc = 1u128;
+        for _ in 0..K {
+            acc = acc.checked_mul(P).expect("Qp modulus exceeds u128");
+            assert!(
+                acc <= i128::MAX as u128,
+                "Qp<P,K> modulus must fit i128-backed embeddings, got P={P}, K={K}"
+            );
+        }
     }
 
     /// The mantissa modulus `p^k`.
@@ -320,6 +328,7 @@ mod tests {
     fn invalid_parameters_are_rejected() {
         assert!(std::panic::catch_unwind(Qp::<4, 3>::one).is_err());
         assert!(std::panic::catch_unwind(Qp::<5, 0>::one).is_err());
+        assert!(std::panic::catch_unwind(Qp::<2, 127>::one).is_err());
     }
 
     #[test]

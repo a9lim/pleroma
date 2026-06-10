@@ -2025,7 +2025,7 @@ macro_rules! witt_vec_pyclass {
                     return Err(PyValueError::new_err(concat!(
                         "expected exactly ",
                         stringify!($n),
-                        " Witt components"
+                        " Teichmuller digits"
                     )));
                 }
                 let mut parsed = Vec::with_capacity(xs.len());

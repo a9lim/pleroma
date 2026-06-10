@@ -264,6 +264,9 @@ impl<S: ResidueField> ResidueField for Gauss<S> {
     }
 
     fn teichmuller(residue: Self::Residue) -> Self {
+        // Coefficientwise residue lift for k(tbar). Over mixed-characteristic
+        // bases this is a section of `residue`, not a multiplicative
+        // Teichmuller map on nonconstant rational functions.
         let num = residue
             .num()
             .coeffs()
@@ -428,5 +431,26 @@ mod tests {
         );
         let tau = <G as ResidueField>::teichmuller(r.clone());
         assert_eq!(tau.residue(), Some(r));
+    }
+
+    #[test]
+    fn mixed_characteristic_gauss_lift_is_not_multiplicative_on_polynomials() {
+        type G5 = Gauss<Qp<5, 6>>;
+        type R = RationalFunction<Fp<5>>;
+        let r = R::new(
+            vec![Fp::<5>::new(1), Fp::<5>::new(1)],
+            vec![Fp::<5>::new(1)],
+        );
+        let s = R::new(
+            vec![Fp::<5>::new(1), Fp::<5>::new(2)],
+            vec![Fp::<5>::new(1)],
+        );
+        let rs = r.mul(&s);
+        let tau_rs = <G5 as ResidueField>::teichmuller(rs.clone());
+        let tau_product =
+            <G5 as ResidueField>::teichmuller(r).mul(&<G5 as ResidueField>::teichmuller(s));
+        assert_eq!(tau_rs.residue(), Some(rs.clone()));
+        assert_eq!(tau_product.residue(), Some(rs));
+        assert_ne!(tau_rs, tau_product);
     }
 }

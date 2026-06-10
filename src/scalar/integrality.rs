@@ -47,8 +47,8 @@
 //!     out of the pairing — the same honesty as `Laurent` above.
 
 use crate::scalar::{
-    Integer, Omnific, Poly, Qp, Qq, Rational, RationalFunction, Scalar, Surcomplex, Surreal,
-    WittVec, Zp,
+    mul_mod_u128, Integer, Omnific, Poly, Qp, Qq, Rational, RationalFunction, Scalar, Surcomplex,
+    Surreal, WittVec, Zp,
 };
 
 /// A (commutative) ring that knows its field of fractions.
@@ -116,7 +116,7 @@ impl HasRingOfIntegers for Surreal {
 impl<const P: u128, const K: u128> HasFractionField for Zp<P, K> {
     type Frac = Qp<P, K>;
     fn to_fraction(&self) -> Qp<P, K> {
-        Qp::from_i128(self.0 as i128)
+        Qp::from_i128((self.0 % Zp::<P, K>::modulus()) as i128)
     }
 }
 
@@ -137,7 +137,7 @@ impl<const P: u128, const K: u128> HasRingOfIntegers for Qp<P, K> {
         let m = Qp::<P, K>::modulus();
         let mut acc = self.unit() % m;
         for _ in 0..v {
-            acc = (acc.wrapping_mul(P)) % m;
+            acc = mul_mod_u128(acc, P % m, m);
         }
         Some(Zp(acc))
     }
@@ -290,6 +290,14 @@ mod tests {
         let p = Qp::<3, 3>::from_i128(3);
         assert!(p.is_integral());
         assert_eq!(p.to_integer(), Some(Zp::<3, 3>(3)));
+    }
+
+    #[test]
+    fn qp_to_integer_uses_modular_multiplication_at_the_boundary() {
+        type Q = Qp<3, 80>;
+        let x = Q::from_i128(-1).mul(&Q::from_i128(3));
+        assert_eq!(x.valuation(), Some(1));
+        assert_eq!(x.to_integer(), Some(Zp::<3, 80>(Q::modulus() - 3)));
     }
 
     #[test]

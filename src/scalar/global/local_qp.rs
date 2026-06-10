@@ -65,6 +65,14 @@ impl LocalQp {
             is_prime(p) && k > 0,
             "LocalQp needs prime p and positive precision k, got p={p}, k={k}"
         );
+        let mut acc = 1u128;
+        for _ in 0..k {
+            acc = acc.checked_mul(p).expect("LocalQp modulus exceeds u128");
+            assert!(
+                acc <= i128::MAX as u128,
+                "LocalQp modulus must fit i128-backed embeddings, got p={p}, k={k}"
+            );
+        }
     }
 
     fn same_world(&self, other: &LocalQp) {
@@ -401,6 +409,12 @@ mod tests {
     #[should_panic(expected = "needs prime p")]
     fn invalid_runtime_world_is_rejected_in_release_too() {
         let _ = LocalQp::one(4, 3);
+    }
+
+    #[test]
+    #[should_panic(expected = "modulus must fit")]
+    fn oversized_runtime_modulus_is_rejected() {
+        let _ = LocalQp::one(2, 127);
     }
 
     #[test]

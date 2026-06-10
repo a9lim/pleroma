@@ -58,7 +58,8 @@
 //!     Left out honestly rather than stubbed.
 
 use crate::scalar::{
-    Fp, Fpn, Laurent, Nimber, Qp, Qq, Rational, Scalar, Surcomplex, Surreal, WittVec, Zp,
+    mul_mod_u128, Fp, Fpn, Laurent, Nimber, Qp, Qq, Rational, Scalar, Surcomplex, Surreal, WittVec,
+    Zp,
 };
 use std::cmp::Ordering;
 
@@ -112,15 +113,16 @@ pub trait Ordered: Scalar {
 // uses them directly, and the Hensel lift in `small/analytic.rs` imports them as
 // the lift's seed. (They were previously private to `small/analytic.rs`.)
 
-/// `base^e mod m` (the residue fields here are tiny, so `u128` products suffice).
+/// `base^e mod m`, using double-and-add multiplication so large legal prime
+/// moduli do not wrap in release builds.
 fn mod_pow(mut base: u128, mut e: u128, m: u128) -> u128 {
     let mut acc = 1u128 % m;
     base %= m;
     while e > 0 {
         if e & 1 == 1 {
-            acc = (acc * base) % m;
+            acc = mul_mod_u128(acc, base, m);
         }
-        base = (base * base) % m;
+        base = mul_mod_u128(base, base, m);
         e >>= 1;
     }
     acc
@@ -166,16 +168,16 @@ pub(crate) fn fp_sqrt(a: u128, p: u128) -> Option<u128> {
         }
         // least i in 1..m with t^{2^i} = 1
         let mut i = 1u128;
-        let mut t2 = (t * t) % p;
+        let mut t2 = mul_mod_u128(t, t, p);
         while t2 != 1 {
-            t2 = (t2 * t2) % p;
+            t2 = mul_mod_u128(t2, t2, p);
             i += 1;
         }
         let b = mod_pow(c, 1u128 << (m - i - 1), p);
         m = i;
-        c = (b * b) % p;
-        t = (t * c) % p;
-        r = (r * b) % p;
+        c = mul_mod_u128(b, b, p);
+        t = mul_mod_u128(t, c, p);
+        r = mul_mod_u128(r, b, p);
     }
 }
 
@@ -545,6 +547,14 @@ mod tests {
             }
         }
         assert_eq!(squares, 5); // 0 and the four nonzero QRs of F_9
+    }
+
+    #[test]
+    fn fp_square_predicate_uses_overflow_safe_modular_powers() {
+        let p = (1u128 << 64) + 13;
+        let a = p - 2;
+        assert!(!fp_is_square(a, p));
+        assert_eq!(fp_sqrt(a, p), None);
     }
 
     #[test]

@@ -66,9 +66,14 @@ pub trait ResidueField: Valued {
     /// The datum the Springer second-residue map reads at each valuation layer.
     fn residue_unit(&self) -> Option<Self::Residue>;
 
-    /// The canonical multiplicative section `τ : k → 𝒪` of the residue map. It
-    /// satisfies `residue(τ(a)) = a` and `τ(ab) = τ(a)τ(b)` with `τ(0)=0`; it is
-    /// not additive in general.
+    /// A canonical lift `τ : k → 𝒪` of the residue map. For the local-field
+    /// residue legs (`Qp`, `Qq`, `Laurent`, `Ramified`) this is the usual
+    /// multiplicative Teichmüller section: `residue(τ(a)) = a` and
+    /// `τ(ab) = τ(a)τ(b)` with `τ(0)=0`, not additive in general. For the
+    /// residue-transcendental Gauss functor, the represented operation is the
+    /// coefficientwise lift of `k(tbar)`; it is a residue section, but over a
+    /// mixed-characteristic base it is not multiplicative on nonconstant
+    /// rational functions.
     fn teichmuller(residue: Self::Residue) -> Self;
 }
 

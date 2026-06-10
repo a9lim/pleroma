@@ -81,7 +81,7 @@ pub fn nim_is_primitive(x: u128) -> bool {
 /// A primitive element of F_{2^128}* (a generator of the whole multiplicative
 /// group). Searches upward from `2^64` — the floor below which everything sits
 /// in the proper subfield F_{2^64}. Deterministic; primitive elements have
-/// density `φ(2^128−1)/(2^128−1) ≈ 0.30`, so this returns quickly.
+/// density `φ(2^128−1)/(2^128−1) ≈ 0.50`, so this returns quickly.
 pub fn nim_primitive_element() -> u128 {
     let mut x = 1u128 << 64;
     loop {

@@ -120,17 +120,73 @@ pub(crate) fn mod_inverse_u128(a: u128, modulus: u128) -> Option<u128> {
     if modulus <= 1 {
         return None;
     }
-    let m = i128::try_from(modulus).ok()?;
-    let (mut t, mut new_t) = (0i128, 1i128);
-    let (mut r, mut new_r) = (m, i128::try_from(a % modulus).ok()?);
+    let (mut t, mut new_t) = (0u128, 1u128 % modulus);
+    let (mut r, mut new_r) = (modulus, a % modulus);
     while new_r != 0 {
         let quotient = r / new_r;
-        t -= quotient * new_t;
+        let q_new_t = mul_mod_u128(quotient % modulus, new_t, modulus);
+        let next_t = sub_mod_u128(t, q_new_t, modulus);
         std::mem::swap(&mut t, &mut new_t);
+        new_t = next_t;
         r -= quotient * new_r;
         std::mem::swap(&mut r, &mut new_r);
     }
-    (r == 1).then_some(t.rem_euclid(m) as u128)
+    (r == 1).then_some(t)
+}
+
+pub(crate) fn add_mod_u128(a: u128, b: u128, modulus: u128) -> u128 {
+    debug_assert!(modulus > 0);
+    let a = a % modulus;
+    let b = b % modulus;
+    if a >= modulus - b {
+        a - (modulus - b)
+    } else {
+        a + b
+    }
+}
+
+pub(crate) fn sub_mod_u128(a: u128, b: u128, modulus: u128) -> u128 {
+    debug_assert!(modulus > 0);
+    let a = a % modulus;
+    let b = b % modulus;
+    if a >= b {
+        a - b
+    } else {
+        modulus - (b - a)
+    }
+}
+
+pub(crate) fn mul_mod_u128(mut a: u128, mut b: u128, modulus: u128) -> u128 {
+    debug_assert!(modulus > 0);
+    if modulus == 1 {
+        return 0;
+    }
+    a %= modulus;
+    let mut acc = 0u128;
+    while b > 0 {
+        if b & 1 == 1 {
+            acc = add_mod_u128(acc, a, modulus);
+        }
+        b >>= 1;
+        if b > 0 {
+            a = add_mod_u128(a, a, modulus);
+        }
+    }
+    acc
+}
+
+pub(crate) fn reduce_i128_mod_u128(n: i128, modulus: u128) -> u128 {
+    debug_assert!(modulus > 0);
+    if n >= 0 {
+        (n as u128) % modulus
+    } else {
+        let r = n.unsigned_abs() % modulus;
+        if r == 0 {
+            0
+        } else {
+            modulus - r
+        }
+    }
 }
 
 /// Generate the owned-value operators `+`, `-` (binary and unary), and `*` for a
@@ -268,5 +324,17 @@ mod ops_tests {
         assert_eq!(x + y, Scalar::add(&x, &y));
         assert_eq!(x * y, Scalar::mul(&x, &y));
         assert_eq!(-x, x);
+    }
+
+    #[test]
+    fn modular_helpers_cover_full_u128_range() {
+        let m = (5u128).pow(55);
+        assert!(m > i128::MAX as u128);
+        assert_eq!(add_mod_u128(m - 1, m - 1, m), m - 2);
+        assert_eq!(sub_mod_u128(1, 2, m), m - 1);
+        assert_eq!(mul_mod_u128(m - 1, m - 1, m), 1);
+        let inv = mod_inverse_u128(2, m).expect("2 is a unit modulo 5^55");
+        assert_eq!(mul_mod_u128(2, inv, m), 1);
+        assert_eq!(reduce_i128_mod_u128(-2, m), m - 2);
     }
 }

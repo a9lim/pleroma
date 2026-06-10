@@ -20,16 +20,14 @@
 //! *ring* `Z/p^N`. This avoids hand-deriving the ghost-inversion (Witt addition)
 //! polynomials, whose division-by-`p` is the classic correctness trap.
 //!
-//! The genuine **Witt / Teichmüller coordinates** are then built *on top* of the
-//! ring ([`WittVec::witt_components`], [`WittVec::from_witt_components`]). The proof
-//! that this really is the Witt-vector ring (not just *a* ring of the right size) is
-//! that ring addition reproduces the classical **Witt addition polynomials** in
-//! those coordinates — e.g. the `p = 2` carry `S₀ = x₀ + y₀`,
-//! `S₁ = x₁ + y₁ − x₀y₀` (`p2_witt_addition_carry_formula` in the tests). (The
-//! ghost map itself degenerates over the residue field `F_q`: in characteristic `p`
-//! every `pⁱ` term vanishes and `w_n = x₀^{pⁿ}`, so its additivity is just the
-//! Frobenius — which is why the carry polynomials, not the ghost map, are the
-//! informative oracle here.)
+//! The layer accessors ([`WittVec::witt_components`],
+//! [`WittVec::from_witt_components`]) use the Teichmüller expansion
+//! `a = Σ τ(x_i)·p^i`. Over `F_p` these are the classical `p`-typical Witt
+//! coordinates. Over `F_{p^f}` with `f > 1` they are the Frobenius-twisted
+//! Teichmüller digits for this unramified-ring representation: the classical
+//! coordinates differ by the usual `p^{-i}` Frobenius twists. The round-trip
+//! tests pin this representation without claiming the untwisted coordinate
+//! polynomials.
 //!
 //! ## On-brand hook: Artin–Schreier–Witt
 //!
@@ -39,7 +37,7 @@
 //! Schreier thread. (Documented as motivation; the solver itself is future work.)
 
 use crate::scalar::finite_field::fpn::reduction;
-use crate::scalar::{Fpn, Scalar};
+use crate::scalar::{add_mod_u128, mul_mod_u128, reduce_i128_mod_u128, Fpn, Scalar};
 use std::fmt;
 
 /// A length-`N` `p`-typical Witt vector over `F_q = F_{p^F}`, realised in
@@ -71,10 +69,10 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
 
     /// Embed a `Z/p^N` integer as the degree-0 (constant) Witt vector.
     pub fn from_int(n: i128) -> Self {
-        let m = Self::modulus() as i128;
+        let m = Self::modulus();
         let mut out = [0u128; F];
         if F > 0 {
-            out[0] = (((n % m) + m) % m) as u128;
+            out[0] = reduce_i128_mod_u128(n, m);
         }
         WittVec(out)
     }
@@ -98,7 +96,8 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
             }
             let ai = a[i];
             for j in 0..F {
-                scratch[i + j] = (scratch[i + j] + ai * b[j]) % m;
+                let term = mul_mod_u128(ai, b[j], m);
+                scratch[i + j] = add_mod_u128(scratch[i + j], term, m);
             }
         }
         // reduce mod f̃ (the same reduction poly as Fpn<P,F>, lifted to Z/p^N).
@@ -111,7 +110,8 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
                 }
                 scratch[k] = 0;
                 for i in 0..F {
-                    scratch[k - F + i] = (scratch[k - F + i] + c * red[i]) % m;
+                    let term = mul_mod_u128(c, red[i], m);
+                    scratch[k - F + i] = add_mod_u128(scratch[k - F + i], term, m);
                 }
             }
         }
@@ -147,10 +147,10 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
         y
     }
 
-    /// Build a Witt vector from its Witt components `(x₀,…,x_{N-1}) ∈ F_q^N`:
+    /// Build a Witt vector from its Teichmüller digits `(x₀,…,x_{N-1}) ∈ F_q^N`:
     /// `Σ_i τ(x_i)·p^i`. The inverse of [`witt_components`](Self::witt_components).
     pub fn from_witt_components(xs: &[Fpn<P, F>]) -> Self {
-        assert_eq!(xs.len(), N, "need exactly N Witt components");
+        assert_eq!(xs.len(), N, "need exactly N Teichmuller digits");
         let mut acc = Self::zero();
         let mut pk = Self::one();
         let p_elt = Self::from_int(P as i128);
@@ -197,8 +197,10 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
         WittVec(out)
     }
 
-    /// The Witt components `(x₀,…,x_{N-1}) ∈ F_q^N`: peel the Teichmüller layers,
-    /// `x_i = ((a − Σ_{j<i} τ(x_j)p^j)/p^i) mod p`.
+    /// The Teichmüller digits `(x₀,…,x_{N-1}) ∈ F_q^N`: peel the layers
+    /// `x_i = ((a − Σ_{j<i} τ(x_j)p^j)/p^i) mod p`. Over extension residue
+    /// fields these are Frobenius-twisted relative to the classical `p`-typical
+    /// Witt coordinates.
     pub fn witt_components(&self) -> Vec<Fpn<P, F>> {
         let mut a = *self;
         let mut out = Vec::with_capacity(N);
@@ -236,7 +238,7 @@ impl<const P: u128, const N: usize, const F: usize> Scalar for WittVec<P, N, F> 
         let m = Self::modulus();
         let mut out = [0u128; F];
         for i in 0..F {
-            out[i] = (self.0[i] + rhs.0[i]) % m;
+            out[i] = add_mod_u128(self.0[i], rhs.0[i], m);
         }
         WittVec(out)
     }
@@ -357,6 +359,17 @@ mod tests {
     }
 
     #[test]
+    fn large_modulus_arithmetic_reduces_without_wrapping() {
+        type W = WittVec<5, 55, 1>;
+        let m = W::modulus();
+        assert!(m > i128::MAX as u128);
+        let minus_one = WittVec::<5, 55, 1>([m - 1]);
+        assert_eq!(W::from_int(-1), minus_one);
+        assert_eq!(minus_one.add(&minus_one), WittVec::<5, 55, 1>([m - 2]));
+        assert_eq!(minus_one.mul(&minus_one), WittVec::<5, 55, 1>([1]));
+    }
+
+    #[test]
     fn p2_witt_addition_carry_formula() {
         // The classical p=2 Witt addition: z₀ = x₀+y₀, z₁ = x₁+y₁−x₀y₀ (in F₂,
         // −1=1 so z₁ = x₁+y₁+x₀y₀). Verified against the ring sum, pinning the
@@ -380,5 +393,24 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn extension_components_are_teichmuller_digits() {
+        type F4 = Fpn<2, 2>;
+        type W = WittVec<2, 2, 2>;
+        let zero = F4::zero();
+        let one = F4::one();
+        let t = F4::from_coeffs(&[0, 1]);
+        let sqrt_t = F4::from_coeffs(&[1, 1]);
+        let a = W::from_witt_components(&[one, zero]);
+        let b = W::from_witt_components(&[t, zero]);
+        let z = a.add(&b).witt_components();
+        assert_eq!(z[0], one.add(&t));
+        assert_eq!(
+            z[1], sqrt_t,
+            "the second Teichmuller digit carries sqrt(x0*y0), not x0*y0"
+        );
+        assert_ne!(z[1], t);
     }
 }

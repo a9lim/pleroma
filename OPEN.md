@@ -69,7 +69,7 @@ every Winning Ways coin-turning P-set is the kernel of an `F_2`-linear map)
 says linearity is also the ceiling for that architecture. Floor and ceiling
 coincide at linear. Problem 1 is exactly whether the lexicode phenomenon admits
 a quadratic refinement — a rule producing the XOR-closure failure that the
-polar form `B` measures. Bridge O (`roadmap/TBD.md`) proposes making the
+polar form `B` measures. Bridge O (`roadmap/TODO.md`) proposes making the
 lexicode chain executable (greedy = mex -> Golay -> Construction A -> theta);
 that is context for this problem, not progress on it.
 

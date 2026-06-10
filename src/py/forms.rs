@@ -1930,19 +1930,6 @@ impl PyFiniteFieldForm {
     }
 }
 
-/// Arf invariant of a quadratic Clifford metric over a supported finite
-/// characteristic-2 field `F_{2^degree}`. Python selects the Rust `Fpn<2,N>`
-/// monomorph by runtime `degree`; `q` and `b` use finite-field element indices.
-#[pyfunction]
-#[pyo3(signature = (q, b=None, degree=1))]
-fn arf_fpn_char2(
-    q: Vec<u128>,
-    b: Option<Bound<'_, PyDict>>,
-    degree: usize,
-) -> PyResult<PyArfResult> {
-    PyChar2FiniteFieldForm::new(q, b, degree)?.classify()
-}
-
 #[pyclass(name = "Char2FiniteFieldForm", module = "pleroma", from_py_object)]
 #[derive(Clone)]
 struct PyChar2FiniteFieldForm {
@@ -2073,13 +2060,6 @@ impl PyChar2FiniteFieldForm {
             self.b
         ))
     }
-}
-
-/// Isometry helper for supported finite characteristic-2 fields. Python selects
-/// the Rust `Fpn<2,N>` monomorph by each form's runtime degree.
-#[pyfunction]
-fn isometric_fpn_char2(a: &PyChar2FiniteFieldForm, b: &PyChar2FiniteFieldForm) -> PyResult<bool> {
-    a.is_isometric(b)
 }
 
 #[pyclass(name = "Char2FunctionFieldForm", module = "pleroma", from_py_object)]
@@ -3060,37 +3040,6 @@ fn wrap_en_staircase(inner: crate::forms::EnStaircase) -> PyEnStaircase {
     PyEnStaircase { inner }
 }
 
-/// Classify a diagonal odd-characteristic form `q` over `F_{p^degree}` (dimension
-/// + discriminant + Hasse). Supported fields: F_3, F_5, F_7, F_11, F_13, F_9,
-/// F_25, F_27.
-#[pyfunction]
-#[pyo3(signature = (p, q, degree=1))]
-fn classify_finite_odd(p: u128, q: Vec<i128>, degree: usize) -> PyResult<PyOddCharType> {
-    PyFiniteFieldForm::new(p, q, degree)?.classify()
-}
-
-/// The odd-characteristic Witt class of a diagonal form `q` over `F_{p^degree}`.
-#[pyfunction]
-#[pyo3(signature = (p, q, degree=1))]
-fn finite_odd_witt(p: u128, q: Vec<i128>, degree: usize) -> PyResult<PyWittClassG> {
-    PyFiniteFieldForm::new(p, q, degree)?.witt_class()
-}
-
-/// Is `x` a square in `F_{p^degree}`?
-#[pyfunction]
-#[pyo3(signature = (p, x, degree=1))]
-fn is_square_finite(p: u128, x: i128, degree: usize) -> PyResult<bool> {
-    PyFiniteFieldForm::new(p, Vec::new(), degree)?.is_square(x)
-}
-
-/// Discriminant square-class representative of a diagonal odd-char form over
-/// `F_{p^degree}`, returned as a finite-field element index.
-#[pyfunction]
-#[pyo3(signature = (p, q, degree=1))]
-fn discriminant_finite_odd(p: u128, q: Vec<i128>, degree: usize) -> PyResult<u128> {
-    PyFiniteFieldForm::new(p, q, degree)?.discriminant()
-}
-
 /// Artin-Schreier class `Tr_{F_{2^degree}/F_2}(x)` for supported char-2 finite
 /// fields (`degree=1..4`), with `x` encoded as a finite-field element index.
 #[pyfunction]
@@ -3203,31 +3152,6 @@ fn hilbert_symbol(p: u128, a: i128, b: i128) -> PyResult<i128> {
         13 => hilbert_symbol_prime::<13>(a, b),
         _ => Err(unsupported_odd_prime_field_err()),
     }
-}
-
-/// The Hasse–Witt invariant of a diagonal form `q` over `F_p` (always +1 over a
-/// finite field).
-#[pyfunction]
-#[pyo3(signature = (p, q, degree=1))]
-fn hasse_invariant_finite_odd(p: u128, q: Vec<i128>, degree: usize) -> PyResult<i128> {
-    PyFiniteFieldForm::new(p, q, degree)?.hasse_invariant()
-}
-
-/// Witt decomposition of a diagonal odd-char form `q` over `F_{p^degree}`.
-#[pyfunction]
-#[pyo3(signature = (p, q, degree=1))]
-fn witt_decompose_finite_odd(p: u128, q: Vec<i128>, degree: usize) -> PyResult<PyOddWittDecomp> {
-    PyFiniteFieldForm::new(p, q, degree)?.witt_decompose()
-}
-
-/// Are two diagonal odd-char forms over `F_{p^degree}` isometric? `(dim,
-/// discriminant)` is a complete invariant.
-#[pyfunction]
-#[pyo3(signature = (p, q1, q2, degree=1))]
-fn isometric_finite_odd(p: u128, q1: Vec<i128>, q2: Vec<i128>, degree: usize) -> PyResult<bool> {
-    let f1 = PyFiniteFieldForm::new(p, q1, degree)?;
-    let f2 = PyFiniteFieldForm::new(p, q2, degree)?;
-    f1.is_isometric(&f2)
 }
 
 /// Are two ordinal-nimber metrics isometric on the detected finite ordinal windows?
@@ -3752,15 +3676,6 @@ fn springer_decompose_laurent(
 // ---------------------------------------------------------------------------
 // Witt ring + cohomological invariant staircase (eₙ)
 // ---------------------------------------------------------------------------
-
-/// The cohomological invariant staircase `(e0, e1, e2)` of a diagonal odd-char
-/// form `q` over `F_{p^degree}`, with the field's stabilization (`I^2 = 0` over
-/// a finite field, so `stabilizes_at = 2`, `e2 = +1`).
-#[pyfunction]
-#[pyo3(signature = (p, q, degree=1))]
-fn e_staircase_finite_odd(p: u128, q: Vec<i128>, degree: usize) -> PyResult<PyEnStaircase> {
-    PyFiniteFieldForm::new(p, q, degree)?.e_staircase()
-}
 
 /// The real cohomological invariant `eₙ` of a form of signature `σ` over `ℝ`:
 /// `Some((σ/2ⁿ) mod 2)` if the form is in `Iⁿ` (i.e. `2ⁿ | σ`), else `None`. The
@@ -4936,14 +4851,6 @@ fn bw_class_ordinal(alg: &OrdinalAlgebra) -> PyResult<PyBrauerWallClass> {
         })
 }
 
-/// The Brauer-Wall class of a diagonal odd-char form `q` over `F_{p^degree}` (the
-/// order-4 graded part, `BW(F_q) ~= W(F_q)`).
-#[pyfunction]
-#[pyo3(signature = (p, q, degree=1))]
-fn bw_class_finite_odd(p: u128, q: Vec<i128>, degree: usize) -> PyResult<PyBrauerWallClass> {
-    PyFiniteFieldForm::new(p, q, degree)?.bw_class()
-}
-
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyArfResult>()?;
     m.add_class::<PyQuadricFit>()?;
@@ -4993,7 +4900,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(arf_ordinal_finite, m)?)?;
     m.add_function(wrap_pyfunction!(fit_f2_quadratic, m)?)?;
     m.add_function(wrap_pyfunction!(arf_f2, m)?)?;
-    m.add_function(wrap_pyfunction!(arf_fpn_char2, m)?)?;
     m.add_function(wrap_pyfunction!(gold_form_arf, m)?)?;
     m.add_function(wrap_pyfunction!(gold_form, m)?)?;
     m.add_function(wrap_pyfunction!(trace_twisted_form, m)?)?;
@@ -5080,23 +4986,15 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dickson_of_versor, m)?)?;
     m.add_function(wrap_pyfunction!(classify_symplectic, m)?)?;
     m.add_function(wrap_pyfunction!(classify_symplectic_nimber, m)?)?;
-    m.add_function(wrap_pyfunction!(classify_finite_odd, m)?)?;
-    m.add_function(wrap_pyfunction!(finite_odd_witt, m)?)?;
-    m.add_function(wrap_pyfunction!(witt_decompose_finite_odd, m)?)?;
     m.add_function(wrap_pyfunction!(witt_decompose_real, m)?)?;
-    m.add_function(wrap_pyfunction!(isometric_finite_odd, m)?)?;
     m.add_function(wrap_pyfunction!(isometric_ordinal_finite, m)?)?;
     m.add_function(wrap_pyfunction!(ordinal_witt, m)?)?;
-    m.add_function(wrap_pyfunction!(isometric_fpn_char2, m)?)?;
-    m.add_function(wrap_pyfunction!(is_square_finite, m)?)?;
-    m.add_function(wrap_pyfunction!(discriminant_finite_odd, m)?)?;
     m.add_function(wrap_pyfunction!(artin_schreier_class_finite, m)?)?;
     m.add_function(wrap_pyfunction!(level, m)?)?;
     m.add_function(wrap_pyfunction!(pythagoras_number, m)?)?;
     m.add_function(wrap_pyfunction!(u_invariant, m)?)?;
     m.add_function(wrap_pyfunction!(is_sum_of_n_squares, m)?)?;
     m.add_function(wrap_pyfunction!(hilbert_symbol, m)?)?;
-    m.add_function(wrap_pyfunction!(hasse_invariant_finite_odd, m)?)?;
     m.add_function(wrap_pyfunction!(springer_decompose, m)?)?;
     m.add_function(wrap_pyfunction!(springer_decompose_local, m)?)?;
     m.add_function(wrap_pyfunction!(springer_decompose_qp, m)?)?;
@@ -5104,7 +5002,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(springer_decompose_ramified_qp4_e3, m)?)?;
     m.add_function(wrap_pyfunction!(springer_decompose_qq, m)?)?;
     m.add_function(wrap_pyfunction!(springer_decompose_laurent, m)?)?;
-    m.add_function(wrap_pyfunction!(e_staircase_finite_odd, m)?)?;
     m.add_function(wrap_pyfunction!(e_real, m)?)?;
     m.add_function(wrap_pyfunction!(hilbert_symbol_qp, m)?)?;
     m.add_function(wrap_pyfunction!(hilbert_symbol_real, m)?)?;
@@ -5115,6 +5012,5 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(bw_class_complex, m)?)?;
     m.add_function(wrap_pyfunction!(bw_class_nimber, m)?)?;
     m.add_function(wrap_pyfunction!(bw_class_ordinal, m)?)?;
-    m.add_function(wrap_pyfunction!(bw_class_finite_odd, m)?)?;
     Ok(())
 }

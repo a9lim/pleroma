@@ -18,7 +18,7 @@
 //! Precision is the same **capped-relative** model as `Qp` (mul/inv exact, addition
 //! non-associative across precision boundaries) — see `scalar/small/qp.rs`.
 
-use crate::scalar::{mod_inverse_u128, Rational};
+use crate::scalar::{is_prime_u128, mod_inverse_u128, Rational};
 use std::fmt;
 
 /// `p^e`, checked against `u128` overflow.
@@ -28,23 +28,6 @@ fn p_pow(p: u128, e: u128) -> u128 {
         acc = acc.checked_mul(p).expect("LocalQp: p-power exceeds u128");
     }
     acc
-}
-
-fn is_prime(p: u128) -> bool {
-    if p < 2 {
-        return false;
-    }
-    if p.is_multiple_of(2) {
-        return p == 2;
-    }
-    let mut d = 3u128;
-    while d <= p / d {
-        if p.is_multiple_of(d) {
-            return false;
-        }
-        d += 2;
-    }
-    true
 }
 
 /// An element of `Q_p` to precision `k`, with `p` and `k` carried at runtime:
@@ -62,7 +45,7 @@ pub struct LocalQp {
 impl LocalQp {
     fn check(p: u128, k: u128) {
         assert!(
-            is_prime(p) && k > 0,
+            is_prime_u128(p) && k > 0,
             "LocalQp needs prime p and positive precision k, got p={p}, k={k}"
         );
         let mut acc = 1u128;

@@ -146,7 +146,7 @@ fn main() {
     println!(
         "  w(A) = {} ;  w(A)+w(A) = {}",
         wa.display(),
-        wa.add(&wa).display()
+        wa.try_add(&wa).expect("same finite char-2 field").display()
     );
     println!(
         "  Dickson(swap) = {}   (reflection)",

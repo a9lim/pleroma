@@ -7,15 +7,14 @@
 //! "these worlds can take roots and name canonical lifts" true on the
 //! non-Archimedean side:
 //!
-//!   * [`is_square`](Zp::is_square) / [`sqrt`](Zp::sqrt) — **Hensel-lifted** square
-//!     roots. A unit is a square iff its residue is a square in the residue field
-//!     (the seed); Newton's iteration `y ← (y + u/y)/2` then doubles the correct
-//!     precision each step until a fixed point. For the *fields* a `p^{2k}·u`
-//!     splits off `p^k`; an odd valuation is never a square.
-//!   * `try_is_square` / `try_sqrt` — non-panicking wrappers for code that may see
-//!     dyadic inputs. Odd `p` delegates to the Hensel lift above; at `p = 2` the
-//!     predicate reports only facts determined by the retained representation, and
-//!     the root itself remains `None` unless it is the zero root.
+//!   * [`is_square`](Zp::is_square) / [`sqrt`](Zp::sqrt) — checked squarehood and
+//!     root construction. For odd `p` these are **Hensel-lifted** square roots: a
+//!     unit is a square iff its residue is a square in the residue field (the seed),
+//!     and Newton's iteration `y ← (y + u/y)/2` doubles the correct precision each
+//!     step until a fixed point. For the *fields* a `p^{2k}·u` splits off `p^k`;
+//!     an odd valuation is never a square. At `p = 2`, squarehood reports only
+//!     facts determined by the retained representation, and the root itself remains
+//!     unknown unless it is zero or definitely absent.
 //!   * [`teichmuller`](Zp::teichmuller) — the **Teichmüller representative** `τ(a)`,
 //!     the unique `(q−1)`-th root of unity lifting a residue `a`, via the power
 //!     iteration `t ← t^p`. [`WittVec`](crate::scalar::WittVec::teichmuller)
@@ -24,12 +23,12 @@
 //!
 //! ## Scope (honest boundary)
 //!
-//! `is_square`/`sqrt` require **odd residue characteristic** and assert it: Newton's
-//! iteration needs `1/2`, which is not a dyadic unit. The `try_*` variants are the
-//! safe boundary for generic callers. `teichmuller` works for every `p` (no
-//! division). The natural next operations — `nth_root` (Hensel for `gcd(k, p) = 1`)
-//! and the p-adic `log`/`exp` (convergent on `v ≥ 1` / `1 + p𝒪`) — are deliberately
-//! left for a follow-up, the same way the surreal layer grew incrementally.
+//! The checked root APIs return an outer `None` when the represented precision is
+//! insufficient or the construction is not implemented, and `Some(None)` when the
+//! value is definitely not a square. `teichmuller` works for every `p` (no division).
+//! The natural next operations — `nth_root` (Hensel for `gcd(k, p) = 1`) and the
+//! p-adic `log`/`exp` (convergent on `v ≥ 1` / `1 + p𝒪`) — are deliberately left
+//! for a follow-up, the same way the surreal layer grew incrementally.
 
 use crate::scalar::analytic::{fp_is_square, fp_sqrt, fq_sqrt};
 use crate::scalar::{Fp, Fpn, Qp, Qq, Scalar, WittVec, Zp};
@@ -130,14 +129,8 @@ impl<const P: u128, const K: u128> Zp<P, K> {
         Self::one().add(&Self::one()).inv()
     }
 
-    /// Whether this is a square in `Z_p` (odd `p`): a unit is a square iff its
-    /// residue is a square in `F_p`; a `p^{2k}·u` is a square iff `u` is; an odd
-    /// valuation is never a square. Asserts odd `p`.
-    pub fn is_square(&self) -> bool {
-        assert!(
-            P != 2,
-            "Zp::is_square requires odd p (dyadic squares are the forms mod-8 story)"
-        );
+    fn is_square_odd(&self) -> bool {
+        debug_assert!(P != 2);
         if self.0 == 0 {
             return true; // 0 = 0²
         }
@@ -149,13 +142,8 @@ impl<const P: u128, const K: u128> Zp<P, K> {
         fp_is_square(unit % P, P)
     }
 
-    /// A square root in `Z_p` (the one congruent to the residue root), or `None` if
-    /// this is not a square. Asserts odd `p`.
-    pub fn sqrt(&self) -> Option<Self> {
-        assert!(
-            P != 2,
-            "Zp::sqrt requires odd p (dyadic squares are the forms mod-8 story)"
-        );
+    fn sqrt_odd(&self) -> Option<Self> {
+        debug_assert!(P != 2);
         if self.0 == 0 {
             return Some(Zp(0));
         }
@@ -175,23 +163,22 @@ impl<const P: u128, const K: u128> Zp<P, K> {
         Some(Zp::new(ipow(P, v / 2) as i128).mul(&root_unit))
     }
 
-    /// Non-panicking square predicate. For odd `p`, this is the exact Hensel
-    /// predicate. For `p = 2`, it decides squarehood in the represented quotient
-    /// `Z/2^K`; unlike [`is_square`](Self::is_square), it never asserts.
-    pub fn try_is_square(&self) -> Option<bool> {
+    /// Checked square predicate. For odd `p`, this is the exact Hensel predicate.
+    /// For `p = 2`, it decides squarehood in the represented quotient `Z/2^K`.
+    pub fn is_square(&self) -> Option<bool> {
         if P != 2 {
-            return Some(self.is_square());
+            return Some(self.is_square_odd());
         }
         Self::assert_supported_ring();
         Some(is_square_mod_two_power(self.0, K))
     }
 
-    /// Non-panicking square-root entry point. The outer `None` means that the
+    /// Checked square-root entry point. The outer `None` means that the
     /// root-construction algorithm is not implemented for this represented case;
     /// `Some(None)` means the value is definitely not a square.
-    pub fn try_sqrt(&self) -> Option<Option<Self>> {
+    pub fn sqrt(&self) -> Option<Option<Self>> {
         if P != 2 {
-            return Some(self.sqrt());
+            return Some(self.sqrt_odd());
         }
         Self::assert_supported_ring();
         if self.0 == 0 {
@@ -219,13 +206,8 @@ impl<const P: u128, const K: u128> Zp<P, K> {
 // ───────────────────────── Qp ─────────────────────────
 
 impl<const P: u128, const K: u128> Qp<P, K> {
-    /// Whether this is a square in `Q_p` (odd `p`): even valuation and a residue
-    /// square. Asserts odd `p`.
-    pub fn is_square(&self) -> bool {
-        assert!(
-            P != 2,
-            "Qp::is_square requires odd p (dyadic squares are the forms mod-8 story)"
-        );
+    fn is_square_odd(&self) -> bool {
+        debug_assert!(P != 2);
         match self.valuation() {
             None => true, // 0
             Some(v) if v % 2 != 0 => false,
@@ -233,12 +215,8 @@ impl<const P: u128, const K: u128> Qp<P, K> {
         }
     }
 
-    /// A square root in `Q_p`, or `None` if not a square. Asserts odd `p`.
-    pub fn sqrt(&self) -> Option<Self> {
-        assert!(
-            P != 2,
-            "Qp::sqrt requires odd p (dyadic squares are the forms mod-8 story)"
-        );
+    fn sqrt_odd(&self) -> Option<Self> {
+        debug_assert!(P != 2);
         let Some(v) = self.valuation() else {
             return Some(Qp::zero());
         };
@@ -252,13 +230,13 @@ impl<const P: u128, const K: u128> Qp<P, K> {
         Some(Qp::from_p_power(v / 2).mul(&root_unit))
     }
 
-    /// Non-panicking square predicate. At `p = 2`, a nonzero element is a square
+    /// Checked square predicate. At `p = 2`, a nonzero element is a square
     /// iff its valuation is even and its unit is `1 mod 8`; the capped-relative
     /// model can only decide the positive case when at least three unit digits are
     /// retained.
-    pub fn try_is_square(&self) -> Option<bool> {
+    pub fn is_square(&self) -> Option<bool> {
         if P != 2 {
-            return Some(self.is_square());
+            return Some(self.is_square_odd());
         }
         Self::assert_supported_field();
         match self.valuation() {
@@ -268,18 +246,18 @@ impl<const P: u128, const K: u128> Qp<P, K> {
         }
     }
 
-    /// Non-panicking square-root entry point. Odd `p` delegates to the Hensel
+    /// Checked square-root entry point. Odd `p` delegates to the Hensel
     /// lift. At `p = 2`, the predicate can still reject nonsquares, but the root
     /// construction itself is deliberately not faked.
-    pub fn try_sqrt(&self) -> Option<Option<Self>> {
+    pub fn sqrt(&self) -> Option<Option<Self>> {
         if P != 2 {
-            return Some(self.sqrt());
+            return Some(self.sqrt_odd());
         }
         Self::assert_supported_field();
         if self.is_zero() {
             return Some(Some(Qp::zero()));
         }
-        match self.try_is_square()? {
+        match self.is_square()? {
             false => Some(None),
             true => None,
         }
@@ -318,13 +296,8 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
         Some((v, u))
     }
 
-    /// Whether this is a square in `W_N(F_q)` (odd `p`): even valuation and a
-    /// residue square in `F_q`. Asserts odd `p`.
-    pub fn is_square(&self) -> bool {
-        assert!(
-            P != 2,
-            "WittVec::is_square requires odd p (dyadic squares are the forms mod-8 story)"
-        );
+    fn is_square_odd(&self) -> bool {
+        debug_assert!(P != 2);
         match self.split_unit() {
             None => true, // ≡ 0
             Some((v, _)) if v % 2 != 0 => false,
@@ -332,12 +305,8 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
         }
     }
 
-    /// A square root in `W_N(F_q)`, or `None` if not a square. Asserts odd `p`.
-    pub fn sqrt(&self) -> Option<Self> {
-        assert!(
-            P != 2,
-            "WittVec::sqrt requires odd p (dyadic squares are the forms mod-8 story)"
-        );
+    fn sqrt_odd(&self) -> Option<Self> {
+        debug_assert!(P != 2);
         let Some((v, u)) = self.split_unit() else {
             return Some(WittVec::zero());
         };
@@ -355,13 +324,13 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
         Some(acc)
     }
 
-    /// Non-panicking square predicate. Odd `p` delegates to the Hensel predicate.
+    /// Checked square predicate. Odd `p` delegates to the Hensel predicate.
     /// At `p = 2`, the unramified dyadic unit criterion is not implemented here;
     /// the method reports only the valuation obstruction and otherwise returns
     /// `None` rather than guessing.
-    pub fn try_is_square(&self) -> Option<bool> {
+    pub fn is_square(&self) -> Option<bool> {
         if P != 2 {
-            return Some(self.is_square());
+            return Some(self.is_square_odd());
         }
         let v = self.p_valuation();
         if v >= N {
@@ -373,17 +342,17 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
         None
     }
 
-    /// Non-panicking square-root entry point. Odd `p` delegates to the Hensel
+    /// Checked square-root entry point. Odd `p` delegates to the Hensel
     /// lift; dyadic unramified roots return only the zero root or a definite
     /// nonsquare.
-    pub fn try_sqrt(&self) -> Option<Option<Self>> {
+    pub fn sqrt(&self) -> Option<Option<Self>> {
         if P != 2 {
-            return Some(self.sqrt());
+            return Some(self.sqrt_odd());
         }
         if self.is_zero() {
             return Some(Some(WittVec::zero()));
         }
-        match self.try_is_square()? {
+        match self.is_square()? {
             false => Some(None),
             true => None,
         }
@@ -393,13 +362,8 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
 // ───────────────────────── Qq ─────────────────────────
 
 impl<const P: u128, const N: usize, const F: usize> Qq<P, N, F> {
-    /// Whether this is a square in `Q_q` (odd `p`): even valuation and a residue
-    /// square in `F_q`. Asserts odd `p`.
-    pub fn is_square(&self) -> bool {
-        assert!(
-            P != 2,
-            "Qq::is_square requires odd p (dyadic squares are the forms mod-8 story)"
-        );
+    fn is_square_odd(&self) -> bool {
+        debug_assert!(P != 2);
         match self.valuation() {
             None => true, // 0
             Some(v) if v % 2 != 0 => false,
@@ -407,12 +371,8 @@ impl<const P: u128, const N: usize, const F: usize> Qq<P, N, F> {
         }
     }
 
-    /// A square root in `Q_q`, or `None` if not a square. Asserts odd `p`.
-    pub fn sqrt(&self) -> Option<Self> {
-        assert!(
-            P != 2,
-            "Qq::sqrt requires odd p (dyadic squares are the forms mod-8 story)"
-        );
+    fn sqrt_odd(&self) -> Option<Self> {
+        debug_assert!(P != 2);
         let Some(v) = self.valuation() else {
             return Some(Qq::zero());
         };
@@ -430,12 +390,12 @@ impl<const P: u128, const N: usize, const F: usize> Qq<P, N, F> {
         Some(Qq::from_p_power(v / 2).mul(&root_unit))
     }
 
-    /// Non-panicking square predicate. Odd `p` delegates to the Hensel predicate.
+    /// Checked square predicate. Odd `p` delegates to the Hensel predicate.
     /// At `p = 2`, the valuation obstruction is exact; the unramified dyadic unit
     /// criterion is left as unknown.
-    pub fn try_is_square(&self) -> Option<bool> {
+    pub fn is_square(&self) -> Option<bool> {
         if P != 2 {
-            return Some(self.is_square());
+            return Some(self.is_square_odd());
         }
         match self.valuation() {
             None => Some(true),
@@ -444,17 +404,17 @@ impl<const P: u128, const N: usize, const F: usize> Qq<P, N, F> {
         }
     }
 
-    /// Non-panicking square-root entry point. Odd `p` delegates to the Hensel
+    /// Checked square-root entry point. Odd `p` delegates to the Hensel
     /// lift. Dyadic unramified roots return only the zero root or a definite
     /// nonsquare.
-    pub fn try_sqrt(&self) -> Option<Option<Self>> {
+    pub fn sqrt(&self) -> Option<Option<Self>> {
         if P != 2 {
-            return Some(self.sqrt());
+            return Some(self.sqrt_odd());
         }
         if self.is_zero() {
             return Some(Some(Qq::zero()));
         }
-        match self.try_is_square()? {
+        match self.is_square()? {
             false => Some(None),
             true => None,
         }
@@ -481,8 +441,8 @@ mod tests {
             let m = Zp::<P, K>::modulus();
             for a in 0..m {
                 let x = Zp::<P, K>(a);
-                let is_sq = x.is_square();
-                match x.sqrt() {
+                let is_sq = x.is_square().expect("odd p squarehood is decidable");
+                match x.sqrt().expect("odd p root construction is implemented") {
                     Some(r) => {
                         assert!(is_sq, "sqrt(Some) but !is_square for {x:?}");
                         assert_eq!(r.mul(&r), x, "({r:?})² ≠ {x:?}");
@@ -501,19 +461,25 @@ mod tests {
         type Q = Qp<5, 5>;
         // a unit square
         let four = Q::from_i128(4);
-        let r = four.sqrt().expect("4 is a square in Q_5");
+        let r = four
+            .sqrt()
+            .expect("odd p root construction is implemented")
+            .expect("4 is a square in Q_5");
         assert_eq!(r.mul(&r), four);
         // p^2 · square ⇒ square, root has half the valuation
         let x = Q::from_p_power(2).mul(&four);
-        let rx = x.sqrt().expect("5²·4 is a square");
+        let rx = x
+            .sqrt()
+            .expect("odd p root construction is implemented")
+            .expect("5²·4 is a square");
         assert_eq!(rx.mul(&rx), x);
         assert_eq!(rx.valuation(), Some(1));
         // odd valuation ⇒ never a square
-        assert!(!Q::from_i128(5).is_square());
-        assert_eq!(Q::from_i128(5).sqrt(), None);
+        assert_eq!(Q::from_i128(5).is_square(), Some(false));
+        assert_eq!(Q::from_i128(5).sqrt(), Some(None));
         // 2 is a non-residue mod 5 ⇒ not a square in Q_5
-        assert!(!Q::from_i128(2).is_square());
-        assert_eq!(Q::zero().sqrt(), Some(Q::zero()));
+        assert_eq!(Q::from_i128(2).is_square(), Some(false));
+        assert_eq!(Q::zero().sqrt(), Some(Some(Q::zero())));
     }
 
     #[test]
@@ -551,8 +517,11 @@ mod tests {
                     continue; // focus on units here
                 }
                 let sq = x.mul(&x);
-                assert!(sq.is_square(), "a square must read as a square");
-                let r = sq.sqrt().expect("a square has a root");
+                assert_eq!(sq.is_square(), Some(true), "a square must read as a square");
+                let r = sq
+                    .sqrt()
+                    .expect("odd p root construction is implemented")
+                    .expect("a square has a root");
                 assert_eq!(r.mul(&r), sq, "({r:?})² ≠ {sq:?}");
             }
         }
@@ -565,15 +534,21 @@ mod tests {
         let g = WittVec::<3, 3, 2>([0, 1]); // residue = F_9 generator
         let x = Q::from_witt(g);
         let sq = x.mul(&x);
-        let r = sq.sqrt().expect("a square inverts");
+        let r = sq
+            .sqrt()
+            .expect("odd p root construction is implemented")
+            .expect("a square inverts");
         assert_eq!(r.mul(&r), sq);
         // p² · square ⇒ square at half valuation
         let y = Q::from_p_power(2).mul(&sq);
-        let ry = y.sqrt().expect("3²·square is a square");
+        let ry = y
+            .sqrt()
+            .expect("odd p root construction is implemented")
+            .expect("3²·square is a square");
         assert_eq!(ry.mul(&ry), y);
         assert_eq!(ry.valuation(), Some(1));
         // odd valuation ⇒ not a square
-        assert!(!Q::from_p_power(1).mul(&sq).is_square());
+        assert_eq!(Q::from_p_power(1).mul(&sq).is_square(), Some(false));
         // Teichmüller: τ(a) lifts a and is a (q−1)-th root of unity.
         let a = g.residue();
         let t = Q::teichmuller(a);
@@ -585,49 +560,42 @@ mod tests {
     fn qq_f1_matches_qp() {
         // Q_q with F = 1 IS Q_p: sqrt must agree on the unit residue.
         let x = Qq::<5, 5, 1>::from_int(4);
-        let r = x.sqrt().unwrap();
+        let r = x.sqrt().unwrap().unwrap();
         assert_eq!(r.mul(&r), x);
-        assert!(Qq::<5, 5, 1>::from_int(2).sqrt().is_none()); // 2 a non-residue mod 5
+        assert_eq!(Qq::<5, 5, 1>::from_int(2).sqrt(), Some(None)); // 2 a non-residue mod 5
     }
 
     #[test]
-    fn dyadic_sqrt_is_rejected() {
-        // p = 2 sqrt asserts — the dyadic case is the forms mod-8 story, not a lift.
-        assert!(std::panic::catch_unwind(|| Qp::<2, 5>::from_i128(1).sqrt()).is_err());
-        assert!(std::panic::catch_unwind(|| Zp::<2, 5>(1).is_square()).is_err());
-    }
-
-    #[test]
-    fn dyadic_try_square_apis_are_non_panicking_and_honest() {
+    fn dyadic_square_apis_are_checked_and_honest() {
         type Z = Zp<2, 5>;
-        assert_eq!(Zp::<2, 5>(0).try_is_square(), Some(true));
-        assert_eq!(Zp::<2, 5>(1).try_is_square(), Some(true));
-        assert_eq!(Zp::<2, 5>(4).try_is_square(), Some(true));
-        assert_eq!(Zp::<2, 5>(2).try_is_square(), Some(false)); // odd 2-adic valuation
-        assert_eq!(Zp::<2, 5>(3).try_is_square(), Some(false)); // odd unit not 1 mod 8
-        assert_eq!(Zp::<2, 5>(0).try_sqrt(), Some(Some(Z::zero())));
-        assert_eq!(Zp::<2, 5>(3).try_sqrt(), Some(None));
-        assert_eq!(Zp::<2, 5>(1).try_sqrt(), None); // square known, dyadic root not constructed
+        assert_eq!(Zp::<2, 5>(0).is_square(), Some(true));
+        assert_eq!(Zp::<2, 5>(1).is_square(), Some(true));
+        assert_eq!(Zp::<2, 5>(4).is_square(), Some(true));
+        assert_eq!(Zp::<2, 5>(2).is_square(), Some(false)); // odd 2-adic valuation
+        assert_eq!(Zp::<2, 5>(3).is_square(), Some(false)); // odd unit not 1 mod 8
+        assert_eq!(Zp::<2, 5>(0).sqrt(), Some(Some(Z::zero())));
+        assert_eq!(Zp::<2, 5>(3).sqrt(), Some(None));
+        assert_eq!(Zp::<2, 5>(1).sqrt(), None); // square known, dyadic root not constructed
 
         type Q = Qp<2, 5>;
-        assert_eq!(Q::zero().try_is_square(), Some(true));
-        assert_eq!(Q::from_i128(1).try_is_square(), Some(true));
-        assert_eq!(Q::from_i128(2).try_is_square(), Some(false)); // odd valuation
-        assert_eq!(Q::from_i128(3).try_is_square(), Some(false)); // unit 3 mod 8
-        assert_eq!(Qp::<2, 2>::from_i128(1).try_is_square(), None); // not enough unit digits
-        assert_eq!(Q::zero().try_sqrt(), Some(Some(Q::zero())));
-        assert_eq!(Q::from_i128(3).try_sqrt(), Some(None));
-        assert_eq!(Q::from_i128(1).try_sqrt(), None);
+        assert_eq!(Q::zero().is_square(), Some(true));
+        assert_eq!(Q::from_i128(1).is_square(), Some(true));
+        assert_eq!(Q::from_i128(2).is_square(), Some(false)); // odd valuation
+        assert_eq!(Q::from_i128(3).is_square(), Some(false)); // unit 3 mod 8
+        assert_eq!(Qp::<2, 2>::from_i128(1).is_square(), None); // not enough unit digits
+        assert_eq!(Q::zero().sqrt(), Some(Some(Q::zero())));
+        assert_eq!(Q::from_i128(3).sqrt(), Some(None));
+        assert_eq!(Q::from_i128(1).sqrt(), None);
 
         type W = WittVec<2, 4, 2>;
-        assert_eq!(W::zero().try_is_square(), Some(true));
-        assert_eq!(W::from_int(2).try_is_square(), Some(false)); // valuation obstruction
-        assert_eq!(W::one().try_is_square(), None); // dyadic unramified unit path unknown
+        assert_eq!(W::zero().is_square(), Some(true));
+        assert_eq!(W::from_int(2).is_square(), Some(false)); // valuation obstruction
+        assert_eq!(W::one().is_square(), None); // dyadic unramified unit path unknown
 
         type R = Qq<2, 4, 2>;
-        assert_eq!(R::zero().try_is_square(), Some(true));
-        assert_eq!(R::from_p_power(1).try_is_square(), Some(false));
-        assert_eq!(R::one().try_is_square(), None);
-        assert_eq!(R::from_p_power(1).try_sqrt(), Some(None));
+        assert_eq!(R::zero().is_square(), Some(true));
+        assert_eq!(R::from_p_power(1).is_square(), Some(false));
+        assert_eq!(R::one().is_square(), None);
+        assert_eq!(R::from_p_power(1).sqrt(), Some(None));
     }
 }

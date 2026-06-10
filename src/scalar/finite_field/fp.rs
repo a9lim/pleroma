@@ -22,7 +22,7 @@
 //! `a ≠ 0`), so the Clifford antisymmetry signs are real — a useful contrast to
 //! the char-2 backend where `−1 = 1`.
 
-use crate::scalar::Scalar;
+use crate::scalar::{is_prime_u128, Scalar};
 use std::fmt;
 
 /// An element of the prime field `F_P` (invariant: `0 ≤ value < P`).
@@ -55,23 +55,7 @@ pub(crate) fn mul_mod<const P: u128>(mut a: u128, mut b: u128) -> u128 {
 
 impl<const P: u128> Fp<P> {
     pub fn modulus_is_prime() -> bool {
-        if P < 2 {
-            return false;
-        }
-        if P == 2 {
-            return true;
-        }
-        if P.is_multiple_of(2) {
-            return false;
-        }
-        let mut d = 3u128;
-        while d <= P / d {
-            if P.is_multiple_of(d) {
-                return false;
-            }
-            d += 2;
-        }
-        true
+        is_prime_u128(P)
     }
 
     pub fn assert_prime_modulus() {

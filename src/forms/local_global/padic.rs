@@ -20,6 +20,8 @@
 
 use std::collections::BTreeSet;
 
+use crate::scalar::{is_prime_u128, mul_mod_u128};
+
 /// A place of `Q`: the real place `ℝ`, or the `p`-adic place `Q_p`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Place {
@@ -69,26 +71,6 @@ pub(crate) fn try_square_free(n: i128) -> Option<i128> {
     signed_u128(sign, res)
 }
 
-fn is_prime(p: u128) -> bool {
-    if p < 2 {
-        return false;
-    }
-    if p == 2 {
-        return true;
-    }
-    if p.is_multiple_of(2) {
-        return false;
-    }
-    let mut d = 3u128;
-    while d <= p / d {
-        if p.is_multiple_of(d) {
-            return false;
-        }
-        d += 2;
-    }
-    true
-}
-
 /// `p`-adic valuation `v_p(n)` (for `n ≠ 0`).
 fn val_p(n: i128, p: i128) -> u128 {
     let mut k = 0;
@@ -122,9 +104,9 @@ fn legendre(a: i128, p: i128) -> i128 {
     let mut acc: u128 = 1;
     while e > 0 {
         if e & 1 == 1 {
-            acc = mul_mod_runtime(acc, base, p_u);
+            acc = mul_mod_u128(acc, base, p_u);
         }
-        base = mul_mod_runtime(base, base, p_u);
+        base = mul_mod_u128(base, base, p_u);
         e >>= 1;
     }
     if acc == 1 {
@@ -134,36 +116,12 @@ fn legendre(a: i128, p: i128) -> i128 {
     } // acc is p-1 ≡ -1
 }
 
-fn add_mod_runtime(a: u128, b: u128, m: u128) -> u128 {
-    debug_assert!(m > 0 && a < m && b < m);
-    if a >= m - b {
-        a - (m - b)
-    } else {
-        a + b
-    }
-}
-
-fn mul_mod_runtime(mut a: u128, mut b: u128, m: u128) -> u128 {
-    debug_assert!(m > 0 && a < m && b < m);
-    let mut acc = 0u128;
-    while b > 0 {
-        if b & 1 == 1 {
-            acc = add_mod_runtime(acc, a, m);
-        }
-        b >>= 1;
-        if b > 0 {
-            a = add_mod_runtime(a, a, m);
-        }
-    }
-    acc
-}
-
 /// Is the nonzero integer `n` a square in `Q_p`? `v_p(n)` even **and** the unit part
 /// is a square unit (`≡ □ mod p` for odd `p`; `≡ 1 mod 8` for `p = 2`). Returns
 /// `None` when `p` is not a prime representable by the bounded `i128`
 /// implementation.
 pub fn try_is_square_qp(n: i128, p: u128) -> Option<bool> {
-    if !is_prime(p) || i128::try_from(p).is_err() {
+    if !is_prime_u128(p) || i128::try_from(p).is_err() {
         return None;
     }
     let p = p as i128;
@@ -243,7 +201,7 @@ pub(crate) fn tame_hilbert_symbol(
 /// Returns `None` when `p` is not a representable prime, either argument is zero,
 /// or square-class reduction overflows the bounded `i128` implementation.
 pub fn try_hilbert_symbol_qp(a: i128, b: i128, p: u128) -> Option<i128> {
-    if !is_prime(p) || i128::try_from(p).is_err() {
+    if !is_prime_u128(p) || i128::try_from(p).is_err() {
         return None;
     }
     let a = try_square_free(a)?;

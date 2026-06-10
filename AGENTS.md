@@ -222,9 +222,12 @@ VIRTUAL_ENV=.venv .venv/bin/maturin develop   # build + install the abi3 extensi
   `u128`/`i128` throughout the core, docs, examples, and tests.
 - Display is deliberate: blades render `e0e1`; coefficients `1`/`-1` elided; nimbers
   print `*n`; surreals print CNF (`3ω^2 - ω + 5`, `ω^(ω)`, `ω^-1`).
-- Rust scalar operators: every backend has `+ - *` and unary `-` (concrete-only, via
-  `impl_scalar_ops!`). Generic engine code over `S: Scalar` still calls `.add(&x)`/
-  `.mul(&x)` — operators are NOT a supertrait (see `src/scalar/AGENTS.md`).
+- Rust scalar operators: total-product backends have `+ - *` and unary `-`
+  (concrete-only, via `impl_scalar_ops!`). `Ordinal` deliberately omits owned `*`
+  because transfinite nim-multiplication is partial at the verified Kummer boundary;
+  use `nim_mul` for the checked path. Generic engine code over `S: Scalar` still
+  calls `.add(&x)`/`.mul(&x)` — operators are NOT a supertrait (see
+  `src/scalar/AGENTS.md`).
 
 ## Testing
 

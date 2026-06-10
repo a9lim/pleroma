@@ -135,15 +135,6 @@ impl std::ops::Neg for NimberGame {
     }
 }
 
-impl std::ops::Mul for NimberGame {
-    type Output = NimberGame;
-
-    fn mul(self, rhs: NimberGame) -> NimberGame {
-        self.turning_corners(&rhs)
-            .expect("NimberGame::mul escaped the verified Turning-Corners product boundary")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -206,7 +197,7 @@ mod tests {
     }
 
     #[test]
-    fn operator_traits_delegate_to_nim_arithmetic() {
+    fn additive_operator_traits_delegate_to_nim_arithmetic() {
         let two = NimberGame::nim_heap(2);
         let three = NimberGame::nim_heap(3);
 
@@ -215,7 +206,7 @@ mod tests {
             &Ordinal::from_u128(2).nim_add(&Ordinal::from_u128(3))
         );
         assert_eq!(-two.clone(), two);
-        assert_eq!(two * three, NimberGame::nim_heap(1));
+        assert_eq!(two.turning_corners(&three), Some(NimberGame::nim_heap(1)));
     }
 
     #[test]

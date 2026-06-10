@@ -4,7 +4,7 @@
 //!
 //! Until now "the analytic layer" was four disconnected sets of inherent methods
 //! with two incompatible signatures: the exact `Option<Self>` roots of
-//! [`Rational`](crate::scalar::Rational) / the p-adics / the finite fields, and
+//! [`Rational`](crate::scalar::Rational) / the finite fields, and
 //! the precision-argument `(n) -> Option<Self>` series of
 //! [`Surreal`](crate::scalar::Surreal). This module promotes that split to the
 //! type system, the same way [`valued`](crate::scalar::valued) and
@@ -15,10 +15,9 @@
 //!
 //!   * [`ExactRoots`] — `is_square` + `sqrt`, returning `Option<Self>` with **no
 //!     precision argument**. The result is either exact (ℚ, finite fields) or
-//!     exact *to the type's own precision* (the const-`K` p-adics, `Laurent`). A
-//!     non-square is an honest `None`. Implemented for `Rational`, `Nimber`,
-//!     `Fp`, `Fpn`, `Zp`, `Qp`, `Qq`, `WittVec`, `Surreal`, `Laurent`, and —
-//!     functorially — `Surcomplex` over an ordered base.
+//!     exact *to the type's own precision* (`Laurent`). A non-square is an honest
+//!     `None`. Implemented for `Rational`, `Nimber`, `Fp`, `Fpn`, `Surreal`,
+//!     `Laurent`, and — functorially — `Surcomplex` over an ordered base.
 //!   * [`SeriesRoots`] — `sqrt_to_terms` / `nth_root_to_terms` / `inv_to_terms`,
 //!     taking a **caller-chosen** term count `n`. This is the lazy-field interface
 //!     of [`Surreal`] (the one world with unbounded, not type-fixed, precision),
@@ -47,10 +46,12 @@
 //!
 //! # Honest boundaries
 //!
-//!   * The const-`K` p-adic **fields/rings assert odd residue characteristic** in
-//!     `is_square`/`sqrt` (the dyadic case is the forms mod-8 story, not a Newton
-//!     lift); the trait impls inherit that assertion. The finite fields and
-//!     `Laurent` handle characteristic 2 natively (inverse Frobenius).
+//!   * The const-`K` p-adic fields/rings have their own checked
+//!     `is_square() -> Option<bool>` and `sqrt() -> Option<Option<_>>` inherent
+//!     APIs. They deliberately do **not** implement [`ExactRoots`], because a
+//!     dyadic value can be known to be a square while the represented root
+//!     construction is still unknown. The finite fields and `Laurent` handle
+//!     characteristic 2 natively (inverse Frobenius).
 //!   * [`Gauss`](crate::scalar::Gauss) (rational functions) and
 //!     [`Ramified`](crate::scalar::Ramified) get **no** `ExactRoots` here: a
 //!     rational-function square root needs polynomial perfect-square detection, a
@@ -58,8 +59,7 @@
 //!     Left out honestly rather than stubbed.
 
 use crate::scalar::{
-    mul_mod_u128, Fp, Fpn, Laurent, Nimber, Qp, Qq, Rational, Scalar, Surcomplex, Surreal, WittVec,
-    Zp,
+    mul_mod_u128, Fp, Fpn, Laurent, Nimber, Rational, Scalar, Surcomplex, Surreal,
 };
 use std::cmp::Ordering;
 
@@ -271,43 +271,6 @@ impl<const P: u128, const N: usize> ExactRoots for Fpn<P, N> {
     }
     fn sqrt(&self) -> Option<Self> {
         fq_sqrt(*self)
-    }
-}
-
-impl<const P: u128, const K: u128> ExactRoots for Zp<P, K> {
-    fn is_square(&self) -> bool {
-        // inherent (asserts odd p — the dyadic case is the forms mod-8 story).
-        Zp::is_square(self)
-    }
-    fn sqrt(&self) -> Option<Self> {
-        Zp::sqrt(self)
-    }
-}
-
-impl<const P: u128, const K: u128> ExactRoots for Qp<P, K> {
-    fn is_square(&self) -> bool {
-        Qp::is_square(self)
-    }
-    fn sqrt(&self) -> Option<Self> {
-        Qp::sqrt(self)
-    }
-}
-
-impl<const P: u128, const N: usize, const F: usize> ExactRoots for WittVec<P, N, F> {
-    fn is_square(&self) -> bool {
-        WittVec::is_square(self)
-    }
-    fn sqrt(&self) -> Option<Self> {
-        WittVec::sqrt(self)
-    }
-}
-
-impl<const P: u128, const N: usize, const F: usize> ExactRoots for Qq<P, N, F> {
-    fn is_square(&self) -> bool {
-        Qq::is_square(self)
-    }
-    fn sqrt(&self) -> Option<Self> {
-        Qq::sqrt(self)
     }
 }
 
@@ -555,15 +518,6 @@ mod tests {
         let a = p - 2;
         assert!(!fp_is_square(a, p));
         assert_eq!(fp_sqrt(a, p), None);
-    }
-
-    #[test]
-    fn padic_delegation_matches_inherent() {
-        let x = Qp::<5, 5>::from_i128(4);
-        assert_eq!(ExactRoots::sqrt(&x), Qp::sqrt(&x));
-        assert!(ExactRoots::is_square(&x));
-        let z = Zp::<7, 3>(2);
-        assert_eq!(ExactRoots::is_square(&z), Zp::is_square(&z));
     }
 
     #[test]

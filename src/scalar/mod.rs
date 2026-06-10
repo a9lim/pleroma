@@ -189,9 +189,29 @@ pub(crate) fn reduce_i128_mod_u128(n: i128, modulus: u128) -> u128 {
     }
 }
 
+pub(crate) fn is_prime_u128(p: u128) -> bool {
+    if p < 2 {
+        return false;
+    }
+    if p.is_multiple_of(2) {
+        return p == 2;
+    }
+    let mut d = 3u128;
+    while d <= p / d {
+        if p.is_multiple_of(d) {
+            return false;
+        }
+        d += 2;
+    }
+    true
+}
+
 /// Generate the owned-value operators `+`, `-` (binary and unary), and `*` for a
 /// [`Scalar`] backend by forwarding to its trait methods, so downstream code can
 /// write `a + b`, `a * b`, `-a` instead of `a.add(&b)`, `a.mul(&b)`, `a.neg()`.
+/// Only use this for backends whose multiplication is total on the represented
+/// domain; `Ordinal` gets hand-written additive operators and keeps its partial
+/// product behind `nim_mul`.
 ///
 /// Deliberately *not* a [`Scalar`] supertrait bound: these are concrete-type
 /// conveniences for callers (`Surreal + Surreal`, `-nimber`), so generic engine
@@ -289,7 +309,27 @@ impl_scalar_ops!(Integer);
 impl_scalar_ops!(Surreal);
 impl_scalar_ops!(Omnific);
 impl_scalar_ops!(Nimber);
-impl_scalar_ops!(Ordinal);
+impl Add for Ordinal {
+    type Output = Ordinal;
+    #[inline]
+    fn add(self, rhs: Ordinal) -> Ordinal {
+        <Ordinal as Scalar>::add(&self, &rhs)
+    }
+}
+impl Sub for Ordinal {
+    type Output = Ordinal;
+    #[inline]
+    fn sub(self, rhs: Ordinal) -> Ordinal {
+        <Ordinal as Scalar>::sub(&self, &rhs)
+    }
+}
+impl Neg for Ordinal {
+    type Output = Ordinal;
+    #[inline]
+    fn neg(self) -> Ordinal {
+        <Ordinal as Scalar>::neg(&self)
+    }
+}
 impl_scalar_ops!([const P: u128] Fp<P>);
 impl_scalar_ops!([const P: u128, const N: usize] Fpn<P, N>);
 impl_scalar_ops!([const P: u128, const N: usize, const F: usize] WittVec<P, N, F>);

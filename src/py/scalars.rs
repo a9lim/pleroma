@@ -6,9 +6,9 @@
 //! parse/wrap hooks.
 
 use crate::scalar::{
-    Adele, AdelePlace, CyclicGaloisExtension, ExactRoots, FieldExtension, FiniteField, Fp, Fpn,
-    Gauss, HasFractionField, HasRingOfIntegers, Integer, Laurent, LocalQp, MaxPlus, MinPlus,
-    Nimber, Omnific, Ordinal, Poly, Qp, Qq, Ramified, Rational, RationalFunction,
+    is_prime_u128, Adele, AdelePlace, CyclicGaloisExtension, ExactRoots, FieldExtension,
+    FiniteField, Fp, Fpn, Gauss, HasFractionField, HasRingOfIntegers, Integer, Laurent, LocalQp,
+    MaxPlus, MinPlus, Nimber, Omnific, Ordinal, Poly, Qp, Qq, Ramified, Rational, RationalFunction,
     ReductionPolynomialKind, ResidueField, Scalar, SignExpansion, Surcomplex, Surreal, Tropical,
     Valued, WittVec, Zp,
 };
@@ -1637,13 +1637,13 @@ macro_rules! zp_pyclass {
                 self.inner.is_zero()
             }
             fn is_square(&self) -> PyResult<bool> {
-                self.inner.try_is_square().ok_or_else(|| {
+                self.inner.is_square().ok_or_else(|| {
                     PyValueError::new_err("squarehood is undecidable at this p-adic precision")
                 })
             }
             fn sqrt(&self) -> PyResult<Option<Self>> {
                 self.inner
-                    .try_sqrt()
+                    .sqrt()
                     .map(|root| root.map($wrap))
                     .ok_or_else(|| {
                         PyValueError::new_err(
@@ -1813,13 +1813,13 @@ macro_rules! qp_pyclass {
                 self.inner.is_zero()
             }
             fn is_square(&self) -> PyResult<bool> {
-                self.inner.try_is_square().ok_or_else(|| {
+                self.inner.is_square().ok_or_else(|| {
                     PyValueError::new_err("squarehood is undecidable at this p-adic precision")
                 })
             }
             fn sqrt(&self) -> PyResult<Option<Self>> {
                 self.inner
-                    .try_sqrt()
+                    .sqrt()
                     .map(|root| root.map($wrap))
                     .ok_or_else(|| {
                         PyValueError::new_err(
@@ -2102,13 +2102,13 @@ macro_rules! witt_vec_pyclass {
                 self.inner.is_zero()
             }
             fn is_square(&self) -> PyResult<bool> {
-                self.inner.try_is_square().ok_or_else(|| {
+                self.inner.is_square().ok_or_else(|| {
                     PyValueError::new_err("squarehood is undecidable at this Witt precision")
                 })
             }
             fn sqrt(&self) -> PyResult<Option<Self>> {
                 self.inner
-                    .try_sqrt()
+                    .sqrt()
                     .map(|root| root.map($wrap))
                     .ok_or_else(|| {
                         PyValueError::new_err(
@@ -2329,13 +2329,13 @@ macro_rules! qq_pyclass {
                 self.inner.is_zero()
             }
             fn is_square(&self) -> PyResult<bool> {
-                self.inner.try_is_square().ok_or_else(|| {
+                self.inner.is_square().ok_or_else(|| {
                     PyValueError::new_err("squarehood is undecidable at this Qq precision")
                 })
             }
             fn sqrt(&self) -> PyResult<Option<Self>> {
                 self.inner
-                    .try_sqrt()
+                    .sqrt()
                     .map(|root| root.map($wrap))
                     .ok_or_else(|| {
                         PyValueError::new_err(
@@ -4492,23 +4492,6 @@ pub(crate) fn wrap_omnific(o: Omnific) -> PyOmnific {
 }
 
 // --- Runtime local/global precision models: LocalQp and Adele ---------------
-
-fn is_prime_u128(p: u128) -> bool {
-    if p < 2 {
-        return false;
-    }
-    if p.is_multiple_of(2) {
-        return p == 2;
-    }
-    let mut d = 3u128;
-    while d <= p / d {
-        if p.is_multiple_of(d) {
-            return false;
-        }
-        d += 2;
-    }
-    true
-}
 
 fn checked_pow_u128(base: u128, exp: u128) -> Option<u128> {
     if exp > 128 {

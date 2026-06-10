@@ -147,7 +147,7 @@ Split per pillar:
   (the runtime odd-char Fp/Fpn form wrapper) and `Char2FiniteFieldForm` (the
   runtime `Fpn<2,N>` Arf/Witt/Brauer-Wall/isometry wrapper for supported
   `N=1..4`), the Brauer–Wall classes (`bw_class_real`,
-  `bw_class_complex`, `bw_class_nimber`, `bw_class_ordinal`, `bw_class_finite_odd`),
+  `bw_class_complex`, `bw_class_nimber`, `bw_class_ordinal`),
   `classify_real`/`classify_complex`, raw represented-subdomain char-0 helpers
   (`surreal_signature`, `surcomplex_rank`), Rust-name base-field isometry helpers
   (`isometric_real`, `isometric_rational`, `isometric_surcomplex`,
@@ -182,8 +182,8 @@ Split per pillar:
   `Char2FunctionFieldForm`/`Char2LocalDecomp` with named `Char2PsiTerm` wild
   summands for the Aravire-Jacob
   decomposition plus local/global char-2 isotropy, finite characteristic-2 Arf
-  and isometry helpers (`arf_nimber`, `arf_fpn_char2`, `arf_ordinal_finite`,
-  `isometric_fpn_char2`, `isometric_ordinal_finite`) and char-2 function-field helpers
+  and isometry helpers (`arf_nimber`, `arf_ordinal_finite`,
+  `isometric_ordinal_finite`) and char-2 function-field helpers
   (`relevant_places_char2`,
   `springer_decompose_local_char2`, `local_anisotropic_dim_char2`,
 	  `local_is_isotropic_char2`, `is_isotropic_global_char2`),
@@ -193,10 +193,9 @@ Split per pillar:
 	  `HermitianForm.from_gram`, the
   finite-prime-field numeric invariants (`level`, `pythagoras_number`,
   `u_invariant`, finite-field `hilbert_symbol`, sum-of-squares), the
-  odd-characteristic finite-field form helpers (`classify_finite_odd`, `finite_odd_witt`,
-  `discriminant_finite_odd`, `hasse_invariant_finite_odd`,
-  `witt_decompose_finite_odd`, `isometric_finite_odd`, prime-field `is_square`,
-  extension-field `is_square_finite`, `bw_class_finite_odd`, `e_staircase_finite_odd`), the quadric bench (`fit_f2_quadratic`,
+  runtime finite-form object façades (`FiniteFieldForm` and `Char2FiniteFieldForm`)
+  for classification, Witt/Brauer-Wall, isometry, square-class, discriminant,
+  Hasse, decomposition, and staircase queries, the quadric bench (`fit_f2_quadratic`,
   `QuadricFit`), trace/Gold-form helpers (`trace_twisted_form`,
   `trace_form_arf`, `gold_form_arf`, `gold_form`), the
 	  named Witt/staircase result records (`RealWittDecomp`, `OddWittDecomp`,

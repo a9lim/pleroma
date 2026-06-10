@@ -89,13 +89,6 @@ impl WittClass {
         })
     }
 
-    /// Infallible convenience wrapper for callers that already know both
-    /// operands live over the same finite field.
-    pub fn add(&self, other: &WittClass) -> WittClass {
-        self.try_add(other)
-            .expect("char-2 Witt classes are from different finite fields")
-    }
-
     /// In `ℤ/2` every element is its own inverse (`w + w = 0`).
     pub fn neg(&self) -> WittClass {
         *self
@@ -134,14 +127,6 @@ fn nimber_metric_field_degree(metric: &Metric<Nimber>) -> u128 {
         .chain(metric.b.values().map(|x| nim_degree(x.0)))
         .max()
         .unwrap_or(1)
-}
-
-impl std::ops::Add for WittClass {
-    type Output = WittClass;
-
-    fn add(self, rhs: WittClass) -> WittClass {
-        WittClass::add(&self, &rhs)
-    }
 }
 
 impl std::ops::Neg for WittClass {
@@ -377,8 +362,8 @@ mod tests {
         assert_eq!(h, WittClass::zero());
         assert_eq!(a.anisotropic_dim(), 2);
         // self-inverse: a + a = 0  ⟺  A ⊕ A ≅ H ⊕ H
-        assert_eq!(a.add(&a), WittClass::zero());
-        assert_eq!(a.add(&h), a); // identity
+        assert_eq!(a.try_add(&a), Ok(WittClass::zero()));
+        assert_eq!(a.try_add(&h), Ok(a)); // identity
     }
 
     #[test]
@@ -388,16 +373,15 @@ mod tests {
             field_degree: 1,
             arf: 1,
         };
-        assert_eq!(a.add(&a), h);
-        assert_eq!(a.add(&h), a);
-        assert_eq!(h.add(&h), h);
-        assert_eq!(a + a, h);
+        assert_eq!(a.try_add(&a), Ok(h));
+        assert_eq!(a.try_add(&h), Ok(a));
+        assert_eq!(h.try_add(&h), Ok(h));
         assert_eq!(-a, a);
         // direct_sum of the underlying forms agrees with the abstract group law.
         let am = metric(&[1, 1], &[((0, 1), 1)]);
         let combined = WittClass::try_from_metric(&am.direct_sum(&am))
             .expect("orthogonal sum of nonsingular planes is nonsingular");
-        assert_eq!(combined, a.add(&a)); // both are 0
+        assert_eq!(combined, a.try_add(&a).unwrap()); // both are 0
     }
 
     #[test]
@@ -413,7 +397,7 @@ mod tests {
         assert_eq!(aniso.arf, 1);
         assert_eq!(split.arf, 0);
         assert!(split.is_hyperbolic());
-        assert_eq!(aniso.add(&split), aniso);
+        assert_eq!(aniso.try_add(&split), Ok(aniso));
     }
 
     #[test]

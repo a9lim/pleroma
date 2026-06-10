@@ -61,7 +61,7 @@
 //! is out of range outright.)
 
 use super::Ordinal;
-use crate::scalar::nim_mul;
+use crate::scalar::{is_prime_u128, nim_mul};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// A monomial's exponent `E < ω^ω`, decomposed per `ω`-place and per prime:
@@ -69,21 +69,6 @@ use std::collections::{BTreeMap, BTreeSet};
 /// `χ_{p(m)^{k+1}}` (`0 ≤ digit < p(m)`). An absent place / empty vector is all-zero;
 /// the empty map is the exponent `0` (the monomial `1`).
 type GenKey = BTreeMap<u128, Vec<u128>>;
-
-/// Whether `n` is prime (trial division; `n` is a small prime index in practice).
-fn is_prime(n: u128) -> bool {
-    if n < 2 {
-        return false;
-    }
-    let mut d = 2u128;
-    while d * d <= n {
-        if n.is_multiple_of(d) {
-            return false;
-        }
-        d += 1;
-    }
-    true
-}
 
 /// The prime governing exponent-place `ω^m`: `p(m)` = the `(m+2)`-th prime
 /// (`p(0)=3`, `p(1)=5`, `p(2)=7`, …). Prime 2 is excluded — the prime-2 (Fermat)
@@ -93,7 +78,7 @@ fn place_prime(m: u128) -> u128 {
     let mut n = 2u128; // skip the prime 2
     loop {
         n += 1;
-        if is_prime(n) {
+        if is_prime_u128(n) {
             count += 1;
             if count == m + 1 {
                 return n;

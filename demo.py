@@ -164,34 +164,38 @@ print("  explicit relation 2⋆=0   :", ext_explicit.is_zero(2 * ext_explicit.ge
 
 section("Fp — odd characteristic, completing the classification trichotomy")
 # char 0: signature → matrix algebra. char 2: Arf. odd char: dim + discriminant.
-print("  F₃ <1,1> :", pl.classify_finite_odd(3, [1, 1]))   # disc 1 = square
-print("  F₃ <1,2> :", pl.classify_finite_odd(3, [1, 2]))   # disc 2 = nonsquare
-print("  Hasse always +1 over a finite field:", pl.hasse_invariant_finite_odd(5, [1, 2, 3, 4]))
-print("  finite odd helper package     :", pl.classify_finite_odd(3, [1, 2]).display(),
-      pl.finite_odd_witt(5, [1, 2]), pl.hilbert_symbol(5, 2, 3),
-      pl.is_square_finite(7, 2))
-f9_stair = pl.e_staircase_finite_odd(3, [1, 1], degree=2)
-print("  F₉ BW/e-staircase helpers    :", pl.bw_class_finite_odd(3, [1, 1], degree=2),
-      (f9_stair.e0, f9_stair.e1, f9_stair.e2, f9_stair.stabilizes_at))
+f3_11 = pl.FiniteFieldForm(3, [1, 1])
+f3_12 = pl.FiniteFieldForm(3, [1, 2])
+f5_1234 = pl.FiniteFieldForm(5, [1, 2, 3, 4])
+print("  F₃ <1,1> :", f3_11.classify())   # disc 1 = square
+print("  F₃ <1,2> :", f3_12.classify())   # disc 2 = nonsquare
+print("  Hasse always +1 over a finite field:", f5_1234.hasse_invariant())
+print("  finite odd helper package     :", f3_12.classify().display(),
+      pl.FiniteFieldForm(5, [1, 2]).witt_class(), pl.hilbert_symbol(5, 2, 3),
+      pl.FiniteFieldForm(7, []).is_square(2))
 f9 = pl.FiniteFieldForm(3, [1, 1], degree=2)
+f9_stair = f9.e_staircase()
+print("  F₉ BW/e-staircase helpers    :", f9.bw_class(),
+      (f9_stair.e0, f9_stair.e1, f9_stair.e2, f9_stair.stabilizes_at))
 f9_class = f9.classify_class()
 print("  F₉ <1,1> via FiniteFieldForm:", f9.classify(), "class=", f9_class.kind,
       f9_class.display(), "W=", f9.witt_class())
 print("  finite form isometric_to     :", f9.isometric_to(f9))
 # the odd-char Witt group: ℤ/4 when −1 is a nonsquare (F₃), ℤ/2×ℤ/2 when it is (F₅)
-g3 = pl.finite_odd_witt(3, [1]); zero3 = pl.finite_odd_witt(3, [])
+g3 = pl.FiniteFieldForm(3, [1]).witt_class(); zero3 = pl.FiniteFieldForm(3, []).witt_class()
 print("  W(F₃) is ℤ/4 :", g3 + g3 != zero3, "and", g3 + g3 + g3 + g3 == zero3)
-g5, h5 = pl.finite_odd_witt(5, [1]), pl.finite_odd_witt(5, [2])
-print("  W(F₅) is ℤ/2×ℤ/2 :", g5 + g5 == pl.finite_odd_witt(5, []) and h5 + h5 == pl.finite_odd_witt(5, []))
+g5, h5 = pl.FiniteFieldForm(5, [1]).witt_class(), pl.FiniteFieldForm(5, [2]).witt_class()
+zero5 = pl.FiniteFieldForm(5, []).witt_class()
+print("  W(F₅) is ℤ/2×ℤ/2 :", g5 + g5 == zero5 and h5 + h5 == zero5)
 f2a = pl.Char2FiniteFieldForm([1, 1], {(0, 1): 1})
 f8h = pl.Char2FiniteFieldForm([0, 0], {(0, 1): 3}, degree=3)
 print("  F₂ char-2 anisotropic plane :", f2a.classify(), f2a.classify_class().kind, f2a.bw_class())
 print("  F₈ char-2 hyperbolic plane  :", f8h.classify(), f8h.is_isometric(
       pl.Char2FiniteFieldForm([0, 0], {(0, 1): 1}, degree=3)))
 n2a = pl.NimberAlgebra(q=[1, 1], b={(0, 1): 1})
-print("  char-2 Rust-name helpers     :", pl.arf_nimber(n2a).arf,
-      pl.arf_fpn_char2([0, 0], {(0, 1): 3}, degree=3).arf,
-      pl.isometric_fpn_char2(f8h, pl.Char2FiniteFieldForm([0, 0], {(0, 1): 1}, degree=3)),
+print("  char-2 form methods          :", pl.arf_nimber(n2a).arf,
+      f8h.classify().arf,
+      f8h.isometric_to(pl.Char2FiniteFieldForm([0, 0], {(0, 1): 1}, degree=3)),
       f8h.isometric_to(pl.Char2FiniteFieldForm([0, 0], {(0, 1): 1}, degree=3)))
 fp = pl.Fp5(2) * pl.Fp5(3)
 f8x = pl.F8.generator()
@@ -212,7 +216,7 @@ print("  Nimber trait helpers         :", pl.Nimber.ext_degree(), pl.Nimber(2).m
       pl.Nimber(2).relative_trace_over(4, 1), pl.Nimber(2).relative_norm_over(4, 2))
 print("  scalar operators              :", pl.Nimber(2) + 3, pl.Fp5(2) * 3,
       -pl.F8.generator(), pl.Rational(3, 4) - pl.Rational(1, 6))
-print("  F₅ disc / F₄ AS class        :", pl.discriminant_finite_odd(5, [1, 2]),
+print("  F₅ disc / F₄ AS class        :", pl.FiniteFieldForm(5, [1, 2]).discriminant(),
       pl.artin_schreier_class_finite(2, degree=2))
 F3Cl = pl.Fp3Algebra([1, 2])
 print("  Cl_F3 <1,2> bivector²       :", (F3Cl.gen(0) * F3Cl.gen(1)) ** 2)
@@ -385,7 +389,7 @@ print("  (W(No)=W(ℝ)=ℤ — the value group is 2-divisible; the filtration is
 
 section("eₙ staircase — discriminant & Hasse as one filtration")
 # Over a finite field I²=0, so the staircase is (e₀, e₁) and e₂ is trivial.
-stair = pl.e_staircase_finite_odd(5, [1, 2, 3])
+stair = pl.FiniteFieldForm(5, [1, 2, 3]).e_staircase()
 print(f"  ⟨1,2,3⟩/F5: e0={stair.e0} (dim) e1={stair.e1} (disc) e2={stair.e2:+} (Hasse), I^{stair.stabilizes_at}=0")
 # Over ℝ the tower is infinite: eₙ reads the 2-adic expansion of the signature.
 print("  ⟨1,1,1,1⟩/ℝ (sig 4): eₙ for n=0..3 =", [pl.e_real(4, n) for n in range(4)])
@@ -440,7 +444,7 @@ for _ in range(8):
 print("  [Cl⟨−1⟩]ⁿ for n=1..8:", " ".join(w.replace("Real(", "").rstrip(")") for w in walk))
 print("  BW constructors/zero_like:", pl.BrauerWallClass.real(9), g.zero_like(),
       pl.BrauerWallClass.char2(1) + pl.BrauerWallClass.char2(1))
-print("  BW(F_3) of ⟨1⟩:", pl.bw_class_finite_odd(3, [1]), "(order-4 graded part ≅ W(F_3))")
+print("  BW(F_3) of ⟨1⟩:", pl.FiniteFieldForm(3, [1]).bw_class(), "(order-4 graded part ≅ W(F_3))")
 A2 = pl.NimberAlgebra(q=[1, 1], b={(0, 1): 1})
 print("  BW(F_2^m) anisotropic nimber plane:", pl.bw_class_nimber(A2), "(Z/2 Arf class)")
 
@@ -480,7 +484,8 @@ section("forms now accept ARBITRARY (non-diagonal) metrics — diagonalization")
 # A skew hyperbolic plane whose diagonalization is exactly represented.
 H = pl.SurrealAlgebra(q=[0, 0], b={(0, 1): 1})
 print("  classify skew-H over the surreals:", pl.classify_surreal(H), " (= M₂(ℝ), as ⟨1,−1⟩)")
-print("  is_isometric ⟨1,1⟩≅⟨2,3⟩ over F₅ :", pl.isometric_finite_odd(5, [1, 1], [2, 3]))
+print("  is_isometric ⟨1,1⟩≅⟨2,3⟩ over F₅ :",
+      pl.FiniteFieldForm(5, [1, 1]).isometric_to(pl.FiniteFieldForm(5, [2, 3])))
 print("  isometric ℝ/ℚ/𝔽₂ mirrors      :",
       pl.isometric_real(H, pl.SurrealAlgebra(q=[1, -1])),
       pl.isometric_rational(pl.RationalAlgebra(q=[1, -1]), pl.RationalAlgebra(q=[-1, 1])),
@@ -491,8 +496,8 @@ section("Witt decomposition — k·H ⊥ anisotropic kernel")
 rw = pl.witt_decompose_real(pl.SurrealAlgebra(q=[1, 1, 1, -1, -1]))
 print("  ⟨1,1,1,−1,−1⟩/ℝ:", rw, "fields",
       (rw.witt_index, rw.anisotropic_pos, rw.anisotropic_neg, rw.radical_dim))
-ow5 = pl.witt_decompose_finite_odd(5, [1, 1])
-ow3 = pl.witt_decompose_finite_odd(3, [1, 1])
+ow5 = pl.FiniteFieldForm(5, [1, 1]).witt_decompose()
+ow3 = pl.FiniteFieldForm(3, [1, 1]).witt_decompose()
 print("  ⟨1,1⟩/F₅ = H             :", ow5, "index", ow5.witt_index)
 print("  ⟨1,1⟩/F₃ anisotropic plane:", ow3, "aniso dim", ow3.anisotropic_dim)
 pf = pl.SurrealAlgebra.pfister([-1, -1])

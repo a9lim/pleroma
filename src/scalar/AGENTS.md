@@ -45,10 +45,13 @@ array lengths, dimensions, and const-generic sizes that are inherently indices.
 
 - **`mod.rs`** — the `Scalar` trait (`add`/`neg`/`mul`/`zero`/`one`/`is_zero`/
   `inv`/`characteristic`) + the "any number" table doc + the flat re-export hub.
-  Also `impl_scalar_ops!`: every backend gets concrete-type operators (`+ - *`
-  and unary `-`) forwarding to the trait methods (so `Surreal + Surreal`,
-  `-nimber` work). `/` stays a method (inv is partial). **The operators are NOT a
-  `Scalar` supertrait** — see "things that look like bugs".
+  Also `impl_scalar_ops!`: total-product backends get concrete-type operators
+  (`+ - *` and unary `-`) forwarding to the trait methods (so `Surreal + Surreal`,
+  `-nimber` work). `Ordinal` is the deliberate exception: it keeps additive
+  operators, but multiplication stays behind the checked `nim_mul` API because the
+  represented Kummer tower has an honest boundary. `/` stays a method (inv is
+  partial). **The operators are NOT a `Scalar` supertrait** — see "things that look
+  like bugs".
 - **`integrality.rs`** — the (field, ring-of-integers) pairing made structural:
   `HasFractionField {Frac; to_fraction}` + `HasRingOfIntegers {Int; is_integral/
   to_integer}` (with `Int: HasFractionField<Frac=Self>` tying the loop). Impl'd
@@ -62,15 +65,16 @@ array lengths, dimensions, and const-generic sizes that are inherently indices.
   (rings of integers + exact Archimedean worlds excluded).
 - **`analytic.rs`** — the ANALYTIC layer unified as two traits split on where
   precision lives. `ExactRoots {is_square; sqrt}` (no precision arg — exact, or
-  exact to the type's K) for Rational, Nimber, Fp, Fpn, Zp, Qp, Qq, WittVec,
-  Surreal (exact via the fixed-point bridge over the lazy roots), Laurent, AND the
-  blanket `Surcomplex<R: ExactRoots+Ordered>` (the algebraic-closure √(a+bi)).
+  exact to the type's K) for Rational, Nimber, Fp, Fpn, Surreal (exact via the
+  fixed-point bridge over the lazy roots), Laurent, AND the blanket
+  `Surcomplex<R: ExactRoots+Ordered>` (the algebraic-closure √(a+bi)).
   `SeriesRoots {sqrt_to_terms; nth_root_to_terms; inv_to_terms}` (caller-chosen n)
   is the lazy interface — Surreal-only (the one world with unbounded, not
   type-fixed, precision). `Ordered {sign}` is the branch-picking datum the
   Surcomplex blanket needs. The residue Tonelli roots (`fp_sqrt`/`fq_sqrt`) live
-  here (shared with `small/analytic`'s Hensel seed). Gauss/Ramified excluded
-  honestly. NOT a `Scalar` supertrait, like `Valued`.
+  here (shared with `small/analytic`'s Hensel seed). P-adics use checked inherent
+  APIs because dyadic squarehood/root construction can be unknown; Gauss/Ramified
+  are excluded honestly. NOT a `Scalar` supertrait, like `Valued`.
 - **`residue.rs`** — the `ResidueField: Valued` trait: the residue field `k = 𝒪/𝔪`
   (assoc type `Residue`) + two reductions — `residue` (canonical `𝒪 → k`, `None`
   below the integers) and `residue_unit` (the **angular component** `ac(x) ∈ k*`,
@@ -179,8 +183,10 @@ the project's central symmetries.
   Frac(W_N(F_q)), residue degree F (residue field F_q). To WittVec what Qp is to Zp;
   Qq with F=1 IS Qp.
 - **`analytic.rs`** — the p-adic ANALYTIC layer over all four backends (mirror of
-  `surreal/analytic`): Hensel-lifted `is_square`/`sqrt` (Newton, ODD p only) + the
-  Teichmüller rep τ. These inherent methods are what `ExactRoots` delegates to.
+  `surreal/analytic`): checked `is_square() -> Option<bool>` and
+  `sqrt() -> Option<Option<_>>` plus the Teichmüller rep τ. Odd `p` takes the
+  Hensel/Newton path; dyadic inputs return `None` when the represented precision
+  cannot decide squarehood or construct the root.
 
 ## `finite_field/` — the finite residue worlds (the trichotomy's finite leg)
 
@@ -252,7 +258,8 @@ fuzz and carries the `ExactScalar`/`ExactFieldScalar` markers. It feeds
   `S`, where `Mul::mul(self, Self)` shadows `Scalar::mul(&self, &Self)` at
   owned-receiver sites and forces clones the borrow-based engine avoids (70+
   generic sites broke when tried). Don't promote them; don't migrate the engine's
-  `.add()`/`.mul()` to operators.
+  `.add()`/`.mul()` to operators. Also don't add owned `*` back for `Ordinal`;
+  `nim_mul` is the checked product boundary.
 - **`ExactRoots`/`SeriesRoots`/`Ordered`/`Valued`/`ResidueField`/the exactness markers
   are NOT `Scalar` supertraits.**
   Not every world takes roots or has a valuation, so the bounds stay opt-in. The
@@ -269,9 +276,11 @@ fuzz and carries the `ExactScalar`/`ExactFieldScalar` markers. It feeds
   `SeriesRoots` primitive; `ExactRoots::sqrt(&self)` (0 args) is the exact value.
   Different arities, different precision contracts — don't unify them. (Python:
   `Surreal.sqrt(n)` lazy, `Surreal.exact_sqrt()` exact.)
-- **`ExactRoots::sqrt`/`is_square` on `Zp`/`Qp`/`Qq`/`WittVec` panic at p=2.** They
-  inherit the inherent odd-p assertion (the dyadic case is the forms mod-8 story).
-  The finite fields and `Laurent` handle char 2 natively.
+- **P-adic square roots are checked inherent APIs, not `ExactRoots`.** `Zp`/`Qp`/
+  `Qq`/`WittVec` use `Option<bool>` for squarehood and `Option<Option<_>>` for
+  roots: outer `None` means unknown/unimplemented at the represented precision,
+  inner `None` means definitely nonsquare. The finite fields and `Laurent` handle
+  char 2 natively inside `ExactRoots`.
 - **Surcomplex over nimbers is degenerate.** `i²=1`, `(1+i)²=0`, not a field.
   Surcomplex is only meaningful over char-0 worlds.
 - **Surreal coefficients are ℚ, not ℝ.** The honest finite truncation of true CNF.

@@ -37,7 +37,7 @@ Beyond the library: `examples/` (Rust demos `tour`/`tropical` + the open-questio
 probes `interactive_kernel`, `octal_hunt`, `loopy_quadric`, `misere_quotient`,
 `bent_route`), `experiments/` (Python research probes on top of the shipped
 lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems),
-`roadmap/` (DONE.md / TBD.md — the cross-pillar bridge map and remaining boundaries),
+`roadmap/` (DONE.md / TODO.md — the cross-pillar bridge map and remaining boundaries),
 `TABLES.md` (the inventory of curated hardcoded tables), and `writeups/`
 (`goldarf.tex` — the consolidated draft note on the Gold/Arf game thread,
 including the Tier-2 no-go/construction program; `excess.tex` — the

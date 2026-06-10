@@ -8,7 +8,7 @@ three companion documents:
   wave (A–D), the second wave (E/F/H/I), and the third-wave Bridge J, each with its
   mathematical contract, implemented surface, oracles, and honest boundaries. The
   formalization-pass proofs for Bridge J are appended at the end.
-- **`roadmap/TBD.md`** — *proposed* and *deferred* bridges not yet built: the
+- **`roadmap/TODO.md`** — *proposed* and *deferred* bridges not yet built: the
   spinor-genus bridge G, the cyclic-algebra Brauer bridge K, the large
   Drinfeld/Carlitz bridge L, and the fourth-wave proposals M (the Brown `ℤ/8`
   invariant), N (the unification pass), and O (lexicodes).
@@ -690,7 +690,7 @@ built member of that wave — it names the valuation as the tropicalization the
 legs, with the slope ⟺ Springer-residue-layer cross-check. The other two third-wave
 bridges — **K** (the full `ℚ/ℤ` cyclic-algebra Brauer invariant) and **L** (the
 char-`p` Drinfeld/Carlitz mirror) — are proposed and deferred respectively, and live
-in `roadmap/TBD.md`.
+in `roadmap/TODO.md`.
 
 Claim-level discipline still applies: J is **standard math made computational**, the
 same status A–I shipped at — not a new theorem.
@@ -984,5 +984,5 @@ Implemented and tested in the Rust core:
 - **Third wave (J):** the valuation as tropicalization plus Newton polygons, with the
   slope ⟺ Springer-residue-layer cross-check; formal proofs in the appendix above.
 
-Proposed/deferred bridges (G, K, L) live in `roadmap/TBD.md`; the genuine open
+Proposed/deferred bridges live in `roadmap/TODO.md`; the genuine open
 problems stay in `OPEN.md`.

@@ -1,7 +1,7 @@
 //! The **analytic layer** for the non-Archimedean local worlds — the p-adic
 //! mirror of [`surreal/analytic.rs`](crate::scalar::Surreal#method.sqrt).
 //!
-//! Where [`Surreal::sqrt`](crate::scalar::Surreal::sqrt) extracts real roots from
+//! Where [`Surreal::sqrt_to_terms`](crate::scalar::Surreal::sqrt_to_terms) extracts real roots from
 //! a Hahn series and [`Surreal::inv_to_terms`](crate::scalar::Surreal::inv_to_terms)
 //! sums a Neumann series, the local fields/rings get the operations that make
 //! "these worlds can take roots and name canonical lifts" true on the

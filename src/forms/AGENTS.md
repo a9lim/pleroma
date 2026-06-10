@@ -10,8 +10,9 @@ by `char F`. This axis cuts ACROSS the place table that organizes `scalar/`.
 
 `mod.rs` re-exports the legs + `classify` + diagonalize/equivalence + the `witt/`
 invariant-group shelf + the `springer/` valuation-graded decomposition +
-`local_global/` + `integral/` + `field_invariants` + `poly_factor` + the
-symplectic/hermitian "form + involution" siblings, all flat. The cross-cutting
+`local_global/` + `integral/` + `field_invariants` + the
+symplectic/hermitian "form + involution" siblings, all flat (`poly_factor` is
+`pub(crate)` machinery, not re-exported). The cross-cutting
 machinery is grouped into shelves mirroring how `scalar/` groups by place: the
 trichotomy legs (`char0.rs`/`oddchar/`/`char2/`), the invariant **groups**
 (`witt/`), the valuation-graded **decomposition** (`springer/`), the **local↔global**
@@ -34,7 +35,8 @@ automorphism counts, node budgets. `usize` is for dimensions and matrix indices.
   `.bw_class()` pick the right leg **at compile time** (Surreal→CliffordType,
   Fp/Fpn→`FiniteFieldClass::{Odd, Char2}`, Nimber→ArfResult, finite-window
   Ordinal→ArfResult, …). `WittDecompose` returns the leg-specific decomp record
-  (`RealWittDecomp` / `OddWittDecomp` / `Char2WittDecomp`). `BrauerWallClassify`
+  (`RealWittDecomp` / `OddWittDecomp` / `Char2WittDecomp`, with `Fpn` wrapping the last
+  two in `FiniteFieldWittDecomp { Odd, Char2 }`). `BrauerWallClassify`
   covers Surreal, Surcomplex, odd finite fields, nonsingular Nimber metrics,
   supported `Fpn<2,N>` metrics, and the documented finite ordinal windows. Rational &
   Surcomplex impl `ClassifyForm` but not `WittClassify` (their Witt data isn't a
@@ -94,7 +96,7 @@ char-0 8-fold table, Bott, and `E₈` in `integral/`.
   F_q; infinite ℝ tower via `e_real`). DON'T claim Arf=e2 (char-2 indexing is Kato's,
   pinned).
 - **`witt/brauer_wall.rs`** — the Brauer–Wall group BW(F): `bw_class_real` (Bott index
-  (q−p) mod 8 ⇒ BW(ℝ)=ℤ/8), `bw_class_complex` (ℤ/2), `bw_class_oddchar` (order-4 ≅
+  (q−p) mod 8 ⇒ BW(ℝ)=ℤ/8), `bw_class_complex` (ℤ/2), `bw_class_finite_odd` (order-4 ≅
   W(F_q)), `bw_class_nimber`, and façade dispatch for supported finite char-2
   fields/windows (char-2 Arf/Witt class `ℤ/2`, nonsingular metrics only). Law =
   graded_tensor.
@@ -215,8 +217,10 @@ char-2 mirror, one shelf (`mod.rs` re-exports flat).
   level/Stufe s(F), pythagoras_number, u_invariant, is_sum_of_n_squares — computed
   over finite F_p (level≤2, u=2); ℝ/Q_p textbook constants documented.
 - **`poly_factor.rs`** — the shared finite-field polynomial factorizer
-  (`monic_irreducible_factors`), the place-finding primitive behind both the odd and
-  char-2 function-field symbol layers.
+  (`pub(crate) monic_irreducible_factor_support`), the place-finding primitive behind
+  both function-field symbol layers; the public wrappers `monic_irreducible_factors`
+  (`local_global/function_field.rs`, odd) and `char2_monic_irreducible_factors`
+  (`local_global/function_field_char2.rs`, char-2) call into it.
 - **`trace_form.rs`** — the seam from `scalar::CyclicGaloisExtension` to the
   classifiers. `trace_twisted_form::<E>(k) -> Metric<E::Base>` builds the
   **Frobenius-twisted** trace form `Q_k(x) = Tr_{E/F}(x·σ^k(x))` (q on the diagonal,

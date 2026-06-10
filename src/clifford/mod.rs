@@ -19,8 +19,9 @@
 //! left-regular spinor modules).
 //!
 //! Everything is re-exported flat, so downstream code reads `clifford::Metric`,
-//! `clifford::sandwich`, `clifford::coproduct`, `clifford::up`, … regardless of
-//! which sub-module an item lives in.
+//! `clifford::coproduct`, `clifford::up`, … regardless of which sub-module an
+//! item lives in (`sandwich` is an inherent `CliffordAlgebra` method, called as
+//! `alg.sandwich(…)`).
 
 pub mod blade;
 pub mod cga;

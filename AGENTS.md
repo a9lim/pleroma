@@ -22,7 +22,7 @@ degenerate (`q[i]=0` ⇒ `eᵢ²=0`); all-zero `q` is the exterior/Grassmann alg
 
 `src/lib.rs` is the crate root: the four pillars + the (feature-gated) `py` module.
 Each pillar's `mod.rs` re-exports its children flat, so public paths stay shallow
-(`scalar::Nimber`, `clifford::sandwich`, …).
+(`scalar::Nimber`, `clifford::Metric`, …).
 
 | dir | pillar | detail |
 |---|---|---|
@@ -33,9 +33,9 @@ Each pillar's `mod.rs` re-exports its children flat, so public paths stay shallo
 | `src/py/`       | PyO3 bindings (feature = "python") + the binding-scope policy | [`src/py/AGENTS.md`](src/py/AGENTS.md) |
 | `src/linalg/`   | crate-private shared linear algebra | [`src/linalg/AGENTS.md`](src/linalg/AGENTS.md) |
 
-Beyond the library: `examples/` (Rust demos + the open-question probes:
-`interactive_kernel`, `octal_hunt`, `loopy_quadric`, `misere_quotient`,
-`bent_route`, `tour`), `experiments/` (Python research probes on top of the shipped
+Beyond the library: `examples/` (Rust demos `tour`/`tropical` + the open-question
+probes `interactive_kernel`, `octal_hunt`, `loopy_quadric`, `misere_quotient`,
+`bent_route`), `experiments/` (Python research probes on top of the shipped
 lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems),
 `ROADMAP.md` (the cross-pillar bridge map and remaining boundaries),
 `TABLES.md` (the inventory of curated hardcoded tables), and
@@ -167,7 +167,9 @@ standard-math implementations and useful infrastructure; cite them as such.
 ```sh
 cargo test                                    # the math core (pure Rust, no Python)
 cargo clippy --all-targets                    # lint (kept warning-clean)
+cargo doc --no-deps                           # rustdoc (intra-doc links warning-clean)
 cargo run --example tour                      # Rust demo
+cargo run --example tropical                  # tropical-semiring / thermography demo
 cargo run --example interactive_kernel        # open-problem probe
 cargo run --example loopy_quadric             # open-problem probe
 cargo run --example bent_route                # open-problem probe
@@ -231,6 +233,13 @@ VIRTUAL_ENV=.venv .venv/bin/maturin develop   # build + install the abi3 extensi
 `cargo check --features python` (and `cargo clippy --features python --all-targets`).
 After touching `clifford/` or `scalar/big/surreal/`, also rebuild + run `demo.py`
 (display changes don't surface in `cargo test`).
+
+After touching any doc comment (`//!` / `///`), run `cargo doc --no-deps` and keep it
+warning-clean — intra-doc links to renamed/private items and `[i]`-style brackets in
+prose are the common breakages. **Run it cold** (`rm -rf target/doc` first, or
+`RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`): an incremental `cargo doc` only
+re-checks what it recompiles, so it silently under-reports stale-link warnings in
+untouched modules.
 
 Two property suites (dev-dep `proptest`, in `tests/`): `scalar_axioms.rs` fuzzes the
 commutative-ring axioms across every backend, `clifford_axioms.rs` fuzzes geometric-

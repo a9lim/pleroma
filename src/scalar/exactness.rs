@@ -6,8 +6,8 @@
 //! arithmetic is exact. This module names that second axis explicitly:
 //!
 //! * [`ExactScalar`] — arithmetic is exact in the represented scalar ring. Finite
-//!   quotient rings such as [`Zp`](crate::scalar::Zp) and
-//!   [`WittVec`](crate::scalar::WittVec) count: they are exact finite rings, even
+//!   quotient rings such as [`Zp`] and
+//!   [`WittVec`] count: they are exact finite rings, even
 //!   though they model a truncated infinite object.
 //! * [`PrecisionScalar`] — the backend is a capped-relative precision model.
 //!   These worlds are useful at the valuation/forms layer, but they are omitted

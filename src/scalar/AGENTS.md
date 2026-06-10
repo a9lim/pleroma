@@ -193,11 +193,12 @@ the project's central symmetries.
 ## `finite_field/` — the finite residue worlds
 
 - **`mod.rs`** — the `FiniteField` TRAIT: the shared Galois engine (degree,
-  conjugates, min_poly, relative_trace/_norm, multiplicative_order, is_primitive,
+  conjugates, min_poly_monic, relative_trace/_norm, multiplicative_order, is_primitive,
   discrete_log) as default methods. An impl supplies only `frobenius`, integer `pow`,
   `ext_degree`, `group_order`, `group_order_factors`. nimber + fpn both impl it — one
   verified algorithm, two backends.
-- **`fp.rs`** — `Fp<const P>`: the prime field F_P (odd char), residue field of Zp.
+- **`fp.rs`** — `Fp<const P>`: the prime field F_P (any prime P — the odd-char
+  comparison backend, and `F_2 = Base` for `Nimber`); the `Qp → Fp` residue field.
 - **`fpn.rs`** — `Fpn<const P, const N>`: F_{p^N} via a (P,N)-keyed irreducible
   reduction poly (`reduction`, `reduction_kind` → the public `ReductionPolynomialKind`
   metadata, `is_supported_field`). Completes the odd-char tower AND the char-2

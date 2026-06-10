@@ -60,7 +60,7 @@ impl Ordinal {
     }
 
     /// Nim-multiplication across the prime-power generator tower (Conway / Lenstra /
-    /// DiMuro; see [`tower`](super::tower)). The non-scalar excesses `α_u` (`α_7 = ω+1`,
+    /// DiMuro; see the `tower` module). The non-scalar excesses `α_u` (`α_7 = ω+1`,
     /// `α_11 = ω^ω+1`, …) branch a Kummer carry into a *sum*, which is nim-multiplied
     /// back in recursively — descending by place, since every `α_{p(m)}` lives at places
     /// `< m`. Exact for every pair of ordinals `< ω^(ω^ω)` whose product triggers Kummer

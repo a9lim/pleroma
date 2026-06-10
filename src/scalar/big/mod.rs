@@ -14,14 +14,14 @@
 //!
 //! `surreal` and `ordinal` share the descending-CNF *shape* (a `Vec<(exponent,
 //! coeff)>` recursing on exponents) and exactly one piece of *code*: the
-//! [`cnf::merge_descending`] canonicalizer, into which both feed the three
+//! `cnf::merge_descending` canonicalizer, into which both feed the three
 //! primitives where they differ — the exponent order (`No`'s value order vs the
 //! ordinal lexicographic order), the like-coefficient merge (ordinary `+` vs nim
 //! `XOR`), and the zero test. Everything else (comparison, multiplication,
 //! negation, the field-like structure) is backend-specific and stays so: the
 //! implemented `Surreal` model has finite support and rational coefficients,
 //! while `On₂` is a characteristic-2 world with no negation. See
-//! [`cnf`] for why this is a shared *function*, not a shared `Cnf<C>` *type*.
+//! `cnf` for why this is a shared *function*, not a shared `Cnf<C>` *type*.
 
 pub(crate) mod cnf;
 pub mod omnific;

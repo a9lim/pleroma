@@ -30,7 +30,7 @@ use crate::scalar::{ExactFieldScalar, Fp, Fpn};
 /// Finite fields of characteristic 2, with the operations char-2 form theory needs:
 /// field-order metadata, an enumeration, and the **Artin–Schreier class** (the
 /// additive analogue of the odd-characteristic square class). Intentionally narrower
-/// than [`Scalar`] — a form-theory façade, not a new scalar-world requirement, the
+/// than [`Scalar`](crate::scalar::Scalar) — a form-theory façade, not a new scalar-world requirement, the
 /// mirror of [`FiniteOddField`](crate::forms::FiniteOddField).
 pub trait FiniteChar2Field: ExactFieldScalar + Copy {
     /// Characteristic prime — always `2` (provided; the trait is char-2 only).

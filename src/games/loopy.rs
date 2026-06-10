@@ -1,6 +1,6 @@
 //! Loopy combinatorial games — games whose move graph may contain cycles, so
 //! play need not terminate. This is the third escape (beside the interactive
-//! [`kernel`](crate::games::kernel) route and the [`misere`](crate::games::misere)
+//! [`kernel`] route and the [`misere`](crate::games::misere)
 //! route) from the XOR-linear P-sets of normal-play disjunctive sums: a cyclic
 //! rule admits a **Draw** outcome — a position from which neither player can force
 //! a win — and the Draw-set is a genuinely new degree of freedom to test against
@@ -24,7 +24,7 @@
 //! And the payoff for this project, [`loopy_decision_sets`] / [`loopy_quadric_probe`]:
 //! take an arbitrary cyclic move rule on positions `F₂^k` and read off **both** its
 //! Loss-set and its Draw-set, fitting each with
-//! [`fit_f2_quadratic`](crate::forms::fit_f2_quadratic). A B-coupled cyclic rule
+//! [`fit_f2_quadratic`]. A B-coupled cyclic rule
 //! whose *Draw-set* is `{Q=0}` would be a Tier-2 witness even if its Loss-set is
 //! not — structurally impossible for the acyclic `interactive_kernel` probe.
 //!
@@ -532,7 +532,7 @@ pub fn loopy_decision_sets<F: Fn(usize) -> Vec<usize>>(
 
 /// Probe a cyclic move rule on `F₂^k` (positions `0..2^k`) for a quadric P-set or
 /// Draw-set: returns `(loss_fit, draw_fit)`, each the
-/// [`fit_f2_quadratic`](crate::forms::fit_f2_quadratic) of the corresponding set
+/// [`fit_f2_quadratic`] of the corresponding set
 /// (or `None` if that set is not the zero-set of any `F₂` quadratic form). A
 /// genuinely-quadratic Draw-set ([`QuadricFit::is_genuinely_quadratic`]) is the
 /// Tier-2 target.

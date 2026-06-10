@@ -196,7 +196,7 @@ pub(crate) fn tame_hilbert_symbol(
 
 /// The Hilbert symbol `(a, b)_p` over `Q_p`, for nonzero integers `a, b`. Standard
 /// explicit formulas (Serre III.1): for odd `p`, with `a = p^α u`, `b = p^β v`,
-/// `(a,b)_p = (−1)^{αβ ε(p)} (u|p)^β (v|p)^α` (the [`tame_hilbert_symbol`] with the
+/// `(a,b)_p = (−1)^{αβ ε(p)} (u|p)^β (v|p)^α` (the `tame_hilbert_symbol` with the
 /// Legendre character); for `p = 2`, `(a,b)_2 = (−1)^{ε(u)ε(v) + α ω(v) + β ω(u)}`.
 /// Returns `None` when `p` is not a representable prime, either argument is zero,
 /// or square-class reduction overflows the bounded `i128` implementation.

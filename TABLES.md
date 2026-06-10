@@ -23,7 +23,6 @@ form.
 | Python finite odd-field dispatch table | `src/py/forms.rs::finite_field_order`, `with_finite_odd_metric`, `with_finite_odd_metrics`, `with_finite_odd_value` | Yes for now. | Rust must monomorphise concrete const-generic types; replacing this needs a dynamic finite-field type or a generated support macro, not a numeric formula. |
 | Python prime-field dispatch table | `src/py/forms.rs::with_prime_field`, `is_sum_of_n_squares` | Yes for now. | A formula such as "all primes" would not instantiate Rust types. |
 | Python coin-family string aliases | `src/py/games.rs::parse_coin_family` | Yes. | API vocabulary. |
-| Python Hackenbush colour aliases | `src/py/games.rs::parse_color` | Yes. | API vocabulary. |
 
 ## Formulaic Or Logic Sites
 
@@ -43,9 +42,9 @@ theoremic branch logic rather than hardcoded value rows.
 | Full modular-group q-expansions and basis identification | `src/forms/integral/modular.rs::{eisenstein_e4,eisenstein_e6,delta,mk_basis,as_modular_form}` | `E4`/`E6` coefficients use divisor sums `sigma_3`/`sigma_5`; `Delta` is `(E4^3 - E6^2)/1728`; basis identification solves exactly in the monomial basis `E4^a E6^b`. |
 | Discriminant-form Weil matrices | `src/forms/integral/discriminant.rs::{DiscriminantForm::weil_t,DiscriminantForm::weil_s,DiscriminantForm::verify_weil_relations}` | Matrix entries are computed from `q_L`, `b_L`, and the conjugate Milgram `S` prefactor; relation checks are formulaic, not table lookups. |
 | ADE `A_n` / `D_n` automorphism orders | `src/forms/integral/lattice.rs::{a_root_automorphism_order,d_root_automorphism_order}` | `A_n`: `2` for `n=1`, else `2*(n+1)!`. `D_2 = A_1 x A_1`, `D_3 = A_3`, `D_4` uses the `S_3` triality factor, and `D_n` for `n>=5` is `2^n*n!`. |
-| Python Tartan product family-pair dispatch | `src/py/games.rs::tartan_grundy` | Parse each family to a companion function pointer, then call the generic Tartan engine once. |
+| Python Tartan product family-pair dispatch | `src/py/games.rs::coin_turning_tartan_grundy` | Parse each family to a companion function pointer, then call the generic Tartan engine once. |
 | Local isotropy over `Q_p` by rank | `src/forms/local_global/padic.rs::try_is_isotropic_at_p` | Rank theorem: `0/1` anisotropic, `2` local square test for `-ab`, `3/4` Hasse/discriminant Hilbert-symbol conditions, `>=5` isotropic. |
-| Local isotropy over odd-characteristic `F_q(t)` places by rank | `src/forms/local_global/function_field.rs::is_isotropic_at_place` | Same rank theorem as the `Q_p` path, using the function-field local square and Hilbert symbol. |
-| Global-field isotropy rank shortcut | `src/forms/local_global/global_field.rs::GlobalField::is_isotropic_global` | Null entry is isotropic; rank `0/1` anisotropic; rank `2` is the global square condition for `-ab`; higher rank checks relevant local places. |
+| Local isotropy over odd-characteristic `F_q(t)` places by rank | `src/forms/local_global/function_field.rs::try_is_isotropic_at_place_ff` | Same rank theorem as the `Q_p` path, using the function-field local square and Hilbert symbol. |
+| Global-field isotropy rank shortcut | `src/forms/local_global/global_field.rs::GlobalField::try_is_isotropic_global` | Null entry is isotropic; rank `0/1` anisotropic; rank `2` is the global square condition for `-ab`; higher rank checks relevant local places. |
 | Characteristic-2 global function-field isotropy case tree | `src/forms/springer/char2.rs::is_isotropic_global_char2` | Formulaic theorem branch: rank `>=5` isotropic, singular-tail square tests, binary-block Artin-Schreier tests, and local checks only for the rank `3/4` residue cases. |
 | Dyadic square predicates with capped precision | `src/scalar/small/analytic.rs` | `Q_2`: even valuation plus unit `1 mod 8`, with positive low-precision cases reported as unknown. `Z/2^k`: after stripping `2^v`, require even `v` and odd unit congruent to `1 mod 2`, `1 mod 4`, or `1 mod 8` according to retained precision. |

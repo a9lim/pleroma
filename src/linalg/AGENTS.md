@@ -15,8 +15,9 @@ solver data on the repo-wide width contract.
 - **`integer.rs`** — exact integer linear algebra over ℤ:
   - `normalize_relation_rows` (the crate's row **Hermite normal form**: increasing
     leading columns, positive pivots, zeros below each pivot, above-pivot entries
-    reduced mod the pivot) + `reduce_integer_vector`. Consumed by the game exterior
-    algebra's lattice quotient (`games/game_exterior.rs`).
+    reduced mod the pivot) + `reduce_integer_vector`. `normalize_relation_rows` is
+    consumed by the integral-lattice layer (`forms/integral/`); `reduce_integer_vector`
+    by the game exterior algebra's lattice quotient (`games/game_exterior.rs`).
   - `ext_gcd` (Bézout `a·x + b·y = gcd`) and `smith_normal_form` (invariant factors
     `d₀ | d₁ | …` via unimodular `ext_gcd`-based row/column combines; `∏ dᵢ = |det|`,
     cokernel `ℤⁿ/Mℤⁿ ≅ ⨁ ℤ/dᵢ`). Used by the integral-lattice layer:

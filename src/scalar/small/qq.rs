@@ -2,7 +2,7 @@
 //! fractions** of the Witt vectors, truncated to precision `N`.
 //!
 //! This completes the (field, ring of integers) pairing on the unramified leg.
-//! Where [`WittVec`](crate::scalar::WittVec) is the *ring* `W_N(F_q)` (with `p` a
+//! Where [`WittVec`] is the *ring* `W_N(F_q)` (with `p` a
 //! non-unit, residue field `F_q = F_{p^F}`), this is the *field* `Q_q`: the
 //! unique unramified extension of `Q_p` of residue degree `F`. It is to `WittVec`
 //! exactly what [`Qp`](crate::scalar::Qp) is to [`Zp`](crate::scalar::Zp) —

@@ -7,7 +7,8 @@ Everything here is generic over `S: Scalar` — the same code runs over nimbers
 
 `mod.rs` is a thin hub re-exporting the engine + versor + the structured-algebra
 modules flat, so public paths stay shallow (`clifford::Metric`,
-`clifford::sandwich`, …).
+`clifford::coproduct`, … — note `sandwich` is an inherent `CliffordAlgebra` method,
+called as `alg.sandwich(…)`, not a free path).
 
 Fixed-width mathematical payloads here are `u128`/`i128`: blade masks,
 divided-power exponents, spinor/Dickson parities, and Frobenius subfield data.

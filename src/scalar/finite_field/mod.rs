@@ -125,7 +125,7 @@ pub trait FiniteField: Scalar + Copy {
     }
 
     /// The **relative norm** `N_{F_{p^m}/F_{p^e}}(x) = ∏_i x^{p^{e·i}}` — the
-    /// multiplicative companion of [`relative_trace_over`]. Requires `e | m`.
+    /// multiplicative companion of [`relative_trace_over`](Self::relative_trace_over). Requires `e | m`.
     fn relative_norm_over(&self, m: usize, e: usize) -> Self {
         assert!(e > 0 && m.is_multiple_of(e), "relative norm needs e | m");
         let mut acc = Self::one();

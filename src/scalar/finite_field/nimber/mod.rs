@@ -5,9 +5,9 @@
 //!
 //! The implementation is split along the actual layers:
 //!
-//! * [`arithmetic`] — XOR addition, nim multiplication, Frobenius/sqrt, inverse.
-//! * [`artin_schreier`] — trace and the `y² + y = c` solver.
-//! * [`galois`] — degree, conjugates, minimal polynomial, relative trace/norm,
+//! * `arithmetic` — XOR addition, nim multiplication, Frobenius/sqrt, inverse.
+//! * `artin_schreier` — trace and the `y² + y = c` solver.
+//! * `galois` — degree, conjugates, minimal polynomial, relative trace/norm,
 //!   multiplicative order, primitive elements, and discrete log.
 //!
 //! The public `nim_*` functions stay re-exported from this module, so callers can

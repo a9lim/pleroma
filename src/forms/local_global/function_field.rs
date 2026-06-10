@@ -14,7 +14,7 @@
 //!     by the **degree place `∞`** (uniformizer `1/t`, residue field `F_q`), which
 //!     is just another tame place — so Hasse–Minkowski over `F_q(t)` has no
 //!     definiteness condition (see
-//!     [`try_is_isotropic_ff`](crate::forms::try_is_isotropic_ff)).
+//!     [`try_is_isotropic_ff`]).
 //!
 //! The places of `F_q(t)`: the **finite** places are the monic irreducible
 //! polynomials `π(t) ∈ F_q[t]` (residue field `F_{q^{deg π}}`), and the one
@@ -239,7 +239,7 @@ pub fn try_relevant_places_ff<S: FiniteOddField>(
 }
 
 /// The Hasse invariant `ε_v(⟨a_1,…,a_n⟩) = ∏_{i<j} (a_i, a_j)_v` at `place`. The
-/// `_ff` suffix distinguishes it from the `ℚ` [`hasse_at_place`](crate::forms::hasse_at_place).
+/// `_ff` suffix distinguishes it from the `ℚ` [`try_hasse_at_place`](crate::forms::try_hasse_at_place).
 pub fn try_hasse_at_place_ff<S: FiniteOddField>(
     entries: &[RationalFunction<S>],
     place: &FFPlace<S>,

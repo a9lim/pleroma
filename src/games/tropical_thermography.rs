@@ -2,7 +2,7 @@
 //!
 //! The thermograph recursion in [`crate::games::thermography`] already *computes*
 //! a tropical structure without naming it. This module names it and pins the
-//! naming faithful against the existing (golden-tested) [`thermograph`].
+//! naming faithful against the existing (golden-tested) [`thermograph`](crate::games::thermograph).
 //!
 //! ## The correspondence (standard math, not a new theorem)
 //!
@@ -27,7 +27,7 @@
 //! [`thermograph_via_tropical`] runs the shared thermograph recursion with the
 //! two option folds routed through the **named** [`Pl::oplus_max`]/[`Pl::oplus_min`]
 //! wrappers. Its sole job is to prove the `⊕`-naming is faithful, so it is pinned
-//! **equal** to [`thermograph`] — it is not a second implementation of cooling.
+//! **equal** to [`thermograph`](crate::games::thermograph) — it is not a second implementation of cooling.
 
 use crate::games::piecewise::{add_pl, combine, Pl};
 use crate::games::thermography::{walls_with, Thermograph};
@@ -58,7 +58,7 @@ impl Pl {
 
 /// The thermograph of `g`, computed with the option folds named as tropical `⊕`
 /// in the dual `(max, +)`/`(min, +)` semirings. Pinned **equal** to
-/// [`thermograph`] (the inline tests are the proof); `None` on the same
+/// [`thermograph`](crate::games::thermograph) (the inline tests are the proof); `None` on the same
 /// degenerate positions.
 pub fn thermograph_via_tropical(g: &Game) -> Option<Thermograph> {
     let (left_wall, right_wall, mast, temperature) = walls_with(g, |acc, wall, is_max| {

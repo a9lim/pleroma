@@ -65,8 +65,9 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   `E_8` (`1_{II}^{+8}`, type II), Sage canonical-symbol examples, and randomised `Uᵀ G U`
   isometry invariance pin the engine.
 - **`mass_formula.rs`** — the **Minkowski–Siegel mass** of the even-unimodular genus,
-  `mass(n) = |B_{n/2}|/n · ∏_{j<n/2} |B_{2j}|/(4j)` (Bernoulli by exact recurrence,
-  `None` past the i128 ceiling). `mass(8) = 1/696729600 = 1/|W(E_8)|` — the formula
+  `mass_even_unimodular(n)` = `|B_{n/2}|/n · ∏_{j<n/2} |B_{2j}|/(4j)`, returned as a
+  reduced `(num, den)` `i128` fraction (Bernoulli by exact recurrence, `None` past the
+  i128 ceiling). `mass_even_unimodular(8) = (1, 696729600) = 1/|W(E_8)|` — the formula
   *recovers* the `E_8` automorphism order the brute-force counter refuses; `n = 16, 24`
   match the published Niemeier values (i128 reaches exactly to 24). Plus the **Leech
   lattice** `leech()`: built from the Golay `[24,12,8]` code

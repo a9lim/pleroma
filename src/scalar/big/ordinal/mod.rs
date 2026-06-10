@@ -18,19 +18,19 @@
 //! termination argument. This `mod.rs` is that CNF core (representation,
 //! constructors, ordering, display); the two arithmetics live beside it:
 //!
-//!   * [`nim`] — the char-2 nim arithmetic: nim-addition (XOR of like-power
+//!   * `nim` — the char-2 nim arithmetic: nim-addition (XOR of like-power
 //!     coefficients) and the `φ_{ω+1}` field product (the DiMuro tower).
-//!   * [`cantor`] — the *ordinary* (Cantor) ordinal arithmetic `ord_add`/
+//!   * `cantor` — the *ordinary* (Cantor) ordinal arithmetic `ord_add`/
 //!     `ord_mul` (`ω + ω = ω·2`, `1 + ω = ω`), a genuinely different operation
 //!     from nim, used by the surreal birthday's run-length sums.
 //!
 //! ## Status (honest scope)
 //!
-//! * **nim-addition is complete and exact** ([`nim`]): like-`ω`-power
+//! * **nim-addition is complete and exact** (`nim`): like-`ω`-power
 //!   coefficients combine by XOR (so `α ⊕ α = 0`, `ω ⊕ 1 = ω+1`), giving the
 //!   genuine transfinite characteristic-2 additive group.
 //! * **nim-multiplication is implemented across the prime-power generator tower**
-//!   ([`tower`]). Following DiMuro (*arXiv:1108.0962*, extending Conway *ONAG* ch. 6
+//!   (`tower`). Following DiMuro (*arXiv:1108.0962*, extending Conway *ONAG* ch. 6
 //!   and Lenstra 1977 "On the algebraic closure of two"): the finite layers are
 //!   `F_{2^{2^n}}`; then for the prime governing exponent-place `ω^m` — `p(m)` = the
 //!   `(m+2)`-th prime (`p(0)=3`, `p(1)=5`, `p(2)=7`, …) — the generators are

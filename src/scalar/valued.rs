@@ -3,8 +3,8 @@
 //!
 //! Every backend in the **non-Archimedean local** part of the "any number" table
 //! already exposes an *inherent* `valuation()` and a way to name its prime element
-//! ([`Qp`](crate::scalar::Qp)/[`Qq`](crate::scalar::Qq) via `from_p_power(1)`,
-//! [`Laurent`](crate::scalar::Laurent) via `t()`). This trait promotes that shared
+//! ([`Qp`]/[`Qq`] via `from_p_power(1)`,
+//! [`Laurent`] via `t()`). This trait promotes that shared
 //! shape to the type system so the [`Ramified`](crate::scalar::Ramified)
 //! ramified-extension functor can fold a *generic* base valuation — it adjoins a
 //! uniformizer `π` with `πᴱ = ϖ`, and `ϖ = S::uniformizer()` is exactly the datum

@@ -19,7 +19,7 @@
 //! These are the three corners of "finite separable extension" the backends realise:
 //! the algebraic-closure functor (char 0), the finite tower (char `p`), and the
 //! unramified local extension (char-0 local). The `Fpn` impl **delegates to the
-//! existing, tested** [`FiniteField`] relative trace/norm — this trait is a
+//! existing, tested** [`FiniteField`](crate::scalar::FiniteField) relative trace/norm — this trait is a
 //! generalization of that machinery, not a parallel silo.
 //!
 //! # Honest exclusions

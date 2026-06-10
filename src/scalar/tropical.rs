@@ -37,7 +37,7 @@ use std::marker::PhantomData;
 /// ([`add`](Semiring::add)) and `⊗` ([`mul`](Semiring::mul)) with identities,
 /// `⊗` distributing over `⊕`, and `0` (`⊕`-identity) absorbing under `⊗`.
 ///
-/// Deliberately **not** a [`Scalar`](crate::scalar::Scalar) supertrait: a
+/// Deliberately **not** a [`Scalar`] supertrait: a
 /// semiring need not have additive inverses (the tropical one does not), so it
 /// cannot be a ring. Implementors should make the inherent methods of the same
 /// name shadow these (inherent-shadows-trait ⇒ the trait bodies delegate rather

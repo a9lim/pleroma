@@ -4,7 +4,7 @@
 //!
 //! This closes the project's central **`No ↔ On₂`** symmetry at the *games* layer.
 //! That mirror already lives at the scalar layer — [`Surreal`](crate::scalar::Surreal)
-//! (the char-0 field `No`) and [`Ordinal`](crate::scalar::Ordinal) (the char-2
+//! (the char-0 field `No`) and [`Ordinal`] (the char-2
 //! algebraically-closed field `On₂`) share one Cantor-normal-form core
 //! ([`big::cnf`](crate::scalar::big)) — but the games column was lopsided: surreal
 //! numbers had [`NumberGame`](crate::games::NumberGame) (transfinite games carried
@@ -14,7 +14,7 @@
 //!
 //! The mirror is exact. The Grundy value of the Nim heap of ordinal size `α` is `α`
 //! itself, so — exactly as a number game needs no materialized option tree because
-//! [`Surreal`] carries everything — a single [`Ordinal`] (the `On₂` backend) carries
+//! [`Surreal`](crate::scalar::Surreal) carries everything — a single [`Ordinal`] (the `On₂` backend) carries
 //! the Grundy value, the disjunctive sum (Sprague–Grundy XOR = nim-addition), and
 //! the Turning-Corners product (nim-multiplication). Where `NumberGame` delegates to
 //! `Surreal`, `NimberGame` delegates to `Ordinal`; the two differ exactly where `No`
@@ -37,7 +37,7 @@ use std::cmp::Ordering;
 /// by its ordinal Grundy value rather than a (necessarily infinite) option set. The
 /// char-2 mirror of [`NumberGame`](crate::games::NumberGame): that one carries a
 /// [`Surreal`](crate::scalar::Surreal) (`No`, char 0), this carries an
-/// [`Ordinal`](crate::scalar::Ordinal) (`On₂`, char 2), the two sharing one CNF core.
+/// [`Ordinal`] (`On₂`, char 2), the two sharing one CNF core.
 #[derive(Clone, Debug, PartialEq)]
 pub struct NimberGame {
     grundy: Ordinal,

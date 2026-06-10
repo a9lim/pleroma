@@ -37,7 +37,7 @@
 //!
 //! # Honest boundaries
 //!
-//!   * Like [`Valued`](crate::scalar::Valued), this is **not** a [`Scalar`]
+//!   * Like [`Valued`], this is **not** a [`Scalar`]
 //!     supertrait and excludes the globals: [`Adele`](crate::scalar::Adele) and
 //!     [`RationalFunction`](crate::scalar::RationalFunction) carry *all* their
 //!     places at once, so they have a residue field *per place*, not one — their

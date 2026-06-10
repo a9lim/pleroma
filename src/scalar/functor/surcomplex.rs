@@ -2,7 +2,7 @@
 //!
 //! Generic over `S`, so `Surcomplex<Surreal>` is the complexification of the
 //! implemented finite-support surreal backend. `Surcomplex<Rational>` is the
-//! Gaussian rationals ℚ[i], handy for tests.
+//! Gaussian rationals `ℚ[i]`, handy for tests.
 //!
 //! Over a *characteristic-2* backend this construction is **degenerate**, and
 //! the tool demonstrates exactly why: i² = −1 = 1, so (1+i)² = 1 + 2i + i²

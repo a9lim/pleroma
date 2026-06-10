@@ -124,6 +124,6 @@ indices, and collection lengths.
   (which has `Infinity`), not on `Pl`; `Pl` only gets the named wrappers
   `oplus_max`/`oplus_min`/`otimes` it actually uses. Do NOT fake an ∞-wall with empty
   `pts` — that breaks the `self.pts[0]` invariant `value_at` assumes. The
-  `pub(crate)` `freeze`/`meeting_temperature` are shared by `thermograph_via_tropical`
-  so it reuses the identical cooling tail; the golden thermography tests pin that this
-  sharing is inert.
+  `pub(crate)` `walls_with` (which internally calls `freeze`/`meeting_temperature`) is
+  shared by `thermograph_via_tropical` so it reuses the identical cooling tail; the
+  golden thermography tests pin that this sharing is inert.

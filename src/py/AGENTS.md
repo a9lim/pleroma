@@ -48,7 +48,7 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
   is_blade, blade_subspace, factor_blade, cayley, spinor_norm, versor_grade_parity,
   classify_versor → `VersorClass`, plus raw `(blade_mask, coeff)` terms, `grade_part`,
   `versor_inverse`, `multivector_inverse`). Algebra methods add
-  trace/char_poly/determinant/exterior_power_trace/outermorphism, the typed
+  trace/char_poly/determinant/exterior_power_trace/apply_outermorphism/inverse_outermorphism, the typed
   `<World>LinearMap` pyclass, fixed-dispatch Frobenius/Galois map constructors
   (`frobenius_linear_map`, `galois_linear_map`,
   `nimber_subfield_frobenius_linear_map`), `spinor_rep`/`SpinorRep` (incl. the
@@ -65,8 +65,9 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
   façades `OddFiniteFieldForm` (Fp/Fpn) and `Char2FiniteFieldForm` (`Fpn<2,N>`,
   N=1..4), `FiniteFieldClass` + leg-specific classifiers, constructible
   `WittClass`/`WittClassG`/`BrauerWallClass` records, base-field isometry helpers, the
-  Springer decompositions (`springer_decompose_qp`/`_qq`/`_laurent`/
-  `_ramified_qp4_e{2,3}` + the generic `springer_decompose_local` dispatcher), the
+  Springer decompositions (the Surreal `springer_decompose`; `springer_decompose_qp`/
+  `_qq`/`_laurent`/`_ramified_qp4_e{2,3}` + the generic `springer_decompose_local` and
+  `springer_decompose_local_char2` dispatchers), the
   rational/p-adic local-global helpers (`hilbert_*`, `hasse_at_place`,
   `is_isotropic_q`, …), the odd `F_q(t)` layer (`try_*_ff`, `FunctionFieldLocalIsotropy`)
   and the char-2 Artin-Schreier layer (`as_symbol_*`, `Char2FunctionFieldForm`/
@@ -77,7 +78,7 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
   `trace_form_arf`, `gold_form_arf`, `gold_form`), and the integral-lattice layer
   (`IntegralForm`, the ADE constructors `a_n`/`d_n`/`e_6`/`e_7`/`e_8`/`d16_plus`,
   `Genus`/`ScaleSymbol`, mass/automorphism constants, `BinaryCode`/Construction A,
-  theta + modular q-expansion helpers `E4`/`E6`/`Delta`/`as_modular_form`,
+  theta + modular q-expansion helpers `eisenstein_e4`/`eisenstein_e6`/`delta`/`as_modular_form`,
   `DiscriminantForm`/Milgram/Weil `S`/`T`).
 - **`games.rs`** — `Game`/`NumberGame`/`NimberGame`/`GameExterior`/`Hackenbush` +
   typed `Color`; `nim_mul_mex` + the coin-turning/Tartan probes; `grundy_graph`/

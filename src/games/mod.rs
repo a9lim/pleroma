@@ -3,7 +3,7 @@
 //!
 //! * [`coin_turning`] — nim-multiplication as Conway's Turning-Corners mex
 //!   recurrence, general 1-D coin-turning, and the 2-D Tartan product.
-//! * [`grundy`] — Sprague–Grundy values of any finite impartial game (the
+//! * [`grundy`](mod@grundy) — Sprague–Grundy values of any finite impartial game (the
 //!   normal-play impartial center; P-position ⟺ g = 0).
 //! * [`kernel`] — normal-play Win/Loss/Draw outcomes of a finite game graph
 //!   (retrograde analysis); P-positions = Loss.

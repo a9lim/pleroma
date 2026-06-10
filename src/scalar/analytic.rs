@@ -4,9 +4,9 @@
 //!
 //! Until now "the analytic layer" was four disconnected sets of inherent methods
 //! with two incompatible signatures: the exact `Option<Self>` roots of
-//! [`Rational`](crate::scalar::Rational) / the finite fields, and
+//! [`Rational`] / the finite fields, and
 //! the precision-argument `(n) -> Option<Self>` series of
-//! [`Surreal`](crate::scalar::Surreal). This module promotes that split to the
+//! [`Surreal`]. This module promotes that split to the
 //! type system, the same way [`valued`](crate::scalar::valued) and
 //! [`integrality`](crate::scalar::integrality) promoted valuation and the
 //! (field, ring-of-integers) pairing.
@@ -39,7 +39,7 @@
 //! shape [`integrality`](crate::scalar::integrality) uses to transport the
 //! Gaussian pairing. The complex `√(a+bi)` formula needs the base to be *ordered*
 //! (to pick the branch) with exact non-negative roots, so the bound is
-//! [`Ordered`], satisfied by `Rational` (→ the Gaussian rationals ℚ[i]) and
+//! [`Ordered`], satisfied by `Rational` (→ the Gaussian rationals `ℚ[i]`) and
 //! `Surreal` (→ the surreal-complex field). `Surcomplex<Surreal>` additionally
 //! gets a lazy [`inv_to_terms`](Surcomplex::inv_to_terms), making division
 //! first-class even when the norm `a²+b²` is a non-monomial.

@@ -193,7 +193,7 @@ impl Adele {
     }
 
     /// Whether this adele is an **idele** (a unit of `A_Q`): nonzero at `ℝ` and a
-    /// unit (nonzero) at every finite place. Outside [`active_primes`] the local
+    /// unit (nonzero) at every finite place. Outside `active_primes` the local
     /// component is the diagonal `principal`, automatically a unit there.
     pub fn is_idele(&self) -> bool {
         if self.real.numer() == 0 || self.principal.numer() == 0 {

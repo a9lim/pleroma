@@ -15,7 +15,7 @@
 //! `HasFractionField<Frac = Self>`, so the ring of integers of `K` is a ring
 //! whose fraction field is `K` again. That closes the loop at the type level, and
 //! the generic round-trip law `frac ∘ int = id` (an embedded ring element is
-//! integral and recovers itself) is exercised in [`tests`] for every pair.
+//! integral and recovers itself) is exercised in the `tests` module for every pair.
 //!
 //! ## What is and isn't paired
 //!
@@ -32,7 +32,7 @@
 //! pairing, which is a clean structural dichotomy:
 //!
 //!   * **Algebraic functors transport the distinct-type pairing.**
-//!     [`Surcomplex`](crate::scalar::Surcomplex) is `i`-adjunction; if the base `R`
+//!     [`Surcomplex`] is `i`-adjunction; if the base `R`
 //!     has a fraction field, so does `R[i]` (componentwise), and if `K` has a ring
 //!     of integers `O_K`, then `K[i]` has the order `O_K[i]`. The blanket impls
 //!     below make this functorial: the `S = Rational` instance is the **Gaussian**

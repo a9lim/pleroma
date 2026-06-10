@@ -174,8 +174,9 @@ S = pl.SurrealAlgebra(q=[pl.omega(), pl.epsilon()])
 (S.gen(0) * S.gen(1)) ** 2         # -1
 
 # the games bridge: Hackenbush reads out as a surreal OR a nimber
-pl.Hackenbush.string(["blue", "blue"]).value()    # a surreal number
-pl.Hackenbush.string(["green", "green"]).grundy()  # a nimber (all-green = Nim)
+B, G = pl.Color.blue(), pl.Color.green()
+pl.Hackenbush.string([B, B]).value()      # a surreal number
+pl.Hackenbush.string([G, G]).grundy()     # a nimber (all-green = Nim)
 
 # char 0 <-> char 2: a classification on each leg
 pl.classify_real(1, 3)             # Cl(1,3) over R, the 8-fold table
@@ -218,6 +219,8 @@ breakdown:
   games, thermography/atomic weight, Hackenbush, and the exterior algebra of the
   game group.
 - `src/py/` — the optional PyO3 bindings behind the `python` feature.
+- `src/linalg/` — crate-private shared linear algebra (exact integer HNF/Smith,
+  F₂/nim-field rank, generic field solves), consumed by the pillars above.
 
 See `AGENTS.md` for the working-notes summary, `OPEN.md` for the genuine research
 problems, `ROADMAP.md` for the implemented and proposed cross-pillar bridges, and
@@ -244,7 +247,8 @@ game-built quadratic forms in the nimber backend:
 This is active research code with tests, examples, and experiments. Treat green
 tests as regression evidence, not as a proof of the mathematical program. CI runs
 `cargo fmt --check`, `cargo clippy --all-targets` (warning-clean), `cargo test`,
-`cargo check --features python`, and `cargo check --examples`.
+`cargo check --features python`, `cargo check --examples`, and `cargo doc --no-deps`
+(intra-doc links kept warning-clean).
 
 Scope boundaries worth stating plainly:
 

@@ -23,7 +23,7 @@
 //! ## The reduction polynomial
 //!
 //! Arithmetic is in `F_p[x] / (m(x))` for a monic irreducible `m` of degree `N`.
-//! [`reduction`] returns the low coefficients `r` of the reduction rule
+//! `reduction` returns the low coefficients `r` of the reduction rule
 //! `x^N = Σ_i r_i x^i` (i.e. `m(x) = x^N − Σ_i r_i x^i`). The polynomials shipped here
 //! are verified irreducible by the exhaustive field-axiom tests below. Where the
 //! table is known to be using the canonical **Conway polynomial**, the metadata says

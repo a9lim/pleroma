@@ -1,6 +1,6 @@
 //! Frobenius/Galois automorphisms as grade-1 linear maps.
 //!
-//! [`CyclicGaloisExtension`](crate::scalar::CyclicGaloisExtension) already gives
+//! [`CyclicGaloisExtension`] already gives
 //! a basis and a generator `sigma` of the cyclic Galois group. This module is the
 //! Clifford-side bridge: express `sigma` in that basis, feed the resulting matrix
 //! to [`LinearMap`], and then the existing outermorphism machinery computes

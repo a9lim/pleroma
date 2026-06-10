@@ -21,8 +21,12 @@
 //!
 //! Two canonical blades multiply by concatenating their (ascending) generator
 //! lists into a word and reducing to canonical form with the rules
+//!
+//! ```text
 //!   e_i e_i  → q[i]                            (equal adjacent: contract)
 //!   e_i e_j  → b[(j,i)] − e_j e_i   (i>j)      (out of order: swap, emit polar)
+//! ```
+//!
 //! The `−` goes through the scalar's own `neg()`, so in characteristic 2 it is
 //! `+` automatically and signs vanish — no special-casing. Termination: each
 //! step lowers (word length, inversion count) lexicographically.

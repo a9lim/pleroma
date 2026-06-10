@@ -80,7 +80,7 @@ fn b_of(u: u128, v: u128, bmat: &[u128]) -> bool {
 }
 
 /// Arf invariant of an F₂ quadratic form given by diagonal `qd` (the squares)
-/// and symmetric adjacency `bmat` (the polar form; bmat[i] bit j ⇔ b_{ij}=1).
+/// and symmetric adjacency `bmat` (the polar form; `bmat[i]` bit j ⇔ b_{ij}=1).
 pub fn arf_f2(n: usize, qd: &[bool], bmat: &[u128]) -> ArfResult {
     let mut vectors: Vec<u128> = (0..n).map(|i| 1u128 << i).collect();
     let mut arf = false;

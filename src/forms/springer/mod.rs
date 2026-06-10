@@ -14,19 +14,19 @@
 //! ```
 //!
 //! The discretely-valued legs share **one** engine, [`springer_decompose_local`]
-//! (in [`local`]), keyed off the [`ResidueField`](crate::scalar::ResidueField)
+//! (in `local`), keyed off the [`ResidueField`](crate::scalar::ResidueField)
 //! trait — the residue field `k` is read through the trait, never hardcoded:
 //!
-//! * [`padic`] — the mixed-characteristic entry points
+//! * `padic` — the mixed-characteristic entry points
 //!   [`springer_decompose_qp`] (`Q_p`, residue `F_p`) and
 //!   [`springer_decompose_qq`] (`Q_q`, residue `F_q`).
-//! * [`laurent`] — the equal-characteristic entry point
+//! * `laurent` — the equal-characteristic entry point
 //!   [`springer_decompose_laurent`] (`F_q((t))`, residue `F_q`).
-//! * [`char2`] — the equal-characteristic-**2** mirror,
+//! * `char2` — the equal-characteristic-**2** mirror,
 //!   [`springer_decompose_local_char2`]: the Aravire–Jacob `(φ₀, ψ, φ₁)`
 //!   three-layer decomposition (the wild `R_π` summand the naive `W = W(k)²`
 //!   grading misses), plus global isotropy over `F_q(t)` itself.
-//! * [`surreal`] — [`springer_decompose`] over the surreals (char 0, residue ℝ),
+//! * `surreal` — [`springer_decompose`] over the surreals (char 0, residue ℝ),
 //!   the ONE that does *not* fit the generic engine: its value group is
 //!   2-divisible, so the second residue map collapses and `W(No) = W(ℝ) = ℤ`. It
 //!   keeps its own engine; that mismatch *is* the local–global symmetry, not a gap.

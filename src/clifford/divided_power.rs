@@ -30,7 +30,7 @@
 //! is a genuine new element, not a square of the generator. This is the exact
 //! char-faithful analogue of the exterior `e_i² = 0`, and the reason `Γ` (not
 //! `Sym`, where `x_i²` is a nonzero basis element) is the right object in char `p`.
-//! (See [`tests::divided_square_vanishes_in_char_two`].)
+//! (See the `divided_square_vanishes_in_char_two` test.)
 
 use crate::scalar::Scalar;
 use std::collections::BTreeMap;

@@ -2,12 +2,12 @@
 //!
 //! Characteristic 2 has two different but adjacent invariants:
 //!
-//! * [`arf`] classifies the quadratic form / Clifford algebra through the Arf
+//! * `arf` classifies the quadratic form / Clifford algebra through the Arf
 //!   invariant.
-//! * [`dickson`] classifies orthogonal transformations by the Dickson invariant,
+//! * `dickson` classifies orthogonal transformations by the Dickson invariant,
 //!   the determinant replacement in characteristic 2.
 //!
-//! plus [`field`], the [`FiniteChar2Field`] capability trait — the additive
+//! plus `field`, the [`FiniteChar2Field`] capability trait — the additive
 //! (Artin–Schreier) mirror of [`FiniteOddField`](crate::forms::FiniteOddField)
 //! that the char-2 local–global layer is generic over.
 //!

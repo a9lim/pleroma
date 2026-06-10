@@ -675,7 +675,7 @@ fn ff_is_square<S: FiniteChar2Field>(f: &RationalFunction<S>) -> bool {
 /// places that can carry an obstruction are the poles of `f` (finite places dividing
 /// `den f`) and `∞` (which also sees the leftover constant's `Tr_{F_q/F₂}`). So a
 /// finite sweep of `{∞} ∪ {P | den f}` decides it. The additive analogue of the
-/// odd-char [`is_global_square_ff`](crate::forms::function_field::is_global_square_ff).
+/// odd-char `is_global_square_ff`.
 pub fn global_is_pe<S: FiniteChar2Field>(f: &RationalFunction<S>) -> bool {
     if f.is_zero() {
         return true;
@@ -725,7 +725,7 @@ pub fn relevant_places_char2<S: FiniteChar2Field>(form: &Char2QuadForm<S>) -> Ve
 /// * `rank ≥ 5` ⇒ isotropic — `u(F_q(t)) = 4` (`F_q(t)` is a `C₂` field);
 /// * **totally singular** part (`℘`-free, quasilinear): `[K : K²] = 2`, so `≥ 3`
 ///   singular entries are isotropic, and a binary `⟨c₁, c₂⟩` is isotropic iff
-///   `c₁c₂ ∈ K²` ([`ff_is_square`]); an anisotropic binary quasilinear part is
+///   `c₁c₂ ∈ K²` (`ff_is_square`); an anisotropic binary quasilinear part is
 ///   *universal*, so it isotropises any form carrying a nonzero block;
 /// * **rank 2** `[a, b]`: isotropic iff `ab ∈ ℘(F_q(t))` ([`global_is_pe`]) — *not* a
 ///   finite bad-place sweep, since the constant-trace obstruction lives at infinitely

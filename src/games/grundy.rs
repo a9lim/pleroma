@@ -14,7 +14,7 @@
 //! `g(G)`. This module computes Grundy values two ways — over an explicit finite
 //! game graph ([`grundy_graph`], the mirror of `kernel::outcomes`) and over a
 //! move-generating closure ([`grundy`], the normal-play mirror of
-//! [`misere::misere_is_n`](crate::games::misere_is_n)) — and the tests pin the
+//! [`try_misere_is_n`](crate::games::try_misere_is_n)) — and the tests pin the
 //! theorem against Bouton's XOR for Nim.
 
 use std::collections::{HashMap, HashSet};
@@ -66,7 +66,7 @@ pub fn grundy_graph(succ: &[Vec<usize>]) -> Option<Vec<u128>> {
 /// The Grundy value of a position given a move generator, memoised. `moves(pos)`
 /// returns the positions reachable in one move; the game must be finite and
 /// acyclic (no position reachable from itself), exactly as for
-/// [`misere::misere_is_n`](crate::games::misere_is_n). This is the way to compute
+/// [`try_misere_is_n`](crate::games::try_misere_is_n). This is the way to compute
 /// Grundy values of games defined by a rule (Nim, octal games, …) without
 /// materialising the whole graph.
 pub fn grundy<P, F>(pos: &P, moves: &F, memo: &mut HashMap<P, u128>) -> u128

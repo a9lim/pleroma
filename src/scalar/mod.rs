@@ -74,7 +74,7 @@
 //!     `v(t) = 0`. The residue-extending twin of `Laurent` (residue field `k(t̄)`,
 //!     value group unchanged); the fourth, last corner of the functor square.
 //!
-//! And [`ordinal`](big::ordinal)'s nimbers are the **char-2 mirror of the
+//! And [`ordinal`]'s nimbers are the **char-2 mirror of the
 //! surreals** — the transfinite "big" number in characteristic 2 — so they sit
 //! in [`big`] alongside `Surreal`/`Omnific`, not with the finite nim-field.
 //!

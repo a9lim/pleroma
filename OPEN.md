@@ -64,7 +64,7 @@ code. More generally, lexicodes over base `2^k` are closed under nim-addition
 and are linear when the base is a Fermat power `2^(2^k)` — exactly the sizes at
 which nim-multiplication makes the ordinals below the base a field. So natural,
 fixed, non-tautological rules demonstrably realize rich *linear* codes as
-P-sets; and the matching no-go (`writeups/RESEARCH-GOLDARF.md`, Theorem A:
+P-sets; and the matching no-go (`writeups/goldarf.tex`, Theorem A:
 every Winning Ways coin-turning P-set is the kernel of an `F_2`-linear map)
 says linearity is also the ceiling for that architecture. Floor and ceiling
 coincide at linear. Problem 1 is exactly whether the lexicode phenomenon admits
@@ -336,7 +336,7 @@ Concrete progress targets:
 - Decide what evidence is acceptable for shipping `alpha_53` and beyond.
 
 Relevant surfaces:
-- `writeups/RESEARCH-EXCESS.md`
+- `writeups/excess.tex`
 - `experiments/ordinal_excess_probe.py`
 - `src/scalar/big/ordinal/tower.rs`
 - `src/scalar/big/ordinal/mod.rs`

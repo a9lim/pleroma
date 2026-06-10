@@ -1,6 +1,6 @@
 """The 3-power excess family: ord(kappa_{3^k} + 1) = 3^(k+1) * (2^(3^k) - 1).
 
-writeups/RESEARCH-EXCESS.md (the 3^k family thread) asks to prove this formula or find its
+writeups/excess.tex (the 3^k family thread) asks to prove this formula or find its
 first failure. This probe carries the June 2026 result:
 
 THE KEY RECOGNITION. The tower relations (Lenstra/DiMuro; independently encoded
@@ -24,7 +24,7 @@ PROVED (machine-checked here at every level, plus in the term algebra of
       ord(kappa_{3^k} + 1)  =  3^(k+1) * ord(gamma_k),   ord(gamma_k) | 2^(3^k)-1.
   Corollaries used as machine checks: `(kappa+1)^(2^h-1) = zeta^-1` and
   `Norm_{F/L}(kappa+1) = gamma_k` (the closed-form instance of
-  writeups/RESEARCH-EXCESS.md's norm-reduction identity when E/f = 2).
+  writeups/excess.tex's norm-reduction identity when E/f = 2).
 * Translates. `kappa_{3^k} + 2 = zeta + zeta^(3^k)` and `kappa_{3^k} + 3 =
   zeta + zeta^(2*3^k)` split the same way with `gamma_k` replaced by a Galois
   conjugate, so the m = 1, 2, 3 translates ALL have order `3^(k+1) * ord(gamma_k)`,

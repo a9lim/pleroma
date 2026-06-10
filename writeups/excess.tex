@@ -1,0 +1,594 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{array,booktabs}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{conjecture}{Conjecture}
+\theoremstyle{definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\ord}{\operatorname{ord}}
+\newcommand{\Norm}{\operatorname{N}}
+\newcommand{\Frob}{\operatorname{Frob}}
+\newcommand{\nimmul}{\otimes}
+\newcommand{\Qset}{\mathcal{Q}}
+% claim-level tags (repo convention for this thread)
+\newcommand{\PROVED}{\textbf{[\textsc{proved}]}}
+\newcommand{\CERTIFIED}[1]{\textbf{[\textsc{certified} $#1$]}}
+\newcommand{\CONSISTENT}{\textbf{[\textsc{consistent}]}}
+\newcommand{\CONJECTURED}{\textbf{[\textsc{conjectured}]}}
+\newcommand{\OPEN}{\textbf{[\textsc{open}]}}
+
+\title{Draft: the finite excess in transfinite nim multiplication}
+\author{a9lim}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Conway's field $\mathrm{On}_2$ makes the ordinals below
+$\omega^{\omega^{\omega}}$ an algebraic closure of $\F_2$ under
+nim-arithmetic. Its multiplication is governed by a Kummer tower whose
+carries are Lenstra's \emph{excess} values: for each odd prime $p$, the
+carry is $\alpha_p=\kappa_{f(p)}+m_p$, where the transfinite part
+$\kappa_{f(p)}$ has a known closed shape (Lenstra, DiMuro) but the finite
+correction $m_p$ does not. This note consolidates the state of the excess
+problem (\texttt{OPEN.md} Problem~3 of \texttt{ogdoad}): the exact
+finite-field reformulation of the root test as a multiplicative-order
+criterion and its structural norm reduction; a complete analysis of the
+$3$-power column via a half-angle splitting in the cyclotomic component
+fields, certifying $m_r=1$ for all primes $r$ with
+$f(r)\in\{3,9,\dots,3^6\}$ and forcing $m_p\geq4$ unconditionally on the
+$f(p)=2\cdot3^k$ column; the empirically exact $0/1/4$ candidate rule and
+the proof that the Lenstra component set alone cannot decide the excess;
+and the reduction of Lenstra's open boundedness question to that candidate.
+Feasibility of the first open row, $p=719$, is assessed: a
+Frobenius-orbit norm recurrence reduces it to arithmetic in
+$\F_{2^{359}}$, with the cost concentrated in tower-aware Frobenius
+composition. Each statement carries an explicit claim-level tag.
+\end{abstract}
+
+\paragraph{Claim levels.}
+\PROVED{} -- unconditional, machine-checked or classically verified;
+\CERTIFIED{k\leq6} -- proved for the stated range, blocked beyond it only
+by unfactored cofactors; \CONSISTENT{} -- no counterexample found, not
+proved; \CONJECTURED{} -- explicitly open in the literature or posed in
+this thread; \OPEN{} -- neither confirmed nor refuted, no feasible attack
+on record.
+
+\section{Notation, implemented state, external data}\label{sec:notation}
+
+\subsection{Notation}
+
+For an odd prime $p$:
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item $f(p)=\ord_p(2)$, the multiplicative order of $2$ modulo $p$;
+\item $\kappa_h$ is the Lenstra/DiMuro tower element indexed by $h$;
+\item $\Qset(h)$ is Lenstra's set of prime-power components appearing in
+$\kappa_h$;
+\item the \emph{excess} $m_p$ is the least finite $m$ such that
+$\kappa_{f(p)}+m$ has no $p$-th root in the relevant finite component
+field;
+\item the Kummer carry is $\alpha_p=\kappa_{f(p)}+m_p$.
+\end{itemize}
+For the ordinal tower, a row with $\Qset(f(p))=\{q\}$ and finite excess
+$m$ gives the ordinal sum corresponding to $\kappa_q+m$. Addition of
+nimbers is XOR; $\nimmul$ is the nim product.
+
+\subsection{Implemented tower state}
+
+In the Rust tower (\path{src/scalar/big/ordinal/tower.rs}):
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item DiMuro Table~1 rows~\cite{DiMuro} through $\alpha_{43}$;
+\item a locally verified row $\alpha_{47}=\omega^{(\omega^7)}+1$
+(Section~\ref{sec:provenance});
+\item the operational boundary is $\alpha_{53}$: a carry needing
+$\alpha_{53}$ or beyond returns \texttt{None}.
+\end{itemize}
+
+\subsection{External data snapshot (2026-06-09)}
+
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item OEIS A380496~\cite{OEIS} has $1417$ extended rows: $799$ known and
+$618$ unknown; the b-file has $126$ initial known rows.
+\item The first OEIS unknown is row $n=127$, the $127$th odd prime
+$p=719$. For $p=719$: $f(719)=\ord_{719}(2)=359$ and
+$\Qset(359)=\{359\}$.
+\item The transfinite-nim-calculator logs~\cite{Peeters} record the direct
+component exponent as $e_{719}=1{,}258{,}230{,}380$, the practical wall
+for direct exponentiation.
+\end{itemize}
+
+\section{The order criterion and structural norm reduction}
+\label{sec:norm}
+
+\subsection{The exact criterion}
+
+Throughout, $E$ denotes the degree of the component field containing
+$\beta=\kappa_{f(p)}+m$, so $f=f(p)\mid E$ and hence
+$p\mid 2^{E}-1$.
+
+\begin{proposition}[power criterion]\label{prop:power}
+\PROVED{} $\beta\in\F_{2^E}^{\times}$ has no $p$-th root in $\F_{2^E}$
+iff $\beta^{(2^E-1)/p}\neq1$. Hence
+\[
+  m_p=\min\bigl\{m\geq0:\ (\kappa_{f(p)}+m)^{(2^E-1)/p}\neq1\bigr\}.
+\]
+\end{proposition}
+
+\begin{proof}
+$\F_{2^E}^{\times}$ is cyclic of order $2^E-1$ and $p\mid 2^E-1$; in a
+cyclic group of order $N$, $\beta$ is a $p$-th power iff
+$\beta^{N/p}=1$.
+\end{proof}
+
+\begin{corollary}[order form]\label{cor:order}
+\PROVED{} If $v_p(2^E-1)=1$, then $\beta$ has no $p$-th root in
+$\F_{2^E}$ iff $p\mid\ord(\beta)$, so
+$m_p$ is the least $m$ with $p\mid\ord(\kappa_{f(p)}+m)$.
+\end{corollary}
+
+\begin{remark}[Wieferich caveat]\label{rem:wieferich}
+In general ``no $p$-th root'' is equivalent to
+$v_p(\ord\beta)=v_p(2^E-1)$, which collapses to
+$p\mid\ord(\beta)$ only when $v_p(2^E-1)=1$. Since
+$v_p(2^E-1)=v_p(2^{f(p)}-1)$ whenever $p\nmid E/f(p)$ (lifting the
+exponent), the hypothesis can fail only at base-$2$ Wieferich-type primes
+with $p^2\mid 2^{f(p)}-1$; the only known instances are $p=1093$ and
+$p=3511$, both of which lie inside the extended A380496 range. For those
+rows the exact test of Proposition~\ref{prop:power} (or the full-$p$-part
+order condition) must be used. The certifications of
+Section~\ref{sec:family} compute orders exactly, with squarefreeness
+checks, and are unaffected. The research-note predecessor of this
+document stated only the order form; the power criterion is the
+correct general statement.
+\end{remark}
+
+\subsection{Norm reduction}
+
+\begin{proposition}[norm reduction]\label{prop:norm}
+\PROVED{} For $\beta\in\F_{2^E}^{\times}$ with $f=f(p)\mid E$,
+\[
+  \beta^{(2^E-1)/p}
+  =
+  \Norm_{\F_{2^E}/\F_{2^f}}(\beta)^{(2^f-1)/p}.
+\]
+\end{proposition}
+
+\begin{proof}
+$\Norm_{\F_{2^E}/\F_{2^f}}(\beta)=\beta^{(2^E-1)/(2^f-1)}$, and
+$\bigl((2^E-1)/(2^f-1)\bigr)\cdot\bigl((2^f-1)/p\bigr)=(2^E-1)/p$.
+\end{proof}
+
+So the $p=719$ test reduces to: (1) compute
+$N=\Norm_{\F_{2^E}/\F_{2^{359}}}(\kappa_{359}+1)$ in $\F_{2^{359}}$;
+(2) test whether $719\mid\ord(N)$ in $\F_{2^{359}}^{\times}$, a field of
+degree $359$ in which $719\mid2^{359}-1$.
+
+\begin{proposition}[Galois-conjugacy invariance]\label{prop:galois}
+\PROVED{} The order of $\kappa_{f(p)}+m$ is constant on its Frobenius
+orbit in $\F_{2^E}$, and the norm
+$N=\prod_{i=0}^{E/f-1}\Frob^{if}(\kappa_{f}+m)$ is determined
+structurally by the tower equations without materialising the full orbit.
+\end{proposition}
+
+\begin{proposition}[tower pinning]\label{prop:pinning}
+\PROVED{} The tower equations pin $\kappa_{359}$ up to Frobenius
+conjugacy: each composed minimal polynomial along the component chain
+$359\to179\to89\to11\to5\to\text{finite}$ is irreducible (the
+non-$q$-th-power property defining the lower excess guarantees this), so
+$\kappa_{359}$ is a well-defined conjugacy class and $N$ is a well-defined
+element of $\F_{2^{359}}$.
+\end{proposition}
+
+\subsection{Feasibility for $p=719$}
+
+The component field degree is
+$E=2\cdot2\cdot5\cdot11\cdot89\cdot179\cdot359=1{,}258{,}230{,}380$; the
+norm requires $E/f=3{,}504{,}820$ Frobenius steps.
+
+\CONSISTENT{} The norm can in principle be computed by the
+binary-splitting Frobenius recurrence
+$N_{2k}=N_k\cdot\Frob^{fk}(N_k)$ (iterated-Frobenius technique, von zur
+Gathen--Shoup~\cite{vzGS92}, Kaltofen--Shoup~\cite{KS98}), requiring about
+$\log_2(3{,}504{,}820)\approx22$ squarings-with-Frobenius-composition at
+degree $E$ over $\F_2$. Each Frobenius composition is a modular
+composition in $\F_2[x]$ modulo a degree-$E$ polynomial; with dense
+polynomial arithmetic at $E\approx1.26\times10^9$ this is not locally
+feasible.
+
+\CONJECTURED{} (as a cost model, not a theorem) Kummer-tower-aware
+Frobenius -- standard-lattice arithmetic for compatibly embedded finite
+fields in the style of De~Feo--Randriam--Rousseau~\cite{DFRR19}, where
+$q$-power Frobenius acts near-monomially per tower level -- is the likely
+$10$--$100\times$ lever: the sparse factored structure
+$E=2\cdot2\cdot5\cdot11\cdot89\cdot179\cdot359$ admits a stepwise
+Frobenius representation in which each level contributes a small-degree
+modular composition. A \emph{measured} cost model, not a run, is the
+correct first deliverable.
+
+\OPEN{} Whether the Kummer-tower Frobenius model makes the $m_{719}$
+computation feasible in wall-clock hours rather than months on available
+hardware (a single consumer GPU; GF(2) arithmetic is XOR-sliced and
+GPU-friendly).
+
+\begin{remark}[shared abstraction]\label{rem:bridgek}
+The structural primitive needed here --
+$\Norm_{E/K}(\beta)=\prod_i\Frob^{i}(\beta)$ computed by a
+Frobenius-orbit recurrence -- is the same primitive that the cyclic-algebra
+Brauer-invariant bridge (Bridge~K, \path{roadmap/TBD.md}) requires for
+reduced norms over a Frobenius-generated cyclic extension. The existing
+\texttt{FieldExtension::relative\_norm} does not apply to the
+term-algebra/transfinite setting, but the shape is identical; factoring
+out a reusable \path{relative_norm_over_frobenius_orbit} is an
+engineering opportunity. This is not a claim that the bounded
+\texttt{Fpn} norm certifies $m_{719}$.
+\end{remark}
+
+\section{The $3^k$ family}\label{sec:family}
+
+Write $\zeta:=\kappa_{3^k}$ and $h:=3^k$ throughout this section.
+
+\subsection{Structure}
+
+\begin{proposition}[cyclotomic recognition]\label{prop:cyclo}
+\PROVED{} $\zeta^{3^k}=\kappa_2$, which has order $3$; hence $\zeta$ is a
+primitive $3^{k+1}$-st root of unity. Since $2$ is a primitive root
+modulo $3^{k+1}$, the cyclotomic polynomial
+$\Phi_{3^{k+1}}(x)=x^{2h}+x^h+1$ is irreducible over $\F_2$, the
+component field is $\F_2(\zeta)=\F_{2^{2h}}$, and it carries the index-$2$
+subfield $L=\F_{2^h}$.
+\end{proposition}
+
+\begin{proposition}[half-angle splitting]\label{prop:halfangle}
+\PROVED{} With $s=(3^{k+1}+1)/2$ (the inverse of $2$ modulo $3^{k+1}$),
+\[
+  \kappa_{3^k}+1=\zeta^{s}\,\bigl(\zeta^{s}+\zeta^{-s}\bigr),
+\]
+where $\zeta^{s}$ lies in the norm-one circle $U$ (of order exactly
+$3^{k+1}$ within the subgroup of order $2^h+1$) and
+$(\zeta^{s}+\zeta^{-s})^2=\zeta+\zeta^{-1}=:\gamma_k\in L^{\times}$.
+Since $\F_{2^{2h}}^{\times}=L^{\times}\times U$ with coprime orders,
+\[
+  \ord(\kappa_{3^k}+1)=3^{k+1}\cdot\ord(\gamma_k),
+  \qquad
+  \ord(\gamma_k)\mid 2^{3^k}-1.
+\]
+Machine-checked corollaries: $(\kappa+1)^{2^h-1}=\zeta^{-1}$ and
+$\Norm_{F/L}(\kappa+1)=\gamma_k$.
+\end{proposition}
+
+\begin{proposition}[translates $m=2,3$]\label{prop:translates}
+\PROVED{} $\kappa_{3^k}+2$ and $\kappa_{3^k}+3$ split as in
+Proposition~\ref{prop:halfangle} with $\gamma_k$ replaced by a Galois
+conjugate. Therefore
+$\ord(\kappa_{3^k}+m)=3^{k+1}\cdot\ord(\gamma_k)$ for $m=1,2,3$, and
+$\ord(\kappa_{3^k})=3^{k+1}$.
+\end{proposition}
+
+\begin{proposition}[the $2\cdot3^k$ exception, unconditionally]
+\label{prop:exception}
+\PROVED{} Any prime $p$ with $f(p)=2\cdot3^k$ satisfies
+$p\mid 2^{3^k}+1$, hence $p$ divides neither $3^{k+1}$ nor $2^{3^k}-1$,
+hence $p$ never divides $\ord(\kappa_{3^k}+m)$ for $m\in\{0,1,2,3\}$. By
+the order criterion, $m_p\geq4$. The full primitivity conjecture $C_k$
+below is not needed; the splitting alone forces the bound. The argument
+applies beyond the current tables, e.g.\ $p=87211$, $f=54$.
+\end{proposition}
+
+\begin{proposition}[the $3$-power column]\label{prop:column}
+\PROVED{} For a prime $r$ with $f(r)=3^k$, the values $m\in\{0,2,3\}$ are
+impossible: $m_r=0$ would require $r\mid\ord(\kappa_{3^k})=3^{k+1}$, a
+power of $3$, while $r\equiv1\pmod{3^k}$ is a prime distinct from $3$;
+and $m=2,3$ share $m=1$'s order class by
+Proposition~\ref{prop:translates}. Any failure of $C_k$ therefore gives
+$m_r\geq4$ directly.
+\end{proposition}
+
+\begin{proposition}[norm tower]\label{prop:tower}
+\PROVED{} $\gamma_{k-1}=\gamma_k^3+\gamma_k
+=\Norm_{L_k/L_{k-1}}(\gamma_k)$ (minimal polynomial
+$X^3+X+\gamma_{k-1}$), so $\ord(\gamma_{k-1})\mid\ord(\gamma_k)$. With
+lifting-the-exponent ($v_r(2^{3^k}-1)=v_r(2^{f(r)}-1)$ for old primes
+$r\neq3$), full-order parts propagate upward, and conjecture $C_k$
+reduces to $C_{k-1}$ plus primitivity at the new primes
+$r\mid\Phi_{3^k}(2)$.
+\end{proposition}
+
+\begin{conjecture}[$C_k$: $\gamma$-primitivity]\label{conj:ck}
+$\gamma_k$ is primitive in $L^{\times}=\F_{2^{3^k}}^{\times}$.
+\end{conjecture}
+
+\begin{proposition}[equivalence]\label{prop:equiv}
+\PROVED{} For primes $r$ with $f(r)\mid 3^k$ a $3$-power:
+\[
+  C_k
+  \iff
+  m_r=1\ \text{for every prime $r$ with } f(r)\in\{3,9,\dots,3^k\}.
+\]
+The family formula is the $0/1/4$ candidate of Section~\ref{sec:rule}
+restricted to the $3$-power column.
+\end{proposition}
+
+\subsection{Certification status}
+
+\CERTIFIED{k\leq6} $C_k$ holds for $k=1,\dots,6$: $\gamma_k$ is primitive
+in $\F_{2^{3^k}}^{\times}$, and
+$\ord(\kappa_{3^k}+1)=3^{k+1}\,(2^{3^k}-1)$ is verified exactly --
+product reconstruction, squarefreeness, primality by deterministic
+Miller--Rabin below $3.3\times10^{24}$ and MR-64 probable-primality above,
+an independent sieve re-deriving the small factors, cross-validation
+against the independent term algebra for $k=1,2$ and against the
+calculator rows $m_{2593}=1$, $m_{487}=1$
+(\path{experiments/cyclotomic_3k_family.py},
+\path{experiments/excess/}).
+
+\CONSISTENT{} $k=7,8$: every known prime factor of $\Phi_{3^7}(2)$ and
+$\Phi_{3^8}(2)$ divides $\ord(\gamma_k)$. Full certification is blocked
+only by the unfactored cofactors (FactorDB status composite-no-factor);
+no failure has been found.
+
+\OPEN{} Whether ECM or GNFS can factor the $\Phi_{3^7}(2)$ and
+$\Phi_{3^8}(2)$ cofactors within a realistic budget, converting $k=7,8$
+from \textsc{consistent} to \textsc{certified}.
+
+\subsection{Certified excess rows produced}
+
+The following $m_r=1$ rows are certified by the order criterion
+independently of the cofactor issue (analysis-level results; they are not
+new Rust carries):
+\begin{center}
+\begin{tabular}{rl}
+\toprule
+$f$ & primes $r$ with $m_r=1$ \\
+\midrule
+$27$   & $262657$ \\
+$81$   & $71119,\ 97685839$ \\
+$243$  & $16753783618801,\ 192971705688577,\ 3712990163251158343$ \\
+$729$  & $80191,\ 97687,\ 379081,\ \mathrm{P}42,\ \mathrm{P}90$ \\
+$2187$ & $39367,\ 7606246033,\ 263196614521,\ 529063556041$ \\
+$6561$ & $209953,\ 1299079,\ 70063267397606709277393$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+($\mathrm{P}42$, $\mathrm{P}90$ denote the certified/probable primes of
+$42$ and $90$ decimal digits dividing $\Phi_{3^6}(2)$.)
+
+\section{The $0/1/4$ candidate}\label{sec:rule}
+
+\begin{conjecture}[the $0/1/4$ rule]\label{conj:rule}
+\CONSISTENT{} (not proved)
+\[
+  m_p=
+  \begin{cases}
+    0 & \text{if $\Qset(f(p))$ is not a singleton odd prime-power,}\\
+    4 & \text{if $f(p)=2\cdot3^k$, $k\geq1$,}\\
+    1 & \text{otherwise (singleton odd prime-power $\Qset(f(p))$).}
+  \end{cases}
+\]
+The rule matches all $950$ calculator records with known $\Qset$-sets and
+every OEIS-known row covered by those $\Qset$-sets.
+\end{conjecture}
+
+\subsection{The component set alone is insufficient}
+
+\PROVED{} $\Qset(f(p))$ alone does not determine $m_p$:
+\begin{center}
+\begin{tabular}{ccc}
+\toprule
+$\Qset$ & $m=4$ & $m=1$ \\
+\midrule
+$\{9\}$   & $p=19$,   $f=18$  & $p=73$,   $f=6$ \\
+$\{81\}$  & $p=163$,  $f=162$ & $p=2593$, $f=18$ \\
+$\{243\}$ & $p=1459$, $f=486$ & $p=487$,  $f=18$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\PROVED{} The split for $\Qset=\{9\}$ is explained by the order
+criterion: $\ord(\kappa_9+1)=3^3\cdot(2^9-1)=27\cdot511=13797$ and
+$511=7\cdot73$, so $73\mid\ord(\kappa_9+1)$ but
+$19\nmid\ord(\kappa_9+1)$; adding $m=4$ changes the order and introduces
+the factor $19$.
+
+\PROVED{} The lower bound of the exception column is unconditional:
+$m_p\geq4$ for all $p$ with $f(p)=2\cdot3^k$
+(Proposition~\ref{prop:exception}).
+
+\CONJECTURED{} The matching upper bound $m_p\leq4$ on that column;
+equivalent to $C_k$ for the primes in the exception column.
+
+\subsection{The $m=4$ upper bound: the unexplored gap}
+
+\OPEN{} Whether $m_p=4$ exactly (not merely $\geq4$) for all primes with
+$f(p)=2\cdot3^k$. The $m=4$ translate $\kappa_{3^k}+4$ involves the
+nimber $4\in\F_{16}$, which does not lie in $\F_2(\zeta)$ (as
+$4\nmid2\cdot3^k$); the translate lives in the degree-$4\cdot3^k$
+compositum, where
+\[
+  \Norm_{\F_{4\cdot3^k}/\F_{2\cdot3^k}}(\kappa_{3^k}+4)
+  =(\kappa+4)(\kappa+\Frob^2(4))
+  =(\kappa+4)(\kappa+6),
+\]
+and the same unit-circle/subfield toolkit applies one level up. A proof
+that this norm has order divisible by every $p$ with $f(p)=2\cdot3^k$
+would make $m\leq4$ rigorous on all $3$-adic columns (modulo
+$\gamma$-primitivity). A failure of the analogous splitting is the
+precise location where an $m\geq5$ counterexample mechanism would
+appear.
+
+\section{Boundedness}\label{sec:bounded}
+
+\CONJECTURED{} (Lenstra~\cite{Lenstra77}) $m_p$ is globally bounded.
+Lenstra gave unconditional lower-bound rules (singleton odd $\Qset$
+forces positive excess; $f(p)=2\cdot3^k$ forces excess at least $4$) but
+left absolute boundedness open.
+
+\PROVED{} If the $0/1/4$ candidate holds, then $m_p\leq4$ for all $p$;
+proving Conjecture~\ref{conj:rule} would settle boundedness.
+
+\PROVED{} The $3$-power column cannot produce $m\in\{2,3\}$
+(Proposition~\ref{prop:column}); any $C_k$ failure jumps directly to
+$m_r\geq4$.
+
+\PROVED{} (conditional on $C_k$) For every prime $r$ with $f(r)=3^j$,
+$j\leq k$: $C_k$ implies $m_r=1$. With $C_k$ certified for $k\leq6$, all
+primes in the $3$-power column with $f(r)\leq6561$ have $m_r=1$
+unconditionally.
+
+\OPEN{} Boundedness outside the $3$-power and $2\cdot3^k$ columns. The
+non-cyclotomic singleton chains (e.g.\ the $11$-chain and the $23$, $29$,
+$47$ components) have $m=1$ rows in the calculator data and OEIS, but no
+order-criterion proof covers them the way $C_k$ covers the $3$-power
+column.
+
+\OPEN{} Whether any prime $p$ has $m_p\geq5$. No counterexample is known;
+the question is not known to be decidable by any current structural
+argument outside the $3$-adic columns.
+
+\section{Ranked next moves}\label{sec:moves}
+
+\begin{enumerate}[leftmargin=*]
+\item \emph{Dress rehearsal on $m_{89}$, $m_{179}$, $m_{359}$ (highest
+priority).} Certify by direct order tests the calculator rows on which a
+$m_{719}$ certificate depends. The component fields have degrees
+$E=19{,}580$ ($p=89$) and $E=3{,}504{,}820$ ($p=359$ -- a stretch: hours
+to a day with \texttt{gf2x}-style arithmetic). This calibrates the cost
+model for the next move on the same code path and settles the provenance
+question (``what evidence is acceptable'') before any new $\alpha$ ships.
+Confirm $m_{359}=1$ first; the norm recurrence for $p=719$ shifts if
+not. \emph{Feasible now; blocks the next move.}
+\item \emph{Certify $m_{719}$ via the Kummer-tower Frobenius norm.}
+Implement the binary-splitting norm $N_{2k}=N_k\cdot\Frob^{359k}(N_k)$ in
+the tower-sparse representation; measure the cost model on the calibrated
+path; if tower-aware Frobenius brings the ${\sim}44$ modular compositions
+to feasible size, run to certify or falsify $m_{719}=1$. Factor out the
+shared \texttt{relative\_norm\_over\_frobenius\_orbit} abstraction
+(Remark~\ref{rem:bridgek}). \emph{Blocked on move 1 for the cost
+model.}
+\item \emph{Prove or falsify $m_p=4$ exactly on the $2\cdot3^k$ column.}
+Apply the half-angle toolkit at the compositum level to
+$(\kappa+4)(\kappa+6)$ (Section~\ref{sec:rule}); a splitting failure here
+is where any $m\geq5$ example would hide. \emph{Feasible with the
+existing GF(2) toolkit; extends}
+\path{experiments/cyclotomic_3k_family.py}.
+\item \emph{Convert $C_7$, $C_8$ from \textsc{consistent} to
+\textsc{certified}.} ECM/GNFS jobs on the cofactors of $\Phi_{3^7}(2)$
+and $\Phi_{3^8}(2)$; full factorization also emits a batch of new
+A380496 rows. \emph{Background job; uncertain outcome; blocks
+nothing.}
+\item \emph{Exact-order census on the non-cyclotomic singleton chains.}
+Compute $\ord(\kappa_q+m)$ for small $m$ in the explicit component fields
+for the $11$-chain and the $23$, $29$, $47$ components (degrees up to
+${\sim}5060$; trivial locally); look for an analogue of the
+$L^{\times}\times U$ splitting and for any forced-translate mechanism.
+This is the main structural gap for boundedness outside the $3$-power
+columns. \emph{Feasible now; no structural theory yet.}
+\end{enumerate}
+
+\section{Provenance and validation}\label{sec:provenance}
+
+\subsection{Independent oracle}
+
+\path{experiments/ordinal_excess_probe.py} is a small local term-algebra
+oracle -- not a replacement for CGSuite~\cite{CGSuite} or the C++
+calculator~\cite{Peeters}, but a way to verify the first subtle cases
+without using the Rust production tower as its own oracle. It implements
+the impartial term algebra used by the calculators, a
+multiplicative-order test for small component fields, and a fixed-base
+exponentiation path (ported from the calculator's strategy) for targeted
+root tests where full order factorization is unnecessary. Current probe
+output:
+
+\begin{center}
+\begin{tabular}{rrlc}
+\toprule
+$p$ & $m$ & $\Qset$ & root? \\
+\midrule
+$7$  & $0$ & $\{3\}$  & yes \\
+$7$  & $1$ & $\{3\}$  & no \\
+$19$ & $1$ & $\{9\}$  & yes \\
+$19$ & $4$ & $\{9\}$  & no \\
+$73$ & $1$ & $\{9\}$  & no \\
+$47$ & $1$ & $\{23\}$ & no \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The last line certifies $m_{47}=1$ using only lower verified rows; since
+$f(47)=23$ and $\Qset(23)=\{23\}$, the carry is
+$\alpha_{47}=\kappa_{23}+1=\omega^{(\omega^7)}+1$, the value now
+implemented in \path{tower.rs}.
+
+\subsection{The $\alpha_{47}$ promotion}
+
+The shipped state: \path{src/scalar/big/ordinal/tower.rs} carries
+$\alpha_{47}$ with the landmark test
+\path{locally_verified_alpha_47_landmark} and moves the refusal
+boundary to $\alpha_{53}$; the documented boundaries in
+\path{nim.rs}, \path{mod.rs}, \path{src/games/nimber_game.rs},
+\texttt{README.md}, and \texttt{OPEN.md} were updated in step. The full
+gate ran clean: \texttt{cargo fmt --check}, \texttt{cargo test},
+\texttt{cargo check}/\texttt{clippy} with and without the
+\texttt{python} feature (warnings denied), and the probe under
+\texttt{py\_compile}. Focused tests:
+\path{locally_verified_alpha_47_landmark} and
+\path{boundary_returns_none_past_prime_47}.
+
+\subsection{Supporting probes}
+
+The $3^k$-family certification chain is
+\path{experiments/cyclotomic_3k_family.py} (committed, maintained) with
+the research-run probes under \path{experiments/excess/} (machine-
+generated, rescued from ephemeral storage; triage before citing). The
+analysis in Sections~\ref{sec:norm}--\ref{sec:bounded} synthesizes the
+2026-06-10 parallel research run; each claim above carries its own tag,
+and no claim depends on an unverified solver.
+
+\section*{Acknowledgements}
+The \texttt{ogdoad} library, the experiments, and this draft were
+developed with LLM assistance; the analysis consolidates a structured
+parallel research run (2026-06-10). Mathematical direction, framing, and
+responsibility for claims remain the author's.
+
+\begin{thebibliography}{9}
+\bibitem{Conway76} J.~H.~Conway, \emph{On Numbers and Games}, Academic
+Press, 1976.
+\bibitem{DFRR19} L.~De~Feo, H.~Randriam, \'E.~Rousseau, \emph{Standard
+lattices of compatibly embedded finite fields}, Proc.\ ISSAC 2019;
+arXiv:1906.00870.
+\bibitem{DiMuro} J.~DiMuro, \emph{On $\mathrm{On}_p$}, arXiv:1108.0962.
+\bibitem{KS98} E.~Kaltofen, V.~Shoup, \emph{Subquadratic-time factoring of
+polynomials over finite fields}, Math.\ Comp.\ \textbf{67} (1998),
+1179--1197.
+\bibitem{Lenstra77} H.~W.~Lenstra, Jr., \emph{On the algebraic closure of
+two}, Indag.\ Math.\ \textbf{39} (1977), 389--396;
+\url{https://pub.math.leidenuniv.nl/~lenstrahw/PUBLICATIONS/1977e/art.pdf}.
+\bibitem{Lenstra78} H.~W.~Lenstra, Jr., \emph{Nim multiplication},
+S\'eminaire de Th\'eorie des Nombres de Bordeaux, 1977--1978.
+\bibitem{OEIS} OEIS Foundation Inc., entry A380496,
+\emph{The On-Line Encyclopedia of Integer Sequences},
+\url{https://oeis.org/A380496}.
+\bibitem{CGSuite} A.~N.~Siegel, \emph{CGSuite} (software),
+\texttt{NimFieldCalculator},
+\url{https://github.com/aaron-siegel/cgsuite}.
+\bibitem{Peeters} D.~Peeters, \emph{transfinite-nim-calculator}
+(software),
+\url{https://github.com/DjangoPeeters/transfinite-nim-calculator}.
+\bibitem{vzGS92} J.~von~zur~Gathen, V.~Shoup, \emph{Computing Frobenius
+maps and factoring polynomials}, Comput.\ Complexity \textbf{2} (1992),
+187--224.
+\end{thebibliography}
+
+\end{document}

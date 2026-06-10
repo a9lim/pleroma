@@ -38,8 +38,10 @@ probes `interactive_kernel`, `octal_hunt`, `loopy_quadric`, `misere_quotient`,
 `bent_route`), `experiments/` (Python research probes on top of the shipped
 lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems),
 `roadmap/` (DONE.md / TBD.md — the cross-pillar bridge map and remaining boundaries),
-`TABLES.md` (the inventory of curated hardcoded tables), and
-`writeups/goldarf.tex` (the draft note on the Gold/Arf game thread).
+`TABLES.md` (the inventory of curated hardcoded tables), and `writeups/`
+(`goldarf.tex` — the consolidated draft note on the Gold/Arf game thread,
+including the Tier-2 no-go/construction program; `excess.tex` — the
+consolidated note on the transfinite nim excess problem).
 
 ## Claim levels and non-claims
 
@@ -251,7 +253,8 @@ shipped — the invariant-carrying types need custom deserialization, not a naiv
 derive.)
 
 The narrow Gold/Arf game thread and the genuine open problems live in `OPEN.md`; the
-draft note is `writeups/goldarf.tex`. Read `OPEN.md` before touching `forms/char2/`,
+draft notes are `writeups/goldarf.tex` (Gold/Arf) and `writeups/excess.tex`
+(transfinite excess). Read `OPEN.md` before touching `forms/char2/`,
 `forms/quadric_fit.rs`, `forms/char0.rs`, `games/coin_turning.rs`, `games/kernel.rs`,
 `games/misere.rs`, `games/loopy.rs`, `forms/witt/`, `experiments/`, or the
 open-question example probes.

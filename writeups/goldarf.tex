@@ -6,10 +6,20 @@
 \usepackage{enumitem}
 \usepackage[hidelinks]{hyperref}
 
+\theoremstyle{plain}
 \newtheorem{observation}{Observation}
 \newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{theorem}{Theorem}
 \newtheorem*{question}{Open question}
+% The lettered series records the no-go results of the 2026-06-10 parallel
+% research run; the letters A--H are stable names used by OPEN.md and the
+% probe files in experiments/gold/.
+\newtheorem{nogo}{Theorem}
+\renewcommand{\thenogo}{\Alph{nogo}}
 \theoremstyle{definition}
+\newtheorem{definition}{Definition}
 \newtheorem{remark}{Remark}
 
 \newcommand{\No}{\mathbf{No}}
@@ -19,6 +29,18 @@
 \newcommand{\Arf}{\operatorname{Arf}}
 \newcommand{\nimmul}{\otimes}
 \newcommand{\Cl}{\mathrm{Cl}}
+\newcommand{\Sp}{\operatorname{Sp}}
+\newcommand{\Orth}{\mathrm{O}}
+\newcommand{\AO}{\mathrm{AO}}
+\newcommand{\AGL}{\operatorname{AGL}}
+\newcommand{\GL}{\operatorname{GL}}
+\newcommand{\Aut}{\operatorname{Aut}}
+\newcommand{\Inn}{\operatorname{Inn}}
+\newcommand{\Out}{\operatorname{Out}}
+\newcommand{\rad}{\operatorname{rad}}
+\newcommand{\wt}{\operatorname{wt}}
+\newcommand{\mex}{\operatorname{mex}}
+\newcommand{\Stab}{\operatorname{Stab}}
 
 \title{Draft: game-built quadratic forms in the nimber Clifford backend}
 \author{a9lim}
@@ -28,13 +50,13 @@
 \maketitle
 
 \begin{abstract}
-This is a draft experimental note about the part of \texttt{ogdoad} that seems
-mathematically worth isolating. Conway games under disjunctive sum do not form a
-scalar ring, so the project does not construct ``Clifford algebras over all
-games''. Instead it builds Clifford algebras over field-like game-value worlds,
-with emphasis on the characteristic-$2$ nimber backend. The main point is that
-the char-$2$ engine keeps the quadratic data $q_i=e_i^2$ and the polar data
-$b_{ij}=e_i e_j+e_j e_i$ independent, then computes trace-Arf invariants of
+This is a consolidated experimental note about the part of \texttt{ogdoad} that
+seems mathematically worth isolating. Conway games under disjunctive sum do not
+form a scalar ring, so the project does not construct ``Clifford algebras over
+all games''. Instead it builds Clifford algebras over field-like game-value
+worlds, with emphasis on the characteristic-$2$ nimber backend, whose engine
+keeps the quadratic data $q_i=e_i^2$ and the polar data
+$b_{ij}=e_ie_j+e_je_i$ independent and computes trace-Arf invariants of
 quadratic forms over finite nimber subfields.
 
 The experimental bridge is this: the Gold trace forms
@@ -45,13 +67,41 @@ are standard quadratic forms over fields of characteristic $2$, but in the
 nimber setting they are also composites of combinatorial-game operations:
 nim-product via Turning Corners, Frobenius squaring via the diagonal product,
 and XOR via disjunctive sum. Their Arf invariant has the classical zero-count
-interpretation. Therefore, if a natural game had $P$-positions exactly
-$\{x:Q_a(x)=0\}$, the Arf invariant would be the sign of the second-player
-win-bias. The note does not claim such a game has been found. It records the
-construction, the validation checks, and the current obstructions.
+interpretation, so if a natural game had $P$-positions exactly
+$\{x:Q_a(x)=0\}$, Arf would be the sign of the second-player win-bias. The
+note does not claim such a game has been found.
+
+Beyond the construction, the note synthesizes three threads of work on the
+open game-semantics question. First, the obstruction landscape: normal-play
+sums and Winning-Ways coin-turning realize only \emph{linear} $P$-sets
+(the lexicode phenomenon is the rich solved case of that linear ceiling), and
+a family of no-go theorems eliminates symmetric, commutative, oracle-bounded,
+and translation-equivariant architectures above it. Second, an
+extraspecial-group reframing: a characteristic-$2$ quadratic form \emph{is} a
+central extension $1\to\mathbb{Z}/2\to E\to V\to 1$ whose squaring map is $Q$,
+which forces the quadratic datum to come from a noncommutative source and
+yields a naturality screen strictly between the frame-blind no-go and
+tautological evaluation. Third, the constructive boundary: within every tested
+bounded-access class, exact realizers of $\{Q=0\}$ exist but are forced
+clocks; one charge-counting construction (\textsc{echo}-ko) is exact on
+the verified rank-$4$ bent instances and near-exact at low rank, while
+remaining decision-live. A formalized naturality
+criterion makes the residual question precise: does a decision-nondegenerate
+fixed uniform rule realize a Gold quadric?
 \end{abstract}
 
-\section{Scope}
+\paragraph{Claim levels.}
+Following the repository convention, statements below are labelled
+\emph{standard math} (external facts with citations), \emph{implemented and
+tested} (backed by tests, examples, or experiments in this checkout),
+\emph{interpretation} (conditional bridges), or \emph{open}. Several results
+of the 2026-06-10 parallel research run are machine-verified only at stated
+small parameters; each such result carries its verification scope inline.
+One construction claim (\textsc{echo}-\textsc{fifo}+dummy,
+Section~\ref{sec:constructions}) is explicitly \emph{unverified} and is not
+relied on anywhere.
+
+\section{Scope}\label{sec:scope}
 
 A short partizan game is built recursively as $\{L\mid R\}$, and games form a
 partially ordered abelian group under disjunctive sum~\cite{Conway76,WW}. They
@@ -78,7 +128,7 @@ The implemented \texttt{Nimber} scalar is finite: \texttt{u128} realizes
 $\F_{2^{128}}$, containing the nimber subfields $\F_{2^m}$ for
 $m=1,2,4,\ldots,128$. It is not the whole proper-class field $\On$.
 
-\section{The char-2 Clifford datum}
+\section{The char-2 Clifford datum}\label{sec:datum}
 
 In characteristic $2$, a quadratic form is not determined by its polar form.
 For basis vectors the Clifford relations are
@@ -87,7 +137,10 @@ For basis vectors the Clifford relations are
 \]
 The polar form is alternating, so $b_{ii}=0$, but $q_i$ can be nonzero. A
 faithful characteristic-$2$ implementation must store $q$ and $b$ separately.
-This is the main implementation discipline behind the nimber backend.
+This is the main implementation discipline behind the nimber backend, and --
+as Section~\ref{sec:extraspecial} makes precise -- it is also the
+group-theoretic content of the whole note: $q$ and $b$ are the independent
+central data (squares and commutators) of an extraspecial-type extension.
 
 For a nonsingular quadratic form over $\F_2$ with symplectic basis
 $(a_k,b_k)$, the Arf invariant is
@@ -118,7 +171,7 @@ whereas
 \]
 The polar entry is part of the form.
 
-\section{Gold forms from game operations}
+\section{Gold forms from game operations}\label{sec:gold}
 
 Nim-addition is XOR, and XOR is the disjunctive sum of impartial game values.
 Nim-multiplication is also game-theoretic: Conway's Turning-Corners product has
@@ -126,7 +179,7 @@ the mex recurrence
 \begin{equation}\label{eq:tc}
   x\nimmul y
   =
-  \operatorname{mex}
+  \mex
   \left\{
     (i\nimmul y)\oplus(x\nimmul j)\oplus(i\nimmul j):
     0\leq i<x,\ 0\leq j<y
@@ -148,7 +201,9 @@ For $F=\F_{2^m}$ and $a\geq 1$, define the Gold trace form
 \]
 Since Frobenius $x\mapsto x^{2^a}$ is additive, $Q_a$ is a quadratic form over
 $\F_2$. In the nimber backend, it is also a composite of the game operations
-above.
+above. Throughout, ``the instance $(m,a)$'' means $Q_a$ on $\F_{2^m}$, and
+``$(m,a,\lambda)$'' the scaled component $Q_{\lambda,a}(x)=\Tr(\lambda
+x^{1+2^a})$.
 
 \begin{observation}\label{obs:built}
 The Gold forms are not merely defined on a field of game values. In the finite
@@ -196,7 +251,7 @@ Most of these forms have a nontrivial radical. The statement is therefore not
 ``nondegenerate Gold form'' but ``positive-rank quadratic form with a
 nonsingular core whose Arf value is computed after symplectic reduction.''
 
-\section{A broader trace family}
+\subsection{A broader trace family}
 
 The coefficient-$1$ Gold form is only one trace monomial. A standard trace
 description of the quadratic part of Boolean functions over $\F_{2^m}$ uses
@@ -222,7 +277,18 @@ because a bent form has trivial radical: the loopy radical route collapses to
 $\{0\}$, and the frame-blind symplectic no-go applies without a degenerate
 layer to hide in.
 
-\section{Arf as conditional win-bias}
+\begin{remark}[a vacuous small target]\label{rem:vacuous}
+At $m=4$, $a=1$ the zero set $\{Q_1=0\}\subset\F_{16}$ is the subfield
+$\F_4$, an $\F_2$-\emph{subspace} of dimension $2$: the form is genuinely
+quadratic (polar rank $2$), but its zero set is affine, so as a target for
+``is this $P$-set a genuine quadric'' it is vacuous -- a linear rule realizes
+it. The smallest honest unscaled instance is $(8,1)$. The repository's
+quadric-fitting layer (\texttt{src/forms/quadric\_fit.rs}) reports exactly
+this distinction (genuine polar rank versus affine flat), and every probe
+below that consumes a fitted quadric is read with that guard in mind.
+\end{remark}
+
+\section{Arf as conditional win-bias}\label{sec:bias}
 
 The relevant counting theorem is classical. If $Q$ is nonsingular on
 $\F_2^{2r}$, then
@@ -264,14 +330,56 @@ $\#\{Q=0\}-2^{m-1}$.}
 \label{tab:bias}
 \end{table}
 
-\section{What blocks the game semantics}
+\section{The linear ceiling}\label{sec:linear}
 
 For a normal-play disjunctive sum of impartial games, the P-condition is
 linear in Grundy coordinates:
 \[
   g_1\oplus\cdots\oplus g_n=0.
 \]
-So normal-play sums give linear P-sets, not genuine quadrics.
+So normal-play sums give linear P-sets, not genuine quadrics. The
+coin-turning architecture -- the very architecture whose product theorem
+defines the nim product -- is subject to the same ceiling.
+
+\begin{nogo}[coin-turning linearity; standard math, machine cross-checked]
+\label{thm:A}
+Every Winning Ways coin-turning game has configuration $P$-set equal to the
+kernel of an $\F_2$-linear nimber-valued map. In particular no coin-turning
+$P$-set is a quadric of positive polar rank.
+\end{nogo}
+
+\begin{proof}[Proof sketch]
+A coin-turning position is a finite set of heads; by the Winning Ways
+coin-turning theory~\cite{WW}, the Grundy value of a configuration is the XOR
+of the single-coin Grundy values $g(i)$ of its heads. The $P$-set is therefore
+$\{x:\bigoplus_{i\in x}g(i)=0\}$, the kernel of the $\F_2$-linear map
+$x\mapsto\bigoplus_i x_i\,g(i)$. The repository cross-check
+(\texttt{experiments/gold/octal\_attack.py}) verifies XOR-additivity by mex
+recursion, exhaustively over all $32{,}768$ companion-family choices on $4$
+coins.
+\end{proof}
+
+Theorem~\ref{thm:A} has a sharp classical complement: the linear ceiling is
+exactly where coding theory already harvests games.
+
+\begin{remark}[the lexicode shadow; standard math and interpretation]
+\label{rem:lexicode}
+Conway--Sloane lexicodes~\cite{ConwaySloane86} are built by the greedy
+lexicographic rule -- the mex rule -- and the 1986 paper realizes them as the
+Grundy-value-$0$ positions of associated turning-game move structures; binary
+lexicodes are linear \emph{because of} Sprague--Grundy theory (XOR-closure is
+a game theorem there, not a coding theorem). They include the Hamming codes
+and the length-$24$, $d=8$ extended binary Golay code; over base $2^k$ they
+are closed under nim-addition, and they are linear at the Fermat-power bases
+$2^{2^k}$ -- exactly the sizes at which nim-multiplication makes the ordinals
+below the base a field. Read together with Theorem~\ref{thm:A}: lexicodes are
+the \emph{floor} (rich linear codes naturally realized as Grundy-$0$ sets) and
+Theorem~\ref{thm:A} is the \emph{ceiling} (coin-turning realizes only linear
+$P$-sets); floor and ceiling meet at linear. The open problem of this note is
+whether the lexicode phenomenon admits a quadratic refinement, and the
+obstruction is precisely the XOR-closure failure that the polar form
+measures.
+\end{remark}
 
 For a quadratic form in characteristic $2$,
 \[
@@ -286,52 +394,60 @@ are game-built: XOR is disjunctive sum and $B$ is built from nim products. The
 missing layer is a play rule that integrates that bilinear data into the
 quadratic zero set.
 
-\subsection{Test benches}
+\section{Routes and obstructions}\label{sec:blocks}
+
+\subsection{Test benches}\label{sec:benches}
 
 The repo contains several probes. They are useful for narrowing the target, but
 they are not a proof that no natural game exists.
 
 \begin{itemize}[leftmargin=*]
 \item \texttt{fit\_f2\_quadratic} tests whether a subset of $\F_2^k$ is the zero
-set of a quadratic polynomial, and whether the result has nonzero polar rank.
+set of a quadratic polynomial, and whether the result has nonzero polar rank
+(distinguishing genuine quadrics from affine flats; cf.\
+Remark~\ref{rem:vacuous}).
 \item A bounded misere quotient computer tests small quotient P-sets. The octal
 sweep checked $292$ octal codes, heap cutoff at most $4$, and found quotient
 orders $2,6,10,12,14$, with no elementary abelian $2$-group of rank at least
-$2$.
+$2$. Theorem~\ref{thm:C} below shows this emptiness is forced, not a sampling
+accident.
 \item \texttt{experiments/misere\_kernel.py} checks the kernel obstruction on
 the smallest wild misere quotient $R_8$: the canonical group/kernel shadow is
 linear, while the genuinely misere P-element lies outside that vector-space
-part.
+part. Corollary~\ref{cor:kernel} below shows the linearity is forced by
+commutativity.
 \item An interactive-kernel solver tests finite move graphs. It confirms that
 an ad hoc acyclic game can realize any subset, and that a rule referencing $Q$
 itself realizes $\{Q=0\}$ tautologically. The tested $B$-coupled rules do not
 produce the Gold zero set.
 \item \texttt{examples/loopy\_quadric.rs} tests cyclic move graphs with Draw
 sets. The symmetric $B$-coupled rule has Loss-set equal to the radical $R(B)$,
-so it reproduces the obstruction rather than the Gold zero set.
+so it reproduces the obstruction rather than the Gold zero set; this is the
+special case of Theorem~\ref{thm:G} below, and its small $(4,1)$ ``hit'' is
+the radical coincidence $|\{Q_1=0\}|=4=|R(B)|$ there.
 \item \texttt{examples/bent\_route.rs} repeats route probes on a bent scaled
 Gold component. In that example, a $B$ plus coordinate-frame rule reaches a
 quadric of the correct Arf class but not the specific Gold zero set; the naive
 local-field/spin-flip completion leaves the quadric variety.
 \end{itemize}
 
-Except for the frame-blind proposition below and the quoted misere-kernel
-structure theorem, these are bounded or example-level negative results.
+Except for the frame-blind proposition below and the lettered theorems of
+Section~\ref{sec:nogos}, these are bounded or example-level negative results.
 
 \subsection{Frame-blind no-go}
 
-There is, however, a clean obstruction for rules that see only a nondegenerate
+There is a clean obstruction for rules that see only a nondegenerate
 symplectic form and no frame.
 
 \begin{proposition}\label{prop:nogo}
 Let $B$ be a nondegenerate alternating form on $V=\F_2^{2r}$ with $r\geq 2$.
 If a finite normal-play game has position set $V$ and a move relation invariant
-under $\operatorname{Sp}(B)$, then its $P$-set is not a nondegenerate quadric.
+under $\Sp(B)$, then its $P$-set is not a nondegenerate quadric.
 \end{proposition}
 
 \begin{proof}
-Each element of $\operatorname{Sp}(B)$ is an automorphism of the move graph, so
-the retrograde outcome function is $\operatorname{Sp}(B)$-invariant. The P-set
+Each element of $\Sp(B)$ is an automorphism of the move graph, so
+the retrograde outcome function is $\Sp(B)$-invariant. The P-set
 is therefore a union of symplectic orbits. For $r\geq2$, the symplectic group is
 transitive on $V\setminus\{0\}$~\cite{Taylor}, so the invariant subsets are only
 $\varnothing$, $\{0\}$, $V\setminus\{0\}$, and $V$. A nondegenerate quadric in
@@ -339,10 +455,12 @@ dimension at least $4$ has $2^{2r-1}\pm2^{r-1}$ points, which is none of these.
 \end{proof}
 
 The hypothesis matters. Coordinate-dependent rules have already broken
-$\operatorname{Sp}(B)$ symmetry, so this proposition does not explain every
+$\Sp(B)$ symmetry, so this proposition does not explain every
 negative probe. It explains only genuinely frame-blind $B$-only rules.
+Section~\ref{sec:nogos} extends the obstruction far beyond this symmetric
+class.
 
-\subsection{The diagonal framing}
+\subsection{The diagonal framing}\label{sec:framing}
 
 Once a coordinate frame is allowed, a canonical-looking quadratic refinement of
 $B$ is
@@ -366,53 +484,981 @@ nondegenerate alternating forms can give a zero-diagonal frame quadric of Arf
 $1$.
 \end{remark}
 
-The remaining question is therefore sharper than the original slogan.
+The diagonal $q_i=Q_a(e_i)$ is therefore the named missing datum. Two results
+of the parallel run locate it more precisely.
+
+\begin{proposition}[game-native diagonal source for $a=1$; implemented and
+tested]\label{prop:wp}
+Let $m=2^k$ and let $w\in\F_{2^m}$ be the XOR of the Fermat coins
+$2^{2^t}$ for $t=1,\dots,k-1$. Then the $a=1$ Gold diagonal satisfies
+\[
+  q_i^{(m,1)}=Q_1(e_i)=\Tr\!\bigl(\wp(w)\,e_i\bigr),
+  \qquad
+  \wp(w)=w\nimmul w\oplus w,
+\]
+i.e.\ the trace-dual element of the diagonal is $\wp(w)$. Verified at
+$m=4,8,16,32$ via the trace-pairing uniqueness of the dual element
+(\texttt{experiments/gold/gold\_diag\_probe.py}).
+\end{proposition}
+
+This gives a game-native, tower-uniform, commutative source for the $a=1$
+diagonal: one nim-squaring, one XOR, one trace -- all inside the licensed
+operation chain of Section~\ref{sec:gold}. For even $a$ the dual
+$\lambda_a^{(m)}$ provably drifts at each tower doubling
+($\lambda_2$: $0,6,102,24582$; $\lambda_4$: $31,8030$), and no
+$\wp$-preimage family has been named beyond $m=8$; the even-$a$ analogue is
+open.
+
+\begin{remark}[subfield vanishing; standard math]
+$q_i^{(m,a)}=0$ for all $i<m/2$: the Fermat basis elements at lower indices,
+their Frobenius iterates, and their nim products stay inside the half-field,
+whose absolute trace from an even-degree extension vanishes. The Gold diagonal
+lives on the top Fermat layer only.
+\end{remark}
 
 \begin{question}
 Is the diagonal framing
 \[
   q_i=Q_a(e_i)=\Tr(e_i^{1+2^a})
 \]
-itself game-natural, in a way that yields a natural game with P-set
-$\{x:Q_a(x)=0\}$?
+itself game-natural for all $a$, in a way that yields a natural game with
+P-set $\{x:Q_a(x)=0\}$? Proposition~\ref{prop:wp} answers the
+\emph{sourcing} half affirmatively for $a=1$; whether any acceptable source
+yields a non-tautological \emph{play rule} is the subject of the remaining
+sections.
 \end{question}
 
-\section{Validation status}
+\section{The extraspecial reframing}\label{sec:extraspecial}
 
-The claims above are backed by implementation checks, not by a finished proof
-of the open game statement.
+The diagonal-framing question can be restated in group-theoretic terms, and
+the restatement sharpens it. The dictionary is classical -- the
+characteristic-$2$ Heisenberg/extraspecial picture of quadratic
+forms~\cite{Quillen71,Gorenstein80} -- and this section proves the pieces we
+use, to keep the note self-contained. Claim levels: Lemmas~\ref{lem:extdict},
+\ref{lem:arftypes}, \ref{lem:abelian} and
+Proposition~\ref{prop:between} are standard mathematics; the $R_8$
+instantiation in Corollary~\ref{cor:kernel} is implemented and tested
+(\path{experiments/misere_kernel.py}); reading $E$-equivariance as the right
+naturality criterion is interpretation; the existence of a game-native model
+of the extension is open.
+
+Throughout, $V=\F_2^n$ written additively, and $Z=\{1,z\}\cong\mathbb{Z}/2$
+written multiplicatively. A \emph{quadratic map} $Q\colon V\to\F_2$ is a
+function with $Q(0)=0$ whose polarization
+$B(x,y)=Q(x+y)+Q(x)+Q(y)$ is bilinear; $B$ is then alternating (hence
+symmetric), and $Q$ may have any diagonal $q_i=Q(e_i)$, exactly the
+char-$2$ datum the engine keeps separate from $b$.
+
+\subsection{Quadratic forms are central extensions}
+
+\begin{lemma}[extraspecial dictionary]\label{lem:extdict}
+Let $1\to Z\to E\xrightarrow{\ \pi\ }V\to 1$ be a central extension of the
+elementary abelian $2$-group $V$ by $Z\cong\mathbb{Z}/2$.
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+\item For $x\in V$ and any lift $\tilde x\in\pi^{-1}(x)$ one has
+$\tilde x^2\in Z$, and $\tilde x^2$ is independent of the lift; the
+\emph{squaring form} $Q_E\colon V\to\F_2$ defined by
+$\tilde x^2=z^{Q_E(x)}$ is well defined, as is the \emph{commutator pairing}
+$B_E$ defined by $[\tilde x,\tilde y]=z^{B_E(x,y)}$, which is bilinear and
+alternating. They satisfy
+\[
+(\tilde x\tilde y)^2=\tilde x^2\,\tilde y^2\,[\tilde x,\tilde y],
+\qquad\text{equivalently}\qquad
+Q_E(x+y)=Q_E(x)+Q_E(y)+B_E(x,y),
+\]
+so $Q_E$ is a quadratic map with polar form $B_E$.
+\item Conversely, every quadratic map $Q$ arises: fixing a basis
+$e_1,\dots,e_n$ of $V$, the bilinear $2$-cocycle
+\[
+\varphi(x,y)=\sum_i x_iy_i\,Q(e_i)+\sum_{i>j}x_iy_j\,B(e_i,e_j)
+\]
+defines a group $E_Q=Z\times V$ with
+$(s,x)(t,y)=(s+t+\varphi(x,y),\,x+y)$, whose squaring form is $Q$ and whose
+commutator pairing is the polar form $B$.
+\item The assignment $Q\mapsto[E_Q]$ is a bijection from quadratic maps on
+$V$ to equivalence classes of central extensions of $V$ by $\mathbb{Z}/2$.
+\item $E_Q$ is abelian iff $B=0$ (iff $Q$ is linear); and for $n\geq 1$,
+$E_Q$ is \emph{extraspecial} (i.e.\ $Z(E)=[E,E]=\Phi(E)\cong\mathbb{Z}/2$)
+iff $B$ is nondegenerate, which forces $n=2r$ even and $|E_Q|=2^{1+2r}$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(i) $\pi(\tilde x^2)=2x=0$, so $\tilde x^2\in Z$; replacing $\tilde x$ by
+$z\tilde x$ multiplies the square by $z^2=1$. Commutators of lifts lie in
+$Z$ because $V$ is abelian, are central, and are unchanged by central
+retagging of the lifts; centrality of commutators gives bimultiplicativity,
+and $[\tilde x,\tilde x]=1$ gives $B_E(x,x)=0$. For the identity: with
+$c=[\tilde y,\tilde x]$ central,
+$\tilde x\tilde y\tilde x\tilde y
+=\tilde x(\tilde x\tilde y\,c)\tilde y=\tilde x^2\tilde y^2c$,
+and $c=c^{-1}=[\tilde x,\tilde y]$ since $Z$ has exponent $2$. As
+$\tilde x\tilde y$ lifts $x+y$, the additive identity follows.
+
+(ii) A bilinear map is a $2$-cocycle, so $E_Q$ is a group with center
+containing $Z=\{(0,0),(1,0)\}$. Squares: $(s,x)^2=(\varphi(x,x),0)$ and
+$\varphi(x,x)=\sum_i x_iQ(e_i)+\sum_{i>j}x_ix_jB(e_i,e_j)=Q(x)$ by the
+polarization expansion of $Q$ in the basis. Commutators:
+$(s,x)(t,y)(s,x)^{-1}(t,y)^{-1}=(\varphi(x,y)+\varphi(y,x),0)
+=(B(x,y),0)$, using that the symmetrization of $\varphi$ is $B$ (the
+diagonal terms cancel and $B$ is symmetric).
+
+(iii) Equivalent extensions have cohomologous cocycles, and a coboundary
+$\delta\psi(x,y)=\psi(x)+\psi(y)+\psi(x+y)$ has zero diagonal
+($\delta\psi(x,x)=\psi(0)=0$), so the squaring form is an invariant of the
+class; (ii) gives surjectivity. Injectivity: if two extensions have equal
+squaring form $Q$, choose sections and cocycles $\varphi,\varphi'$; both
+have diagonal $Q$, and both have symmetrization equal to the polar form of
+$Q$, so $d=\varphi+\varphi'$ is a symmetric cocycle with zero diagonal. The
+extension $E_d$ is then abelian of exponent $2$, i.e.\ an $\F_2$-vector
+space, so $1\to Z\to E_d\to V\to 1$ splits and $d$ is a coboundary; the two
+extensions are equivalent.
+
+(iv) Commutators generate $z^{\,\mathrm{im}\,B}$, so $E_Q$ is abelian iff
+$B=0$. In general $Z(E_Q)=\pi^{-1}(\rad B)$, since $\tilde x$
+is central iff $B(x,\cdot)=0$; thus $Z(E_Q)=Z$ iff $B$ is nondegenerate. If
+so, $B\neq0$ gives $[E,E]=Z$, and $\Phi(E)=E^2[E,E]=Z$ because all squares
+lie in $Z$ and $E/Z$ is elementary abelian. A nondegenerate alternating
+form exists only in even dimension.
+\end{proof}
+
+\begin{remark}
+This is the characteristic-$2$ Heisenberg picture: $E_Q$ is the Heisenberg
+group of $(V,B)$ and $Q$ selects the central extension; cohomologically,
+(iii) is the standard identification of $H^2(V;\F_2)$ with quadratic maps
+$V\to\F_2$~\cite{Quillen71}. The same finite-quadratic-module data drives
+the Weil $S$/$T$ matrices in the library's integral layer. Note that the
+dictionary is exactly the engine's discipline in group clothing: the
+diagonal $q_i$ (squares) and the off-diagonal $b_{ij}$ (commutators) are
+independent central data, and collapsing them is collapsing $E_Q$ onto an
+abelian quotient.
+\end{remark}
+
+\subsection{Arf classifies the two extraspecial types}
+
+Write $H$ for the hyperbolic plane ($Q(e_1)=Q(e_2)=0$, $B(e_1,e_2)=1$;
+$\Arf=0$) and $A$ for the anisotropic plane ($Q\equiv1$ on $V\setminus\{0\}$;
+$\Arf=1$), and $\circ$ for the central product (identify the centers).
+
+\begin{lemma}[Arf = the two types]\label{lem:arftypes}
+Let $B$ be nondegenerate, $\dim V=2r\geq2$.
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+\item $E_{Q\perp Q'}\cong E_Q\circ E_{Q'}$.
+\item $E_H\cong D_8$ and $E_A\cong Q_8$.
+\item Every extraspecial $2$-group of order $2^{1+2r}$ is isomorphic to
+$E_Q$ for a nondegenerate $Q$, and
+$E_Q\cong E_{Q'}$ iff $(V,Q)\cong(V',Q')$ iff the ranks and Arf invariants
+agree~\cite{Dickson01,Arf41}. Hence there are exactly two extraspecial
+groups of order $2^{1+2r}$:
+\[
+E^+_{2^{1+2r}}\;=\;D_8^{\circ r}\ \ (\Arf=0,\ Q\cong H^{\perp r}),
+\qquad
+E^-_{2^{1+2r}}\;=\;D_8^{\circ(r-1)}\circ Q_8\ \ (\Arf=1,\ Q\cong
+H^{\perp(r-1)}\perp A).
+\]
+In particular $D_8\circ D_8\cong Q_8\circ Q_8$, the group avatar of
+$H\perp H\cong A\perp A$ (additivity of $\Arf$).
+\item (Census.) With $\varepsilon=(-1)^{\Arf Q}$,
+\[
+\#\{g\in E_Q: g^2=1\}=2\,\#\{x:Q(x)=0\}=2^{2r}+\varepsilon\,2^{r},
+\]
+so the element-order census of $E_Q$ is the zero-count bias of
+Section~\ref{sec:bias} read multiplicatively, and it distinguishes the two
+types.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(i) The cocycle $\varphi\oplus\varphi'$ on $V\oplus V'$ is bilinear with
+diagonal $Q\perp Q'$, and
+$(s,(x,x'))\mapsto[((s,x),(0,x'))]$ is an isomorphism onto
+$(E_Q\times E_{Q'})/\langle(z,z')\rangle$.
+
+(ii) $E_H$ has order $8$, is nonabelian ($B\neq0$), and has a noncentral
+involution (any lift of $e_1$ squares to $z^{Q(e_1)}=1$), so $E_H\cong D_8$;
+in $E_A$ every noncentral element squares to $z$ (as $Q\equiv1$ off $0$), so
+$z$ is the unique involution and $E_A\cong Q_8$.
+
+(iii) For $E$ extraspecial, $V=E/Z(E)$ is elementary abelian (as
+$\Phi(E)=Z(E)$), so Lemma~\ref{lem:extdict} applies to
+$1\to Z(E)\to E\to V\to1$ and gives $E\cong E_{Q_E}$ with $B_{Q_E}$
+nondegenerate ($Z(E)$ exactly central). If $\psi\colon E_Q\to E_{Q'}$ is an
+isomorphism, it preserves the (characteristic) centers, fixes $z\mapsto z'$
+(the unique nontrivial central element), and induces an $\F_2$-linear map
+$\bar\psi\colon V\to V'$ with
+$Q'(\bar\psi x)$ read from $\psi(\tilde x)^2=\psi(\tilde x^2)$ -- an
+isometry. Conversely an isometry $g$ transports the cocycle:
+$\varphi'\circ(g\times g)$ has diagonal $Q'\circ g=Q$, hence by
+Lemma~\ref{lem:extdict}(iii) yields an extension equivalent to $E_Q$, and
+$(s,x)\mapsto(s,gx)$ closes the isomorphism. Dickson's classification of
+nonsingular quadratic forms over $\F_2$ (two isometry classes per even
+rank, separated by $\Arf$) finishes; the central-product normal forms
+follow from (i), (ii) and Witt decomposition.
+
+(iv) The two lifts of $x$ both square to $z^{Q(x)}$, so they are
+involutions or the identity iff $Q(x)=0$; now apply the zero-count formula
+of Section~\ref{sec:bias}. The counts differ for $\varepsilon=\pm1$, so
+$E^+\not\cong E^-$.
+\end{proof}
+
+\subsection{The abelian obstruction}
+
+\begin{lemma}[abelian obstruction]\label{lem:abelian}
+Let $M$ be a commutative monoid, $Z=\{1,z\}\subseteq M$ a two-element
+subgroup, $N\subseteq M$ a submonoid containing $Z$, and
+$\pi\colon N\twoheadrightarrow V$ a surjective monoid homomorphism onto an
+$\F_2$-vector space with $\pi^{-1}(\pi(m))=mZ$ for all $m\in N$. Then the
+squaring form $Q\colon V\to\F_2$, defined by $\tilde m^2=z^{Q(x)}$ for any
+$\tilde m\in\pi^{-1}(x)$, is well defined and \emph{$\F_2$-linear}; its
+polar form vanishes identically. Consequently no commutative monoid
+realizes, through its own squaring map, a quadratic form with nonzero --
+a fortiori nondegenerate -- characteristic-$2$ polar form. Equivalently, by
+Lemma~\ref{lem:extdict}(iv): if $B\neq0$, the extension $E_Q$ is
+nonabelian and admits no model $(N,Z,\pi)$ inside any commutative monoid.
+\end{lemma}
+
+\begin{proof}
+$\pi(m^2)=2\pi(m)=0$, so $m^2\in\pi^{-1}(0)=Z$, and
+$(zm)^2=z^2m^2=m^2$, so $Q$ is well defined. Commutativity gives
+$(mn)^2=m^2n^2$; since $\tilde m\tilde n$ is a preimage of $x+y$, this is
+$Q(x+y)=Q(x)+Q(y)$, i.e.\ $B\equiv0$.
+\end{proof}
+
+\begin{corollary}[misère quotients: the kernel shadow is linear]\label{cor:kernel}
+Let $\mathcal{Q}$ be a finite misère quotient -- a finite commutative
+monoid -- with kernel $K$, the maximal subgroup of $\mathcal{Q}$ (the
+mutual-divisibility class of the product of all idempotents)~\cite{PS}.
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+\item Every configuration $(N,Z,\pi)$ as in Lemma~\ref{lem:abelian} inside
+$\mathcal{Q}$ has linear squaring form: the intrinsic multiplication of a
+misère quotient cannot supply a quadratic refinement with $B\neq0$, on $K$
+or anywhere else in $\mathcal{Q}$.
+\item Under the regularity hypothesis of \cite[Thm.~6.4]{PS} (satisfied by
+the regular finite quotients arising in practice), $K\cong(\mathbb{Z}/2)^k$
+is the group of normal-play Grundy values and the $P$-portion meets $K$ in
+the XOR-linear normal-play set.
+\item On the smallest wild quotient
+$R_8=\langle a,b,c\mid a^2=1,\ b^3=b,\ bc=ab,\ c^2=b^2\rangle$ with
+$P=\{a,b^2\}$: the idempotents are $\{1,b^2\}$, the kernel is
+$K=\{b^2,b,ab,ab^2\}\cong(\mathbb{Z}/2)^2$ with identity $b^2$,
+$P\cap K=\{b^2\}\mapsto\{0\}$ is linear, and the genuinely misère
+$P$-element $a$ lies outside $K$. (Implemented and tested:
+\path{experiments/misere_kernel.py}.)
+\end{enumerate}
+So the linear obstruction observed on $R_8$ is forced by commutativity, not
+an accident of the example: a nondegenerate polar form is the commutator
+pairing of a nonabelian group, and a misère quotient has none to offer.
+\end{corollary}
+
+\begin{proof}
+(i) is Lemma~\ref{lem:abelian} applied to submonoids of $\mathcal{Q}$,
+which are commutative. (ii) is quoted from \cite{PS}. (iii) is a finite
+verification.
+\end{proof}
+
+\subsection{The integral shadow}\label{sec:integral}
+
+The same extension data has an integral-lattice avatar, already shipped in
+the library (interpretation, verified through the
+\texttt{DiscriminantForm} + \texttt{arf\_nimber} pipeline): the Gold
+nonsingular core of rank $2r$ and Arf $\varepsilon$ is the discriminant form
+of the even lattice $U(2)^{r}$ ($\varepsilon=0$) or
+$U(2)^{r-1}\oplus D_4$ ($\varepsilon=1$); the Milgram phase is
+$4\cdot\Arf\bmod 8$; the Weil $S$-matrix prefactor is $(-1)^{\Arf}$; and the
+Frobenius--Schur indicator of the Heisenberg representation of $E_Q$ is
+$(-1)^{\Arf}$. The metaplectic relation $(ST)^3=S^2$ holds iff the diagonal
+$T$ uses a quadratic refinement of the correct Arf class -- it selects the
+Arf \emph{class}, not the member. So the integral bridge carries exactly one
+game-relevant bit; it cannot, by itself, distinguish the Gold form from any
+other refinement in its class.
+
+\subsection{A Tier-2 naturality screen: $E$-equivariance}
+
+Proposition~\ref{prop:nogo} kills rules that are blind to everything but
+the symplectic structure (Tier~1), while per-position evaluator circuits
+for $Q_a$ realize the quadric tautologically (Tier~3). The extraspecial
+dictionary suggests a criterion strictly between the two: the rule should
+see the extension $E_Q$ -- which carries the diagonal data $q_i$
+structurally, as squares -- but only up to its automorphisms, so that no
+basis, field structure, or evaluation circuit can be smuggled in.
+
+\begin{definition}[uniform rules; the three tiers]\label{def:tier2}
+Let $Q$ be nondegenerate on $V=\F_2^{2r}$ with polar form $B$, and
+$E=E_Q$, $\pi\colon E\to V$, $\Sigma=\{x\in V: Q(x)=0\}$.
+\begin{enumerate}[label=(\alph*),leftmargin=*]
+\item A \emph{uniform rule on a finite set $X$} is a single move relation
+$M\subseteq X\times X$, fixed once for all positions; for normal play we
+require the move digraph acyclic, and outcomes are computed by the usual
+retrograde recursion. (For loopy or misère readings, replace the outcome
+recursion; the equivariance constraint below applies verbatim, since
+outcome classes are invariants of digraph automorphisms.)
+\item A uniform rule on $E$ is \emph{$E$-equivariant} if every
+$\alpha\in\Aut(E)$ is an automorphism of the move digraph.
+Its \emph{shadow} is $\pi(P)\subseteq V$, where $P$ is its $P$-set; it
+\emph{realizes} $T\subseteq V$ if $\pi(P)=T$.
+\item \emph{Tier 1} ($\Sp(B)$-blind): a uniform rule on $V$
+invariant under $\Sp(B)$, as in
+Proposition~\ref{prop:nogo}. \emph{Tier 3} ($Q_a$-evaluation): a family of
+games $\{\Gamma_x\}_{x\in V}$ whose structure varies with the designated
+input $x$ (e.g.\ the trace-circuit evaluator); this is not a uniform rule.
+\emph{Tier 2 screen}: a route to the Gold quadric is Tier-2 natural
+\emph{only if} its positions and moves lift to an $E$-equivariant uniform
+rule on $E_{Q_a}$ -- with $Q_a$ restricted to its nonsingular core when the
+form is degenerate, matching the classifier's radical discipline -- that
+realizes $\{Q_a=0\}$.
+\end{enumerate}
+\end{definition}
+
+\begin{proposition}[the screen sits strictly between the solved tiers]\label{prop:between}
+Let $Q$ be nondegenerate on $V=\F_2^{2r}$, $r\geq2$, and $E=E_Q$.
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+\item The image of $\Aut(E)\to \GL(V)$ is exactly the
+orthogonal group $\Orth(Q)$, with kernel the central twists
+$g\mapsto g\,z^{\ell(\pi g)}$, $\ell\in V^{*}$, which equal
+$\Inn(E)\cong V$ because $B$ is nondegenerate; thus
+$\Out(E)\cong \Orth(Q)$ (cf.~\cite{Winter72}). The
+$\Aut(E)$-orbits on $E$ are
+\[
+\{1\},\qquad \{z\},\qquad \pi^{-1}(\Sigma\setminus\{0\}),\qquad
+\pi^{-1}(V\setminus\Sigma).
+\]
+\item Hence the $P$-set of any $E$-equivariant uniform rule is a union of
+these four orbits, and its shadow is one of the eight unions of $\{0\}$,
+$\Sigma\setminus\{0\}$, $V\setminus\Sigma$. The quadric $\Sigma$ is among
+them: the Tier-1 exclusion does not apply.
+\item (Tier 1 $\subsetneq$ Tier 2.) Every $\Sp(B)$-invariant
+uniform rule on $V$ pulls back along $\pi$ to an $E$-equivariant rule with
+$P$-set $\pi^{-1}$ of the original, whose shadow is therefore one of
+$\varnothing$, $\{0\}$, $V\setminus\{0\}$, $V$ -- never the quadric
+(Proposition~\ref{prop:nogo} in this language). The containment is strict:
+the \emph{squaring rule}
+\[
+g\to h\ \text{legal}\iff g^2=z\ \text{and}\ h^2=1
+\]
+(``move from any order-$4$ position to any position of order at most
+$2$'') is $E$-equivariant and acyclic, and its $P$-set is the involution
+locus $\{g:g^2=1\}=\pi^{-1}(\Sigma)$, with shadow exactly $\Sigma$.
+\item (Tier 2 $\subsetneq$ Tier 3.) Up to the isometry induced by any group
+isomorphism, the family of $E$-equivariant rules and their shadows depends
+only on $(r,\Arf Q)$ (Lemma~\ref{lem:arftypes}(iii)). In particular the
+screen cannot separate Gold forms of equal core rank and Arf invariant, and
+an $E$-equivariant rule has no access to $m$, the exponent $a$, the field
+multiplication, the coordinate frame $q_i=Q_a(e_i)$, or any evaluation
+circuit. Conversely, arbitrary subsets of $V$ -- all realizable by ad hoc
+acyclic lookup games and by Tier-3 evaluators
+(Section~\ref{sec:benches}) -- are not shadows of $E$-equivariant rules once
+they leave the eight-set list of (ii).
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) Automorphisms preserve $Z=Z(E)$ and fix $z$
+($\Aut(\mathbb{Z}/2)=1$), so the induced map preserves the
+squaring form: $Q(\bar\alpha x)$ is read from
+$\alpha(\tilde x)^2=\alpha(\tilde x^2)=z^{Q(x)}$; the image lies in
+$\Orth(Q)$. Surjectivity: an isometry $g$ transports the standard cocycle as in
+the proof of Lemma~\ref{lem:arftypes}(iii), producing an automorphism of
+$E_Q$ inducing $g$. The kernel consists of maps $g\mapsto g\,z^{\ell(\pi g)}$
+with $\ell$ linear (multiplicativity forces additivity of $\ell$); inner
+automorphisms are exactly the twists $\ell=B(\bar g,\cdot)$, and
+nondegeneracy makes $\bar g\mapsto B(\bar g,\cdot)$ onto $V^{*}$. Orbits:
+$\Orth(Q)$ is transitive on $\Sigma\setminus\{0\}$ and on $V\setminus\Sigma$ by
+Witt's extension theorem in its characteristic-$2$ quadratic-space form
+\cite{Taylor} (both sets are nonempty for $r\geq2$); the two lifts of any
+$x\neq0$ are conjugate under conjugation by $\tilde g$ with $B(\bar g,x)=1$;
+and $1$, $z$ are fixed by everything.
+
+(ii) Digraph automorphisms preserve the retrograde outcome recursion, so
+$P$ is $\Aut(E)$-invariant; apply (i) and project.
+
+(iii) The pullback $M=\{(g,h):(\pi g,\pi h)\in R\}$ of an
+$\Sp(B)$-invariant rule $R$ is preserved by
+$\Aut(E)$, since the induced action on $V$ lies in
+$\Orth(Q)\subseteq\Sp(B)$; it is acyclic when $R$ is, and an easy
+induction along the acyclic rank gives
+$P(M)=\pi^{-1}(P(R))$. By the transitivity of
+$\Sp(B)$ on $V\setminus\{0\}$ for $r\geq2$, $P(R)$ is a union
+of $\{0\}$ and $V\setminus\{0\}$. For the squaring rule: automorphisms
+preserve element orders, so the rule is $E$-equivariant; positions with
+$g^2=1$ are terminal, hence $P$; positions with $g^2=z$ have a move (to
+$1$), hence $N$. Its shadow $\Sigma$ satisfies
+$1<|\Sigma|=2^{2r-1}+\varepsilon2^{r-1}<2^{2r}-1$ for $r\geq2$, so it is
+none of the four Tier-1 shadows.
+
+(iv) If $\psi\colon E_Q\to E_{Q'}$ is an isomorphism (it exists iff ranks
+and Arf agree, Lemma~\ref{lem:arftypes}(iii)), then
+$M\mapsto(\psi\times\psi)(M)$ is a bijection between $E$-equivariant rules
+carrying $P$-sets to $P$-sets and shadows to shadows through the induced
+isometry $\bar\psi$; in particular it carries rules realizing $\{Q=0\}$ to
+rules realizing $\{Q'=0\}$. The shadow constraint of (ii) excludes all but
+eight subsets, while Tier-3 constructions realize any subset; the
+containment is proper.
+\end{proof}
+
+\begin{remark}[what the screen does and does not settle]\label{rem:screen}
+Equivariance is a screen, not a construction. Over the \emph{abstract}
+group $E$ the screen is satisfiable -- Proposition~\ref{prop:between}(iii)
+exhibits the squaring rule, which is nothing but the extraspecial squaring
+map of Lemma~\ref{lem:extdict} read as a one-move relation. That rule
+consults only the multiplication of $E$, so it is a $Q$-evaluator exactly
+insofar as $E$ itself is fed in by hand. The reframing therefore relocates
+the open problem: instead of \emph{find a play rule that computes $Q_a$},
+it asks \emph{exhibit a game-native model of the extension $E_{Q_a}$} --
+positions built from game values, multiplication from game constructions --
+after which the rule layer is canonical. Lemma~\ref{lem:abelian} is the
+sharp constraint on that search: no commutative value-world, in particular
+no misère-quotient kernel (Corollary~\ref{cor:kernel}), can host $E$ once
+$B\neq0$. The noncommutativity must enter from a structurally available
+asymmetry, and the one that normal, misère, and partizan play all possess
+-- and that the symmetric polar form $B$ discards -- is the
+first-/second-player asymmetry of the move relation. Claim
+levels: the proposition is standard mathematics; treating
+$E$-equivariance as \emph{the} naturality criterion is interpretation;
+the existence of a game-native $E$ is open. (For $r=1$ the screen degenerates:
+on the anisotropic plane $\Sigma=\{0\}$ and $\Orth(Q)=\Sp(B)$,
+so the statement is vacuous there; the Gold targets of interest have
+$r\geq2$ cores.) Theorem~\ref{thm:E} below sharpens the screen further:
+read as \emph{invariance} it admits no live middle at all, so the
+$E$-structure must enter \emph{covariantly}, in the dynamics.
+\end{remark}
+
+\begin{question}
+Does any game-native construction realize the extraspecial extension
+$E_{Q_a}$ -- equivalently, produce the diagonal data $q_i=Q_a(e_i)$ as
+squares in a noncommutative game-built structure -- without an evaluation
+circuit for $Q_a$? By Lemma~\ref{lem:abelian} the source cannot be any
+commutative game-value monoid.
+\end{question}
+
+\section{No-go theorems for the middle tier}\label{sec:nogos}
+
+This section records the no-go results of the structured attack
+(2026-06-10) on the middle tier. Architectures covered: commutative
+provenance, affine and orthogonal symmetry, bounded $B$-oracle access,
+$B$-local flip rules, and $E$-translation dynamics. Verification scopes are
+stated inline; the supporting probes live in \texttt{experiments/gold/}.
+(Theorem~\ref{thm:A}, coin-turning linearity, opened the series in
+Section~\ref{sec:linear}.)
+
+\begin{nogo}[commutative squaring collapse; standard math]\label{thm:B}
+In any commutative monoid, squaring is an endomorphism, so any quadratic
+datum read through homomorphic coordinates has polarization identically
+zero. In particular the extraspecial squaring map $Q$ (for $B\neq0$) cannot
+live in, map into, or pull back through any commutative game monoid. This
+covers misère quotients, turn-parity counters, and all coin-turning
+configuration sums.
+\end{nogo}
+
+\begin{proof}
+Immediate from Lemma~\ref{lem:abelian}: commutativity gives
+$(mn)^2=m^2n^2$, so the squaring form is additive and $B\equiv0$.
+\end{proof}
+
+\begin{nogo}[group misère quotients are tiny; conditional]\label{thm:C}
+Assume \cite[Thm.~6.4]{PS} with its regularity hypothesis. If the misère
+indistinguishability quotient $\mathcal{Q}(\mathcal{A})$ of a set of
+impartial games is a group, then $|\mathcal{Q}(\mathcal{A})|\leq 2$.
+\end{nogo}
+
+\begin{proof}[Proof sketch]
+Doubling lemma: in a group quotient every element is cancellable, and any
+position of Grundy value $2$ doubles to a misère-$P$ position,
+contradicting Grundy-distinctness from $0$; the quoted structure theorem
+then pins the quotient to at most $\{1,a\}$.
+\end{proof}
+
+\begin{remark}[scope and a probe caveat]\label{rem:thmC}
+Theorem~\ref{thm:C} is conditional on the Plambeck--Siegel structure
+theorem as cited; the regularity hypothesis is quoted from the repository's
+\path{experiments/misere_kernel.py} docstring, and the JCTA 2008 paper has
+\emph{not} been independently re-verified within this program (closing that
+gate is a listed next move). Two consequences for the probe map: the
+$(\mathbb{Z}/2)^k$ ($k\geq2$) target of \texttt{examples/octal\_hunt.rs} is
+empty a priori -- its empirical negatives (quotient orders
+$2,6,10,12,14$) are a theorem, not a sampling accident -- and any future
+``hit'' from that sweep would be a labeling artifact, since the helper
+\texttt{p\_set\_as\_f2} checks only that the subset labeling is a bijection,
+not that it is a monoid homomorphism. The hunt's target should be reframed
+accordingly.
+\end{remark}
+
+For the remaining results, fix a nondegenerate quadratic form $Q$ on
+$V=\F_2^{2r}$, $r\geq2$, with polar form $B$ and zero set
+$\Sigma=\{Q=0\}$, and write
+$\AO(Q)=\{x\mapsto gx+c: g\in\Sp(B),\ Q(gx+c)=Q(x)\ \forall x\}$ for the
+affine stabilizer appearing below.
+
+\begin{nogo}[affine symmetry budget]\label{thm:D}
+$\Stab_{\AGL(V)}(\Sigma)=\AO(Q)$; it contains no nontrivial pure
+translation (for a nonsingular core, $c\in\rad(B)=0$), and its pure-linear
+part is exactly $\Orth(Q)$. Consequently every uniform rule whose move digraph
+admits even one affine automorphism outside $\AO(Q)$ has $P$-set
+$\neq\Sigma$.
+\end{nogo}
+
+\noindent\emph{Verification.} Exhaustive over all $322{,}560$ affine maps
+of $\F_2^4$ at $m=4$, both Arf classes
+(\path{experiments/gold/skeptic_nogo_check.py}); the linear-part
+identification is standard math (Witt extension).
+
+\begin{nogo}[the symmetry dial has no middle]\label{thm:E}
+$\Orth(Q)$ is maximal in $\Sp(B)$, and the $\Orth(Q)$-orbitals on $V\times V$
+are exactly the Gram classes $(Q(u),Q(w),B(u,w))$ together with the
+degeneracy flags (Witt extension; see \cite[\S8]{EKM08}). Hence a rule
+invariant under any group strictly larger than $\Orth(Q)$ is dead by
+Theorem~\ref{thm:D} (its symmetry reaches outside $\AO(Q)$), while a rule
+fully $\Orth(Q)$- or $\Aut(E)$-equivariant factors extensionally through
+pointwise $Q$- and $B$-evaluation. There is no invariance class strictly
+between dead (too coarse) and Gram-factoring (an evaluator): $E$-naturality
+must be \emph{covariance}, not invariance.
+\end{nogo}
+
+\noindent\emph{Verification.} Maximality verified at $m=4$: every one of
+the $648$ (resp.\ $600$) elements of $\Sp(4,2)$ outside $\Orth^{+}(4,2)$
+(resp.\ $\Orth^{-}(4,2)$) generates $\Sp(4,2)$ together with the orthogonal
+group; orbitals enumerated exhaustively at $m=4$
+(\texttt{experiments/gold/ao\_orbitals.py}).
+
+\begin{nogo}[$B$-oracle lower bound]\label{thm:F}
+Access model: legality of a move is decided from XOR combinations of the
+two positions and $t$ fixed constant vectors, with oracle access to $B$
+only. If $t\leq 2r-3$, then for \emph{every} quadratic refinement $Q'$ of
+$B$ simultaneously there is a nonzero $Q'$-singular vector in the
+complement of the constant span; the transvection it induces is a digraph
+automorphism lying outside $\Orth(Q')$, and Theorem~\ref{thm:D} kills the
+$P$-set. The bound is tight: at $t=2r-2$ with anisotropic complement the
+argument fails. Hence the Gold diagonal framing $q_i=Q_a(e_i)$, which
+supplies $2r$ frame constants, is within two dimensions of
+information-theoretically forced.
+\end{nogo}
+
+\noindent\emph{Verification.} Transvection step and the exact escape
+boundary $t=2r-2$ machine-checked at $m=4$; end-to-end spot check on $50$
+random $t=1$ $B$-oracle rules, retrograde-solved
+(\path{experiments/gold/skeptic_nogo_check.py},
+\path{nogo_verify.py}).
+
+\begin{nogo}[$B$-local flip rules]\label{thm:G}
+Any rule of the form ``flip $d$ at $v$ iff $f(d,B(v,d))$'' is automatically
+undirected, because $B$ is alternating:
+$f(d,B(v+d,d))=f(d,B(v,d)+B(d,d))=f(d,B(v,d))$. For undirected loopy games
+the outcome partition collapses: $\mathrm{Win}=\varnothing$,
+$\mathrm{Loss}=$ the isolated vertices $=$ an affine flat, and
+$\mathrm{Loss}\cup\mathrm{Draw}\neq\Sigma$ for $r\geq2$ (the count
+$|\Sigma|=2^{r-1}(2^{r}+\varepsilon)$ has an odd factor $>1$). This covers
+the Loss, Draw, and $\mathrm{Loss}\cup\mathrm{Draw}$ targets at once. The
+symmetric-$B$ rule of \texttt{examples/loopy\_quadric.rs} is the special
+case $f(d,\beta)=\beta$; its $(4,1)$ ``hit'' is the radical coincidence of
+Section~\ref{sec:benches}.
+\end{nogo}
+
+\noindent\emph{Verification.} Undirectedness is the two-line identity
+above (standard math); the loopy outcome collapse including the Draw-set
+gap is machine-checked at $m=4$
+(\path{experiments/gold/skeptic_nogo_check.py}).
+
+\begin{nogo}[$E$-translation no-go]\label{thm:H}
+For $r\geq2$, no left-$E$-equivariant rule on $E=E_Q$ with moves
+$g\to gn$, $n\in N$ for a fixed nonempty $N\subseteq E$, has $P$-set equal
+to the involution locus $I=\{g:g^2=1\}=\pi^{-1}(\Sigma)$.
+\end{nogo}
+
+\begin{proof}
+$I\cdot I=E$: for every $v\neq0$, the count
+$\#\{x:Q(x)=0=Q(x+v)\}=2^{2r-2}+(-1)^{\Arf Q}2^{r-1}$ is positive for
+$r\geq2$ (character sum), so every $n\in N$ factors as $n=gh$ with
+$g,h\in I$. Then $g\in I$, and $g\cdot n=g(gh)=g^2h=h\in I$: the move
+$g\to gn$ is an edge from $I$ to $I$. A normal-play $P$-set admits no
+$P$-to-$P$ edge, so $P\neq I$.
+\end{proof}
+
+\noindent\emph{Verification.} Cross-checked on the bent
+$(8,1,\lambda=2)$ extraspecial group
+(\path{experiments/gold/extraspecial_core.py}).
+
+\subsection{Normal-play rigidity and the synthesis}
+
+The strongest constraint is not any single architecture kill but a rigidity
+statement inside a declared access class. Call a rule \emph{in-class} if the
+quadratic refinement is quarantined behind a weight-bounded oracle (the
+$(w_0,c)$ metering of Definition~\ref{def:criterion} below) and the rule is
+\emph{refinement-uniform}: it realizes the target for every refinement $q$
+of $B$ in the declared family, not just the Gold one.
+
+\begin{theorem}[normal-play rigidity, in-class]\label{thm:rigidity}
+Under the bounded-framing oracle model with refinement uniformity, every
+legal edge between positions of Hamming weight $>c\,w_0$ must flip $Q$ --
+in normal, misère, and loopy-Loss semantics alike. Consequently every
+in-class realizer of $\Sigma$ in those semantics is a \emph{$Q$-alternating
+ender}: play telescopes $Q$, and the outcome is the parity of $Q(x)$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The case $Q(v)=Q(w)=0$ of a non-flipping edge is forbidden directly by the
+outcome structure in all three readings. The case $Q(v)=Q(w)=1$ is reduced
+to it by an adversary substitution: replace $q$ by $q'=q+\ell$ with $\ell$
+a linear form annihilating every queried functional but not the dense
+indicators; refinement uniformity transports the rule to $q'$, where the
+edge becomes a forbidden $0$-to-$0$ edge.
+\end{proof}
+
+\begin{theorem}[no live middle, relative to the quarantine]\label{thm:nolivemiddle}
+Let $Q$ have nonsingular core of rank $2r\geq4$. No fixed uniform
+single-board rule satisfying
+\begin{enumerate}[label=(\Alph*),leftmargin=*,itemsep=0pt]
+\item[(S)] no affine digraph automorphism outside $\AO(Q)$,
+\item[(A)] legality from $B$-oracle queries at $t\leq 2r-3$ frame constants,
+\item[(C)] no commutative squaring route for the provenance of $Q$,
+\item[(E)] no left-$E$-equivariant structure on the extraspecial group,
+\item[(R)] bounded-framing oracle access with refinement uniformity,
+\end{enumerate}
+has $P$/Loss/Draw target equal to $\Sigma$ with any bulk strategic
+content: under (R), every legal edge between dense positions flips $Q$, all
+strategic content is confined to a Hamming ball of radius $c\,w_0$, and no
+bulk-decision-live realizer exists.
+\end{theorem}
+
+\begin{remark}[honest scope: five escape hatches]\label{rem:hatches}
+Theorem~\ref{thm:nolivemiddle} is relative to its hypotheses, and each
+hypothesis is an open experimental window:
+\begin{enumerate}[leftmargin=*,itemsep=0pt]
+\item \emph{Loopy-Draw semantics}: the substitution contradiction of
+Theorem~\ref{thm:rigidity} does not fire (Draw-to-Draw edges are legal).
+\item \emph{$t\geq 2r-2$ with anisotropic complement}: escapes
+Theorem~\ref{thm:F} at the symmetry level.
+\item \emph{Frobenius-aware access}: the Galois group lies inside
+$\Orth(Q_a)$, so all symmetry methods are silent;
+Theorem~\ref{thm:F}'s model explicitly excludes Frobenius-twisted queries.
+\item \emph{Non-quarantined rules using the game-native $\wp(w)$ diagonal
+source} (Proposition~\ref{prop:wp}): once $q$ is game-built, refinement
+uniformity holds trivially and class (R) says nothing.
+\item \emph{Rank $r=1$ and radical-anisotropic degenerate layers}: the
+character-sum count in Theorem~\ref{thm:H} vanishes, and small extraspecial
+groups can be realized.
+\end{enumerate}
+The quarantine hypothesis (R) is a choice with a justification: without
+quarantining the form-identifying datum, the descent evaluator is
+decision-live everywhere and no purely complexity-based no-go is possible.
+Whether game-built diagonal sources such as $\wp(w)$ count as ``probing''
+or ``feeding in'' the form is the central open definitional question of
+this program.
+\end{remark}
+
+\section{A formalized naturality criterion}\label{sec:criterion}
+
+Two natural first attempts at ``naturality'' fail for structural reasons.
+\emph{Equivariance fails}: by Theorem~\ref{thm:E} there is no invariance
+class strictly between symmetry groups that kill the $P$-set and symmetry
+groups that force extensional factoring through $Q$- and $B$-evaluation.
+\emph{Vocabulary quarantine fails}: the Gold diagonal
+$q_i^{(m,1)}=\Tr(e_i^3)$ is expressible as $\Tr(\wp(w)e_i)$ using only XOR,
+nim-product, and trace (Proposition~\ref{prop:wp}) -- the licensed operation
+chain itself -- so no principled line separates ``computing $q$'' from
+``computing $Q$'' on vocabulary alone. The criterion below replaces both
+with access metering plus a strategic-content axiom.
+
+\begin{definition}[uniform local rules; the N-axioms]\label{def:criterion}
+Fix the coin frame $\{e_i\}$ (the Grundy basis $g(n)=2^n$, game-natural).
+\emph{Public data}: the frame, $\oplus$, nim-product, Frobenius, and the
+full alternating form $B$ (game-built via Turning Corners, Frobenius, and
+trace). \emph{Quarantined data}: the quadratic refinement, presented as a
+weight-bounded oracle $O_q(z)=Q_q(z)$ for $\wt(z)\leq w_0$.
+A \emph{uniform local rule} satisfies:
+\begin{enumerate}[leftmargin=*,itemsep=0pt]
+\item[\textbf{F1}] (\emph{$q$-blind statics}) position set, loading map,
+and terminal set are computed without oracle access;
+\item[\textbf{F2}] (\emph{metered access}) each legality bit is decided
+with at most $c$ adaptive oracle queries, each at a point of Hamming weight
+at most $w_0$, with $(w_0,c)$ constants independent of $m$;
+\item[\textbf{F3}] (\emph{declared semantics}) one canonical outcome
+labeling (normal, misère, loopy, or $q$-blind terminal payoff).
+\end{enumerate}
+It is a \emph{natural realizer} if additionally:
+\begin{enumerate}[leftmargin=*,itemsep=0pt]
+\item[\textbf{N1}] (\emph{torsor uniformity -- anti-evaluator}) for every
+$m$, every $B$ in the declared family, and every refinement $q$ of $B$:
+$\mathrm{outcome}(\iota(x))=\text{target}$ iff $Q_q(x)=0$;
+\item[\textbf{N2}] (\emph{locality budget}) the $(w_0,c)$ metering of F2;
+\item[\textbf{N3}] (\emph{strategic relevance -- anti-clock}) for every
+instance $(m,B,q)$ there is a reachable position that is simultaneously
+\emph{outcome-critical} (it has legal moves to different outcome classes)
+and \emph{form-live} (its outcome differs under some refinement $q'$).
+\end{enumerate}
+A rule satisfying the outcome-critical clause of N3 at some reachable
+position is called \emph{decision-nondegenerate}.
+\end{definition}
+
+\begin{theorem}[Tier-3 exclusion under N1+N2]\label{thm:tier3excl}
+For any position $x$ with $\wt(x)>c\,w_0$, the at most $c$ queried
+functionals span only weight-$\leq c\,w_0$ directions, so there exist
+refinements $q,q'$ agreeing with every oracle answer but differing on
+$Q(x)$. Hence no in-class rule's move predicate factors through $Q(x)$ at
+dense positions -- by theorem, not stipulation.
+\end{theorem}
+
+\begin{theorem}[clock completeness; machine-verified]\label{thm:clock}
+N1+N2 alone, without N3, admit pure transport clocks in every semantics,
+including plain normal play: the \emph{pending-marker clock} -- positions
+$(x,\varepsilon,i)$ with invariant $J=Q(x)\oplus\varepsilon$, $(1,1)$-local,
+zero outcome-critical positions -- satisfies N1+N2 exactly for every
+characteristic-$2$ form. Hence N3 is load-bearing: it carries the entire
+residual content of ``natural''.
+\end{theorem}
+
+\begin{remark}[N3 is stated to be attacked]\label{rem:N3}
+The \emph{escape-edge} construction -- a clock plus one dominated $q$-blind
+gadget edge from every nonzero position -- passes N1, N2, and N3 (and a
+density-strengthened N3$^{+}$) while being morally a clock
+(\path{experiments/gold/skeptic_escape_edge_attack.py}). The natural
+repair, a dominance-pruned or two-game version of N3, runs into the fact
+that two-game criticality (critical in both the $q$- and $q'$-games with
+differing outcomes) is unsatisfiable in two-class outcome semantics. The
+anti-clock axiom therefore remains an open definitional problem; N3 is the
+best current formulation, recorded so that it can be attacked further.
+\end{remark}
+
+\paragraph{Calibration (implemented and tested at the stated instances).}
+Under F1--F3 + N1--N2: the T2 spin-flip rule of
+Section~\ref{sec:constructions} fails N3 (zero outcome-critical positions,
+verified at $(8,1)$ and $(8,2)$); the pending-marker clock fails N3;
+\textsc{echo}-ko passes N3 (at least $160$ mistake-states at each verified
+exact $m=4$ instance); an order-$4$-alphabet loopy candidate from the run
+fails N2 (its alphabet is a $2^m$-point $Q$-evaluation); an
+unwinding-game candidate from the run fails N1 (isotropic frames break
+exactness); and the repository's Tier-3 circuit and
+\texttt{interactive\_kernel} Rule~2 fail N2 (dense-point form access).
+The candidates named here live in \texttt{experiments/gold/}.
+
+\section{Constructions and near-misses}\label{sec:constructions}
+
+\subsection{T2: the width-2 spin-flip rule (exact, but a clock)}
+
+\begin{proposition}[T2 realizes every char-2 quadric; implemented and
+tested]\label{prop:t2}
+On positions $x\in\F_2^n$, let the rule be: turn over a set $d$ of
+coins with $\wt(d)\in\{1,2\}$, leading coin heads-to-tails, legal iff
+$B(x,d)\oplus Q(d)=1$. Then for every characteristic-$2$ quadratic form
+$Q$, the normal-play $P$-set is exactly $\{Q=0\}$.
+\end{proposition}
+
+\begin{proof}[Proof sketch (blocking lemma)]
+Every legal move flips $Q$ (by the polarization identity, since
+$Q(x+d)=Q(x)+Q(d)+B(x,d)$ and legality forces $Q(d)+B(x,d)=1$), so it
+suffices that every position with $Q(v)=1$ has a legal descent. If all
+descents from $v$ fail, then $B(v,e_i)=q_i$ for all $i\in\mathrm{supp}(v)$
+and $B\equiv0$ on $\mathrm{supp}(v)\times\mathrm{supp}(v)$; expanding
+$Q(v)$ in the basis then forces $Q(v)=0$, a contradiction.
+\end{proof}
+
+\noindent\emph{Verification.} Checked at $(8,1)$, $(16,1)$, the bent
+$(8,1,\lambda=2)$, and $20$ random refinements of each $B$ (the
+``refinement uniformity certificate'';
+\texttt{experiments/gold/witness\_test.py} and companions). For $a=1$ the
+rule constants $q_i$ are game-native via Proposition~\ref{prop:wp}; for
+$a\geq2$ they are fed in, and game-nativity is open.
+
+T2 is, however, a forced clock: every legal move flips $Q$, play telescopes
+$Q(x)$ as a parity count, every position's options share one outcome class,
+and no position has a losing move. By Theorem~\ref{thm:rigidity} this is
+unavoidable for \emph{all} in-class normal-play realizers, not a defect of
+T2 specifically. T2 and the pending-marker clock pin the boundary: within
+every tested bounded-access quarantine, exact realizers exist but are
+forced clocks.
+
+\subsection{\textsc{echo}-ko: charge counting on the extraspecial cocycle}
+
+The one known exact realizer that is \emph{not} a clock works one level up,
+on the extraspecial cocycle itself.
+
+\begin{quote}
+\textbf{Rule (\textsc{echo}-ko).} Positions are indexed by
+$x\in\F_{2^m}$; the coins of $x$ must each be touched twice; players
+alternate single touches; each touch of $e_i$ updates a charge
+$\sigma\mathrel{\oplus{=}}c(\text{open-set},e_i)$, where $c$ is the
+triangular cocycle of the extraspecial extension
+($c(v,v)=Q_a(v)$, $c(u,v)\oplus c(v,u)=B(u,v)$,
+cf.\ Lemma~\ref{lem:extdict}(ii)); a one-move ko forbids immediately
+re-touching; the player completing the board wins iff the terminal charge
+is $\sigma=1$.
+\end{quote}
+
+The rule is center-reading (not center-blind), noncommutative via move
+order (not turn count), and -- at every verified exact instance --
+decision-nondegenerate. For $a=1$ its constants are game-built via
+Proposition~\ref{prop:wp}, with no per-instance $Q$-evaluation.
+
+\paragraph{Provenance and results (implemented and tested).}
+A first-round solver had a bug (the memoization key omitted the accumulated
+charge parity); the corrected solver was validated against explicit tree
+enumeration. Corrected results
+(\texttt{experiments/gold/echo\_charge\_probe.py} and companions):
+\begin{center}
+\begin{tabular}{llcc}
+\toprule
+instance & core & agreement & decision-live \\
+\midrule
+$m=4$, bent $\lambda\in\{2,12\}$ & rank $4$ & $16/16$ exact & yes ($\geq160$ mistake-states) \\
+$(8,2)$, $\lambda=1$ & rank $4$ & $255/256$ (miss $x=224$) & yes \\
+$(8,1)$, $\lambda=1$ & rank $6$ & $228/256$ & yes \\
+$(8,1)$, bent $\lambda=2$ & rank $8$ & $212/256$ & yes \\
+\bottomrule
+\end{tabular}
+\end{center}
+Agreement grades by polar rank. A bounded-memory blocker conjecture (for
+fixed ko-window $w$, adversarial unlinking wins on supports $k\geq w+2$ at
+rank $\geq6$) was formulated on the \emph{invalid} round-1 data and has not
+been re-examined against the corrected solver; it is recorded as a
+hypothesis to re-test, not a finding.
+
+\subsection{\textsc{echo}-\textsc{fifo}+dummy: an unverified exactness claim}
+
+A second-round variant replaces the one-move ko with a \textsc{fifo}
+close-discipline (only the longest-open coin may be closed) and adjoins one
+neutral tempo coin. The run claims full $m=8$ exactness
+($391{,}680$ checks across all $765$ scaled Gold forms, including rank $6$
+and rank $8$) via a decomposition-plus-isomorphism-caching solver that was
+validated only at $m=4$, not directly at $m=8$.
+
+\textbf{This claim is unverified pending adversarial review and is not
+treated as established anywhere in this note.} A fresh direct stateful
+solver -- no decomposition extrapolation, full state in the memo key
+including $\sigma$, validated against explicit tree enumeration -- has not
+been run at $m=8$. It is the single most load-bearing unverified result of
+the program, and re-deriving it (or refuting it) is the top-ranked next
+move.
+
+\subsection{The decisive experiment}
+
+The pre-registered experiment for the primary candidate: a corrected-solver
+sweep over the finite \textsc{echo} rule family at $m=8$, validated by a
+direct stateful solver.
+\begin{itemize}[leftmargin=*,itemsep=0pt]
+\item \emph{Benchmarks}: $(8,1,\lambda=1)$ rank $6$; bent
+$(8,1,\lambda=2)$ rank $8$; $(8,2,\lambda=1)$ rank $4$; the full $m=4$
+family as regression.
+\item \emph{Axes}: ko-memory window $w\in\{1,2,3\}$; pass semantics
+(clears-ko / forbidden / loses); single-coin plus pair touches (the
+tartan-companion axis); both orientations.
+\item \emph{Success criterion}: zero misses across all tested
+$(m,a,\lambda)$ triples, decision-nondegenerate throughout, and surviving a
+torsor sweep ($\geq20$ stratified refinements of each $B$, confirming
+refinement uniformity rather than single-refinement luck).
+\end{itemize}
+A \textsc{confirm} outcome would be the first genuine Tier-2 witness
+(pending recasting the charge readout into normal/misère/loopy semantics
+and the even-$a$ diagonal lemma). A \textsc{kill} outcome -- rank-graded
+decay persisting across every family member -- would put the
+bounded-memory blocker conjecture on valid data and close the line for
+bounded-memory architectures. Either outcome is informative, and the sweep
+is feasible in minutes per candidate on the existing infrastructure.
+
+\section{Status and next moves}\label{sec:status}
+
+\paragraph{Status of the trichotomy.}
+Tier 1 ($\Sp(B)$-blind) is dead by Proposition~\ref{prop:nogo} and
+Theorems~\ref{thm:D}--\ref{thm:G}. Tier 3 (evaluation) is live and even
+decision-nondegenerate, but tautological. Tier 2 under the bounded-framing
+quarantine is inhabited \emph{only by clocks}
+(Theorems~\ref{thm:rigidity}, \ref{thm:clock}): N1+N2 are satisfiable, and
+every known in-class normal-play realizer violates N3. The live question is
+whether a decision-nondegenerate Tier-2 rule -- N1, N2, and N3
+simultaneously -- exists. \textsc{echo}-ko is the leading candidate; the
+\textsc{echo}-\textsc{fifo}+dummy exactness claim is the most important
+unverified result in the program.
+
+\paragraph{Ranked next moves.}
+\begin{enumerate}[leftmargin=*]
+\item \emph{Adversarial review of \textsc{echo}-\textsc{fifo}+dummy}
+(highest leverage): build a fresh direct stateful solver and run it on the
+$m=8$ benchmarks plus $\geq20$ stratified $\lambda$ from the claimed sweep;
+cross-validate the decomposition lemma directly at $m=8$; measure
+N3-conjunction and bulk-liveness.
+\item \emph{Pre-registered \textsc{echo}-ko family sweep}
+(Section~\ref{sec:constructions}): \textsc{confirm} resolves the problem
+constructively pending minor lemmas; \textsc{kill} grounds the
+bounded-memory blocker on valid data.
+\item \emph{Mechanism reconciliation}: derive the \textsc{fifo}+dummy
+reduced-game facts and re-run the extraspecial support-counting argument
+under \textsc{fifo} discipline; feeds both items above.
+\item \emph{Frobenius-aware access enumeration}: finite enumeration of
+Frobenius-equivariant legality predicates at $m=4,8$ -- the one access
+window (escape hatch 3 of Remark~\ref{rem:hatches}) where both the symmetry
+and oracle methods are provably silent.
+\item \emph{Cheap gates}: (a) verify the regularity hypothesis of
+\cite[Thm.~6.4]{PS} against the published paper (load-bearing for
+Theorem~\ref{thm:C}); (b) enumerate conjugation-move rules on $E$ (the
+involution locus is conjugacy-invariant, so Theorem~\ref{thm:H}'s
+left-translation kill does not apply); (c) prove or refute the even-$a$
+$\wp$-preimage family (Section~\ref{sec:framing}); (d) exhaust the board-8
+case of the \textsc{fifo} parity-pinning conjecture.
+\end{enumerate}
+
+\section{Validation}\label{sec:validation}
+
+The claims above are backed by implementation checks, not by a finished
+proof of the open game statement.
 
 \begin{itemize}[leftmargin=*]
 \item \texttt{cargo test} exercises the scalar arithmetic, Clifford product,
 Arf computation, quadratic fitting, misere machinery, and related invariant
 modules.
-\item \path{experiments/trace_form_arf.py} checks the Gold rank formula.
+\item \path{experiments/trace_form_arf.py} checks the Gold rank formula
+(Table~\ref{tab:gold}).
 \item \path{experiments/gold_form_from_games.py} and
 \path{experiments/tartan_bilinear.py} rebuild the Gold form and polar form
 from literal Turning-Corners products in small fields.
-\item \path{experiments/arf_win_bias.py} checks the zero-count formula.
+\item \path{experiments/arf_win_bias.py} checks the zero-count formula
+(Table~\ref{tab:bias}).
 \item The \texttt{misere\_quotient}, \texttt{octal\_hunt},
 \texttt{interactive\_kernel}, \texttt{loopy\_quadric}, and
-\texttt{bent\_route} examples implement the current route probes.
+\texttt{bent\_route} examples implement the route probes of
+Section~\ref{sec:benches}.
 \item \path{experiments/gold_family_survey.py} checks the scaled-component
-bent examples discussed above.
-\item \path{experiments/misere_kernel.py} checks the misere-kernel reading on
-$R_8$.
+bent counts; \path{experiments/framing_obstruction.py} the diagonal-framing
+pattern; \path{experiments/misere_kernel.py} the $R_8$ kernel reading.
+\item \texttt{experiments/gold/} carries the probes of the 2026-06-10
+parallel run backing Sections~\ref{sec:nogos}--\ref{sec:constructions}:
+exhaustive symmetry checks at $m=4$, the $B$-oracle and flip-rule kills,
+the extraspecial and \textsc{echo} solvers, and the criterion calibration.
+These are machine-generated research probes, run under the project
+virtualenv, and are \emph{not} CI-maintained; each result cited from them
+states its verification scope inline above.
 \end{itemize}
+
+Two probe-hygiene caveats from the run remain open in the repository and
+are recorded in Remark~\ref{rem:thmC}: the \texttt{octal\_hunt} target
+should be reframed (its group-quotient target is empty under
+Theorem~\ref{thm:C}), and \texttt{p\_set\_as\_f2} should verify that its
+subset labeling is a homomorphism.
 
 \section{Conclusion}
 
-The meaningful content is the construction of game-operation-built
-characteristic-$2$ trace forms inside a nimber Clifford backend, together with a
-precise conditional interpretation of Arf as a P-set bias. The draft does not
-solve the game-semantics problem. It narrows the current search to a named
-missing datum: a non-tautological way for play to use the diagonal quadratic
-framing that turns the game-built polar form into the target quadric.
+The meaningful content is layered. At the base: game-operation-built
+characteristic-$2$ trace forms inside a nimber Clifford backend, with a
+precise conditional interpretation of Arf as a $P$-set bias. Above it: the
+linear ceiling (Theorem~\ref{thm:A}, with the lexicodes as its rich solved
+floor), the extraspecial identification of the missing quadratic datum with
+a noncommutative central extension (Lemmas~\ref{lem:extdict}--\ref{lem:abelian}),
+and a no-go program (Theorems~\ref{thm:B}--\ref{thm:H},
+\ref{thm:rigidity}--\ref{thm:nolivemiddle}) that empties every symmetric,
+commutative, and oracle-bounded architecture of bulk strategic content. At
+the boundary: exact realizers exist in every tested quarantine class but
+are forced clocks; one construction (\textsc{echo}-ko) is exact on the
+$m=4$ bent instances, degrades gracefully with polar rank, and stays
+decision-live; and a formalized criterion (N1--N3) reduces
+``natural'' to one load-bearing, still-attackable axiom. The draft does not
+solve the game-semantics problem. It narrows it to a named question:
+\emph{does any fixed uniform rule satisfy N1, N2, and N3 simultaneously on
+a Gold quadric of core rank $\geq6$?}
 
 \section*{Acknowledgements}
-The \texttt{ogdoad} library, experiments, and this draft were developed with
-LLM assistance. Mathematical direction, framing, and responsibility for claims
-remain the author's.
+The \texttt{ogdoad} library, the experiments, and this draft were developed
+with LLM assistance; Sections~\ref{sec:nogos}--\ref{sec:status} synthesize
+the output of a structured parallel research run (2026-06-10) whose probes
+are committed under \texttt{experiments/gold/}. Results from that run are
+reported with their verification scope, and one construction claim is
+explicitly flagged unverified. Mathematical direction, framing, and
+responsibility for claims remain the author's.
 
 \begin{thebibliography}{9}
 \bibitem{Arf41} C.~Arf, \emph{Untersuchungen \"uber quadratische Formen in
@@ -424,11 +1470,19 @@ theory}, Ann.\ of Math.\ \textbf{3} (1901/02), 35--39.
 Your Mathematical Plays}, 2nd ed., A~K Peters, 2001--2004.
 \bibitem{Conway76} J.~H.~Conway, \emph{On Numbers and Games}, Academic Press,
 1976.
+\bibitem{ConwaySloane86} J.~H.~Conway, N.~J.~A.~Sloane, \emph{Lexicographic
+codes: error-correcting codes from game theory}, IEEE Trans.\ Inform.\
+Theory \textbf{32} (1986), 337--348.
 \bibitem{Dickson01} L.~E.~Dickson, \emph{Linear Groups, with an Exposition of
 the Galois Field Theory}, Teubner, 1901.
+\bibitem{EKM08} R.~Elman, N.~Karpenko, A.~Merkurjev, \emph{The Algebraic and
+Geometric Theory of Quadratic Forms}, AMS Colloquium Publications
+\textbf{56}, American Mathematical Society, 2008.
 \bibitem{Gold68} R.~Gold, \emph{Maximal recursive sequences with $3$-valued
 recursive cross-correlation functions}, IEEE Trans.\ Inform.\ Theory
 \textbf{14} (1968), 154--156.
+\bibitem{Gorenstein80} D.~Gorenstein, \emph{Finite Groups}, 2nd ed.,
+Chelsea Publishing, New York, 1980.
 \bibitem{LN} R.~Lidl, H.~Niederreiter, \emph{Finite Fields}, 2nd ed.,
 Cambridge University Press, 1997.
 \bibitem{Ovsienko16} V.~Ovsienko, \emph{Real Clifford algebras and quadratic
@@ -436,8 +1490,14 @@ forms over $\F_2$: two old problems become one}, The Mathematical Intelligencer
 \textbf{38} (2016); arXiv:1601.07664.
 \bibitem{PS} T.~E.~Plambeck, A.~N.~Siegel, \emph{Misere quotients for impartial
 games}, J.\ Combin.\ Theory Ser.\ A \textbf{115} (2008), 593--622.
+\bibitem{Quillen71} D.~Quillen, \emph{The mod~$2$ cohomology rings of
+extra-special $2$-groups and the spectra of quadratic forms}, Math.\ Ann.\
+\textbf{194} (1971), 197--212.
 \bibitem{Taylor} D.~E.~Taylor, \emph{The Geometry of the Classical Groups},
 Sigma Series in Pure Mathematics~\textbf{9}, Heldermann Verlag, 1992.
+\bibitem{Winter72} D.~L.~Winter, \emph{The automorphism group of an
+extraspecial $p$-group}, Rocky Mountain J.\ Math.\ \textbf{2} (1972),
+159--168.
 \end{thebibliography}
 
 \end{document}

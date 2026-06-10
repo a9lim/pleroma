@@ -1589,7 +1589,8 @@ impl PyNimberGame {
     fn to_finite_game(&self) -> Option<PyGame> {
         self.inner.to_finite_game().map(|inner| PyGame { inner })
     }
-    /// The **Turning-Corners product** (nim-multiplication); `None` at/above `ω^ω`.
+    /// The **Turning-Corners product** (nim-multiplication); `None` only past the
+    /// verified Kummer table or at `≥ ω^(ω^ω)`.
     fn turning_corners(&self, other: &PyNimberGame) -> Option<PyNimberGame> {
         self.inner
             .turning_corners(&other.inner)

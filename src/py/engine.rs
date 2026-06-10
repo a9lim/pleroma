@@ -1122,7 +1122,12 @@ macro_rules! backend_multivector {
                     mv: scalar_boundary(|| self.alg.scalar_mul(&s, &self.mv))?,
                 })
             }
-            fn __pow__(&self, n: u128, _modulo: Option<&Bound<'_, PyAny>>) -> PyResult<$mv> {
+            fn __pow__(&self, n: u128, modulo: Option<&Bound<'_, PyAny>>) -> PyResult<$mv> {
+                if modulo.is_some() {
+                    return Err(PyValueError::new_err(
+                        "multivector exponentiation does not take a modulus",
+                    ));
+                }
                 let acc = scalar_boundary(|| {
                     let mut acc = self.alg.scalar(<$scalar as Scalar>::one());
                     let mut base = self.mv.clone();

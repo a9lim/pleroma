@@ -167,6 +167,9 @@ fn arf_f2(n: usize, qd: Vec<bool>, bmat: Vec<u128>) -> PyResult<PyArfResult> {
             "arf_f2 needs qd and bmat lengths equal to n",
         ));
     }
+    if n > u128::BITS as usize {
+        return Err(PyValueError::new_err("arf_f2 supports n <= 128"));
+    }
     let domain_mask = if n == 0 {
         0
     } else if n >= u128::BITS as usize {

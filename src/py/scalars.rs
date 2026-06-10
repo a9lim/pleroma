@@ -26,14 +26,24 @@ fn ordering_to_i8(ordering: Ordering) -> i8 {
     }
 }
 
-fn validate_relative_degrees(m: usize, e: usize) -> PyResult<()> {
+fn validate_relative_degrees<F: FiniteField>(x: &F, m: usize, e: usize) -> PyResult<()> {
     if e == 0 || !m.is_multiple_of(e) {
-        Err(PyValueError::new_err(
+        return Err(PyValueError::new_err(
             "relative trace/norm needs e > 0 and e | m",
-        ))
-    } else {
-        Ok(())
+        ));
     }
+    let ext = F::ext_degree();
+    if m == 0 || !ext.is_multiple_of(m) {
+        return Err(PyValueError::new_err(
+            "relative trace/norm needs m a positive divisor of the represented field degree",
+        ));
+    }
+    if !m.is_multiple_of(x.degree()) {
+        return Err(PyValueError::new_err(
+            "relative trace/norm input is not contained in the requested degree-m subfield",
+        ));
+    }
+    Ok(())
 }
 
 fn qp_to_qq_base<const P: u128, const N: usize, const K: u128>(x: Qp<P, K>) -> Qq<P, N, 1> {
@@ -155,7 +165,7 @@ impl PyNimber {
         })
     }
     fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
-        matches!(parse_nimber(other), Ok(n) if n == self.inner)
+        matches!(other.cast::<PyNimber>(), Ok(n) if n.borrow().inner == self.inner)
     }
     fn __hash__(&self) -> usize {
         self.inner.0 as usize
@@ -215,22 +225,22 @@ impl PyNimber {
     }
     /// Relative trace `Tr_{F_{2^m}/F_{2^e}}(self)`, returned as a nimber.
     fn relative_trace_over(&self, m: usize, e: usize) -> PyResult<PyNimber> {
-        validate_relative_degrees(m, e)?;
+        validate_relative_degrees(&self.inner, m, e)?;
         Ok(wrap_nimber(self.inner.relative_trace_over(m, e)))
     }
     /// Relative norm `N_{F_{2^m}/F_{2^e}}(self)`, returned as a nimber.
     fn relative_norm_over(&self, m: usize, e: usize) -> PyResult<PyNimber> {
-        validate_relative_degrees(m, e)?;
+        validate_relative_degrees(&self.inner, m, e)?;
         Ok(wrap_nimber(self.inner.relative_norm_over(m, e)))
     }
     /// Trace from the full field `F_{2^128}` to `F_{2^e}`.
     fn relative_trace(&self, e: usize) -> PyResult<PyNimber> {
-        validate_relative_degrees(<Nimber as FiniteField>::ext_degree(), e)?;
+        validate_relative_degrees(&self.inner, <Nimber as FiniteField>::ext_degree(), e)?;
         Ok(wrap_nimber(self.inner.relative_trace(e)))
     }
     /// Norm from the full field `F_{2^128}` to `F_{2^e}`.
     fn relative_norm(&self, e: usize) -> PyResult<PyNimber> {
-        validate_relative_degrees(<Nimber as FiniteField>::ext_degree(), e)?;
+        validate_relative_degrees(&self.inner, <Nimber as FiniteField>::ext_degree(), e)?;
         Ok(wrap_nimber(self.inner.relative_norm(e)))
     }
     /// `self` raised to the power `e` in `F_{2^128}` (fast exponentiation).
@@ -748,7 +758,7 @@ macro_rules! prime_field_pyclass {
                 Ok($wrap($parse(other)?.mul(&si)))
             }
             fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
-                matches!($parse(other), Ok(x) if x == self.inner)
+                matches!(other.cast::<$py>(), Ok(x) if x.borrow().inner == self.inner)
             }
             fn __hash__(&self) -> usize {
                 self.inner.value() as usize
@@ -931,19 +941,27 @@ macro_rules! extension_field_pyclass {
                 $wrap(self.inner.frobenius_iter(k))
             }
             fn relative_trace_over(&self, m: usize, e: usize) -> PyResult<Self> {
-                validate_relative_degrees(m, e)?;
+                validate_relative_degrees(&self.inner, m, e)?;
                 Ok($wrap(self.inner.relative_trace_over(m, e)))
             }
             fn relative_norm_over(&self, m: usize, e: usize) -> PyResult<Self> {
-                validate_relative_degrees(m, e)?;
+                validate_relative_degrees(&self.inner, m, e)?;
                 Ok($wrap(self.inner.relative_norm_over(m, e)))
             }
             fn relative_trace(&self, e: usize) -> PyResult<Self> {
-                validate_relative_degrees(<Fpn<$p, $n> as FiniteField>::ext_degree(), e)?;
+                validate_relative_degrees(
+                    &self.inner,
+                    <Fpn<$p, $n> as FiniteField>::ext_degree(),
+                    e,
+                )?;
                 Ok($wrap(self.inner.relative_trace(e)))
             }
             fn relative_norm(&self, e: usize) -> PyResult<Self> {
-                validate_relative_degrees(<Fpn<$p, $n> as FiniteField>::ext_degree(), e)?;
+                validate_relative_degrees(
+                    &self.inner,
+                    <Fpn<$p, $n> as FiniteField>::ext_degree(),
+                    e,
+                )?;
                 Ok($wrap(self.inner.relative_norm(e)))
             }
             fn absolute_trace(&self) -> u128 {
@@ -1017,7 +1035,7 @@ macro_rules! extension_field_pyclass {
                 Ok($wrap($parse(other)?.mul(&si)))
             }
             fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
-                matches!($parse(other), Ok(x) if x == self.inner)
+                matches!(other.cast::<$py>(), Ok(x) if x.borrow().inner == self.inner)
             }
             fn __repr__(&self) -> String {
                 format!("{:?}", self.inner)
@@ -1678,7 +1696,7 @@ macro_rules! zp_pyclass {
                 Ok($wrap($parse(other)?.mul(&si)))
             }
             fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
-                matches!($parse(other), Ok(x) if x == self.inner)
+                matches!(other.cast::<$py>(), Ok(x) if x.borrow().inner == self.inner)
             }
             fn __hash__(&self) -> usize {
                 self.inner.0 as usize
@@ -1854,7 +1872,7 @@ macro_rules! qp_pyclass {
                 Ok($wrap($parse(other)?.mul(&si)))
             }
             fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
-                matches!($parse(other), Ok(x) if x == self.inner)
+                matches!(other.cast::<$py>(), Ok(x) if x.borrow().inner == self.inner)
             }
             fn __repr__(&self) -> String {
                 format!("{:?}", self.inner)
@@ -2143,7 +2161,7 @@ macro_rules! witt_vec_pyclass {
                 Ok($wrap($parse(other)?.mul(&si)))
             }
             fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
-                matches!($parse(other), Ok(x) if x == self.inner)
+                matches!(other.cast::<$py>(), Ok(x) if x.borrow().inner == self.inner)
             }
             fn __hash__(&self) -> usize {
                 self.inner.0.iter().fold(0usize, |acc, &x| {
@@ -3810,12 +3828,17 @@ impl PySurreal {
             inner: self.inner.mul(&oi),
         })
     }
-    fn __pow__(&self, n: u128, _modulo: Option<&Bound<'_, PyAny>>) -> PySurreal {
+    fn __pow__(&self, n: u128, modulo: Option<&Bound<'_, PyAny>>) -> PyResult<PySurreal> {
+        if modulo.is_some() {
+            return Err(PyValueError::new_err(
+                "surreal exponentiation does not take a modulus",
+            ));
+        }
         let mut acc = Surreal::one();
         for _ in 0..n {
             acc = acc.mul(&self.inner);
         }
-        PySurreal { inner: acc }
+        Ok(PySurreal { inner: acc })
     }
     fn __richcmp__(&self, other: &Bound<'_, PyAny>, op: CompareOp) -> PyResult<bool> {
         Ok(op.matches(self.inner.cmp(&parse_surreal(other)?)))
@@ -4144,12 +4167,17 @@ impl PySurcomplex {
             inner: parse_surcomplex(other)?.mul(&si),
         })
     }
-    fn __pow__(&self, n: u128, _modulo: Option<&Bound<'_, PyAny>>) -> PySurcomplex {
+    fn __pow__(&self, n: u128, modulo: Option<&Bound<'_, PyAny>>) -> PyResult<PySurcomplex> {
+        if modulo.is_some() {
+            return Err(PyValueError::new_err(
+                "surcomplex exponentiation does not take a modulus",
+            ));
+        }
         let mut acc = Surcomplex::<Surreal>::one();
         for _ in 0..n {
             acc = acc.mul(&self.inner);
         }
-        PySurcomplex { inner: acc }
+        Ok(PySurcomplex { inner: acc })
     }
     /// Whether this is a square in the surcomplex field (`ExactRoots`).
     fn is_square(&self) -> bool {
@@ -5440,8 +5468,9 @@ impl PyOrdinal {
             inner: self.inner.nim_add(&other.inner),
         }
     }
-    /// Nim-multiplication (partial): exact for finite × finite; `None` when either
-    /// operand is infinite (the general ordinal product is staged).
+    /// Nim-multiplication (partial): exact on the verified Kummer window,
+    /// including finite operands and staged transfinite products such as
+    /// `ω ⊗ ω = ω²`; `None` beyond that represented boundary.
     fn nim_mul(&self, other: &PyOrdinal) -> Option<PyOrdinal> {
         self.inner
             .nim_mul(&other.inner)

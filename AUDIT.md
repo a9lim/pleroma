@@ -641,7 +641,7 @@ result for an accepted input.
 Lines 5443–5449 vs core `Ordinal::nim_mul` (nim.rs:72–83), which returns Some
 throughout the verified Kummer window — `Ordinal.omega().nim_mul(omega)`
 returns ω² (verified empirically; Conway: ω³ = 2). The docstring contradicts
-the adjacent `__mul__` docstring and the AGENTS/ROADMAP claims.
+the adjacent `__mul__` docstring and the AGENTS/roadmap claims.
 
 ### P-5 · MINOR · `py/games.rs` — `misere_nim_p_predicted` wrong on heap lists containing zeros
 
@@ -749,7 +749,7 @@ Reviewer notes that didn't rise to findings but are worth recording:
 | linalg-axioms | `linalg/*`, `lib.rs`, `tests/*` | read fully; SNF ported to Python and fuzzed against the port |
 | py-scalars-engine | `py/{mod,scalars,engine}.rs` | read fully (7.5k lines); installed `.venv` extension verified to match this checkout |
 | py-forms-games | `py/{forms,games,catalog}.rs` | read fully (9.2k lines); catalog is a pure name/type manifest, spot-verified clean |
-| **docs-claims** | README, ROADMAP, OPEN, OPEN-3, TABLES, `writeups/goldarf.tex` | **NOT AUDITED** — reviewer died (API socket error); left as a gap by decision |
+| **docs-claims** | README, roadmap/{DONE,TBD}, OPEN, writeups/RESEARCH-EXCESS, TABLES, `writeups/goldarf.tex` | **NOT AUDITED** — reviewer died (API socket error); left as a gap by decision |
 | **examples-experiments** | `demo.py`, `examples/*`, `experiments/*` | **NOT AUDITED** — reviewer died (API socket error); left as a gap by decision |
 
 The two gaps mean: no checkable-claim sweep was performed over the prose

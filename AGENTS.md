@@ -37,7 +37,7 @@ Beyond the library: `examples/` (Rust demos `tour`/`tropical` + the open-questio
 probes `interactive_kernel`, `octal_hunt`, `loopy_quadric`, `misere_quotient`,
 `bent_route`), `experiments/` (Python research probes on top of the shipped
 lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems),
-`ROADMAP.md` (the cross-pillar bridge map and remaining boundaries),
+`roadmap/` (DONE.md / TBD.md — the cross-pillar bridge map and remaining boundaries),
 `TABLES.md` (the inventory of curated hardcoded tables), and
 `writeups/goldarf.tex` (the draft note on the Gold/Arf game thread).
 
@@ -122,7 +122,7 @@ such as `e_i e_j` when they shrink a left ideal, and otherwise the full
 regular/lazy left action. Singular polar forms and general-bilinear `a` metrics are
 rejected.
 
-The cross-pillar bridges from `ROADMAP.md` live in the Rust core. `IntegralForm`
+The cross-pillar bridges from `roadmap/DONE.md` live in the Rust core. `IntegralForm`
 exports rational and even-mod-2 Clifford metrics plus discriminant
 Gauss-sum/Milgram checks; finite char-2 `Fpn<2,N>` classification runs through the
 façade; cyclic Galois/Frobenius maps have Clifford linear-map constructors;

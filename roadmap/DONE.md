@@ -1,26 +1,25 @@
-# ROADMAP — cross-domain connections
+# Cross-pillar bridges — DONE (implemented & tested)
 
-This file is the *ambition* document: cross-pillar bridges worth building before
-or shortly after the first public release. It is deliberately distinct from
-`OPEN.md`:
+This is the *built* half of the cross-pillar bridge map: connections between the four
+mature pillars that are **implemented and tested in the Rust core**. It is one of
+three companion documents:
 
-- **`OPEN.md`** holds *genuine research problems* — things with no known answer
-  (the natural Gold-quadric game rule, a game-native quadratic deformation of
-  `GameExterior`, transfinite nim excesses past the verified table, and the
-  transfinite Arf/Witt question for ordinal-nimber coefficients).
-- **`ROADMAP.md`** (this file) holds *buildable bridges* — connections between the
-  four mature pillars whose mathematics is largely standard. It now has a
-  **built first wave** (Bridges A–D), a **built second wave** (Bridges E/F/H/I
-  implemented), the deferred Bridge G note, and a **third wave** (Bridge J
-  implemented; K/L proposed) selected to *close threads already
-  half-drawn* rather than to add a new cell to the table. This document keeps the
-  mathematical contract, the implemented or proposed surfaces, and the remaining
-  honest boundaries in one place. Where a bridge brushes against an open question,
-  it says so and points back to `OPEN.md`.
+- **`roadmap/DONE.md`** (this file) — bridges that are built and tested: the first
+  wave (A–D), the second wave (E/F/H/I), and the third-wave Bridge J, each with its
+  mathematical contract, implemented surface, oracles, and honest boundaries. The
+  formalization-pass proofs for Bridge J are appended at the end.
+- **`roadmap/TBD.md`** — *proposed* and *deferred* bridges not yet built: the
+  spinor-genus bridge G, the cyclic-algebra Brauer bridge K, and the large
+  Drinfeld/Carlitz bridge L.
+- **`OPEN.md`** — *genuine research problems* with no known answer (the natural
+  Gold-quadric game rule, a game-native quadratic deformation of `GameExterior`,
+  transfinite nim excesses past the verified table, and the transfinite Arf/Witt
+  question). Where a bridge brushes against one, it says so and points back to
+  `OPEN.md`.
 
 Use the project's claim-level discipline (`AGENTS.md` → "Claim levels and
-non-claims") when these land: label each piece **standard math** / **implemented
-and tested** / **interpretation** / **open**.
+non-claims"): every piece here is labeled **standard math** / **implemented and
+tested** / **interpretation** / **open**.
 
 ## Why these four
 
@@ -677,42 +676,23 @@ builds, classified by the symbols the `forms` pillar computes — done correctly
 them distinct is the whole reason `char0.rs` currently stops short, and F is what
 would add the ungraded rational class correctly.
 
----
-
-## G — spinor genus (deferred, noted for completeness)
-
-Refining `genus → spinor genus → isometry class` via the spinor norm is classical
-(Eichler; Cassels–Hall), and the `clifford/spinor_norm.rs` map is the right
-primitive in spirit. But it is **not buildable from the current surface**:
-`spinor_norm` computes one versor's norm, whereas the spinor genus needs the local
-spinor-norm *images* `θ(O(L ⊗ ℤ_p))` at every prime plus adelic class-group
-bookkeeping and the proper/improper class distinction. The one cheap, honest piece
-is **Eichler's theorem** as a documented predicate — *indefinite, rank ≥ 3* ⇒ spinor
-genus = isometry class — which would let `Genus` upgrade to a class statement in
-exactly that regime. The full definite-lattice computation is a larger build; it
-stays out of the second wave, adjacent to `OPEN.md` rather than scheduled here.
 
 ---
 
-# Third wave — J implemented; K/L proposed
+# Third wave — Bridge J (built)
 
-These three came out of a deliberate "deepen, don't sprawl" review. The project is
-near-saturated on the **place axis** — the cells are filled, the (field, ring-of-
-integers) pairings are structural, the 2×2 functor table has all four corners — so
-the high-leverage moves are no longer *new number systems*. They are (i) connecting
-a thread that is currently marooned on one pillar, (ii) lifting an invariant that is
-already present in a degenerate shadow to full strength, and (iii) the one *new
-wing* that earns its place by completing a whole-pillar symmetry rather than diluting
-the thesis. Each closes something already half-drawn.
+The third wave came out of a deliberate "deepen, don't sprawl" review: the project is
+near-saturated on the **place axis**, so the high-leverage moves are no longer *new
+number systems* but closing threads already half-drawn. Bridge **J** below is the
+built member of that wave — it names the valuation as the tropicalization the
+`scalar/tropical` layer already defines, and adds Newton polygons over the valued
+legs, with the slope ⟺ Springer-residue-layer cross-check. The other two third-wave
+bridges — **K** (the full `ℚ/ℤ` cyclic-algebra Brauer invariant) and **L** (the
+char-`p` Drinfeld/Carlitz mirror) — are proposed and deferred respectively, and live
+in `roadmap/TBD.md`.
 
-Claim-level discipline still applies: every piece below is **standard math made
-computational**, the same status A–I shipped at — not a new theorem.
-
-```
-   scalar/tropical ──valuation = tropicalization── scalar/valued ──Newton polygon── poly_factor / springer   (J)
-   CyclicGaloisExt ──cyclic algebra (χ,a)── brauer (full ℚ/ℤ) ──norm form── trace_form                       (K)
-   F_q[t] ⊂ F_q(t) ──Carlitz / Drinfeld── (char-p mirror of) integral/{theta,modular,codes}                  (L, deferred)
-```
+Claim-level discipline still applies: J is **standard math made computational**, the
+same status A–I shipped at — not a new theorem.
 
 ## Bridge J — the valuation as tropicalization; Newton polygons as tropical curves
 
@@ -807,138 +787,201 @@ J.3 (graded ring `gr_v K ≅ k[u,u⁻¹]`), J.5 (slope theorem, with proof), J.6
 additivity), J.7 (Eisenstein ↔ the `Ramified` renormalization), J.12 (each Newton slope
 **is** a Springer residue layer) — with proofs, the witness tests, and references
 (Springer; Lam; Koblitz; Neukirch; Dumas; Serre; Maclagan–Sturmfels; Viro; Stichtenoth)
-are drafted in `BRIDGES-DRAFT.md`.
+are in the formal-proofs appendix below.
 
-## Bridge K — cyclic algebras: the full `ℚ/ℤ` Brauer invariant from the Galois data
-
-**Pillars:** `scalar/…CyclicGaloisExtension` ↔ a new rational/cyclic Brauer class in
-`forms/witt/` ↔ `forms/local_global/adelic` (the exact sequence) ↔ `forms/trace_form`
-(the norm form).
-**Claim level:** PROPOSED — standard math (local class field theory; the cyclic-algebra
-invariant map; Serre, *Local Fields*). Lifts the **2-torsion** Brauer surface already in
-`adelic.rs` to the full **`Br(K_v) = ℚ/ℤ`** image. The natural completion of the
-Brauer thread (and the home Bridge F's rational Clifford invariant sits inside).
-
-### Context: what already exists, and the cap
-
-`local_global/adelic.rs` already builds `brauer_local_invariants` (`inv_v ∈ {0, ½}`),
-`brauer_invariant_sum`, and documents the fundamental exact sequence
-`0 → Br(ℚ) → ⊕_v Br(ℚ_v) → ℚ/ℤ → 0`. But the local invariant only sees **quaternion**
-(degree-2, 2-torsion) classes, so the sequence is realized only in its `½ℤ/ℤ` shadow.
-
-### The mathematics
-
-A cyclic extension `E/K` of degree `n` with a distinguished generator `σ` and an element
-`a ∈ K*` defines the **cyclic algebra** `(χ_σ, a) = ⊕_{i<n} E·uⁱ`, with `uⁿ = a` and
-`u·x = σ(x)·u`. Its class generates `Br(E/K)`, and when `E/K_v` is **unramified** with `σ`
-the arithmetic Frobenius, the local **invariant map** sends `(χ_σ, a) ↦ v(a)/n ∈
-(1/n)ℤ/ℤ ⊂ ℚ/ℤ` — the *full* local Brauer group, not just its 2-torsion. So the project
-already owns every input — the cyclic Galois data (`σ`, the basis), the local valuations,
-the reciprocity sum — and is one constructor away from the full invariant.
-
-Three corrections the formalization pass pinned (full statements in `BRIDGES-DRAFT.md`):
-
-- **Ramified caveat (load-bearing).** `v(a)/n` is the invariant *only* when `E/K_v` is
-  **unramified**; the ramified case needs the general local symbol. Scope the surface to
-  unramified-at-`v` data — it suffices for everything below.
-- **Where full-strength reciprocity lives.** Over `ℚ`, Minkowski forces every cyclic
-  `E/ℚ` of degree `>1` to ramify somewhere, so an `n>2` reciprocity test over `ℚ` needs
-  ramified symbols. The clean route is `F_q(t)`: the **constant extension** `F_{qⁿ}(t)`
-  is unramified at *every* place, `Frob_v = σ^{deg v}`, and `Σ_v inv_v = (1/n)·deg(div a)
-  = 0` — full `ℚ/ℤ` reciprocity reduces to "principal divisors have degree 0", the
-  product formula the function-field layer already embodies.
-- **The `trace_form` tie is loose as a one-liner.** `Nrd` is degree-`n`, not quadratic;
-  the quadratic companion is the algebra trace form `T_A(z) = Trd(z²)`, which
-  `assemble_twisted_form` already builds block-by-block. Honest cases: `n=2` char≠2 gives
-  `Nrd ≅ ½Q₁ ⟂ (−a/2)Q₁`; `n=2` char 2 *is* the Artin–Schreier symbol Pfister form
-  already shipped in `function_field_char2.rs`. So `cyclic_algebra_trace_form` is a
-  composition, not new math.
-
-### Proposed surface
-
-- generalize the (proposed Bridge F) `Brauer2Class` to
-  `BrauerClass { local: BTreeMap<Place, Rational /* in ℚ/ℤ */> }` with additive
-  (mod-`ℤ`) law; the quaternion case is the `½` slice. (`Place` needs an `Ord` derive.)
-- `cyclic_algebra_invariant(E, a) -> Rational` `= v(a)/n (mod 1)` for the **unramified**
-  local class; `None` on the capped-precision boundary (never a wrong value).
-- `constant_extension_invariants(n, a)` over `F_q(t)` — `inv_v = deg(v)·v(a)/n`, the exact
-  full-`ℚ/ℤ` reciprocity oracle (everywhere unramified, no ramified symbols needed).
-- tie `(χ_σ, a)`'s **trace form** `T_A(z) = Trd(z²)` to `trace_form` as the independent
-  oracle (the degree-2 norm-form identity is the cleanest instance).
-
-### Oracles / proposed tests
-
-- Reciprocity at full strength: `Σ_v inv_v ≡ 0 (mod ℤ)` for degree-`n` cyclic classes,
-  not only for `½`.
-- the degree-2 cyclic class reproduces the existing quaternion `brauer_local_invariants`.
-- an unramified cyclic class has `inv_v = 0` at the good places.
-- Bridge F's rational Clifford invariant embeds as the 2-torsion part — the two proposed
-  bridges share one class type, F supplying the char-0 Clifford correction and K the full
-  `ℚ/ℤ` lift.
-
-### Scope / caveats
-
-- **Unramified-at-`v` only** for the `v(a)/n` formula (ramified local symbols are out of
-  scope; the `F_q(t)` route delivers full `ℚ/ℤ` strength without them). Reads only `v(a)`,
-  `n`, `deg(v)`, so the invariant is **exact** even over the capped-precision local models.
-- **Finite legs carry no Brauer content.** Over `Nimber`/`Fpn` every central simple algebra
-  splits (Wedderburn), so the Gold forms have no `inv`; their classifier is Arf/Brauer–Wall
-  (Bridge B). Bridge K lives only on the local/global legs (`Qq`, `Adele` places, `F_q(t)`, `ℝ`).
-- This is the **ungraded** Brauer group; keep it distinct from the graded `BrauerWallClass`
-  exactly as the Bridge F section insists. Full lemmas, the convention fix (arithmetic
-  Frobenius, `χ_σ(σ)=+1/n`), and the proposed tests are drafted in `BRIDGES-DRAFT.md`.
-
-## Bridge L — the char-`p` mirror of the integral pillar (deferred, large)
-
-**Pillars:** `scalar/global/function_field` (`F_q(t)`, `F_q[t]`) ↔ a large new
-Drinfeld/Carlitz layer ↔ `forms/integral/{theta,modular,codes}`.
-**Claim level:** PROPOSED but **large** — standard math (Goss, *Basic Structures of
-Function Field Arithmetic*; Gekeler, Drinfeld modular forms; Goppa / AG codes). Noted
-like Bridge G: real and on-thesis, **not** scheduled into a build order.
-
-### The mirror
-
-The entire `integral/` wing — even-unimodular `ℤ`-lattices, `θ`-series,
-`M_*(SL₂ℤ) = ℂ[E₄, E₆]`, Construction-A codes, Leech — is char-0. The project already
-ships **exact** `F_q[t] ⊂ F_q(t)`, the char-`p` global field, and its arithmetic carries
-a complete mirror of the integral pillar:
-
-- the **Carlitz module** `C_t(x) = t·x + x^q` is the char-`p` analogue of `exp` / the
-  lattice exponential; the mirror of `E₄, E₆` are **Drinfeld modular forms** for
-  `GL₂(F_q[t])`, with Goss `ζ`-values mirroring the Eisenstein constants.
-- rank-`r` `F_q[t]`-lattices mirror even-unimodular `ℤ`-lattices and their reduction
-  theory.
-- **Goppa / algebraic-geometry codes** from function fields would tie *straight back into
-  the existing `codes.rs`* Construction-A machinery — the same code↔lattice seam, read in
-  characteristic `p`.
-
-This is the `No ↔ On₂` / char-0 ↔ char-2 move applied to the richest pillar — the most
-*on-thesis* possible "new structure," which is exactly why it earns a mention while
-smaller additions do not.
-
-### Why deferred
-
-A genuine new wing (Drinfeld modules, the Carlitz exponential, rank-`r` reduction
-theory): weeks of work, specialized, and worth starting only if the goal is a *second
-headline pillar* rather than finishing the first. Like G, it sits adjacent to the
-roadmap, not inside its build order.
 
 ---
 
-## Third-wave status snapshot
+## Bridge J — formal statements and proofs (formalization-pass appendix)
 
-**J is implemented and tested; K and L remain proposed:**
+> Moved here from the former `BRIDGES-DRAFT.md` (a parallel formalization front).
+> Standard math made computational unless marked; the lemma/theorem numbering (J.1,
+> J.5, …) is the one the Bridge J section above refers to.
 
-- **J (built):** names the valuation as the tropicalization `scalar/tropical.rs`
-  already defines (the `tropicalize` adaptor), and adds Newton polygons (tropical
-  curves) over the valued legs in `scalar/newton.rs`, with the slope ⟺ Springer
-  residue-layer cross-check.
-- **K:** lifts the existing 2-torsion Brauer surface to the full `ℚ/ℤ` invariant via
-  cyclic algebras built from the Galois data Bridge C already exposes; shares a class
-  type with the now-built Bridge F (`Brauer2Class` is its 2-torsion `½`-slice).
-- **L:** the deferred large wing — the char-`p` Drinfeld/Carlitz mirror of `integral/`,
-  noted for completeness like Bridge G.
+**Status.** Everything below is **standard math** (no new theorems), per the third-wave discipline in `roadmap/DONE.md` (this file). Items marked ⟦implemented⟧ are witnessed by tests in this checkout; items marked ⟦proposed⟧ name the tests that would witness the proposed `NewtonPolygon` surface. Nothing here is at *interpretation* or *open* level.
 
-Recommended order overall: **F → J done; build K → (optionally) L.** K extends the
-Brauer thread F opened (generalizing `Brauer2Class` to a full-`ℚ/ℤ` `BrauerClass`);
-L is a project-scope decision, not a task.
+## 0. Setup and notation
+
+Throughout, $(K, v)$ is a field with a **normalized discrete valuation**: $v : K^\times \twoheadrightarrow \mathbb{Z}$ with $v(xy) = v(x) + v(y)$ and $v(x+y) \ge \min(v(x), v(y))$, extended by $v(0) = +\infty$. Write $\mathcal{O} = \{v \ge 0\}$, $\mathfrak{m} = \{v \ge 1\}$, residue field $k = \mathcal{O}/\mathfrak{m}$, and fix the uniformizer $\varpi$ (so $v(\varpi) = 1$). The **angular component** of $x \ne 0$ is $\mathrm{ac}(x) = \overline{x\varpi^{-v(x)}} \in k^\times$ (it depends on the choice of $\varpi$).
+
+$\mathbb{T}$ denotes the min-plus tropical semiring $(\mathbb{Q} \cup \{+\infty\},\ \oplus = \min,\ \otimes = +)$, with $\oplus$-identity $\infty$ and $\otimes$-identity $0$.
+
+Dictionary to the code (all in `/Users/a9lim/Work/ogdoad`):
+
+| math | code |
+|---|---|
+| $v$, $\varpi$ | `Valued::valuation` (`None` = $\infty$), `Valued::uniformizer` — `src/scalar/valued.rs` |
+| $\mathbb{T}$ | `Tropical<MinPlus>` — `src/scalar/tropical.rs` (`Semiring`; ⟦implemented⟧, fuzzed in `tests/tropical_axioms.rs`) |
+| $k$, $\mathrm{ac}$ | `ResidueField::Residue`, `residue_unit` — `src/scalar/residue.rs` |
+| discretely-valued legs | `Qp<P,K>` ($v(p){=}1$), `Qq<P,N,F>` (unramified, $v(p){=}1$), `Laurent<S,K>` ($v(t){=}1$), `Ramified<S,E>` (renormalized $v(\pi){=}1$, value group $\mathbb{Z}$), `Gauss<S>` ($v(t){=}0$) |
+| $\mathbb{F}_q(t)$ per place | `try_valuation_at_ff`, `FFPlace::{Finite(π), Infinite}` — `src/forms/local_global/function_field.rs` |
+| Springer buckets | `springer_decompose_local`, `LocalResidueForm { valuation, dim, disc_is_square }`, `parity_layer` — `src/forms/springer/local.rs` |
+| Gauss valuation on $K[y]$ | `Poly::min_coeff_valuation` (`src/scalar/poly.rs`), coefficientwise reduction at the minimum (`reduce_poly_at_min` in `src/scalar/functor/gauss.rs`) |
+
+---
+
+## 1. (a) The valuation is the tropicalization
+
+**Lemma J.1 (valuation–tropical dictionary).** ⟦standard math⟧ Define $\tau : K \to \mathbb{T}$ by $\tau(x) = v(x)$ (so $\tau(0) = \infty$). Then:
+
+$$
+\begin{aligned}
+\text{(i)}\quad & \tau(xy) \;=\; \tau(x) \otimes \tau(y) \quad\text{for all } x, y \in K \text{ (including } 0\text{, by absorption)};\\
+\text{(ii)}\quad & \tau(x+y) \,\oplus\, \bigl(\tau(x) \oplus \tau(y)\bigr) \;=\; \tau(x) \oplus \tau(y) \quad\text{i.e.}\quad v(x+y) \ge \min(v(x), v(y));\\
+\text{(iii)}\quad & \tau(x+y) \;=\; \tau(x) \oplus \tau(y) \quad\text{whenever } \tau(x) \neq \tau(y);\\
+\text{(iv)}\quad & \tau(1) = 0 = 1_{\mathbb{T}}, \qquad \tau(0) = \infty = 0_{\mathbb{T}}.
+\end{aligned}
+$$
+
+*Proof.* (i), (ii), (iv) restate the valuation axioms in the $(\min,+)$ dictionary; the $\oplus$-internal phrasing of (ii) uses $a \ge b \iff a \oplus b = b$ in $(\mathbb{Q}\cup\{\infty\}, \min)$. For (iii): note first $v(-1) = 0$ (since $2\,v(-1) = v(1) = 0$ in $\mathbb{Z}$), so $v(-y) = v(y)$. Assume WLOG $v(x) < v(y)$, and suppose $v(x+y) > v(x)$. Then $v(x) = v\bigl((x+y) + (-y)\bigr) \ge \min(v(x+y), v(y)) > v(x)$, a contradiction. $\blacksquare$
+
+**Remark J.2 (how "semiring homomorphism" is meant — a non-claim).** $\tau$ is a homomorphism of multiplicative monoids $(K, \cdot, 1, 0) \to (\mathbb{T}, \otimes, 1_\mathbb{T}, 0_\mathbb{T})$ and is **lax** for addition: (ii) with equality (iii) exactly off the *tropical vanishing locus* (the locus where the minimum is attained at least twice — e.g. $v(1 + (-1)) = \infty \ne 0$). No discretely-valued field admits a *strict* additive homomorphism onto $\mathbb{T}$; strict functoriality is restored by replacing $\mathbb{T}$ with the tropical **hyperfield** [Viro 2010], or by taking Lemma J.1(i)–(iii) as the *definition* of a valuation, as in [Maclagan–Sturmfels, Ch. 2]. the Bridge J section's slogan "the valuation **is** the tropicalization" has Lemma J.1 as its precise content; prose should not claim strictness.
+
+**Lemma J.3 (graded ring of the valuation filtration).** ⟦standard math⟧ Let $\mathfrak{m}^\lambda = \{x : v(x) \ge \lambda\}$ for $\lambda \in \mathbb{Z}$ (fractional ideals). The associated graded ring of the filtration,
+$$
+\mathrm{gr}_v(K) \;=\; \bigoplus_{\lambda \in \mathbb{Z}} \mathfrak{m}^{\lambda}/\mathfrak{m}^{\lambda+1},
+$$
+is, after the choice of $\varpi$, isomorphic to $k[u, u^{-1}]$ ($u = $ class of $\varpi$), and the leading-form map $\sigma : K^\times \to \mathrm{gr}_v(K)$, $\sigma(x) = x \bmod \mathfrak{m}^{v(x)+1}$, is multiplicative, with
+$$
+\sigma(x) \;=\; \mathrm{ac}(x)\, u^{v(x)}.
+$$
+
+*Proof.* Write $x = \varpi^{v(x)} u_x$ with $u_x \in \mathcal{O}^\times$; then $\mathrm{ac}(x) = \bar{u}_x$, each graded piece is a one-dimensional $k$-vector space spanned by $u^\lambda$, and multiplicativity of $\sigma$ is multiplicativity of $v$ and of the residue map on units ($k$ is a field, so there is no cancellation of leading terms). $\blacksquare$
+
+The two lemmas together say: **the valuation/tropical filtration of $K$ has tropical shadow $\tau$ and graded pieces $k \cdot u^\lambda$** — the "residue layers" of part (c).
+
+**Witness tests (a).**
+- ⟦implemented⟧ `src/scalar/valued.rs::tests::{uniformizers_have_valuation_one, zero_valuation_is_none}` (J.1(iv) and the $\infty$ convention); `src/scalar/functor/ramified.rs::tests::valuation_is_additive_under_multiplication` (J.1(i) on the ramified leg); `tests/tropical_axioms.rs` ($\mathbb{T}$ is a semiring, both conventions).
+- ⟦proposed⟧ `tests/tropicalization.rs`, with the thin adaptor (the Bridge J surface):
+  ```rust
+  fn trop<K: Valued>(x: &K) -> Tropical<MinPlus> {
+      match x.valuation() { Some(v) => Tropical::int(v), None => Tropical::infinity() }
+  }
+  ```
+  proptest over `Qp<5,8>`, `Qq<3,4,2>`, `Laurent<Fp<7>,8>`, `Ramified<Qp<3,8>,2>`, `Gauss<Qp<5,6>>`:
+  - `tropicalize_is_multiplicative`: `trop(x.mul(&y)) == trop(&x).mul(&trop(&y))` — exact, zero included;
+  - `tropicalize_is_subadditive`: `let s = trop(&x).add(&trop(&y)); trop(&x.add(&y)).add(&s) == s` — the $\oplus$-internal J.1(ii), **truncation-safe**: if a deep cancellation renders the sum as the represented $0$, the left side is $\infty$ and the identity still holds;
+  - `tropicalize_equality_off_vanishing_locus`: `if trop(&x) != trop(&y) { trop(&x.add(&y)) == trop(&x).add(&trop(&y)) }` — exact even in the capped models, since the leading term survives truncation.
+
+---
+
+## 2. (b) The Newton-polygon slope theorem
+
+**Definition J.4 (Newton polygon).** For $f = \sum_{i=0}^{n} a_i x^i \in K[x]$ with $a_0 a_n \ne 0$, the **Newton polygon** $\mathrm{NP}(f)$ is the lower boundary of the convex hull of $\{(i, v(a_i)) : a_i \ne 0\} \subset \mathbb{R}^2$, a convex piecewise-linear chain from $(0, v(a_0))$ to $(n, v(a_n))$ with strictly increasing side slopes in $\mathbb{Q}$. (If $a_0 = 0$, factor out $x^m$ first; those $m$ roots are $0$, "valuation $\infty$".)
+
+*Orientation convention — an implementation trap.* With points $(i, v(a_i))$, a side of slope $-\lambda$ corresponds to roots of valuation $+\lambda$. To keep the public surface matching the Bridge J section's "slopes are the valuations of the roots", the proposed type should expose `root_valuations() -> Vec<(Rational, u128)>` (negated slopes with horizontal lengths) rather than asking callers to negate; slopes are `Rational` (ratios of `i128`) since root valuations can be fractional even though $\Gamma = \mathbb{Z}$.
+
+**Theorem J.5 (slope theorem).** ⟦standard math: Koblitz, GTM 58, Ch. IV; Neukirch, Ch. II⟧ Let $K$ be **complete** (henselian suffices) with respect to the discrete valuation $v$, let $f \in K[x]$ with $a_0 a_n \neq 0$, let $L$ be a splitting field of $f$, and let $w$ be the unique extension of $v$ to $L$. If $\mathrm{NP}(f)$ has a side of slope $-\lambda$ with horizontal length $\ell$, then $f$ has **exactly $\ell$ roots $r \in L$ (with multiplicity) with $w(r) = \lambda$**, and every root arises this way. In particular $\sum_{\text{sides}} \ell = n$ and the multiset of root valuations is determined by the coefficient valuations alone.
+
+*Proof.* Existence/uniqueness of $w$ on the finite extension $L/K$ is the standard consequence of completeness, $w = \tfrac{1}{[L:K]}\, v \circ N_{L/K}$ [Neukirch, Ch. II]. Normalize $f$ monic (dividing by $a_n$ translates the polygon vertically; slopes and lengths are unchanged). Write $f = \prod_{j=1}^n (x - r_j)$ with $w(r_1) \le \cdots \le w(r_n)$. The coefficients are signed elementary symmetric functions: $a_{n-m} = \pm e_m(r_1, \dots, r_n)$, so by J.1(ii)–(iii) applied in $(L, w)$:
+$$
+v(a_{n-m}) \;=\; w(e_m) \;\ge\; \min_{|S| = m} \sum_{j \in S} w(r_j) \;=\; \sum_{j \le m} w(r_j),
+$$
+with **equality whenever the minimizing $m$-subset is unique**, i.e. whenever $w(r_m) < w(r_{m+1})$, and unconditionally at $m = 0$ and $m = n$ (a unique subset each). Let $h(i) := \sum_{j \le n-i} w(r_j)$ for $i = 0, \dots, n$ (height as a function of the point index $i = n - m$). Its successive slopes are $h(i+1) - h(i) = -w(r_{n-i})$, non-decreasing in $i$ because the $w(r_j)$ are sorted — so the graph of $h$ is convex; it lies on or below every point $(i, v(a_i))$; and it touches them at $i \in \{0, n\}$ and at every index where the sorted valuations jump — exactly the vertices of the graph of $h$. Hence the lower convex hull of the points **is** the graph of $h$, and the side of slope $-\lambda$ spans exactly the indices $i$ with $w(r_{n-i}) = \lambda$, of horizontal length $\#\{j : w(r_j) = \lambda\}$. $\blacksquare$
+
+**Lemma J.6 (additivity; Dumas).** ⟦standard math: Dumas 1906⟧ For $f, g \in K[x]$ with nonzero constant terms, the sides of $\mathrm{NP}(fg)$ are obtained by concatenating the sides of $\mathrm{NP}(f)$ and $\mathrm{NP}(g)$ in increasing slope order; per-slope horizontal lengths add.
+
+*Proof (complete case, which is all the project legs need).* Immediate from Theorem J.5: the root multiset of $fg$ in a common splitting field is the union of the two root multisets. (Dumas's original proof is a direct coefficient estimate and needs no completeness.) $\blacksquare$
+
+**Corollary J.7 (Eisenstein).** ⟦standard math: Serre, *Local Fields*, Ch. I⟧ If $f$ is monic of degree $n$ with $v(a_i) \ge 1$ for $i < n$ and $v(a_0) = 1$, then $\mathrm{NP}(f)$ is the single side from $(0,1)$ to $(n,0)$, so every root has valuation $1/n$; $f$ is irreducible, and a root generates a totally ramified extension of degree $n$.
+
+*Proof.* The polygon claim is immediate (all interior points lie on or above the segment). If $h \mid f$ is monic of degree $d$, then $v(h(0)) = \sum_{d \text{ roots}} w(r) = d/n \in \mathbb{Z}$ forces $d \in \{0, n\}$. The value group of $K(r)$ contains $\tfrac{1}{n}\mathbb{Z}$, so $e = n = [K(r):K]$. $\blacksquare$
+
+This is exactly the project's `Ramified<S, E>` ($x^E - \varpi$): its *renormalized* valuation $\min_i\,(E \cdot v_S(a_i) + i)$ rescales the slope-$\tfrac{1}{E}$ root to $v(\pi) = 1$, restoring $\Gamma = \mathbb{Z}$ — which is why the Newton lattice stays integral on that leg.
+
+**Corollary J.8 (unit roots ⟺ flat polygon).** For monic $f \in \mathcal{O}[x]$: all roots of $f$ are units of (the integral closure of $\mathcal{O}$ in) $L$ $\iff$ $\mathrm{NP}(f)$ is the single horizontal side at height $0$ $\iff$ $v(a_0) = 0$ $\iff$ the residue reduction $\bar{f} \in k[x]$ has $\bar{f}(0) \ne 0$.
+
+*Proof.* $v(a_0) = \sum_j w(r_j)$ with every $w(r_j) \ge 0$ (monic, integral coefficients, J.5), so the sum vanishes iff every term does. $\blacksquare$
+
+**Corollary J.9 (per-place polygons over the global $\mathbb{F}_q(t)$).** ⟦standard math: Stichtenoth, GTM 254, Ch. 1⟧ For $f \in \mathbb{F}_q(t)[x]$ and a place $P$ of $\mathbb{F}_q(t)$ (a monic irreducible $\pi$, or $\infty$ with $v_\infty = \deg \mathrm{den} - \deg \mathrm{num}$), the polygon $\mathrm{NP}_P(f)$ computed from the **exact** valuations $v_P(a_i)$ equals the Newton polygon of $f$ over the completion $\mathbb{F}_q(t)_P \cong \mathbb{F}_{q^{\deg P}}((\pi))$, and Theorem J.5 applies there. (The completion at a degree-1 finite place is literally the `Laurent` backend; coefficient valuations are insensitive to completion, so the global leg's polygon is exact with no precision model at all.)
+
+**Witness tests (b)** — all ⟦proposed⟧, on `NewtonPolygon::of(coeffs: &[K]) -> NewtonPolygon` for `K: Valued`:
+- `eisenstein_single_slope`: $\mathrm{NP}(x^E - p)$ over `Qp<5,8>` has one side, `root_valuations() == [(1/E, E)]`; cross-check `Ramified::<Qp<5,8>, E>::pi().valuation() == Some(1)` (J.7 ↔ the renormalization).
+- `sqrt_p_slope_half`: $\mathrm{NP}(x^2 - p)$ over `Qp<5,8>` gives root valuation $\tfrac12 \notin \mathbb{Z}$; cross-check `Qp::<5,8>::from_i128(5).is_square() == Some(false)` (odd valuation ⇒ nonsquare; `src/scalar/small/analytic.rs`).
+- `dumas_additivity`: for $f, g$ with distinct slopes over `Qp`/`Laurent`, per-slope lengths of $\mathrm{NP}(fg)$ are the sums (J.6).
+- `flat_polygon_iff_unit_roots`: monic integral $f$; all-zero slopes $\iff$ `a₀.valuation() == Some(0)` $\iff$ the residue reduction has nonzero constant term (J.8, via `ResidueField::residue`).
+- `ff_place_polygon_matches_completion`: $f$ over `RationalFunction<Fp<5>>` at the place $t$: polygon from `try_valuation_at_ff` equals the polygon of the coefficientwise image in `Laurent<Fp<5>, K>` (J.9 — the exact-global vs local-model agreement).
+
+---
+
+## 3. (c) Slopes are the Springer residue layers
+
+**Theorem J.10 (Springer).** ⟦standard math: Springer, Indag. Math. 17 (1955); Lam, GSM 67, Ch. VI⟧ Let $K$ be complete discretely valued with $\operatorname{char} k \ne 2$, and fix $\varpi$. Every nondegenerate diagonal form over $K$ is isometric to $q_0 \perp \varpi\, q_1$ with $q_0, q_1$ having unit diagonal entries, and the two **residue homomorphisms** $\partial_0, \partial_1$ (sending $\langle u \rangle \mapsto \langle \bar{u} \rangle$ and $\langle \varpi u \rangle \mapsto \langle \bar{u} \rangle$ respectively) induce a group isomorphism
+$$
+(\partial_0, \partial_1) : W(K) \;\xrightarrow{\ \sim\ }\; W(k) \oplus W(k),
+$$
+where $\partial_1$ (not $\partial_0$) depends on the choice of $\varpi$. The two summands are indexed by $\Gamma/2\Gamma = \mathbb{Z}/2$ — they exist *because* the value group is not 2-divisible: $\langle \varpi^2 a \rangle \cong \langle a \rangle$, while $\langle \varpi a \rangle \not\cong \langle a \rangle$ in general.
+
+This is the theorem behind `springer_decompose_local` + `parity_layer` ⟦implemented: `src/forms/springer/local.rs::tests::*`⟧; the code records, per valuation $\lambda$, the layer $(\lambda, \dim, \mathrm{disc\ square\text{-}class})$, and `parity_layer(ε)` is the data of $\partial_\varepsilon$.
+
+**Definition J.11 ($\lambda$-initial form — the graded/tropical piece).** For $\lambda \in \mathbb{Z}$ and $f = \sum a_i x^i \in K[x]$, let
+$$
+m_\lambda(f) \;=\; \min_i \bigl(v(a_i) + i\lambda\bigr) \;=\; \bigoplus_i \tau(a_i) \otimes \lambda^{\otimes i} \quad(\text{the tropicalized } f \text{ evaluated at } \lambda),
+$$
+and define the **initial form** $\mathrm{in}_\lambda(f) \in k[y]$ as the coefficientwise reduction of $\varpi^{-m_\lambda(f)} f(\varpi^\lambda y)$ — i.e. substitute $x = \varpi^\lambda y$, then take the Gauss-valuation angular component (in the code: a $\varpi^\lambda$-shift, `Poly::min_coeff_valuation`, and the reduce-at-the-minimum step that `reduce_poly_at_min` in `src/scalar/functor/gauss.rs` already performs — `Gauss<S>` *is* the Gauss valuation this construction lives in). Two standard facts: $\lambda$ is the negative of a slope of $\mathrm{NP}(f)$ iff $\deg \mathrm{in}_\lambda(f) > \operatorname{ord}_y \mathrm{in}_\lambda(f)$ (the minimum is attained at two distinct $i$ — the **tropical-root** criterion [Maclagan–Sturmfels, Ch. 2–3]); and $\mathrm{in}_\lambda(fg) = \mathrm{in}_\lambda(f)\,\mathrm{in}_\lambda(g)$, since the Gauss valuation is a valuation on $K[y]$ and its angular component into the domain $k[y]$ is multiplicative (Lemma J.3 applied to $\mathrm{Gauss}$).
+
+**Proposition J.12 (slope ⟺ residue layer, for diagonal forms).** ⟦standard math; elementary given J.5/J.6 + J.10⟧ Let $q = \langle a_1, \dots, a_n \rangle$ with all $a_i \in K^\times$ (zero entries are the radical, tracked separately as `radical_dim`), and let $f_q(x) = \prod_{i=1}^n (x - a_i)$. Then:
+
+**(i) (the polygon is the bucket shadow).** $\mathrm{NP}(f_q)$ has a side of slope $-\lambda$ and horizontal length $\ell$ $\iff$ $\#\{i : v(a_i) = \lambda\} = \ell$. Hence the side multiset of $\mathrm{NP}(f_q)$ equals the multiset $\{(\texttt{g.valuation}, \texttt{g.dim})\}$ of the Springer decomposition — every Newton slope **is** a residue layer, and conversely.
+
+**(ii) (the initial form is the residue layer's contents).** For each such $\lambda$,
+$$
+\mathrm{in}_\lambda(f_q) \;=\; c\, \cdot\, y^{\,\#\{i\,:\,v(a_i) > \lambda\}} \prod_{i\,:\,v(a_i) = \lambda} \bigl(y - \mathrm{ac}(a_i)\bigr), \qquad c = \prod_{i\,:\,v(a_i) < \lambda} \bigl(-\mathrm{ac}(a_i)\bigr) \in k^\times,
+$$
+so the nonzero roots of $\mathrm{in}_\lambda(f_q)$ in $\bar{k}$ are exactly the angular components of the layer, and the layer discriminant is recovered as $\prod_{v(a_i) = \lambda} \mathrm{ac}(a_i)$, whose $k$-square class is `disc_is_square`.
+
+**(iii) (the Witt-level collapse).** If moreover $\operatorname{char} k \ne 2$, the Witt class of $q$ depends only on the layers grouped by $\lambda \bmod 2$: since $\langle a \rangle \cong \langle \varpi^{\,v(a) \bmod 2}\, u_a \rangle$, one gets $\partial_\varepsilon[q] = \bigl[\bigoplus_{v(a_i) \equiv \varepsilon (2)} \langle \mathrm{ac}(a_i) \rangle\bigr] \in W(k)$, and $(\partial_0, \partial_1)$ is Springer's isomorphism. `parity_layer(ε)` computes exactly the data of $\partial_\varepsilon$.
+
+*Proof.* (i): each factor $(x - a_i)$ has the two-point polygon with the single side of slope $-v(a_i)$ and length 1 (using $v(-a_i) = v(a_i)$); apply Lemma J.6. (ii): $\mathrm{in}_\lambda(x - a) = y - \mathrm{ac}(a)$, $y$, or $-\mathrm{ac}(a)$ according as $v(a) = \lambda$, $> \lambda$, $< \lambda$ (compute $m_\lambda = \min(\lambda, v(a))$ directly); multiply, using multiplicativity of $\mathrm{in}_\lambda$ (Definition J.11). (iii): $a = \bigl(\varpi^{\lfloor v(a)/2 \rfloor}\bigr)^2\, \varpi^{\,v(a) \bmod 2}\, u_a$ and, for units, $\langle u \rangle \cong \langle u' \rangle$ over $K$ iff $\bar{u}/\bar{u}'$ is a square in $k$ (Hensel's lemma lifts residue squares when $\operatorname{char} k \ne 2$); then apply Theorem J.10. $\blacksquare$
+
+**Remark J.13 (the forgetful hierarchy — what each level sees).** The data refine strictly:
+$$
+\underbrace{\mathrm{NP}(f_q)}_{\text{tropical shadow: } (\lambda, \dim) \text{ per layer}} \;\prec\; \underbrace{\{\mathrm{in}_\lambda(f_q)\}_\lambda}_{\text{graded pieces: } + \text{ angular components, hence } \texttt{disc\_is\_square}} \;\prec\; \underbrace{q \text{ itself}}_{\text{the form}}
+$$
+The polygon is precisely the image of the Springer decomposition under the tropicalization of Lemma J.1 — it sees valuations and dimensions and forgets the residue square classes. This is the exact sense of the Bridge J section's "the Springer layers are the graded pieces of the valuation/tropical filtration"; it is the place-axis twin of the games-side identity (thermography in $\mathbb{T}_{\max}$; the sign mirror `MinPlus`↔`MaxPlus` is a convention flip, not a second semiring — `src/scalar/tropical.rs` already enforces the two-type separation).
+
+**Witness tests (c).**
+- ⟦implemented⟧ `src/forms/springer/local.rs::tests::{one_engine_decomposes_every_discrete_leg, unramified_qq_reads_extension_residue, residue_char_two_is_rejected_uniformly}` — the bucket engine, the extension-residue square class, and the char-2 boundary.
+- ⟦proposed⟧ `polygon_is_the_springer_shadow`: diagonal $\langle a_i \rangle$ over `Qp<5,8>`, `Qq<3,3,2>`, `Laurent<Fp<7>,8>`; build $f_q = \prod (x - a_i)$ via `Poly`; assert the side multiset `{(root_valuation, length)}` equals `{(g.valuation, g.dim)}` from `springer_decompose_local`, and that grouping sides by slope parity reproduces `parity_layer(0)`/`parity_layer(1)` cardinalities (J.12(i), (iii)).
+- ⟦proposed⟧ `initial_form_recovers_layer_discriminant`: compute $\mathrm{in}_\lambda(f_q)$ by the shift + `min_coeff_valuation` + reduce-at-min recipe; assert the product of its nonzero roots (equivalently $\pm$ its lowest nonvanishing coefficient ratio) has `is_square_finite::<K::Residue>` equal to the layer's `disc_is_square` (J.12(ii)).
+- ⟦proposed⟧ `polygon_outlives_springer`: over `Qp<2,8>` (residue char 2) and `Gauss<Qp<5,6>>` (infinite residue field), `NewtonPolygon::of` succeeds while `springer_decompose_local` returns `None` — J.12(i)–(ii) need no Witt theory; only (iii) does.
+
+---
+
+## 4. Scope boundaries and non-claims
+
+- **Discretely-valued legs only.** The surreal leg has 2-divisible value group: the second Springer layer collapses ($W(\mathrm{No}) = W(\mathbb{R})$, `springer/surreal.rs`) and there is no integer Newton lattice. Polygons over divisible $\Gamma$ are definable but are *not claimed or scheduled* — the same boundary the Springer engine already documents, and itself an instance of the local↔global symmetry.
+- **Char-2 residue fields.** J.5/J.6/J.12(i)–(ii) hold for any residue characteristic; J.10/J.12(iii) require $\operatorname{char} k \ne 2$. The char-2 local Witt theory is the separate Aravire–Jacob layer (`springer/char2.rs`) and is outside Bridge J.
+- **Precision.** On the capped-relative models (`Qp`/`Qq`/`Laurent`/`Ramified`/`Gauss`), valuations of *represented nonzero* elements are exact, so polygons of represented coefficients are exact; a coefficient whose true valuation exceeds the precision horizon renders as $0$ (vertex absent). J.1(ii) is truncation-safe; equality claims hold off the vanishing locus. The $\mathbb{F}_q(t)$ leg (Corollary J.9) is exact outright.
+- **Choice of $\varpi$.** $\mathrm{ac}$, $\mathrm{in}_\lambda$, and $\partial_1$ depend on it; the code pins it to `Valued::uniformizer` via `residue_unit`. $\partial_0$ and the polygon do not.
+- **No strictness claim** for "$v$ is a semiring homomorphism" (Remark J.2). No new theorem anywhere in this bridge: J is standard math made computational, the same status as shipped bridges A–I.
+
+## 5. References
+
+- T. A. Springer, *Quadratic forms over fields with a discrete valuation I*, Indag. Math. **17** (1955).
+- T. Y. Lam, *Introduction to Quadratic Forms over Fields*, GSM 67, AMS, 2005 — Ch. VI (residue homomorphisms, Springer's theorem).
+- N. Koblitz, *p-adic Numbers, p-adic Analysis, and Zeta-Functions*, GTM 58, Springer, 2nd ed. 1984 — Ch. IV (Newton polygons).
+- J. Neukirch, *Algebraic Number Theory*, Grundlehren 322, Springer, 1999 — Ch. II (complete/henselian valued fields, unique extension of valuations).
+- G. Dumas, *Sur quelques cas d'irréductibilité des polynômes à coefficients rationnels*, J. Math. Pures Appl., 1906 (polygon additivity; the irreducibility criterion).
+- J.-P. Serre, *Local Fields*, GTM 67, Springer, 1979 — Ch. I (Eisenstein polynomials, total ramification).
+- D. Maclagan, B. Sturmfels, *Introduction to Tropical Geometry*, GSM 161, AMS, 2015 — Ch. 2–3 (valuations as tropicalization; tropical roots/Kapranov in rank 1).
+- O. Viro, *Hyperfields for tropical geometry I. Hyperfields and dequantization*, arXiv:1006.3034, 2010 (strict functoriality via the tropical hyperfield).
+- H. Stichtenoth, *Algebraic Function Fields and Codes*, GTM 254, Springer, 2009 — Ch. 1 (places of $\mathbb{F}_q(t)$).
+
+---
+
+## DONE — status snapshot
+
+Implemented and tested in the Rust core:
+
+- **First wave (A–D):** lattice/Clifford/Brauer–Wall via Milgram's Gauss sum (A);
+  char-2 Arf over the `Fpn<2,N>` fields (B); Frobenius as an outermorphism (C);
+  transfinite char-2 Clifford `OrdinalAlgebra` on the checked tower (D).
+- **Second wave (E/F/H/I):** theta/modular forms and the Milnor isospectral pair (E);
+  Construction A codes↔lattices with MacWilliams↔theta (H); the discriminant-form
+  Weil representation (I); the rational Brauer/Clifford invariant correction (F).
+- **Third wave (J):** the valuation as tropicalization plus Newton polygons, with the
+  slope ⟺ Springer-residue-layer cross-check; formal proofs in the appendix above.
+
+Proposed/deferred bridges (G, K, L) live in `roadmap/TBD.md`; the genuine open
+problems stay in `OPEN.md`.

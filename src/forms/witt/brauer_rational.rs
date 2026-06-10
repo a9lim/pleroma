@@ -48,7 +48,7 @@
 //! exactly what `char0.rs` declines to do, and the rational ungraded class is what
 //! Bridge F adds. The full `ℚ/ℤ` lift via cyclic algebras (Bridge K) would embed
 //! this as its 2-torsion `½`-slice (one shared class type, two constructors); that
-//! generalization is tracked in `ROADMAP.md`, not built here.
+//! generalization is tracked in `roadmap/TBD.md`, not built here.
 
 use std::collections::BTreeSet;
 

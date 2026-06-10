@@ -229,7 +229,7 @@ breakdown:
   F₂/nim-field rank, generic field solves), consumed by the pillars above.
 
 See `AGENTS.md` for the working-notes summary, `OPEN.md` for the genuine research
-problems, `ROADMAP.md` for the implemented and proposed cross-pillar bridges, and
+problems, `roadmap/` (DONE.md and TBD.md) for the implemented and proposed cross-pillar bridges, and
 `writeups/goldarf.tex` for the draft note on the Gold/Arf game thread.
 
 ## Research thread

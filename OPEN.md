@@ -314,7 +314,7 @@ Concrete progress targets:
 - Decide what evidence is acceptable for shipping `alpha_53` and beyond.
 
 Relevant surfaces:
-- `OPEN-3.md`
+- `writeups/RESEARCH-EXCESS.md`
 - `experiments/ordinal_excess_probe.py`
 - `src/scalar/big/ordinal/tower.rs`
 - `src/scalar/big/ordinal/mod.rs`
@@ -328,7 +328,7 @@ Decide what, if anything, should replace the finite-field Arf/Brauer-Wall bit fo
 nim-subfield.
 
 What is implementation, not research:
-- `ROADMAP.md` Bridge D is the tractable engine bridge: make `Ordinal` usable as a
+- `roadmap/DONE.md` Bridge D is the tractable engine bridge: make `Ordinal` usable as a
   checked Clifford coefficient domain on the source-verified tower, and test the
   Clifford relations for genuinely transfinite squares such as `omega`.
 - If all metric entries lie in a common finite nim-subfield `F_{2^d} ⊂ On₂`,
@@ -365,7 +365,7 @@ Concrete progress targets:
   whether it agrees with any proposed Arf-like invariant.
 
 Relevant surfaces:
-- `ROADMAP.md` Bridge D
+- `roadmap/DONE.md` Bridge D
 - `src/scalar/big/ordinal/`
 - `src/forms/char2/`
 - `src/forms/witt/brauer_wall.rs`

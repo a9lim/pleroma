@@ -22,8 +22,8 @@
 //! coupling + per-coin field, played as spin flips" counts as natural. We use a
 //! bent Gold COMPONENT Tr(λ x^{1+2^a}) (bent for 2/3 of λ; see gold_family_survey).
 
-use pleroma::forms::fit_f2_quadratic;
-use pleroma::games::loopy_decision_sets;
+use ogdoad::forms::fit_f2_quadratic;
+use ogdoad::games::loopy_decision_sets;
 
 mod common;
 use common::{bent_gold as gold, bent_polar as polar, p_set};

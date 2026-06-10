@@ -9,8 +9,8 @@
 //!      `thermograph_via_tropical` names the folds and comes out identical to the
 //!      golden `thermograph`.
 
-use pleroma::games::{thermograph, thermograph_via_tropical, Game};
-use pleroma::scalar::{MaxPlus, MinPlus, Rational, Tropical};
+use ogdoad::games::{thermograph, thermograph_via_tropical, Game};
+use ogdoad::scalar::{MaxPlus, MinPlus, Rational, Tropical};
 
 fn rule(title: &str) {
     println!("\n── {title} ──");

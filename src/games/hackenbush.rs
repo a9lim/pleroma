@@ -6,7 +6,7 @@
 //! connected to the ground falls off. Last player to move wins (normal play).
 //!
 //! The single evaluator [`Hackenbush::to_game`] — build the partizan game by the
-//! move-and-prune recursion — reads out as **all three** of pleroma's game-value
+//! move-and-prune recursion — reads out as **all three** of ogdoad's game-value
 //! worlds at once, which is the whole point:
 //!
 //! | position             | value world        | bridge                       |

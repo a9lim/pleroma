@@ -707,7 +707,7 @@ Reviewer notes that didn't rise to findings but are worth recording:
   summary line.
 - **Property-test volume is smoke-sized as configured** (FAST_CASES = 2,
   HEAVY_CASES = 1 per suite per run; documented, with the
-  `PLEROMA_PROPTEST_CASES` override) — near-zero random coverage per CI run.
+  `OGDOAD_PROPTEST_CASES` override) — near-zero random coverage per CI run.
 - **The rational Clifford fuzz uses diagonal metrics only**, so char-0
   nonzero-`b` associativity is exercised only by fixed unit tests (compare
   L-3 for the `a` term).
@@ -783,4 +783,4 @@ not a systematic pass.
 *Generated from the audit run `wf_85c8b24b-348` (2026-06-09). Full per-finding
 descriptions, verifier transcripts, and reproduction scripts are preserved in
 the session transcript directory; raw structured output in
-`/tmp/pleroma-audit-result.json`.*
+`/tmp/ogdoad-audit-result.json`.*

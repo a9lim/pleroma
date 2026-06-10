@@ -7,13 +7,13 @@
 //! (no additive inverse — `⊕` is idempotent instead), which is exactly why
 //! `Tropical` is not a `Scalar`.
 
-use pleroma::scalar::{MaxPlus, MinPlus, Rational, Semiring, Tropical, TropicalConvention};
+use ogdoad::scalar::{MaxPlus, MinPlus, Rational, Semiring, Tropical, TropicalConvention};
 use proptest::prelude::*;
 
 mod common;
 use common::proptest_config;
 
-// Default CI/local runs are smoke-sized. Set `PLEROMA_PROPTEST_CASES=N` for
+// Default CI/local runs are smoke-sized. Set `OGDOAD_PROPTEST_CASES=N` for
 // deeper semiring fuzzing.
 const CASES: u32 = 2;
 

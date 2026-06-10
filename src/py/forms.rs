@@ -40,7 +40,7 @@ fn parse_rational_vec(items: Vec<Bound<'_, PyAny>>) -> PyResult<Vec<Rational>> {
     items.iter().map(parse_rational).collect()
 }
 
-#[pyclass(name = "ArfResult", module = "pleroma")]
+#[pyclass(name = "ArfResult", module = "ogdoad")]
 struct PyArfResult {
     inner: crate::forms::ArfResult,
 }
@@ -79,7 +79,7 @@ impl PyArfResult {
     }
 }
 
-#[pyclass(name = "QuadricFit", module = "pleroma")]
+#[pyclass(name = "QuadricFit", module = "ogdoad")]
 pub(crate) struct PyQuadricFit {
     inner: crate::forms::QuadricFit,
 }
@@ -293,7 +293,7 @@ fn trace_form_arf(degree: usize, power: usize) -> PyResult<PyArfResult> {
 // Char-0 classifier
 // ---------------------------------------------------------------------------
 
-#[pyclass(name = "BaseField", module = "pleroma", from_py_object)]
+#[pyclass(name = "BaseField", module = "ogdoad", from_py_object)]
 #[derive(Clone, Copy)]
 struct PyBaseField {
     inner: crate::forms::BaseField,
@@ -368,7 +368,7 @@ impl PyBaseField {
     }
 }
 
-#[pyclass(name = "RationalPlace", module = "pleroma", from_py_object)]
+#[pyclass(name = "RationalPlace", module = "ogdoad", from_py_object)]
 #[derive(Clone, Copy)]
 struct PyRationalPlace {
     inner: crate::forms::Place,
@@ -443,7 +443,7 @@ impl PyRationalPlace {
     }
 }
 
-#[pyclass(name = "CliffordType", module = "pleroma", skip_from_py_object)]
+#[pyclass(name = "CliffordType", module = "ogdoad", skip_from_py_object)]
 #[derive(Clone)]
 struct PyCliffordType {
     inner: crate::forms::CliffordType,
@@ -485,7 +485,7 @@ impl PyCliffordType {
 
 #[pyclass(
     name = "RationalPlaceInvariant",
-    module = "pleroma",
+    module = "ogdoad",
     skip_from_py_object
 )]
 #[derive(Clone)]
@@ -512,7 +512,7 @@ impl PyRationalPlaceInvariant {
     }
 }
 
-#[pyclass(name = "RationalCliffordType", module = "pleroma")]
+#[pyclass(name = "RationalCliffordType", module = "ogdoad")]
 struct PyRationalCliffordType {
     inner: crate::forms::RationalCliffordType,
 }
@@ -565,7 +565,7 @@ impl PyRationalCliffordType {
     }
 }
 
-#[pyclass(name = "FiniteFieldClass", module = "pleroma", skip_from_py_object)]
+#[pyclass(name = "FiniteFieldClass", module = "ogdoad", skip_from_py_object)]
 #[derive(Clone)]
 struct PyFiniteFieldClass {
     inner: crate::forms::FiniteFieldClass,
@@ -729,7 +729,7 @@ fn classify_complex(n: usize, r: usize) -> PyCliffordType {
 // Witt group + Dickson invariant
 // ---------------------------------------------------------------------------
 
-#[pyclass(name = "WittClassError", module = "pleroma", from_py_object)]
+#[pyclass(name = "WittClassError", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyWittClassError {
     inner: WittClassError,
@@ -821,7 +821,7 @@ impl PyWittClassError {
     }
 }
 
-#[pyclass(name = "WittClass", module = "pleroma", from_py_object)]
+#[pyclass(name = "WittClass", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyWittClass {
     inner: WittClass,
@@ -928,7 +928,7 @@ fn dickson_of_versor(v: &NimberMV) -> PyResult<u128> {
 // Alternating and Hermitian forms (the "form + involution" siblings)
 // ---------------------------------------------------------------------------
 
-#[pyclass(name = "SymplecticClass", module = "pleroma")]
+#[pyclass(name = "SymplecticClass", module = "ogdoad")]
 struct PySymplecticClass {
     inner: crate::forms::SymplecticClass,
 }
@@ -962,7 +962,7 @@ fn rational_gram(gram: Vec<Vec<i128>>) -> Vec<Vec<Rational>> {
         .collect()
 }
 
-#[pyclass(name = "SymplecticForm", module = "pleroma", from_py_object)]
+#[pyclass(name = "SymplecticForm", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PySymplecticForm {
     inner: SymplecticForm<Rational>,
@@ -1026,7 +1026,7 @@ fn classify_symplectic_nimber(gram: Vec<Vec<u128>>) -> PyResult<PySymplecticClas
         .ok_or_else(|| PyValueError::new_err("Nimber Gram matrix must be square and alternating"))
 }
 
-#[pyclass(name = "HermitianSignature", module = "pleroma")]
+#[pyclass(name = "HermitianSignature", module = "ogdoad")]
 struct PyHermitianSignature {
     inner: crate::forms::HermitianSignature,
 }
@@ -1053,7 +1053,7 @@ impl PyHermitianSignature {
     }
 }
 
-#[pyclass(name = "HermitianForm", module = "pleroma", from_py_object)]
+#[pyclass(name = "HermitianForm", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyHermitianForm {
     inner: HermitianForm<Surreal>,
@@ -1319,7 +1319,7 @@ macro_rules! with_finite_char2_field {
 type PyFFPoly = Vec<u128>;
 type PyFFRationalFunction = (PyFFPoly, PyFFPoly);
 
-#[pyclass(name = "FunctionFieldPlace", module = "pleroma", from_py_object)]
+#[pyclass(name = "FunctionFieldPlace", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyFunctionFieldPlace {
     field_order: u128,
@@ -1362,14 +1362,14 @@ impl PyFunctionFieldPlace {
     }
 }
 
-#[pyclass(name = "FunctionFieldAdelicIsotropy", module = "pleroma")]
+#[pyclass(name = "FunctionFieldAdelicIsotropy", module = "ogdoad")]
 struct PyFunctionFieldAdelicIsotropy {
     local: Vec<PyFunctionFieldLocalIsotropy>,
 }
 
 #[pyclass(
     name = "FunctionFieldLocalIsotropy",
-    module = "pleroma",
+    module = "ogdoad",
     skip_from_py_object
 )]
 #[derive(Clone)]
@@ -1657,7 +1657,7 @@ fn wrap_char2_ff_place<F: FiniteChar2Field>(place: Char2Place<F>) -> PyFunctionF
     }
 }
 
-#[pyclass(name = "Char2LocalDecomp", module = "pleroma")]
+#[pyclass(name = "Char2LocalDecomp", module = "ogdoad")]
 struct PyChar2LocalDecomp {
     field_order: u128,
     phi0: u128,
@@ -1665,7 +1665,7 @@ struct PyChar2LocalDecomp {
     phi1: u128,
 }
 
-#[pyclass(name = "Char2PsiTerm", module = "pleroma", skip_from_py_object)]
+#[pyclass(name = "Char2PsiTerm", module = "ogdoad", skip_from_py_object)]
 #[derive(Clone)]
 struct PyChar2PsiTerm {
     field_order: u128,
@@ -1744,7 +1744,7 @@ fn wrap_char2_local_decomp<F: FiniteChar2Field>(inner: Char2LocalDecomp<F>) -> P
     }
 }
 
-#[pyclass(name = "OddCharType", module = "pleroma")]
+#[pyclass(name = "OddCharType", module = "ogdoad")]
 struct PyOddCharType {
     inner: crate::forms::OddCharType,
 }
@@ -1783,7 +1783,7 @@ impl PyOddCharType {
     }
 }
 
-#[pyclass(name = "OddFiniteFieldForm", module = "pleroma", from_py_object)]
+#[pyclass(name = "OddFiniteFieldForm", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyOddFiniteFieldForm {
     p: u128,
@@ -1917,7 +1917,7 @@ impl PyOddFiniteFieldForm {
     }
 }
 
-#[pyclass(name = "Char2FiniteFieldForm", module = "pleroma", from_py_object)]
+#[pyclass(name = "Char2FiniteFieldForm", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyChar2FiniteFieldForm {
     degree: usize,
@@ -2049,7 +2049,7 @@ impl PyChar2FiniteFieldForm {
     }
 }
 
-#[pyclass(name = "Char2FunctionFieldForm", module = "pleroma", from_py_object)]
+#[pyclass(name = "Char2FunctionFieldForm", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyChar2FunctionFieldForm {
     degree: usize,
@@ -2730,7 +2730,7 @@ fn isometric_finite_algebra(a: Bound<'_, PyAny>, b: Bound<'_, PyAny>) -> PyResul
     ))
 }
 
-#[pyclass(name = "WittClassG", module = "pleroma", from_py_object)]
+#[pyclass(name = "WittClassG", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyWittClassG {
     inner: WittClassG,
@@ -2905,7 +2905,7 @@ impl PyWittClassG {
     }
 }
 
-#[pyclass(name = "RealWittDecomp", module = "pleroma")]
+#[pyclass(name = "RealWittDecomp", module = "ogdoad")]
 struct PyRealWittDecomp {
     inner: crate::forms::RealWittDecomp,
 }
@@ -2943,7 +2943,7 @@ fn wrap_real_witt_decomp(inner: crate::forms::RealWittDecomp) -> PyRealWittDecom
     PyRealWittDecomp { inner }
 }
 
-#[pyclass(name = "OddWittDecomp", module = "pleroma")]
+#[pyclass(name = "OddWittDecomp", module = "ogdoad")]
 struct PyOddWittDecomp {
     inner: crate::forms::OddWittDecomp,
 }
@@ -2991,7 +2991,7 @@ fn wrap_odd_witt_decomp(inner: crate::forms::OddWittDecomp) -> PyOddWittDecomp {
     PyOddWittDecomp { inner }
 }
 
-#[pyclass(name = "EnStaircase", module = "pleroma")]
+#[pyclass(name = "EnStaircase", module = "ogdoad")]
 struct PyEnStaircase {
     inner: crate::forms::EnStaircase,
 }
@@ -3177,7 +3177,7 @@ fn witt_decompose_real(alg: &SurrealAlgebra) -> PyResult<PyRealWittDecomp> {
 // Non-Archimedean Springer decomposition (surreal)
 // ---------------------------------------------------------------------------
 
-#[pyclass(name = "ResidueForm", module = "pleroma", skip_from_py_object)]
+#[pyclass(name = "ResidueForm", module = "ogdoad", skip_from_py_object)]
 #[derive(Clone)]
 struct PyResidueForm {
     valuation: PySurreal,
@@ -3212,7 +3212,7 @@ fn wrap_residue_form(rf: crate::forms::ResidueForm) -> PyResidueForm {
     }
 }
 
-#[pyclass(name = "SpringerDecomp", module = "pleroma")]
+#[pyclass(name = "SpringerDecomp", module = "ogdoad")]
 struct PySpringerDecomp {
     #[pyo3(get)]
     graded: Vec<PyResidueForm>,
@@ -3240,7 +3240,7 @@ impl PySpringerDecomp {
     }
 }
 
-#[pyclass(name = "LocalResidueForm", module = "pleroma", skip_from_py_object)]
+#[pyclass(name = "LocalResidueForm", module = "ogdoad", skip_from_py_object)]
 #[derive(Clone)]
 struct PyLocalResidueForm {
     valuation: i128,
@@ -3278,7 +3278,7 @@ fn wrap_local_residue_form(g: crate::forms::LocalResidueForm) -> PyLocalResidueF
     }
 }
 
-#[pyclass(name = "LocalSpringerDecomp", module = "pleroma")]
+#[pyclass(name = "LocalSpringerDecomp", module = "ogdoad")]
 struct PyLocalSpringerDecomp {
     #[pyo3(get)]
     graded: Vec<PyLocalResidueForm>,
@@ -3840,7 +3840,7 @@ fn brauer_invariant_sum(a: (i128, i128), b: (i128, i128)) -> PyResult<PyRational
 /// The per-place isotropy breakdown of a `ℚ`-form (rank ≥ 3): isotropy at `ℝ` and
 /// at each relevant prime. `is_global()` (isotropic everywhere) equals
 /// `is_isotropic_q` (Hasse–Minkowski).
-#[pyclass(name = "AdelicIsotropy", module = "pleroma")]
+#[pyclass(name = "AdelicIsotropy", module = "ogdoad")]
 struct PyAdelicIsotropy {
     inner: crate::forms::AdelicIsotropy,
 }
@@ -3892,7 +3892,7 @@ fn isotropy_over_adeles(entries: Vec<i128>) -> PyResult<PyAdelicIsotropy> {
 // Binary codes, integral lattices, discriminant forms, and modular q-expansions
 // ---------------------------------------------------------------------------
 
-#[pyclass(name = "Complex64", module = "pleroma", from_py_object)]
+#[pyclass(name = "Complex64", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyComplex64 {
     inner: crate::forms::Complex64,
@@ -3973,7 +3973,7 @@ fn wrap_complex64(z: crate::forms::Complex64) -> PyComplex64 {
     PyComplex64 { inner: z }
 }
 
-#[pyclass(name = "GaussSum", module = "pleroma", from_py_object)]
+#[pyclass(name = "GaussSum", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyGaussSum {
     inner: crate::forms::GaussSum,
@@ -4006,7 +4006,7 @@ impl PyGaussSum {
     }
 }
 
-#[pyclass(name = "BinaryCode", module = "pleroma", from_py_object)]
+#[pyclass(name = "BinaryCode", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyBinaryCode {
     inner: crate::forms::BinaryCode,
@@ -4145,7 +4145,7 @@ fn d16_plus() -> PyIntegralForm {
     }
 }
 
-#[pyclass(name = "ScaleSymbol", module = "pleroma", skip_from_py_object)]
+#[pyclass(name = "ScaleSymbol", module = "ogdoad", skip_from_py_object)]
 #[derive(Clone)]
 struct PyScaleSymbol {
     inner: crate::forms::ScaleSymbol,
@@ -4182,7 +4182,7 @@ impl PyScaleSymbol {
     }
 }
 
-#[pyclass(name = "Genus", module = "pleroma", skip_from_py_object)]
+#[pyclass(name = "Genus", module = "ogdoad", skip_from_py_object)]
 #[derive(Clone)]
 struct PyGenus {
     inner: crate::forms::Genus,
@@ -4224,7 +4224,7 @@ impl PyGenus {
     }
 }
 
-#[pyclass(name = "IntegralForm", module = "pleroma", from_py_object)]
+#[pyclass(name = "IntegralForm", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyIntegralForm {
     inner: IntegralForm,
@@ -4381,7 +4381,7 @@ impl PyIntegralForm {
     }
 }
 
-#[pyclass(name = "DiscriminantForm", module = "pleroma", from_py_object)]
+#[pyclass(name = "DiscriminantForm", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyDiscriminantForm {
     inner: crate::forms::DiscriminantForm,
@@ -4647,7 +4647,7 @@ fn modular_qexp_scale(
 // Brauer–Wall group
 // ---------------------------------------------------------------------------
 
-#[pyclass(name = "BrauerWallClass", module = "pleroma", from_py_object)]
+#[pyclass(name = "BrauerWallClass", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyBrauerWallClass {
     inner: crate::forms::BrauerWallClass,

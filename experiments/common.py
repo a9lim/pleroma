@@ -1,6 +1,6 @@
 """Shared Gold-form helpers for the experiment scripts."""
 
-import pleroma as pl
+import ogdoad as pl
 
 
 def frob(x: pl.Nimber, a: int) -> pl.Nimber:

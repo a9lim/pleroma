@@ -13,8 +13,8 @@
 //! variety to exercise the Clifford product law, not hundreds of maximal-width
 //! nim products per case.
 
-use pleroma::clifford::{bits, CliffordAlgebra, Metric, Multivector};
-use pleroma::scalar::{Nimber, Rational, Scalar};
+use ogdoad::clifford::{bits, CliffordAlgebra, Metric, Multivector};
+use ogdoad::scalar::{Nimber, Rational, Scalar};
 use proptest::prelude::*;
 use std::collections::BTreeMap;
 
@@ -25,7 +25,7 @@ const DIM: usize = 3;
 const BLADES: usize = 1 << DIM; // 8
 
 // Default CI/local runs are smoke-sized; the explicit sentinel below owns the
-// high-bit nimber path. Set `PLEROMA_PROPTEST_CASES=N` for deeper fuzzing.
+// high-bit nimber path. Set `OGDOAD_PROPTEST_CASES=N` for deeper fuzzing.
 const CASES: u32 = 2;
 
 /// Build a multivector from coefficients indexed by blade mask `0..2^DIM`.

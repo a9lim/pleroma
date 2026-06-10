@@ -10,8 +10,8 @@
 //! P-set through `fit_f2_quadratic`. Any hit is printed loudly; otherwise the
 //! summary records how close anything got.
 
-use pleroma::forms::fit_f2_quadratic;
-use pleroma::games::octal_misere_quotient;
+use ogdoad::forms::fit_f2_quadratic;
+use ogdoad::games::octal_misere_quotient;
 
 mod common;
 use common::p_set_as_f2;

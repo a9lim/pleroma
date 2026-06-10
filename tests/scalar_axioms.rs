@@ -6,7 +6,7 @@
 //! strategy, so a regression in any backend's arithmetic surfaces here rather
 //! than as a mysterious geometric-product failure.
 
-use pleroma::scalar::{
+use ogdoad::scalar::{
     Fp, Integer, Nimber, Ordinal, Poly, Rational, RationalFunction, Scalar, Surcomplex, Surreal,
 };
 use proptest::prelude::*;
@@ -15,7 +15,7 @@ mod common;
 use common::proptest_config;
 
 // Default CI/local runs are smoke-sized; deterministic sentinels below own the
-// expensive boundary cases. Set `PLEROMA_PROPTEST_CASES=N` for deeper fuzzing.
+// expensive boundary cases. Set `OGDOAD_PROPTEST_CASES=N` for deeper fuzzing.
 const FAST_CASES: u32 = 2;
 const HEAVY_CASES: u32 = 1;
 

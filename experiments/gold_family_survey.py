@@ -44,7 +44,7 @@ segments).
 from collections import Counter
 from math import gcd
 
-import pleroma as pl
+import ogdoad as pl
 
 
 # ----------------------------------------------------------------------------- form

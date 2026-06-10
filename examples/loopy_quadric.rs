@@ -20,8 +20,8 @@
 //! the loopy B-only rule confirms the obstruction from a new angle rather than
 //! breaking it; a genuine witness must hit `{Q=0}` where it is NOT the radical.
 
-use pleroma::forms::{fit_f2_quadratic, QuadricFit};
-use pleroma::games::loopy_decision_sets;
+use ogdoad::forms::{fit_f2_quadratic, QuadricFit};
+use ogdoad::games::loopy_decision_sets;
 
 mod common;
 use common::{gold, polar};

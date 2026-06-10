@@ -1,4 +1,4 @@
-//! pleroma — Clifford algebras (with nilpotents) over the field-like
+//! ogdoad — Clifford algebras (with nilpotents) over the field-like
 //! subclasses of combinatorial games.
 //!
 //! Pure-Rust math core (generic over the `Scalar` trait), with optional PyO3

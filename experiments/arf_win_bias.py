@@ -22,7 +22,7 @@ whether a natural one exists is the open problem. What it does pin down: the
 Arf invariant *is* the win-bias, exactly, in the counting sense.
 """
 
-import pleroma as pl
+import ogdoad as pl
 
 from common import gold
 

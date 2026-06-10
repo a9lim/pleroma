@@ -1,6 +1,6 @@
-# pleroma
+# ogdoad
 
-`pleroma` is a Rust research playground for Clifford algebras, quadratic forms,
+`ogdoad` is a Rust research playground for Clifford algebras, quadratic forms,
 and combinatorial-game arithmetic, with optional Python bindings. It is built
 around one observation: the exotic number systems it implements — surreals,
 nimbers, p-adics, Witt vectors, Laurent series — are not a grab bag. They are
@@ -162,7 +162,7 @@ VIRTUAL_ENV=.venv .venv/bin/maturin develop
 ```
 
 ```python
-import pleroma as pl
+import ogdoad as pl
 
 # characteristic-2 nimber Clifford: non-orthogonal => noncommutative
 A = pl.NimberAlgebra(q=[pl.Nimber(2), pl.Nimber(3)], b={(0, 1): 1})

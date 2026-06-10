@@ -11,12 +11,12 @@ independent diagonal. The natural quadratic forms on a char-2 field are
 Arf invariants and ranks have known patterns to check against.
 
 We build each Q_a as an F₂ quadratic form in the bit-basis e_i = 2^i of
-F_{2^m} (m = 2^k) and read off its Arf invariant with pleroma's classifier.
+F_{2^m} (m = 2^k) and read off its Arf invariant with ogdoad's classifier.
 Everything here runs on top of the shipped library — this is the tool used for
 its own research question.
 """
 
-import pleroma as pl
+import ogdoad as pl
 
 from common import frob, nim_trace
 

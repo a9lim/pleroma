@@ -33,7 +33,7 @@ fn wrap_thermograph(inner: thermography::Thermograph) -> PyThermograph {
     PyThermograph { inner }
 }
 
-#[pyclass(name = "GameRelation", module = "pleroma", from_py_object)]
+#[pyclass(name = "GameRelation", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyGameRelation {
     inner: GameRelation,
@@ -72,7 +72,7 @@ fn wrap_game_relation(inner: GameRelation) -> PyGameRelation {
     PyGameRelation { inner }
 }
 
-#[pyclass(name = "GameRelationCertificate", module = "pleroma")]
+#[pyclass(name = "GameRelationCertificate", module = "ogdoad")]
 struct PyGameRelationCertificate {
     inner: crate::games::GameRelationCertificate,
 }
@@ -105,7 +105,7 @@ fn wrap_game_relation_certificate(
     PyGameRelationCertificate { inner }
 }
 
-#[pyclass(name = "RelationSearchCertificate", module = "pleroma")]
+#[pyclass(name = "RelationSearchCertificate", module = "ogdoad")]
 struct PyRelationSearchCertificate {
     inner: crate::games::RelationSearchCertificate,
 }
@@ -161,7 +161,7 @@ fn wrap_relation_search_certificate(
     PyRelationSearchCertificate { inner }
 }
 
-#[pyclass(name = "Pl", module = "pleroma", from_py_object)]
+#[pyclass(name = "Pl", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyPl {
     inner: thermography::Pl,
@@ -197,7 +197,7 @@ impl PyPl {
     }
 }
 
-#[pyclass(name = "Thermograph", module = "pleroma", from_py_object)]
+#[pyclass(name = "Thermograph", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyThermograph {
     inner: thermography::Thermograph,
@@ -546,7 +546,7 @@ fn outcome_name(o: Outcome) -> String {
     .to_string()
 }
 
-#[pyclass(name = "Outcome", module = "pleroma", from_py_object)]
+#[pyclass(name = "Outcome", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyOutcome {
     inner: Outcome,
@@ -617,7 +617,7 @@ fn partizan_outcome_name(o: PartizanOutcome) -> String {
     .to_string()
 }
 
-#[pyclass(name = "PartizanOutcome", module = "pleroma", from_py_object)]
+#[pyclass(name = "PartizanOutcome", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyPartizanOutcome {
     inner: PartizanOutcome,
@@ -676,7 +676,7 @@ impl PyPartizanOutcome {
     }
 }
 
-#[pyclass(name = "LoopyNimber", module = "pleroma", from_py_object)]
+#[pyclass(name = "LoopyNimber", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyLoopyNimber {
     inner: LoopyNimber,
@@ -749,7 +749,7 @@ fn p_positions(succ: Vec<Vec<usize>>) -> Vec<usize> {
     crate::games::p_positions(&succ)
 }
 
-#[pyclass(name = "ScoreInterval", module = "pleroma")]
+#[pyclass(name = "ScoreInterval", module = "ogdoad")]
 struct PyScoreInterval {
     inner: crate::games::ScoreInterval,
 }
@@ -900,7 +900,7 @@ fn loopy_quadric_probe(
     ))
 }
 
-#[pyclass(name = "LoopyNimCertificate", module = "pleroma")]
+#[pyclass(name = "LoopyNimCertificate", module = "ogdoad")]
 struct PyLoopyNimCertificate {
     inner: LoopyNimCertificate,
 }
@@ -1002,7 +1002,7 @@ fn atomic_weight_int(game: &PyGame) -> Option<i128> {
 // Partizan games + the exterior algebra of the game group
 // ---------------------------------------------------------------------------
 
-#[pyclass(name = "Game", module = "pleroma", from_py_object)]
+#[pyclass(name = "Game", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyGame {
     inner: Game,
@@ -1226,7 +1226,7 @@ fn color_name(c: Color) -> String {
     .to_string()
 }
 
-#[pyclass(name = "Color", module = "pleroma", from_py_object)]
+#[pyclass(name = "Color", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyColor {
     inner: Color,
@@ -1281,7 +1281,7 @@ impl PyColor {
     }
 }
 
-#[pyclass(name = "Hackenbush", module = "pleroma")]
+#[pyclass(name = "Hackenbush", module = "ogdoad")]
 struct PyHackenbush {
     inner: Hackenbush,
 }
@@ -1328,7 +1328,7 @@ impl PyHackenbush {
     }
 }
 
-#[pyclass(name = "GameExterior", module = "pleroma")]
+#[pyclass(name = "GameExterior", module = "ogdoad")]
 struct PyGameExterior {
     inner: GameExterior,
     alg: Arc<CliffordAlgebra<Integer>>,
@@ -1471,7 +1471,7 @@ impl PyGameExterior {
 /// A transfinite **number-valued** game, carried by its surreal value (e.g. the
 /// game `ω = {0,1,2,…|}`). The numbers-only honoring of transfinite birthdays —
 /// value/birthday/sum/order all delegate to the surreal.
-#[pyclass(name = "NumberGame", module = "pleroma", from_py_object)]
+#[pyclass(name = "NumberGame", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyNumberGame {
     inner: NumberGame,
@@ -1555,7 +1555,7 @@ impl PyNumberGame {
 /// Grundy value / disjunctive sum (XOR) / Turning-Corners product all delegate to
 /// the `Ordinal` (`On₂`) backend, completing the `No ↔ On₂` symmetry at the games
 /// layer.
-#[pyclass(name = "NimberGame", module = "pleroma", from_py_object)]
+#[pyclass(name = "NimberGame", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyNimberGame {
     inner: NimberGame,
@@ -1616,7 +1616,7 @@ impl PyNimberGame {
 
 /// A bounded misère indistinguishability quotient: the elements (atom-multisets),
 /// their class ids, the per-class representatives, and which classes are P.
-#[pyclass(name = "Quotient", module = "pleroma")]
+#[pyclass(name = "Quotient", module = "ogdoad")]
 struct PyQuotient {
     inner: Quotient,
 }
@@ -1700,7 +1700,7 @@ impl PyQuotient {
 /// An abstract finite impartial game for misère analysis: position `0` is the
 /// empty game (no moves); position `p` carries the option list `moves[p]` (each
 /// option is a position index; `0` = move to empty).
-#[pyclass(name = "AbstractGame", module = "pleroma")]
+#[pyclass(name = "AbstractGame", module = "ogdoad")]
 struct PyAbstractGame {
     inner: AbstractGame,
 }
@@ -1750,7 +1750,7 @@ fn misere_quotient(
 /// A loopy game as a finite move graph (`succ[v]` = positions reachable from `v`);
 /// the graph may be cyclic. Outcomes come from the retrograde kernel analysis
 /// (Win / Loss / Draw, where Loss = P-position and Draw is the loopy escape).
-#[pyclass(name = "LoopyValue", module = "pleroma", from_py_object)]
+#[pyclass(name = "LoopyValue", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PyLoopyValue {
     inner: LoopyValue,
@@ -1837,7 +1837,7 @@ impl PyLoopyValue {
     }
 }
 
-#[pyclass(name = "LoopyGraph", module = "pleroma")]
+#[pyclass(name = "LoopyGraph", module = "ogdoad")]
 struct PyLoopyGraph {
     inner: LoopyGraph,
 }

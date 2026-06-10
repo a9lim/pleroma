@@ -30,7 +30,7 @@ fn version() -> &'static str {
 }
 
 #[pymodule]
-fn pleroma(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn ogdoad(m: &Bound<'_, PyModule>) -> PyResult<()> {
     scalars::register(m)?;
     engine::register(m)?;
     forms::register(m)?;

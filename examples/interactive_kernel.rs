@@ -19,8 +19,8 @@
 //! This prints (a) as a sanity check and then the result of (b): the natural
 //! rules tried, how close their P-sets come to {Q=0}, and what they are instead.
 
-use pleroma::forms::fit_f2_quadratic;
-use pleroma::scalar::nim_add;
+use ogdoad::forms::fit_f2_quadratic;
+use ogdoad::scalar::nim_add;
 
 mod common;
 use common::{gold, p_set, polar};

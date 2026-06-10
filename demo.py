@@ -1,9 +1,9 @@
-"""A tour of pleroma from Python. Run inside the project venv:
+"""A tour of ogdoad from Python. Run inside the project venv:
 
     VIRTUAL_ENV=.venv maturin develop && .venv/bin/python demo.py
 """
 
-import pleroma as pl
+import ogdoad as pl
 
 
 def section(title):

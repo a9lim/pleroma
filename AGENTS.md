@@ -1,4 +1,4 @@
-# AGENTS.md — pleroma
+# AGENTS.md — ogdoad
 
 Working notes for agents editing this repo. Global rules still apply. This file is
 the **summary**; each `src/` pillar has its own `AGENTS.md` with the file-by-file

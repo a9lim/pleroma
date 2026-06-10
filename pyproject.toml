@@ -3,7 +3,7 @@ requires = ["maturin>=1.7,<2"]
 build-backend = "maturin"
 
 [project]
-name = "pleroma"
+name = "ogdoad"
 version = "0.0.0"
 description = "Clifford algebras (with nilpotents) over the field-like subclasses of combinatorial games"
 requires-python = ">=3.9"
@@ -12,4 +12,4 @@ license-files = ["LICENSE"]
 
 [tool.maturin]
 features = ["python"]
-module-name = "pleroma"
+module-name = "ogdoad"

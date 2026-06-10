@@ -1,12 +1,12 @@
 [package]
-name = "pleroma"
+name = "ogdoad"
 version = "0.0.0"
 edition = "2021"
 description = "Clifford algebras (with nilpotents) over the field-like subclasses of combinatorial games: nimbers, surreals, surcomplex."
 license = "AGPL-3.0-or-later"
 
 [lib]
-name = "pleroma"
+name = "ogdoad"
 # cdylib for the Python extension module; rlib for `cargo test` and examples.
 crate-type = ["cdylib", "rlib"]
 

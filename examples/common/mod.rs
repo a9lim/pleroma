@@ -1,7 +1,7 @@
 #![allow(dead_code)] // Each example binary imports a different subset of these helpers.
 
-use pleroma::games::{outcomes, Outcome, Quotient};
-use pleroma::scalar::{nim_add, nim_mul, nim_square, nim_trace};
+use ogdoad::games::{outcomes, Outcome, Quotient};
+use ogdoad::scalar::{nim_add, nim_mul, nim_square, nim_trace};
 
 fn frob(mut x: u128, a: u128) -> u128 {
     for _ in 0..a {

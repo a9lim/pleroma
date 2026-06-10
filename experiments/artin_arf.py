@@ -23,7 +23,7 @@ F_{2^{2^k}}:
   • the link: Gold-form-zero(v) ⟺ the twisted square v^{1+2^a} is AS-solvable.
 """
 
-import pleroma as pl
+import ogdoad as pl
 
 from common import gold
 

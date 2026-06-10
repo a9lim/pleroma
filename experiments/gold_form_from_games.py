@@ -26,7 +26,7 @@ play-meaning of its Arf invariant is not established. The form is made of games;
 the invariant's game-semantics is the remaining gap.
 """
 
-import pleroma as pl
+import ogdoad as pl
 
 
 def bridge_holds(limit: int = 24) -> bool:

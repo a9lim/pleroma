@@ -22,7 +22,7 @@ the bilinear coupling B, and a quadratic play rule — the first two are now bot
 realized in code from actual games. Only the quadratic play rule is missing.
 """
 
-import pleroma as pl
+import ogdoad as pl
 
 from common import gold
 

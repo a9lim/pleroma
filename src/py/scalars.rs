@@ -71,7 +71,7 @@ fn qq_base_to_qp<const P: u128, const N: usize, const K: u128>(x: Qq<P, N, 1>) -
 // Scalar pyclasses + parsers
 // ---------------------------------------------------------------------------
 
-#[pyclass(name = "Nimber", module = "pleroma", from_py_object)]
+#[pyclass(name = "Nimber", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PyNimber {
     inner: Nimber,
@@ -292,7 +292,7 @@ pub(crate) fn parse_nimber(obj: &Bound<'_, PyAny>) -> PyResult<Nimber> {
     Err(PyTypeError::new_err("expected Nimber or non-negative int"))
 }
 
-#[pyclass(name = "NimberPoly", module = "pleroma", from_py_object)]
+#[pyclass(name = "NimberPoly", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PyNimberPoly {
     inner: Poly<Nimber>,
@@ -478,7 +478,7 @@ pub(crate) fn wrap_nimber_poly(p: Poly<Nimber>) -> PyNimberPoly {
     PyNimberPoly { inner: p }
 }
 
-#[pyclass(name = "NimberRationalFunction", module = "pleroma", from_py_object)]
+#[pyclass(name = "NimberRationalFunction", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PyNimberRationalFunction {
     inner: RationalFunction<Nimber>,
@@ -649,7 +649,7 @@ pub(crate) fn wrap_nimber_rational_function(
 
 macro_rules! prime_field_pyclass {
     ($py:ident, $name:literal, $parse:ident, $wrap:ident, $p:literal) => {
-        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $py {
             inner: Fp<$p>,
@@ -790,7 +790,7 @@ macro_rules! prime_field_pyclass {
 
 macro_rules! extension_field_pyclass {
     ($py:ident, $name:literal, $parse:ident, $wrap:ident, $p:literal, $n:literal) => {
-        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $py {
             inner: Fpn<$p, $n>,
@@ -1044,7 +1044,7 @@ macro_rules! extension_field_pyclass {
     };
 }
 
-#[pyclass(name = "ReductionPolynomialKind", module = "pleroma", from_py_object)]
+#[pyclass(name = "ReductionPolynomialKind", module = "ogdoad", from_py_object)]
 #[derive(Clone, Copy)]
 struct PyReductionPolynomialKind {
     inner: ReductionPolynomialKind,
@@ -1152,7 +1152,7 @@ macro_rules! function_field_pyclasses {
         $rf_py:ident, $rf_name:literal, $parse_rf:ident, $wrap_rf:ident,
         $base:ty, $base_py:ty, $base_parse:path, $base_wrap:path
     ) => {
-        #[pyclass(name = $poly_name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $poly_name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $poly_py {
             inner: Poly<$base>,
@@ -1338,7 +1338,7 @@ macro_rules! function_field_pyclasses {
             }
         }
 
-        #[pyclass(name = $rf_name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $rf_name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $rf_py {
             inner: RationalFunction<$base>,
@@ -1583,7 +1583,7 @@ function_field_pyclasses!(
 
 macro_rules! zp_pyclass {
     ($py:ident, $name:literal, $parse:ident, $wrap:ident, $p:literal, $k:literal) => {
-        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $py {
             inner: Zp<$p, $k>,
@@ -1728,7 +1728,7 @@ macro_rules! qp_pyclass {
         $int_py:ty, $int_wrap:path,
         $res_py:ty, $res_parse:path, $res_wrap:path
     ) => {
-        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $py {
             inner: Qp<$p, $k>,
@@ -2003,7 +2003,7 @@ macro_rules! witt_vec_pyclass {
         $p:literal, $n:literal, $f:literal,
         $res_py:ty, $res_parse:path, $res_wrap:path
     ) => {
-        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $py {
             inner: WittVec<$p, $n, $f>,
@@ -2208,7 +2208,7 @@ macro_rules! qq_pyclass {
         $witt_py:ty, $witt_parse:path, $witt_wrap:path,
         $res_py:ty, $res_parse:path, $res_wrap:path
     ) => {
-        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $py {
             inner: Qq<$p, $n, $f>,
@@ -2605,7 +2605,7 @@ macro_rules! laurent_pyclass {
         $py:ident, $name:literal, $parse:ident, $wrap:ident,
         $base:ty, $k:literal, $base_py:ty, $base_parse:path, $base_wrap:path
     ) => {
-        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $py {
             inner: Laurent<$base, $k>,
@@ -2888,7 +2888,7 @@ macro_rules! ramified_pyclass {
         $base:ty, $e:literal, $base_py:ty, $base_parse:path, $base_wrap:path,
         $res_py:ty, $res_parse:path, $res_wrap:path
     ) => {
-        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $py {
             inner: Ramified<$base, $e>,
@@ -3230,7 +3230,7 @@ macro_rules! gauss_pyclass {
         $base:ty, $base_py:ty, $base_parse:path, $base_wrap:path,
         $res_py:ty, $res_parse:path, $res_wrap:path
     ) => {
-        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $py {
             inner: Gauss<$base>,
@@ -3571,7 +3571,7 @@ fn min_coeff_valuation(coeffs: Vec<Bound<'_, PyAny>>) -> PyResult<Option<i128>> 
     ))
 }
 
-#[pyclass(name = "Rational", module = "pleroma", from_py_object)]
+#[pyclass(name = "Rational", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PyRational {
     inner: Rational,
@@ -3733,7 +3733,7 @@ pub(crate) fn parse_rational(obj: &Bound<'_, PyAny>) -> PyResult<Rational> {
     ))
 }
 
-#[pyclass(name = "Surreal", module = "pleroma", from_py_object)]
+#[pyclass(name = "Surreal", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PySurreal {
     inner: Surreal,
@@ -4042,7 +4042,7 @@ pub(crate) fn parse_surreal(obj: &Bound<'_, PyAny>) -> PyResult<Surreal> {
     Err(PyTypeError::new_err("expected Surreal or int"))
 }
 
-#[pyclass(name = "Surcomplex", module = "pleroma", from_py_object)]
+#[pyclass(name = "Surcomplex", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PySurcomplex {
     inner: Surcomplex<Surreal>,
@@ -4224,7 +4224,7 @@ pub(crate) fn parse_surcomplex(obj: &Bound<'_, PyAny>) -> PyResult<Surcomplex<Su
     Err(PyTypeError::new_err("expected Surcomplex, Surreal, or int"))
 }
 
-#[pyclass(name = "Integer", module = "pleroma", from_py_object)]
+#[pyclass(name = "Integer", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PyInteger {
     inner: Integer,
@@ -4357,7 +4357,7 @@ pub(crate) fn wrap_surcomplex(s: Surcomplex<Surreal>) -> PySurcomplex {
 
 // --- Omnific integers Oz: the surreal integers, a transfinite ring ----------
 
-#[pyclass(name = "Omnific", module = "pleroma", from_py_object)]
+#[pyclass(name = "Omnific", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PyOmnific {
     inner: Omnific,
@@ -4555,7 +4555,7 @@ fn adele_prec(p: u128) -> PyResult<u128> {
     adele_precision_for_prime(p)
 }
 
-#[pyclass(name = "LocalQp", module = "pleroma", from_py_object)]
+#[pyclass(name = "LocalQp", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PyLocalQp {
     inner: LocalQp,
@@ -4725,7 +4725,7 @@ pub(crate) fn wrap_adele(inner: Adele) -> PyAdele {
     PyAdele { inner }
 }
 
-#[pyclass(name = "AdelePlace", module = "pleroma", from_py_object)]
+#[pyclass(name = "AdelePlace", module = "ogdoad", from_py_object)]
 #[derive(Clone, Copy)]
 struct PyAdelePlace {
     inner: AdelePlace,
@@ -4800,7 +4800,7 @@ impl PyAdelePlace {
     }
 }
 
-#[pyclass(name = "Adele", module = "pleroma", from_py_object)]
+#[pyclass(name = "Adele", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PyAdele {
     inner: Adele,
@@ -4954,7 +4954,7 @@ impl PyAdele {
 
 macro_rules! tropical_pyclass {
     ($py:ident, $name:literal, $conv:ty) => {
-        #[pyclass(name = $name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $py {
             inner: Tropical<$conv>,
@@ -5213,7 +5213,7 @@ fn nim_discrete_log(base: u128, x: u128) -> Option<u128> {
 // Transfinite (ordinal) nimbers
 // ---------------------------------------------------------------------------
 
-#[pyclass(name = "Ordinal", module = "pleroma", from_py_object)]
+#[pyclass(name = "Ordinal", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 pub(crate) struct PyOrdinal {
     inner: Ordinal,
@@ -5228,7 +5228,7 @@ impl PyOrdinal {
     }
 }
 
-#[pyclass(name = "SignExpansion", module = "pleroma", from_py_object)]
+#[pyclass(name = "SignExpansion", module = "ogdoad", from_py_object)]
 #[derive(Clone)]
 struct PySignExpansion {
     inner: SignExpansion,

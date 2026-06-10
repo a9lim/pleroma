@@ -100,7 +100,7 @@ fn scalar_boundary<T>(f: impl FnOnce() -> T) -> PyResult<T> {
     })
 }
 
-#[pyclass(name = "SpinorRep", module = "pleroma")]
+#[pyclass(name = "SpinorRep", module = "ogdoad")]
 struct PySpinorRep {
     idempotent: Py<PyAny>,
     basis: Py<PyAny>,
@@ -146,7 +146,7 @@ impl PySpinorRep {
     }
 }
 
-#[pyclass(name = "LazySpinorRep", module = "pleroma")]
+#[pyclass(name = "LazySpinorRep", module = "ogdoad")]
 struct PyLazySpinorRep {
     algebra: Py<PyAny>,
 }
@@ -191,7 +191,7 @@ impl PyLazySpinorRep {
     }
 }
 
-#[pyclass(name = "VersorClass", module = "pleroma")]
+#[pyclass(name = "VersorClass", module = "ogdoad")]
 struct PyVersorClass {
     spinor_norm: Py<PyAny>,
     dickson: u128,
@@ -335,7 +335,7 @@ macro_rules! backend_linear_map {
         $scalar_py:ty,
         $wrap:path
     ) => {
-        #[pyclass(name = $lm_name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $lm_name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $lm {
             pub(crate) inner: LinearMap<$scalar>,
@@ -449,7 +449,7 @@ macro_rules! backend_algebra {
         $scalar_py:ty,
         $wrap:path
     ) => {
-        #[pyclass(name = $alg_name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $alg_name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $alg {
             pub(crate) inner: Arc<CliffordAlgebra<$scalar>>,
@@ -1056,7 +1056,7 @@ macro_rules! backend_multivector {
         $scalar_py:ty,
         $wrap:path
     ) => {
-        #[pyclass(name = $mv_name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $mv_name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         pub(crate) struct $mv {
             pub(crate) alg: Arc<CliffordAlgebra<$scalar>>,
@@ -1521,13 +1521,13 @@ py_engine_backends!(backend);
 
 macro_rules! divided_power_backend {
     ($alg:ident, $alg_name:literal, $vec:ident, $vec_name:literal, $scalar:ty, $parse:path, $scalar_py:ty, $wrap:path) => {
-        #[pyclass(name = $alg_name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $alg_name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         struct $alg {
             inner: Arc<DividedPowerAlgebra>,
         }
 
-        #[pyclass(name = $vec_name, module = "pleroma", from_py_object)]
+        #[pyclass(name = $vec_name, module = "ogdoad", from_py_object)]
         #[derive(Clone)]
         struct $vec {
             alg: Arc<DividedPowerAlgebra>,
@@ -1724,7 +1724,7 @@ py_divided_power_backends!(divided_power_backend);
 
 macro_rules! cga_backend {
     ($py:ident, $name:literal, $scalar:ty, $mv:ident, $scalar_py:ty, $parse:path, $wrap:path) => {
-        #[pyclass(name = $name, module = "pleroma")]
+        #[pyclass(name = $name, module = "ogdoad")]
         struct $py {
             inner: Cga<$scalar>,
         }

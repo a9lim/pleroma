@@ -37,7 +37,7 @@ So the probe supports this structural reading:
 import itertools
 from math import gcd
 
-import pleroma as pl
+import ogdoad as pl
 
 from common import gold
 

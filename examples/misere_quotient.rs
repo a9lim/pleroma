@@ -15,8 +15,8 @@
 //! `k ≥ 2` and Arf-rank `≥ 2`; finding (or ruling out) one is the open work. This
 //! prints what the instrument actually finds.
 
-use pleroma::forms::fit_f2_quadratic;
-use pleroma::games::{misere_quotient, AbstractGame};
+use ogdoad::forms::fit_f2_quadratic;
+use ogdoad::games::{misere_quotient, AbstractGame};
 
 mod common;
 use common::p_set_as_f2;

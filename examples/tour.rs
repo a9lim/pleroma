@@ -1,15 +1,15 @@
-//! A quick tour of pleroma's verified core. Run with:
+//! A quick tour of ogdoad's verified core. Run with:
 //!   cargo run --example tour
 
-use pleroma::clifford::{CliffordAlgebra, Metric};
-use pleroma::forms::classify_surreal;
-use pleroma::forms::WittClass;
-use pleroma::forms::{dickson_matrix, dickson_of_versor};
-use pleroma::games::{Game, GameExterior};
-use pleroma::scalar::Surcomplex;
-use pleroma::scalar::Surreal;
-use pleroma::scalar::{nim_solve_artin_schreier, nim_sqrt, nim_trace, Nimber};
-use pleroma::scalar::{Integer, Rational, Scalar};
+use ogdoad::clifford::{CliffordAlgebra, Metric};
+use ogdoad::forms::classify_surreal;
+use ogdoad::forms::WittClass;
+use ogdoad::forms::{dickson_matrix, dickson_of_versor};
+use ogdoad::games::{Game, GameExterior};
+use ogdoad::scalar::Surcomplex;
+use ogdoad::scalar::Surreal;
+use ogdoad::scalar::{nim_solve_artin_schreier, nim_sqrt, nim_trace, Nimber};
+use ogdoad::scalar::{Integer, Rational, Scalar};
 use std::collections::BTreeMap;
 
 fn rule(title: &str) {
@@ -184,5 +184,5 @@ fn main() {
 
 /// (helper) nim-square, for the tour's √ check.
 fn nim_mul_sq(x: u128) -> u128 {
-    pleroma::scalar::nim_square(x)
+    ogdoad::scalar::nim_square(x)
 }

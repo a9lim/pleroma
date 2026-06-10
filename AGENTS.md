@@ -1,8 +1,8 @@
 # AGENTS.md — pleroma
 
 Working notes for agents editing this repo. Global rules still apply. This file is
-the **summary**; each `src/` pillar has its own `AGENTS.md` with the detailed
-file-by-file breakdown and the layer-specific "things that look like bugs".
+the **summary**; each `src/` pillar has its own `AGENTS.md` with the file-by-file
+breakdown and the layer-specific "things that look like bugs".
 
 ## What this is
 
@@ -28,7 +28,7 @@ Each pillar's `mod.rs` re-exports its children flat, so public paths stay shallo
 |---|---|---|
 | `src/scalar/`   | commutative coefficient worlds (the `Scalar` trait + every backend) | [`src/scalar/AGENTS.md`](src/scalar/AGENTS.md) |
 | `src/clifford/` | the multivector engine + the GA layer | [`src/clifford/AGENTS.md`](src/clifford/AGENTS.md) |
-| `src/forms/`    | quadratic forms & invariants, by the char trichotomy plus local-global and integral layers | [`src/forms/AGENTS.md`](src/forms/AGENTS.md) |
+| `src/forms/`    | quadratic forms & invariants, by the char trichotomy plus local-global and integral layers | [`src/forms/AGENTS.md`](src/forms/AGENTS.md) (+ [`integral/`](src/forms/integral/AGENTS.md)) |
 | `src/games/`    | combinatorial game theory | [`src/games/AGENTS.md`](src/games/AGENTS.md) |
 | `src/py/`       | PyO3 bindings (feature = "python") + the binding-scope policy | [`src/py/AGENTS.md`](src/py/AGENTS.md) |
 | `src/linalg/`   | crate-private shared linear algebra | [`src/linalg/AGENTS.md`](src/linalg/AGENTS.md) |
@@ -37,9 +37,9 @@ Beyond the library: `examples/` (Rust demos + the open-question probes:
 `interactive_kernel`, `octal_hunt`, `loopy_quadric`, `misere_quotient`,
 `bent_route`, `tour`), `experiments/` (Python research probes on top of the shipped
 lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems),
-`ROADMAP.md` (the implemented cross-pillar bridge map, a proposed second-wave bridge
-spec, plus remaining boundaries), and
-`writeups/goldarf.tex` (the narrow draft note on the Gold/Arf game thread).
+`ROADMAP.md` (the cross-pillar bridge map and remaining boundaries),
+`TABLES.md` (the inventory of curated hardcoded tables), and
+`writeups/goldarf.tex` (the draft note on the Gold/Arf game thread).
 
 ## Claim levels and non-claims
 
@@ -53,9 +53,9 @@ Use these labels when changing prose, papers, examples, or comments:
   experiments, or the `demo.py` tour in this checkout.
 - **Interpretation**: bridges such as "Arf is a win-bias" are conditional on a
   game whose P-set is the corresponding quadratic zero set.
-- **Open**: the natural Gold-quadric game rule, genuine game-native quadratic
+- **Open**: the natural Gold-quadric game rule, a genuine game-native quadratic
   deformation of `GameExterior`, and transfinite nim multiplication beyond the
-  source-verified DiMuro excess table. These live in `OPEN.md`.
+  source-verified excess table. These live in `OPEN.md`.
 
 Scope boundaries to preserve:
 
@@ -99,47 +99,43 @@ The scalar landscape is broad, but not all backends have the same exactness clai
 | `Qp`, `Qq`, `Laurent`, `Ramified`, `Gauss` | local-field-style backends/functors, mostly capped-relative precision models |
 | `Adele`, `LocalQp` | runtime-prime adelic precision model over `Q` |
 | `RationalFunction` | exact global function field `F_q(t)` over `Poly = F_q[t]` |
-| `Ordinal` | staged transfinite nimbers; now a checked/panic-on-escape `Scalar` for Clifford metrics; nim-addition on represented CNF terms and nim-multiplication through source-verified Kummer carries `alpha_u`, `u <= 43` |
+| `Ordinal` | staged transfinite nimbers; a checked/panic-on-escape `Scalar` for Clifford metrics; nim-addition on represented CNF terms, nim-multiplication through the source-verified Kummer carries `α_u` (DiMuro `u ≤ 43`, plus the certified `α_47`) below `ω^(ω^ω)` |
 
 The char-2 Clifford point is load-bearing. In characteristic 2, `q` and `b` are
 independent:
 
 ```text
-e_i^2              = q_i
+e_i^2             = q_i
 e_i e_j + e_j e_i = b_ij
 ```
 
 The polar form is alternating, so `b_ii = 0`, while `q_i` can be nonzero. If the
 engine collapses `q` and `b`, the char-2 Clifford product becomes the wrong
-commutative object. The implemented char-2 form layer reports `ArfResult { arf:
-u128, rank, radical_dim, radical_anisotropic, o_type }`; for degenerate forms, Arf
-of the nonsingular core is not the whole form. On nonsingular metrics over `Nimber`,
+commutative object. The char-2 form layer reports `ArfResult { arf: u128, rank,
+radical_dim, radical_anisotropic, o_type }`; for degenerate forms, the Arf of the
+nonsingular core is not the whole form. On nonsingular metrics over `Nimber`,
 supported `Fpn<2,N>`, and the documented finite ordinal windows, the same Arf bit is
-also the implemented Brauer-Wall class `BW(F_{2^m}) ~= Z/2`; hyperbolic planes are
-`0`, the anisotropic plane is `1`, and direct sum / graded tensor adds by XOR.
-`clifford::spinor` has a separate char-2 route: no `1/2(1+w)`, honest blade
-idempotents such as `e_i e_j` when they shrink a left ideal, and otherwise the full
+the Brauer-Wall class `BW(F_{2^m}) ≅ Z/2`; hyperbolic planes are `0`, the
+anisotropic plane is `1`, and direct sum / graded tensor adds by XOR.
+`clifford::spinor` has a separate char-2 route: no `1/2(1+w)`, blade idempotents
+such as `e_i e_j` when they shrink a left ideal, and otherwise the full
 regular/lazy left action. Singular polar forms and general-bilinear `a` metrics are
 rejected.
 
-The cross-pillar bridge pass in `ROADMAP.md` is implemented in the Rust core:
-`IntegralForm` now exports rational and even-mod-2 Clifford metrics plus
-discriminant Gauss-sum/Milgram checks; finite char-2 `Fpn<2,N>` classification is
-wired through the façade; cyclic Galois/Frobenius maps have Clifford linear-map
-constructors; and `Ordinal` can serve as a Clifford scalar inside the verified
-Kummer boundary.
-
-The second-wave bridges E/H/I in `ROADMAP.md` are also implemented in the Rust core.
+The cross-pillar bridges from `ROADMAP.md` live in the Rust core. `IntegralForm`
+exports rational and even-mod-2 Clifford metrics plus discriminant
+Gauss-sum/Milgram checks; finite char-2 `Fpn<2,N>` classification runs through the
+façade; cyclic Galois/Frobenius maps have Clifford linear-map constructors;
+`Ordinal` serves as a Clifford scalar inside the verified Kummer boundary;
 `forms/integral/codes.rs` carries binary codes, MacWilliams, and Construction A
-(with the required `1/sqrt(2)` scaling and an `Option` boundary when the scaled Gram
-is not integral), including the Type II length-16 code whose lattice is `D16+`.
-`forms/integral/theta.rs` and `modular.rs` give exact theta coefficients and
-`E4`/`E6` q-expansion identification, pinning `theta_E8 = E4`,
-`theta_{E8+E8} = theta_{D16+} = E4^2`, and the rootless Leech `q^1` oracle.
-`DiscriminantForm` now exposes dependency-free `Complex64` Weil `S`/`T` matrices;
-the `S` prefactor is the conjugate of the positive Milgram phase, and
-`verify_weil_relations` checks the honest metaplectic relations rather than the
-oversimplified `S^4 = I` statement.
+(with the `1/sqrt(2)` scaling and an `Option` boundary when the scaled Gram is not
+integral), including the Type II length-16 code whose lattice is `D16+`;
+`forms/integral/{theta,modular}.rs` give exact theta coefficients and `E4`/`E6`
+identification (`theta_E8 = E4`, `theta_{E8+E8} = theta_{D16+} = E4^2`, the rootless
+Leech `q^1` oracle); and `DiscriminantForm` exposes dependency-free `Complex64` Weil
+`S`/`T` matrices, with the `S` prefactor the conjugate of the positive Milgram phase
+and `verify_weil_relations` checking the honest metaplectic relations (not the
+oversimplified `S^4 = I`).
 
 The game-built Gold-form bridge is implemented, but the play rule is not. The
 standard chain is:
@@ -152,20 +148,19 @@ Tr(x)      = x + x^2 + ... + x^(2^(m-1))
 Q_a(x)     = Tr(x * x^(2^a))
 ```
 
-Implemented probes verify Gold ranks, Arf zero-count bias, literal
-Turning-Corners reconstruction on small fields, frame-obstruction experiments,
-misere-kernel obstruction examples, loopy Draw/Loss-set experiments, and bent
-Gold-component route probes. The conditional statement is: if a game has
-P-positions `{Q = 0}`, Arf gives the sign and size of the second-player win-bias.
-The existence of a non-tautological natural rule is open; details live in `OPEN.md`.
+Implemented probes verify Gold ranks, Arf zero-count bias, literal Turning-Corners
+reconstruction on small fields, frame-obstruction experiments, misère-kernel
+obstruction examples, loopy Draw/Loss-set experiments, and bent Gold-component route
+probes. The conditional statement: if a game has P-positions `{Q = 0}`, Arf gives
+the sign and size of the second-player win-bias. The existence of a non-tautological
+natural rule is open (`OPEN.md`).
 
 Appendix-grade shipped layers that should not be mistaken for new Gold/Arf claims:
 tropical thermography (`Semiring` + dual `Tropical<MaxPlus/MinPlus>`), the
-source-verified ordinal nim Kummer tower below `omega^(omega^omega)` with `u <= 43`
-excesses, the characteristic-2 Artin-Schreier local-global layer over `F_{2^m}(t)`
-including the Aravire-Jacob wild summand, and the integral
-lattice/genus/mass/Leech/theta/code/Weil chain. These are standard-math
-implementations and useful infrastructure; cite them as such.
+source-verified ordinal nim Kummer tower below `ω^(ω^ω)`, the characteristic-2
+Artin-Schreier local-global layer over `F_{2^m}(t)` including the Aravire-Jacob wild
+summand, and the integral lattice/genus/mass/Leech/theta/code/Weil chain. These are
+standard-math implementations and useful infrastructure; cite them as such.
 
 ## Commands
 
@@ -217,7 +212,7 @@ VIRTUAL_ENV=.venv .venv/bin/maturin develop   # build + install the abi3 extensi
 
 - Rust 2021, `cargo fmt` clean, `cargo clippy --all-targets` warning-clean (the one
   crate-level allow — `needless_range_loop` for the matrix code — is justified in
-  `lib.rs`; targeted `#[allow]`s carry a one-line reason). License: see `LICENSE`.
+  `lib.rs`; targeted `#[allow]`s carry a one-line reason). License: AGPL-3.0-or-later.
 - Numeric payload style is deliberate: non-index fixed-width integers are
   `u128`/`i128` throughout the core, docs, examples, and tests.
 - Display is deliberate: blades render `e0e1`; coefficients `1`/`-1` elided; nimbers
@@ -246,8 +241,8 @@ mark that boundary without becoming `Scalar` supertraits. (serde is intentionall
 shipped — the invariant-carrying types need custom deserialization, not a naive
 derive.)
 
-The narrow Gold/Arf game thread and the genuine open problems now live in
-`OPEN.md`; the current draft note is `writeups/goldarf.tex`. Read `OPEN.md` before
-touching `forms/char2/`, `forms/quadric_fit.rs`, `forms/char0.rs`,
-`games/coin_turning.rs`, `games/kernel.rs`, `games/misere.rs`, `games/loopy.rs`,
-`forms/witt/`, `experiments/`, or the open-question example probes.
+The narrow Gold/Arf game thread and the genuine open problems live in `OPEN.md`; the
+draft note is `writeups/goldarf.tex`. Read `OPEN.md` before touching `forms/char2/`,
+`forms/quadric_fit.rs`, `forms/char0.rs`, `games/coin_turning.rs`, `games/kernel.rs`,
+`games/misere.rs`, `games/loopy.rs`, `forms/witt/`, `experiments/`, or the
+open-question example probes.

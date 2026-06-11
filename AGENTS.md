@@ -178,8 +178,14 @@ the sign and size of the second-player win-bias. The existence of a non-tautolog
 natural rule with P-set `{Q = 0}` is open (`OPEN.md`), but the σ-valued
 echo-fifo+dummy realizer is **verified** (2026-06-10, adversarial review:
 `experiments/echo_solver.py`, 391,680/391,680 m=8 checks, zero misses — record in
-`roadmap/DONE.md`); the open step is recasting its forced-charge readout into
-normal/misère/loopy outcome semantics.
+`roadmap/DONE.md`); the open steps are recasting its forced-charge readout into
+normal/misère/loopy outcome semantics and the general-n linking proof. The
+realizer's *mechanism* is reduced (2026-06-10 second pass,
+`experiments/linking_game.py`, goldarf §8 `sec:linking`): the σ-game is the
+odd-close parity game on the support graph, and the linking theorem — an isolated
+coin forces flips even, hence exactness for all m — is machine-verified on every
+graph class k ≤ 7 with a strictly-verified two-mode defender strategy; only the
+general-n induction is open.
 
 Appendix-grade shipped layers that should not be mistaken for new Gold/Arf claims:
 tropical thermography (`Semiring` + dual `Tropical<MaxPlus/MinPlus>`), the
@@ -206,6 +212,7 @@ VIRTUAL_ENV=.venv .venv/bin/maturin develop   # build + install the abi3 extensi
 .venv/bin/python experiments/gold_family_survey.py
 .venv/bin/python experiments/misere_kernel.py
 python3 experiments/echo_solver.py selftest   # echo adversarial-review harness (stdlib, no venv)
+python3 experiments/linking_game.py all 5     # linking-reduction harness (stdlib, no venv; `all 7` ≈ 75 s)
 ```
 
 `maturin develop` needs `VIRTUAL_ENV` set (or a `.venv` in cwd) and `cargo` on PATH

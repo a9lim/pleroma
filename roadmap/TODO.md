@@ -42,7 +42,12 @@ move 2), on the shipped harness `experiments/echo_solver.py`: ko-memory window
 touches (the tartan-companion axis), and no-dummy controls — mapping which disciplines
 besides fifo+dummy are exact. No longer decisive for existence (the fifo+dummy verdict
 is in); it bounds the *mechanism* and finally puts the bounded-window blocker
-conjecture on valid data.
+conjecture on valid data. (Partially advanced by the 2026-06-10 `linking-reduction`
+pass, `roadmap/DONE.md`: the no-dummy controls are fully mapped at the abstract-graph
+level — the Bad census — and the fifo+dummy mechanism is identified
+(`experiments/linking_game.py`, goldarf §8 `sec:linking`); the `w ≥ 2` ko-window and
+pass/pair axes remain unswept, and the general-n linking *proof* is loopy-valued in
+`OPEN.md` tis (§1), not a number here.)
 
 ### `milnor-d2` — 1·e_f
 **The `p = 2` cell of Milnor's exact sequence** (the CODA N.1 boundary). Implement the

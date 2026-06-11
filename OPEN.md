@@ -163,6 +163,22 @@ The program state (2026-06-10 — `writeups/goldarf.tex` §§5–9, backed by th
   bounded-window blocker conjecture is untouched (the FIFO queue is unbounded
   memory). The recasting is now the load-bearing open step; the
   Plambeck–Siegel Thm 6.4 regularity gate is still slug `ps-regularity`.
+- The mechanism behind the verified realizer is now reduced and largely
+  explained (2026-06-10 second pass, goldarf §8 "linking reduction",
+  `experiments/linking_game.py`): FIFO forces closes in opening order (no
+  nesting, linked = overlap), the whole σ-game is equivalent to an
+  **odd-close parity game** (only closing a queue front with an odd number
+  of untouched neighbors flips the outcome bit), ko/passes localize away,
+  and the **general-m linking theorem** — flips forced even on any board
+  with an isolated coin, hence exactness for ALL m — is machine-verified
+  for every graph isomorphism class through k = 7 (1,044 classes, both
+  seats), far beyond Gold-arising boards. The dummy's role is identified
+  (it defeats the unique local obstruction, the domination device, at
+  every root — matching the no-dummy Bad-graph census 1/4/34 at n=3/5/7,
+  all mover-controlled), and an explicit two-mode defender strategy
+  (prevention/debt menus) is strictly verified through k = 7. What
+  remains is the general-n induction (firewall segmentation
+  architecture); parity-local invariants provably do not suffice.
 
 The naturality dichotomy:
 
@@ -232,6 +248,13 @@ Concrete progress targets (aligned with the goldarf §9 ranked moves):
   realizer into a Tier-2 witness in the original P-set sense. Alongside it:
   the family-boundary sweep (ko-window `w`, pass semantics, pair touches,
   no-dummy controls), which also puts the bounded-window blocker on valid data.
+- Close the **general-n linking theorem** (the mechanism half, reduced
+  2026-06-10): prove that the odd-close parity game on any graph with an
+  isolated coin forces an even flip count from both seats. Verified for all
+  classes k ≤ 7 with a strictly-verified two-mode strategy
+  (`experiments/linking_game.py`); the open residue is the firewall-segmented
+  no-debt/one-debt induction with certificate-depth completeness (goldarf
+  §8). A proof upgrades the m∈{4,8} verification to exactness for all m.
 - Repair or replace N3, the anti-clock axiom — the open definitional problem: the
   escape-edge construction passes N1–N3 while being morally a clock, and two-game
   criticality is unsatisfiable in two-class outcome semantics.

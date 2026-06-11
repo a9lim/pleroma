@@ -1415,6 +1415,90 @@ existence; they map the boundary of the mechanism -- which disciplines
 besides \textsc{fifo}+dummy are exact, and why -- and feed the
 reconciliation item of Section~\ref{sec:status}.
 
+\subsection{The linking reduction and the general-$m$
+theorem}\label{sec:linking}
+
+The mechanism question of the verified realizer reduces, by three short
+play identities, to one combinatorial statement about graphs
+(\path{experiments/linking_game.py}; second-pass run 2026-06-10). Fix a
+board: coins $=$ vertices of a graph $G$ (on a Gold board, $G$ is the
+polar graph $B$ restricted to $\mathrm{supp}(x)$, plus the dummy as an
+isolated vertex; the diagonal $q$ is play-invariant and splits off, as in
+the torsor note of Section~\ref{sec:fifodummy}).
+
+\paragraph{Reduction (standard math; each step is a whole-play identity,
+machine-validated on random plays).}
+\begin{enumerate}[leftmargin=*,itemsep=0pt]
+\item \emph{No nesting.} \textsc{fifo} forces coins to close in opening
+order, so no open-window nests inside another; an edge of $G$ is linked
+iff its two windows \emph{overlap}, and $\sigma$ equals the parity of
+$E(G)$-edges covered by the play's interval-overlap graph.
+\item \emph{Odd-close accounting.} Charging an edge when its second
+endpoint opens (same play total), set $\mathrm{und}(s)=$ the number of
+edges with an untouched endpoint. Then $D=\sigma\oplus\mathrm{und}$ is
+invariant under opens and passes, and flips exactly when the queue front
+$f$ closes with $\deg_U(f)$ odd ($U=$ untouched set). The whole game is
+therefore the \emph{odd-close parity game}: $D$ starts at $|E|\bmod 2$,
+only odd-degree front closes flip it, and $\sigma_{\mathrm{final}}=D$.
+\item \emph{Ko localization.} Opens of untouched coins are never
+ko-blocked; a close is ko-blocked only when the front was opened onto an
+empty queue on the immediately preceding move; forced passes occur only
+once $U=\emptyset$, after which no flip is possible. Passes are
+irrelevant to the flip fight.
+\end{enumerate}
+
+\paragraph{The linking theorem (target).} \emph{If the board contains an
+isolated coin, the flip count is forced even -- from both seats, for
+every graph.} Equivalently $\sigma$ is forced to $|E|\bmod 2$, which on a
+Gold board is $Q(x)$: $m$-uniform exactness of \textsc{echo}-\textsc{fifo}+dummy.
+
+\paragraph{Verified (implemented and tested).} The statement holds for
+\emph{every} isomorphism class on $k\leq 7$ real coins plus dummy, both
+seats ($1{,}044$ classes at $k=7$) -- strictly stronger ground than the
+Gold-arising boards of the $m=8$ sweep. Without the isolated coin the
+failures (``Bad graphs'', census $1/4/34$ at $n=3/5/7$, none at even $n$)
+are always \emph{mover-controlled} -- the first player forces whichever
+parity they want, never the anti-parity -- and none contains an isolated
+vertex; $33/34$ at $n=7$ have a dominating vertex.
+
+\paragraph{Device lemma (standard math).} With the queue empty, if some
+$v\in U$ dominates $R=U\setminus\{v\}$ with $|R|$ even and nonempty, the
+mover forces a flip in two plies: open $v$ (ko-protected, $\deg_U(v)$
+even), every reply must open some $y\in R\subseteq N(v)$ making $v$ odd,
+close $v$. Conversely, a single odd front at the responder's turn is
+always re-evenable (odd degree $\geq1$ supplies a never-ko-blocked
+neighbor open), and when $v$ does not dominate $R$ a non-neighbor open
+preserves evenness: the domination-with-even-remainder pattern is the
+unique \emph{local} obstruction. An isolated coin defeats it at every
+root (nothing dominates a set containing it), matching the Bad census;
+for $|R|$ odd, domination makes $\deg$ odd and the neighbor reply works,
+explaining the bonus rigidity of all even-$n$ boards.
+
+\paragraph{A verified defender strategy.} A two-mode menu strategy
+tracking the flip debt $g$ -- \textsc{prevention} ($g=0$: re-even odd
+fronts; non-toggling opens, e.g.\ the dummy; safe closes; in the trap
+$U\subseteq N(\mathrm{front})$, poison or close) and \textsc{debt} ($g=1$:
+counter-close odd fronts -- the attacker's flip-close typically exposes
+the repair; else toggle or advance) -- beats an optimal unrestricted
+attacker on every class $k\leq7$, both seats, with no move outside the
+menus. The verification is menu-\emph{existential}: the menus always
+contain a winning move, but not every menu choice wins (a losing poison
+choice on the star was exhibited in review).
+
+\paragraph{Open residue.} The general-$n$ proof. Parity-local invariants
+provably do not suffice: over $13$ natural parity features of the state,
+the safe/unsafe label is not a function of the features, and minimal
+distinguishing pairs differ precisely in whether the untouched structure
+retains a repair device -- a recursive, not parity-local, condition. The
+working architecture (second-eyes review concurring): segment the queue
+at \emph{firewall} coins ($\deg_U\equiv 0$; the opened dummy is a
+permanent firewall, the untouched dummy a virtual one), and run a mutual
+induction -- no-debt and one-debt regimes -- per segment, with attacker
+constructions classified by certificate depth (leaves exactly the device
+lemma's obstruction) rather than by graph shape. The hard obligation is
+the poison transition: showing every reachable trap state offers a move
+into a segment with repair potential.
+
 \section{Status and next moves}\label{sec:status}
 
 \paragraph{Status of the trichotomy.}
@@ -1429,20 +1513,31 @@ $765$ scaled $m=8$ Gold forms at both stances
 (Section~\ref{sec:fifodummy}), decision-nondegenerate in bulk, with
 bounded per-move access (open-set row sums plus the local $q_i$ at closes)
 -- an N1+N2-satisfying non-clock, in a readout the rigidity theorems do
-not cover. The live question is no longer existence but \emph{semantics}:
-recast the charge readout into normal/misère/loopy outcome classes (or
-prove the recasting impossible), and settle the even-$a$ diagonal lemma.
+not cover. The mechanism question was then reduced
+(Section~\ref{sec:linking}) to the linking theorem -- flips forced even
+on any board with an isolated coin -- now verified for every graph class
+through $k=7$ with an explicit two-mode defender strategy; what remains
+of it is the general-$n$ induction. The live questions are
+\emph{semantics} (recast the charge readout into normal/misère/loopy
+outcome classes, or prove the recasting impossible), the general-$n$
+linking proof, and the even-$a$ diagonal lemma.
 
 \paragraph{Ranked next moves.}
 (Move 1 of the previous ranking -- the adversarial review -- was executed
-2026-06-10 with outcome \textsc{confirm}; Section~\ref{sec:fifodummy}.)
+2026-06-10 with outcome \textsc{confirm}, Section~\ref{sec:fifodummy};
+the mechanism-reconciliation half of the old move 1 was then executed in
+the same-day second pass, Section~\ref{sec:linking}: the reduction is
+done, the mechanism is the odd-close parity game, and \textsc{fifo}'s
+role -- no nesting, hence overlap $=$ linking -- and the dummy's role --
+killing the domination device at every root -- are identified.)
 \begin{enumerate}[leftmargin=*]
-\item \emph{Recasting and mechanism reconciliation} (highest leverage):
-recast the $\sigma$-valued charge readout into normal/misère/loopy
-outcome semantics -- or prove the recasting impossible; derive the
-\textsc{fifo}+dummy reduced-game facts and re-run the extraspecial
-support-counting argument under \textsc{fifo} discipline to explain
-\emph{why} the queue-plus-tempo discipline defeats adversarial unlinking.
+\item \emph{Recasting} (highest leverage): recast the $\sigma$-valued
+charge readout into normal/misère/loopy outcome semantics -- or prove
+the recasting impossible.
+\item[1$'$.] \emph{The general-$n$ linking proof}: close the open residue
+of Section~\ref{sec:linking} (firewall segmentation, mutual no-debt /
+one-debt induction, certificate-depth completeness); this upgrades
+$m$-by-$m$ verification to the theorem for all $m$.
 \item \emph{Family-boundary sweep} (the remaining pre-registered axes):
 ko-memory window $w\in\{1,2,3\}$, pass semantics, pair touches, no-dummy
 controls -- map which disciplines are exact; this also puts the
@@ -1499,6 +1594,13 @@ full-state solvers for the \textsc{echo} family, self-tested against the
 Turning-Corners mex recurrence, explicit tree enumeration, and the
 original direct solver run verbatim. Unlike \path{experiments/gold/} it
 is dependency-free (stdlib Python) and written to stay reproducible.
+\item \path{experiments/linking_game.py} is the linking-reduction harness
+of the second 2026-06-10 pass (stages \texttt{validate}, \texttt{screen},
+\texttt{strategy}; Section~\ref{sec:linking}): the abstract odd-close
+parity game, the reduction identities on random plays, the all-classes
+$k\leq7$ rigidity and Bad-graph screens, and the strict menu verification
+of the two-mode defender strategy. Stdlib-only; cross-validated against
+\path{experiments/echo_solver.py} through its \texttt{SynthForm} bridge.
 \end{itemize}
 
 Two probe-hygiene caveats from the run remain open in the repository and

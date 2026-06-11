@@ -31,6 +31,45 @@ When a new piece of cross-pillar work lands, add a short entry here:
 Promote anything proof-heavy or too long for working notes into `roadmap/CODA.md`, and
 fold the one-line structural fact into the relevant `AGENTS.md`.
 
+## `taste-sweep` — the taste-audit ledger, played   (2026-06-11)
+**Pillars:** scalar ↔ clifford ↔ forms ↔ integral ↔ games (+py touchpoints)
+**Claim level:** engineering — behavior-preserving refactor, adversarially reviewed
+
+Thirteen of the fifteen items in [`roadmap/TASTE.md`](TASTE.md) (2026-06-11 audit)
+played in one session, on a9's switch decisions: full suffix glossary, outright
+Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
+
+- surface: `Scalar::from_int` (the unital ring hom ℤ→R, one spelling, trait-level
+  default + per-backend overrides; legacy spellings retired; the duplicate
+  `FiniteOddField`/`FiniteChar2Field` embedding methods deleted); `Display` as a
+  `Scalar` supertrait with `Debug` delegating (byte-identical output, `{}` now
+  works crate-wide); the `…Invariants` record glossary + verb-first façade traits
+  (glossary in `src/forms/AGENTS.md`); façade methods return
+  `Result<_, ClassifyError>` with leg-faithful variants; `o_type()` →
+  `OrthogonalType`; typed Witt/BW arithmetic errors; `WittClass::zero_f2()`;
+  `CliffordAlgebra::e(i)` (+`DividedPowerAlgebra::gamma1(i)`; Python keeps `gen`);
+  engine encapsulation (`terms`/`metric` pub(crate) + accessors, denormalized
+  `dim` field removed); `add_term`/`wedge_terms` dedup; `embed_second` takes the
+  left algebra; `Complex64` in its own module; five monoliths split into layered
+  directories with public paths frozen (loopy/, game_exterior/, discriminant/
+  with phases.rs, lattice/, springer/char2/); Surreal `PartialEq` switched to the
+  structural walk (CNF uniqueness argument on the impl).
+- oracles: full suite green at every step (797 unit incl. two new `ClassifyError`
+  variant pins + the `surreal_structural_eq_matches_value_eq` proptest pin);
+  clippy/cold-doc/`--features python` clean on both feature sets; three
+  adversarial reviewers (math invariants / motion fidelity / glossary
+  completeness) over the full diff, findings resolved.
+- boundaries: `py-dunder-pyramid` (2·e_y) and the starred `experiments-as-essays`
+  deliberately unplayed — the Python pass is a9's; `Metric::new` keeps its name
+  (a9 declined the rename). Python-visible names are stable; six façade bindings
+  now surface typed reasons. `demo.py` needs a `maturin develop` rebuild + visual
+  pass (display paths changed under it).
+- process note (for the next fleet): the worktree-default-branch footgun, bare
+  subagent system prompts, and four false fleet self-reports were all caught by
+  absolute checks against ground truth (test counts vs dev, clippy vs dev, grep
+  vs main), never by re-reading agent summaries. Verify, don't claim — it
+  applies to fleets too.
+
 ## `fqm-witt` — finite-quadratic-module Witt normal forms   (2026-06-11)
 **Pillars:** forms ↔ integral    **Claim level:** standard math made computational + implemented and tested
 - surface: `FiniteQuadraticModule::{new,cyclic,direct_sum,witt_class}` adds a native

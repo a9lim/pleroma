@@ -31,6 +31,24 @@ When a new piece of cross-pillar work lands, add a short entry here:
 Promote anything proof-heavy or too long for working notes into `roadmap/CODA.md`, and
 fold the one-line structural fact into the relevant `AGENTS.md`.
 
+## `fqm-witt` — finite-quadratic-module Witt normal forms   (2026-06-11)
+**Pillars:** forms ↔ integral    **Claim level:** standard math made computational + implemented and tested
+- surface: `FiniteQuadraticModule::{new,cyclic,direct_sum,witt_class}` adds a native
+  cyclic-product presentation for nonsingular finite quadratic modules;
+  `DiscriminantForm::fqm_witt_class` and `is_fqm_witt_equivalent` expose the
+  Wall/Nikulin Witt class of represented discriminant forms. The class is stored
+  p-primary as a canonical anisotropic core (`FqmWittClass` /
+  `FqmPrimaryWittClass`) with the Milgram/Brown phase retained as a projection.
+- oracles: tests pin agreement between native `Z/2, q=1/2` and the lattice `A_1`
+  discriminant form, separation of `A_1` and `E_7`, split reduction of
+  `⟨1/2⟩ ⊕ ⟨3/2⟩`, split reduction of the actual lattice sum `A_2 ⊕ E_6`, and
+  compatibility with the older `fqm_gauss_phase` projection.
+- boundaries: this is an exact bounded finite-table normal form (`|A| <= 512`,
+  plus an explicit generator-tuple budget); it returns `None` rather than
+  truncating. It does not yet implement Nikulin's lattice-existence theorem
+  1.10.1 for arbitrary `(signature, FQM)` pairs; that successor is now tracked as
+  `nikulin-existence` in `roadmap/TODO.md`.
+
 ## `fqm-gauss-phase` — p-primary finite-quadratic-module phase projection   (2026-06-11)
 **Pillars:** forms ↔ integral    **Claim level:** standard math made computational + implemented and tested
 - surface: `DiscriminantForm::fqm_gauss_phase` returns `FqmGaussPhase` with
@@ -45,8 +63,8 @@ fold the one-line structural fact into the relevant `AGENTS.md`.
   not Wall/Nikulin/Kawauchi-Kojima's full generator-and-relation Witt normal form.
   It still enumerates represented discriminant groups (`FQM_GAUSS_GROUP_CAP = 4096`)
   and uses the principal embedding only after an exact cyclotomic shape check chooses
-  between the two square-root branches; the full FQM normal-form item remains open in
-  `roadmap/TODO.md`.
+  between the two square-root branches; the FQM normal-form successor is the
+  `fqm-witt` entry above.
 
 ## `game-clifford-checked` — quotient-compatible integer Clifford data on game generators   (2026-06-11)
 **Pillars:** clifford ↔ games ↔ Python    **Claim level:** implemented and tested

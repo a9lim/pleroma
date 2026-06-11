@@ -60,9 +60,14 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   **Looks like a bug, isn't:** the standard Weil `S` prefactor is the conjugate of the
   positive Milgram phase stored by `GaussSum`; the verifier checks `S² = σ²·(γ↦−γ)`,
   `S⁴ = σ⁴·I`, and `(ST)³ = S²`, not the oversimplified `S⁴ = I`. The lattice ↔
-  Clifford/Brauer-Wall mod-8 seam. The FQM phase projection is not Wall's full
-  generator-and-relation normal form; that remains a separate roadmap rung. Even-lattice
-  only; odd type-I refinements stay a documented boundary.
+  Clifford/Brauer-Wall mod-8 seam. Even-lattice only; odd type-I refinements stay a
+  documented boundary.
+- **`fqm_witt.rs`** — finite-quadratic-module Witt classes: `FiniteQuadraticModule`
+  gives a native cyclic-product presentation, while `DiscriminantForm::fqm_witt_class`
+  and `is_fqm_witt_equivalent` reduce p-primary modules by isotropic cyclic quotients
+  to canonical anisotropic cores. This is the exact Wall/Nikulin Witt class up to the
+  explicit finite table budget (`None`, never truncation, past it); the older
+  `FqmGaussPhase` is now only the phase projection.
 - **`genus.rs`** — the **genus** = (signature, det, per-prime Conway–Sloane symbol).
   Engine: the p-adic Jordan decomposition (`jordan_blocks`, exact over `Rational`):
   odd `p` diagonalizes (valuation-ordered Gram–Schmidt); `p=2` peels 1-dim type-I lines

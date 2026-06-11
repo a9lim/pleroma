@@ -101,8 +101,9 @@ automorphism counts, node budgets. `usize` is for dimensions and matrix indices.
   as a test oracle. `β(2q′) = 4·Arf(q′)` lands the Arf bit as the 2-torsion, and
   `DiscriminantForm::brown_invariant` gives `β ≡ sign(L) mod 8` on 2-elementary
   discriminant forms — a fifth, float-free route to `σ mod 8`; the integral
-  `FqmGaussPhase` projection now carries the same Milgram/Brown phase over all shipped
-  discriminant groups, while the full Wall/Nikulin normal form remains deferred.
+  `FqmGaussPhase` projection carries the same Milgram/Brown phase over all shipped
+  discriminant groups, and `fqm_witt` upgrades that phase to a bounded exact
+  Wall/Nikulin Witt normal form.
   Category trap:
   Brown's `b` is symmetric-not-alternating with `b_ii = q_i mod 2`, NOT the engine's
   alternating polar — `double_f2` is the only bridge between the categories).

@@ -8,6 +8,7 @@
 pub mod codes;
 pub(crate) mod diagonal;
 pub mod discriminant;
+pub mod fqm_witt;
 pub mod genus;
 pub mod lattice;
 pub mod mass_formula;
@@ -17,6 +18,7 @@ pub mod theta;
 
 pub use codes::*;
 pub use discriminant::*;
+pub use fqm_witt::*;
 pub use genus::*;
 pub use lattice::*;
 pub use mass_formula::*;

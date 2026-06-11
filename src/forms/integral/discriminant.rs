@@ -289,11 +289,11 @@ const FQM_CYCLOTOMIC_ORDER_CAP: usize = 4096;
 /// The finite-abelian-group data of a discriminant form needed to compare two of
 /// them: the identity index, each element's `q_L` value and additive order, and the
 /// full Cayley addition table (indices into `reps`).
-struct IsoTables {
-    zero: usize,
-    q: Vec<Rational>,
-    order: Vec<usize>,
-    add: Vec<Vec<usize>>,
+pub(crate) struct IsoTables {
+    pub(crate) zero: usize,
+    pub(crate) q: Vec<Rational>,
+    pub(crate) order: Vec<usize>,
+    pub(crate) add: Vec<Vec<usize>>,
 }
 
 fn checked_i128_add(a: i128, b: i128) -> Option<i128> {
@@ -542,7 +542,7 @@ impl Cyclo {
     }
 }
 
-fn phase_mod8_from_q_values<'a>(
+pub(crate) fn phase_mod8_from_q_values<'a>(
     q_values: impl IntoIterator<Item = &'a Rational>,
     group_order: usize,
 ) -> Option<i128> {
@@ -837,7 +837,7 @@ impl DiscriminantForm {
 
     /// Tabulate the finite abelian group `(A_L, +)` with each element's `q_L` value
     /// and order, plus the full addition table. `None` past `group_cap`.
-    fn tables_bounded(&self, group_cap: usize) -> Option<IsoTables> {
+    pub(crate) fn tables_bounded(&self, group_cap: usize) -> Option<IsoTables> {
         let n = self.reps.len();
         if n > group_cap {
             return None;

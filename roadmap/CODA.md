@@ -131,6 +131,10 @@ cross-checking each other.
     `milgram_signature_mod8_fqm() -> Option<i128>` make the finite quadratic module's
     p-primary Milgram/Brown phase executable. The old `GaussSum` phase stays as the
     floating oracle.
+  - `FiniteQuadraticModule` is the native cyclic-product presentation of a finite
+    quadratic module, and `DiscriminantForm::fqm_witt_class()` /
+    `is_fqm_witt_equivalent()` give the Wall/Nikulin Witt class by reducing
+    p-primary modules to canonical anisotropic cores.
   - `verify_milgram(lattice) -> Option<bool>` compares the FQM phase to the legacy
     floating Gauss-sum route, the exact signature, and the independent Conway-Sloane
     oddity route in `genus.rs`.
@@ -1063,8 +1067,15 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
     p-primary Milgram/Brown phase projection over all represented discriminant groups,
     with `FqmPrimaryPhase { prime, order, exponent, phase_mod8 }` and total
     `phase_mod8`. This extends the phase computation past the 2-elementary Brown slice
-    (`A_3`, `E_6`, mixed-primary sums, ...), while deliberately not claiming Wall's full
-    generator-and-relation normal form.
+    (`A_3`, `E_6`, mixed-primary sums, ...).
+- `forms/integral/fqm_witt.rs`
+  - `FiniteQuadraticModule::new` / `::cyclic` / `::direct_sum` — native finite
+    quadratic modules in a cyclic product presentation, validated for nonsingularity
+    and the quadratic law.
+  - `FiniteQuadraticModule::witt_class` and `DiscriminantForm::fqm_witt_class` —
+    p-primary Wall/Nikulin Witt classes, represented by canonical anisotropic cores
+    after quotienting isotropic cyclic subgroups.
+  - `DiscriminantForm::is_fqm_witt_equivalent` — equality in the FQM Witt group.
 
 ### Oracles / implemented tests
 
@@ -1080,6 +1091,9 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
 - `fqm_gauss_phase` reports primary factors on `A_1 ⊕ A_2`, extends the 2-primary phase
   to `A_3` (`Z/4`), covers odd torsion such as `E_6` (`Z/3`), and matches the exact
   signature, genus oddity route, and legacy float oracle across the ADE zoo.
+- `fqm_witt_class` agrees with the native cyclic presentation on `A_1`, separates
+  `A_1` from `E_7`, reduces `⟨1/2⟩ ⊕ ⟨3/2⟩` and `A_2 ⊕ E_6` to the trivial Witt class,
+  and keeps `fqm_gauss_phase` as its phase projection.
 
 ### Scope / caveats
 
@@ -1088,9 +1102,9 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
   only bridge between the two categories. Kept distinct from the graded
   `BrauerWallClass`/Arf exactly as Bridge F insists for its Brauer class.
 - The Brown lattice tie is **2-elementary discriminant groups only**; higher 2-power and
-  odd torsion now have the `FqmGaussPhase` Milgram/Brown **phase projection**. A full
-  finite-quadratic-module Witt group (Wall/Nikulin/Kawauchi-Kojima generators and
-  relations, plus the FQM-native normal form) is still a further rung, not this bridge.
+  odd torsion have the `FqmGaussPhase` Milgram/Brown **phase projection**, and the
+  separate `FqmWittClass` surface carries the full finite-quadratic-module Witt class
+  within its explicit finite enumeration budget.
 - No new theorem: Brown 1972 is the source; the bridge is the wiring to Arf (shipped)
   and Milgram (Bridge A).
 

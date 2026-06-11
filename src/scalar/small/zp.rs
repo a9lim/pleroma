@@ -55,11 +55,13 @@ impl<const P: u128, const K: u128> Zp<P, K> {
         acc
     }
 
-    /// Reduce an integer (possibly negative) into `Z/p^k`.
+    /// Reduce an integer (possibly negative) into `Z/p^k`. This is the ℤ-embedding
+    /// for `Zp`, the unique unital ring homomorphism ℤ → Z/p^k.
+    ///
+    /// Kept as a doc'd alias for `Zp::from_int(n)` — a future sweep retires this
+    /// spelling once all call sites migrate.
     pub fn new(n: i128) -> Self {
-        Self::assert_supported_ring();
-        let m = Self::modulus() as i128;
-        Zp((((n % m) + m) % m) as u128)
+        Zp::<P, K>::from_int(n)
     }
 
     /// The `p`-adic valuation of this element, capped at the precision `k`
@@ -85,9 +87,15 @@ impl<const P: u128, const K: u128> Zp<P, K> {
     }
 }
 
-impl<const P: u128, const K: u128> fmt::Debug for Zp<P, K> {
+impl<const P: u128, const K: u128> fmt::Display for Zp<P, K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} (mod {}^{})", self.0, P, K)
+    }
+}
+
+impl<const P: u128, const K: u128> fmt::Debug for Zp<P, K> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -141,6 +149,12 @@ impl<const P: u128, const K: u128> Scalar for Zp<P, K> {
             return None;
         }
         Some(Zp(mod_inverse_u128(self.0, Self::modulus())?))
+    }
+    /// Faster direct construction; semantically identical to the default double-and-add.
+    fn from_int(n: i128) -> Self {
+        Self::assert_supported_ring();
+        let m = Self::modulus() as i128;
+        Zp((((n % m) + m) % m) as u128)
     }
 }
 

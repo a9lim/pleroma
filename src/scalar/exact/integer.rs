@@ -46,9 +46,22 @@ mod tests {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Integer(pub i128);
 
-impl fmt::Debug for Integer {
+impl From<i128> for Integer {
+    /// The ℤ-embedding: the identity homomorphism ℤ → ℤ.
+    fn from(n: i128) -> Self {
+        Integer(n)
+    }
+}
+
+impl fmt::Display for Integer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::Debug for Integer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -88,5 +101,9 @@ impl Scalar for Integer {
             1 | -1 => Some(*self),
             _ => None, // ℤ has only the units ±1
         }
+    }
+    /// Faster direct construction; semantically identical to the default double-and-add.
+    fn from_int(n: i128) -> Self {
+        Integer(n)
     }
 }

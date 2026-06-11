@@ -214,10 +214,16 @@ impl<const P: u128, const N: usize, const F: usize> WittVec<P, N, F> {
     }
 }
 
-impl<const P: u128, const N: usize, const F: usize> fmt::Debug for WittVec<P, N, F> {
+impl<const P: u128, const N: usize, const F: usize> fmt::Display for WittVec<P, N, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // unramified-ring coordinates: coefficients of 1, t, …, t^{F-1} over Z/p^N
         write!(f, "W_{}(F_{}^{}){:?}", N, P, F, self.0)
+    }
+}
+
+impl<const P: u128, const N: usize, const F: usize> fmt::Debug for WittVec<P, N, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -279,6 +285,10 @@ impl<const P: u128, const N: usize, const F: usize> Scalar for WittVec<P, N, F> 
             prec *= 2;
         }
         Some(b)
+    }
+    /// Faster direct construction; semantically identical to the default double-and-add.
+    fn from_int(n: i128) -> Self {
+        WittVec::<P, N, F>::from_int(n)
     }
 }
 

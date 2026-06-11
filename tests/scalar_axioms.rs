@@ -268,3 +268,27 @@ fn ordinal_partial_field_axioms_on_boundary_sentinels() {
         ordinal_field_axioms(&a, &b, &c);
     }
 }
+
+// --- surreal-eq-cost pin ---
+//
+// `PartialEq for Surreal` was switched from value-based comparison (which
+// allocates a subtraction) to a structural term-vector walk, justified by CNF
+// uniqueness (see the `PartialEq` impl's doc comment).  This proptest is the
+// permanent pin: for all random canonical `Surreal`s, structural equality
+// agrees with value-based comparison.
+
+proptest! {
+    #![proptest_config(proptest_config(HEAVY_CASES))]
+    #[test]
+    fn surreal_structural_eq_matches_value_eq(a in surreals(), b in surreals()) {
+        let structural = a == b;
+        let value_based = a.cmp(&b) == std::cmp::Ordering::Equal;
+        prop_assert_eq!(
+            structural,
+            value_based,
+            "structural PartialEq and value cmp disagree for {:?} vs {:?}",
+            a,
+            b
+        );
+    }
+}

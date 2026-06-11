@@ -354,7 +354,7 @@ mod tests {
     fn even_subalgebra_of_cl30_is_quaternions() {
         let alg = CliffordAlgebra::new(3, Metric::diagonal(vec![r(1), r(1), r(1)]));
         let even = alg.even_subalgebra().unwrap();
-        assert_eq!(even.dim, 2);
+        assert_eq!(even.dim(), 2);
         let (f0, f1) = (even.gen(0), even.gen(1));
         assert_eq!(even.mul(&f0, &f0), even.scalar(r(-1)));
         assert_eq!(even.mul(&f1, &f1), even.scalar(r(-1)));
@@ -383,7 +383,7 @@ mod tests {
         let left = CliffordAlgebra::new(1, Metric::diagonal(vec![r(1)]));
         let right = CliffordAlgebra::new(1, Metric::diagonal(vec![r(-1)]));
         let alg = left.graded_tensor(&right);
-        assert_eq!(alg.dim, 2);
+        assert_eq!(alg.dim(), 2);
         let e0 = alg.gen(0);
         let e1 = alg.gen(1);
         assert_eq!(alg.mul(&e0, &e0), alg.scalar(r(1)));
@@ -393,7 +393,7 @@ mod tests {
             alg.scalar_mul(&r(-1), &alg.mul(&e1, &e0))
         );
         assert_eq!(alg.embed_first(&left.gen(0)), e0);
-        assert_eq!(alg.embed_second(&right.gen(0), left.dim), e1);
+        assert_eq!(alg.embed_second(&right.gen(0), &left), e1);
     }
 
     #[test]

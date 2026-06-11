@@ -128,7 +128,7 @@ impl<S: Valued> PartialEq for Gauss<S> {
     }
 }
 
-impl<S: Valued> fmt::Debug for Gauss<S> {
+impl<S: Valued> fmt::Display for Gauss<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn fmt_poly<S: Scalar>(p: &[S]) -> String {
             if p.is_empty() {
@@ -140,9 +140,9 @@ impl<S: Valued> fmt::Debug for Gauss<S> {
                     continue;
                 }
                 parts.push(match i {
-                    0 => format!("{c:?}"),
-                    1 => format!("({c:?})·t"),
-                    _ => format!("({c:?})·t^{i}"),
+                    0 => format!("{c}"),
+                    1 => format!("({c})·t"),
+                    _ => format!("({c})·t^{i}"),
                 });
             }
             parts.join(" + ")
@@ -157,6 +157,12 @@ impl<S: Valued> fmt::Debug for Gauss<S> {
                 fmt_poly(self.den.coeffs())
             )
         }
+    }
+}
+
+impl<S: Valued> fmt::Debug for Gauss<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 

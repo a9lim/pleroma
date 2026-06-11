@@ -103,8 +103,12 @@ impl Rational {
         Self::try_new(num, den).expect("Rational::new received zero denominator or overflowed i128")
     }
 
+    /// The integer `n` as an exact rational. This is the ℤ-embedding for `Rational`.
+    ///
+    /// Kept as a doc'd alias for `Rational::from_int(n)` — a future sweep retires
+    /// this spelling once all call sites migrate.
     pub fn int(n: i128) -> Self {
-        Rational { num: n, den: 1 }
+        Rational::from_int(n)
     }
 
     /// Sign as an Ordering relative to zero (den is always > 0).
@@ -163,13 +167,20 @@ impl Rational {
     }
 }
 
-impl fmt::Debug for Rational {
+impl fmt::Display for Rational {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.den == 1 {
             write!(f, "{}", self.num)
         } else {
             write!(f, "{}/{}", self.num, self.den)
         }
+    }
+}
+
+impl fmt::Debug for Rational {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // delegate to Display: assert_eq! failure output matches Display everywhere
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -180,12 +191,23 @@ impl PartialEq for Rational {
     }
 }
 
+impl From<i128> for Rational {
+    /// The ℤ-embedding: the unique unital ring homomorphism ℤ → ℚ.
+    fn from(n: i128) -> Self {
+        Rational::from_int(n)
+    }
+}
+
 impl Scalar for Rational {
     fn zero() -> Self {
         Rational { num: 0, den: 1 }
     }
     fn one() -> Self {
         Rational { num: 1, den: 1 }
+    }
+    /// Faster direct construction; semantically identical to the default double-and-add.
+    fn from_int(n: i128) -> Self {
+        Rational { num: n, den: 1 }
     }
     fn add(&self, rhs: &Self) -> Self {
         let g = gcd_u128(self.den as u128, rhs.den as u128).max(1);

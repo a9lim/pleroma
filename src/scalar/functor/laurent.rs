@@ -163,7 +163,7 @@ impl<S: Scalar, const K: usize> Laurent<S, K> {
     }
 }
 
-impl<S: Scalar, const K: usize> fmt::Debug for Laurent<S, K> {
+impl<S: Scalar, const K: usize> fmt::Display for Laurent<S, K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.unit.is_empty() {
             return write!(f, "0 (S((t)))");
@@ -179,12 +179,18 @@ impl<S: Scalar, const K: usize> fmt::Debug for Laurent<S, K> {
             first = false;
             let e = self.val + i as i128;
             match e {
-                0 => write!(f, "{c:?}")?,
-                1 => write!(f, "{c:?}·t")?,
-                _ => write!(f, "{c:?}·t^{e}")?,
+                0 => write!(f, "{c}")?,
+                1 => write!(f, "{c}·t")?,
+                _ => write!(f, "{c}·t^{e}")?,
             }
         }
         write!(f, " + O(t^{})", self.val + self.unit.len() as i128)
+    }
+}
+
+impl<S: Scalar, const K: usize> fmt::Debug for Laurent<S, K> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 

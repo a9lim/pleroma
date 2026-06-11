@@ -546,7 +546,7 @@ fn distinct_primes(mut n: u128) -> Vec<u128> {
     out
 }
 
-impl<const P: u128, const N: usize> fmt::Debug for Fpn<P, N> {
+impl<const P: u128, const N: usize> fmt::Display for Fpn<P, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut parts: Vec<String> = Vec::new();
         for i in (0..N).rev() {
@@ -568,6 +568,12 @@ impl<const P: u128, const N: usize> fmt::Debug for Fpn<P, N> {
         } else {
             write!(f, "{}", parts.join(" + "))
         }
+    }
+}
+
+impl<const P: u128, const N: usize> fmt::Debug for Fpn<P, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -658,6 +664,16 @@ impl<const P: u128, const N: usize> Scalar for Fpn<P, N> {
             e >>= 1;
         }
         Some(result)
+    }
+    /// Faster direct construction via the constant coefficient; semantically
+    /// identical to the default double-and-add (reduction mod p in degree-0).
+    fn from_int(n: i128) -> Self {
+        Self::assert_supported_field();
+        let mut out = [0u128; N];
+        if N > 0 {
+            out[0] = Fp::<P>::from_int(n).value();
+        }
+        Fpn(out)
     }
 }
 

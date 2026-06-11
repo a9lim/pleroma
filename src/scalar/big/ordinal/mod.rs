@@ -79,7 +79,13 @@ impl Ordinal {
         Ordinal { terms: Vec::new() }
     }
 
-    /// A finite ordinal / nimber `n`.
+    /// A finite ordinal / nimber `n` — a **representation** constructor.
+    ///
+    /// **Representation constructor vs ℤ-embedding:**
+    /// `Ordinal::from_u128(n)` says "the ordinal *n*", treating the u128 as a
+    /// non-negative ordinal directly. The ℤ-embedding `Scalar::from_int(n)` is
+    /// `n mod 2` for this characteristic-2 world (the unique unital ring
+    /// homomorphism ℤ → On₂). Do NOT use `from_u128` to embed integers.
     pub fn from_u128(n: u128) -> Self {
         if n == 0 {
             Ordinal::zero()
@@ -216,11 +222,11 @@ fn fmt_exp(e: &Ordinal) -> String {
     } else if e.terms.len() == 1 && e.terms[0].0.is_zero() {
         format!("ω^{}", e.terms[0].1) // ω^k for a finite exponent k
     } else {
-        format!("ω^({:?})", e)
+        format!("ω^({})", e)
     }
 }
 
-impl fmt::Debug for Ordinal {
+impl fmt::Display for Ordinal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.terms.is_empty() {
             return write!(f, "0");
@@ -240,6 +246,12 @@ impl fmt::Debug for Ordinal {
             })
             .collect();
         write!(f, "{}", parts.join(" + "))
+    }
+}
+
+impl fmt::Debug for Ordinal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 

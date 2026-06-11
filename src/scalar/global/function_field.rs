@@ -112,13 +112,19 @@ impl<S: ExactFieldScalar> PartialEq for RationalFunction<S> {
     }
 }
 
-impl<S: ExactFieldScalar> fmt::Debug for RationalFunction<S> {
+impl<S: ExactFieldScalar> fmt::Display for RationalFunction<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.den == Poly::one() {
-            write!(f, "{:?}", self.num)
+            write!(f, "{}", self.num)
         } else {
-            write!(f, "[{:?}] / [{:?}]", self.num, self.den)
+            write!(f, "[{}] / [{}]", self.num, self.den)
         }
+    }
+}
+
+impl<S: ExactFieldScalar> fmt::Debug for RationalFunction<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 

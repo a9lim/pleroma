@@ -29,13 +29,19 @@ backends). The associative-algebra core is split by concept under `engine/`:
 - **`product.rs`** — `geom_product_blades` (the general-bilinear Chevalley product)
   plus the `cfg(test)` `reduce_word` oracle it is cross-validated against.
 - **`algebra.rs`** — `CliffordAlgebra<S>`: blade arithmetic, grade projection,
-  wedge/reverse/graded_tensor/embeddings. `reverse` panics on general-bilinear
-  (`a ≠ 0`) metrics — blade-word reversal is only an anti-automorphism when `B` is
-  symmetric (pinned by `reverse_panics_on_general_bilinear_metric`).
+  wedge/reverse/graded_tensor/embeddings. `dim()` is a method delegating to
+  `metric.dim()` (no stored field). `embed_second(v, left)` takes a left-algebra
+  reference (not a bare `usize`) to derive its shift. `reverse` panics on
+  general-bilinear (`a ≠ 0`) metrics — blade-word reversal is only an
+  anti-automorphism when `B` is symmetric (pinned by
+  `reverse_panics_on_general_bilinear_metric`).
 - **`multivector.rs`** — `Multivector<S>`: term store, zero/display helpers.
+  `terms` field is `pub(crate)`; use the `terms()` accessor for external reads.
+  `impl fmt::Display` renders with `{}` — same as `display()`.
 - **`inverse.rs`** — GENERAL `multivector_inverse` via the shared `linalg::field`
   solver (used when `1+B` is not a versor, e.g. in the Cayley transform).
-- **`terms.rs`** — local term-map scale/merge helpers.
+- **`terms.rs`** — term-map helpers: `add_term` (canonical insert-and-remove-if-zero),
+  `wedge_terms` (metric-free exterior product of two term maps), `scale`, `merge`.
 
 ## The GA layer
 
@@ -92,8 +98,21 @@ backends). The associative-algebra core is split by concept under `engine/`:
   unbounded-dimension left-regular action beyond that cap. Clifford relations hold.
 - **`spinor_norm.rs`** — the spinor norm `N : O(Q)→F*/F*²` (= norm2 mod squares) +
   the generic `versor_grade_parity` (Dickson; `forms::dickson_of_versor` delegates
-  here) + `classify_versor` → `VersorClass<S>` (the spinor-norm + Dickson-parity
-  record). Char-2 codomain is `F/℘(F)`.
+  here) + `classify_versor` → `VersorInvariants<S>` (the spinor-norm + Dickson-parity
+  record; Python exposes the Python class under the legacy name `VersorClass`).
+  Char-2 codomain is `F/℘(F)`.
+
+## Operator vs context-method policy
+
+Metric-free additive operations (`+`, `-`, unary `-`, `^` for exterior product) are
+implemented as operators directly on `Multivector<S>` — no algebra context required.
+Every metric-dependent operation (geometric product `mul`, `reverse`, contractions,
+dual, spinor norm, …) is a method on `CliffordAlgebra<S>`, which provides the metric
+as context. Use `a + b` / `a ^ b` for the metric-free ops; `alg.mul(&a, &b)` /
+`alg.wedge(&a, &b)` (or the free wedge `alg.wedge(…)`) for metric-dependent ones.
+This mirrors the scalar layer: operators on the concrete type carry no extra context;
+everything that needs context threads through the algebra value. (Python bindings
+follow the same split: `^` on MVs, named methods on the algebra object.)
 
 ## Hard rules (clifford-specific)
 
@@ -107,6 +126,8 @@ backends). The associative-algebra core is split by concept under `engine/`:
    i<j; `b` stays the symmetric anticommutator. `a` empty ⇒ the ordinary Clifford
    algebra. Build with `Metric::new`, `::diagonal`, `::grassmann`, or
    `::general(q, b, a)`, never the bare struct literal (`a` is keyed i<j only).
+   Both `b` and `a` in `Metric::new`/`::general` accept any `IntoIterator<Item =
+   ((usize, usize), S)>` — a `BTreeMap`, a `Vec`, an empty `[]`, etc.
 2. **Signs go through the scalar's own `neg()`, never a literal `-1` or a
    `characteristic()` branch.** The product emits `S::one().neg()` from the wedge
    antisymmetry. For nimbers `neg` is identity, so `-1 = 1` and char-2 sign-vanishing
@@ -127,8 +148,9 @@ backends). The associative-algebra core is split by concept under `engine/`:
   (over surreals): `1/(ω+1)` is an infinite Hahn series, so a non-monomial norm has no
   representable inverse. Use `multivector_inverse` (the general linalg solve) when
   `1+B` isn't a versor — that's why the Cayley transform calls it.
-- **The `neg_one` branch in `Multivector::display` never fires for nimbers.**
+- **The `neg_one` branch in `Multivector`'s `Display` impl never fires for nimbers.**
   `neg(one)=one` in char 2, so the `coeff==one` branch catches it first. Harmless.
+  (`display()` is now a thin `to_string()` alias over `fmt::Display`.)
 - **`divided_power.rs` is a standalone parallel algebra, not a layer on the blade
   engine.** Γ(V) is the dual of Sym, not a view of the exterior algebra; Python
   therefore binds it as separate `DividedPowerAlgebra`/`DpVector` classes.

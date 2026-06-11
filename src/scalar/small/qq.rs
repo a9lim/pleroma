@@ -109,16 +109,22 @@ impl<const P: u128, const N: usize, const F: usize> Qq<P, N, F> {
     }
 }
 
-impl<const P: u128, const N: usize, const F: usize> fmt::Debug for Qq<P, N, F> {
+impl<const P: u128, const N: usize, const F: usize> fmt::Display for Qq<P, N, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.unit.is_zero() {
             return write!(f, "0 (Q_{}^{})", P, F);
         }
         if self.val == 0 {
-            write!(f, "{:?}", self.unit)
+            write!(f, "{}", self.unit)
         } else {
-            write!(f, "{:?}·{}^{}", self.unit, P, self.val)
+            write!(f, "{}·{}^{}", self.unit, P, self.val)
         }
+    }
+}
+
+impl<const P: u128, const N: usize, const F: usize> fmt::Debug for Qq<P, N, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -207,6 +213,10 @@ impl<const P: u128, const N: usize, const F: usize> Scalar for Qq<P, N, F> {
 
     fn is_zero(&self) -> bool {
         self.unit.is_zero()
+    }
+    /// Faster direct construction; semantically identical to the default double-and-add.
+    fn from_int(n: i128) -> Self {
+        Qq::<P, N, F>::from_int(n)
     }
 }
 

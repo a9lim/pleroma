@@ -31,6 +31,7 @@
 //! [`Adele::is_integral`]), honest gaps in the same spirit as `Laurent`.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 
 use crate::scalar::{LocalQp, Rational, Scalar};
 
@@ -101,7 +102,7 @@ fn p_pow_rational(p: u128, e: i128) -> Rational {
 }
 
 /// An element of the adele ring `A_Q`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Adele {
     /// The global/diagonal rational — the local component at almost every place.
     principal: Rational,
@@ -352,6 +353,25 @@ impl Scalar for Adele {
             real,
             finite,
         })
+    }
+}
+
+impl fmt::Display for Adele {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Adele(principal={}", self.principal)?;
+        if self.real != self.principal {
+            write!(f, ", real={}", self.real)?;
+        }
+        for (p, dev) in &self.finite {
+            write!(f, ", Q_{p}={dev}")?;
+        }
+        write!(f, ")")
+    }
+}
+
+impl fmt::Debug for Adele {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 

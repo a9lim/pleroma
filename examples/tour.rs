@@ -104,14 +104,14 @@ fn main() {
     let even = cl30.even_subalgebra().unwrap();
     println!(
         "  Cl(3,0)⁰         = {}   (≅ Cl(0,2))",
-        classify_surreal(&even.metric).unwrap().display()
+        classify_surreal(even.metric()).unwrap().display()
     );
     let l = CliffordAlgebra::new(1, Metric::diagonal(vec![Surreal::from_int(1)]));
     let r = CliffordAlgebra::new(1, Metric::diagonal(vec![Surreal::from_int(-1)]));
     let t = l.graded_tensor(&r);
     println!(
         "  Cl(1,0) ⊗̂ Cl(0,1) = {}   (≅ Cl(1,1))",
-        classify_surreal(&t.metric).unwrap().display()
+        classify_surreal(t.metric()).unwrap().display()
     );
 
     rule("general bilinear form — the in-order contraction `a` deforms the product");

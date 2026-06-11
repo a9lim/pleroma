@@ -71,6 +71,9 @@ impl Surreal {
         }
     }
 
+    /// Embed an integer as a surreal (the constant rational `n`). This is the
+    /// ℤ-embedding `Scalar::from_int`. Kept as a distinct inherent method for
+    /// code clarity; the `Scalar` impl delegates here.
     pub fn from_int(n: i128) -> Self {
         Surreal::from_rational(Rational::int(n))
     }
@@ -136,8 +139,36 @@ impl Surreal {
 }
 
 impl PartialEq for Surreal {
+    /// **Structural equality = value equality for canonical surreals.**
+    ///
+    /// Every `Surreal` produced by this module's arithmetic is in canonical CNF
+    /// (descending surreal-value-ordered exponents, ℚ-reduced coefficients, no
+    /// zero terms, recursively canonical exponents). For any two canonical CNFs:
+    /// if their values differ the subtraction has a nonzero leading term
+    /// (surreal comparison is sign of the leading term). Conversely, if their
+    /// values agree, the leading exponents must be equal (otherwise the
+    /// subtraction has a nonzero term) — and by induction on term count the
+    /// whole term vector is identical. This is the standard uniqueness theorem
+    /// for Hahn series in reduced form applied to the finite-support case here.
+    ///
+    /// Structural walk replaces the previous value-based `self.cmp(other) ==
+    /// Equal`, which required a subtraction and allocation. A proptest in
+    /// `tests/scalar_axioms.rs` pins the agreement.
     fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
+        if self.terms.len() != other.terms.len() {
+            return false;
+        }
+        self.terms
+            .iter()
+            .zip(other.terms.iter())
+            .all(|((e1, c1), (e2, c2))| e1 == e2 && c1 == c2)
+    }
+}
+
+impl From<i128> for Surreal {
+    /// The ℤ-embedding: the unique unital ring homomorphism ℤ → No.
+    fn from(n: i128) -> Self {
+        Surreal::from_int(n)
     }
 }
 
@@ -150,6 +181,10 @@ impl Scalar for Surreal {
         Surreal {
             terms: vec![(Surreal::zero(), Rational::one())],
         }
+    }
+    /// Faster direct construction; semantically identical to the default double-and-add.
+    fn from_int(n: i128) -> Self {
+        Surreal::from_int(n)
     }
 
     fn add(&self, rhs: &Self) -> Self {
@@ -211,24 +246,24 @@ impl Scalar for Surreal {
 /// Format coeff·ω^exp for a *non-negative* magnitude coefficient.
 fn fmt_term_mag(e: &Surreal, mag: &Rational) -> String {
     if e.is_zero() {
-        return format!("{:?}", mag); // a plain constant
+        return format!("{}", mag); // a plain constant
     }
     let base = if *e == Surreal::one() {
         "ω".to_string()
     } else if e.terms.len() == 1 && e.terms[0].0.is_zero() {
         // exponent is a bare rational: ω^2, ω^-1, ω^(1/2) — no parens needed
-        format!("ω^{:?}", e.terms[0].1)
+        format!("ω^{}", e.terms[0].1)
     } else {
-        format!("ω^({:?})", e)
+        format!("ω^({})", e)
     };
     if *mag == Rational::one() {
         base
     } else {
-        format!("{:?}{}", mag, base)
+        format!("{}{}", mag, base)
     }
 }
 
-impl fmt::Debug for Surreal {
+impl fmt::Display for Surreal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.terms.is_empty() {
             return write!(f, "0");
@@ -249,6 +284,12 @@ impl fmt::Debug for Surreal {
             }
         }
         write!(f, "{}", s)
+    }
+}
+
+impl fmt::Debug for Surreal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 

@@ -62,20 +62,13 @@ impl<const P: u128> Fp<P> {
         assert!(Self::modulus_is_prime(), "Fp<P> needs prime P, got {P}");
     }
 
-    /// Reduce an integer (possibly negative) into `F_P`.
+    /// Reduce an integer (possibly negative) into `F_P`. This is the ℤ-embedding
+    /// for `Fp`, the unique unital ring homomorphism ℤ → F_P.
+    ///
+    /// Kept as a doc'd alias for `Fp::from_int(n)` — a future sweep retires this
+    /// spelling once all call sites migrate.
     pub fn new(n: i128) -> Self {
-        Self::assert_prime_modulus();
-        let v = if n >= 0 {
-            (n as u128) % P
-        } else {
-            let r = n.unsigned_abs() % P;
-            if r == 0 {
-                0
-            } else {
-                P - r
-            }
-        };
-        Fp(v)
+        Fp::<P>::from_int(n)
     }
 
     /// Reduce an unsigned integer into `F_P`.
@@ -90,9 +83,15 @@ impl<const P: u128> Fp<P> {
     }
 }
 
-impl<const P: u128> fmt::Debug for Fp<P> {
+impl<const P: u128> fmt::Display for Fp<P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl<const P: u128> fmt::Debug for Fp<P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -131,6 +130,21 @@ impl<const P: u128> Scalar for Fp<P> {
             return None;
         }
         Some(self.pow(P - 2))
+    }
+    /// Faster direct construction; semantically identical to the default double-and-add.
+    fn from_int(n: i128) -> Self {
+        Self::assert_prime_modulus();
+        let v = if n >= 0 {
+            (n as u128) % P
+        } else {
+            let r = n.unsigned_abs() % P;
+            if r == 0 {
+                0
+            } else {
+                P - r
+            }
+        };
+        Fp(v)
     }
 }
 

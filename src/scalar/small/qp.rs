@@ -146,7 +146,7 @@ impl<const P: u128, const K: u128> Qp<P, K> {
     }
 }
 
-impl<const P: u128, const K: u128> fmt::Debug for Qp<P, K> {
+impl<const P: u128, const K: u128> fmt::Display for Qp<P, K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.unit == 0 {
             return write!(f, "0 (Q_{})", P);
@@ -156,6 +156,12 @@ impl<const P: u128, const K: u128> fmt::Debug for Qp<P, K> {
         } else {
             write!(f, "{}·{}^{} (mod {}^{})", self.unit, P, self.val, P, K)
         }
+    }
+}
+
+impl<const P: u128, const K: u128> fmt::Debug for Qp<P, K> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -252,6 +258,10 @@ impl<const P: u128, const K: u128> Scalar for Qp<P, K> {
             unit: uinv,
             val: -self.val,
         })
+    }
+    /// Faster direct construction; semantically identical to the default double-and-add.
+    fn from_int(n: i128) -> Self {
+        Qp::<P, K>::from_i128(n)
     }
 }
 

@@ -48,7 +48,7 @@ pub fn versor_grade_parity<S: Scalar>(v: &Multivector<S>) -> Option<u128> {
 /// The classification of a versor: its raw spinor norm `⟨v ṽ⟩₀ ∈ F` together with
 /// its Dickson grade parity.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct VersorClass<S: Scalar> {
+pub struct VersorInvariants<S: Scalar> {
     /// The raw spinor norm `N(v) = ⟨v ṽ⟩₀ = ∏ q(vᵢ)`. Its class in `F*/F*²`
     /// (char ≠ 2) or `F/℘(F)` (char 2) is the spinor-norm invariant.
     pub spinor_norm: S,
@@ -76,10 +76,10 @@ impl<S: Scalar> CliffordAlgebra<S> {
 
     /// Classify a versor by `(spinor norm, Dickson parity)`. `None` if `v` is not a
     /// versor (mixed grade parity, or `v ṽ` not scalar).
-    pub fn classify_versor(&self, v: &Multivector<S>) -> Option<VersorClass<S>> {
+    pub fn classify_versor(&self, v: &Multivector<S>) -> Option<VersorInvariants<S>> {
         let dickson = versor_grade_parity(v)?;
         let spinor_norm = self.spinor_norm(v)?;
-        Some(VersorClass {
+        Some(VersorInvariants {
             spinor_norm,
             dickson,
         })

@@ -475,7 +475,7 @@ mod tests {
         let alg = CliffordAlgebra::new(3, Metric::diagonal(vec![rat(1), rat(1), rat(1)]));
         let even = alg.even_subalgebra().unwrap();
         assert_eq!(
-            classify_rational(&even.metric)
+            classify_rational(even.metric())
                 .unwrap()
                 .real_closure
                 .display(),
@@ -487,7 +487,7 @@ mod tests {
         // pivot is the last non-null (a −1 direction): f_i² = −q_i·(−1) = q_i.
         // signature of the even part here is (1,2) ⇒ same class as Cl(1,2).
         assert_eq!(
-            classify_rational(&st_even.metric)
+            classify_rational(st_even.metric())
                 .unwrap()
                 .real_closure
                 .display(),

@@ -287,7 +287,7 @@ impl LocalQp {
     }
 }
 
-impl fmt::Debug for LocalQp {
+impl fmt::Display for LocalQp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.unit == 0 {
             return write!(f, "0 (Q_{})", self.p);
@@ -301,6 +301,12 @@ impl fmt::Debug for LocalQp {
                 self.unit, self.p, self.val, self.p, self.k
             )
         }
+    }
+}
+
+impl fmt::Debug for LocalQp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 

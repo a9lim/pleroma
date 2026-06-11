@@ -14,10 +14,28 @@
 
 use crate::scalar::Scalar;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Surcomplex<S: Scalar> {
     pub re: S,
     pub im: S,
+}
+
+impl<S: Scalar> std::fmt::Display for Surcomplex<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.im.is_zero() {
+            write!(f, "{}", self.re)
+        } else if self.re.is_zero() {
+            write!(f, "{}·i", self.im)
+        } else {
+            write!(f, "{} + {}·i", self.re, self.im)
+        }
+    }
+}
+
+impl<S: Scalar> std::fmt::Debug for Surcomplex<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
 }
 
 impl<S: Scalar> Surcomplex<S> {

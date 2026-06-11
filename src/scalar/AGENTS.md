@@ -53,13 +53,27 @@ and const-generic sizes that are inherently indices.
 ## The `Scalar` trait + the trait layer
 
 - **`mod.rs`** — the `Scalar` trait (`add`/`neg`/`mul`/`zero`/`one`/`is_zero`/
-  `inv`/`characteristic`) + the "any number" table doc + the flat re-export hub.
-  Also `impl_scalar_ops!`: total-product backends get concrete-type operators
-  (`+ - *` and unary `-`) forwarding to the trait methods. `Ordinal` is the
-  deliberate exception: additive operators only, multiplication behind the checked
-  `nim_mul` API (the represented Kummer tower has an honest boundary). `/` stays a
-  method (inv is partial). **The operators are NOT a `Scalar` supertrait** — see
-  "things that look like bugs".
+  `inv`/`characteristic`/`from_int`) + `Display` as a supertrait + the "any number"
+  table doc + the flat re-export hub. Also `impl_scalar_ops!`: total-product backends
+  get concrete-type operators (`+ - *` and unary `-`) forwarding to the trait methods.
+  `Ordinal` is the deliberate exception: additive operators only, multiplication behind
+  the checked `nim_mul` API (the represented Kummer tower has an honest boundary). `/`
+  stays a method (inv is partial). **The operators are NOT a `Scalar` supertrait** —
+  see "things that look like bugs".
+
+  **`Scalar::from_int(n: i128) -> Self`** is the ℤ-embedding (unique unital ring
+  homomorphism ℤ → R). The default double-and-add over `one()`/`neg()` is correct for
+  every characteristic: char-2 worlds automatically get `n mod 2` because `1+1=0`.
+  Backends with a direct construction (`Rational`, `Integer`, `Fp`, `Fpn`, `Zp`,
+  `Qp`, `Qq`, `WittVec`, `Surreal`, `Omnific`) override for efficiency. Do NOT
+  override in char-2 worlds with a bit-cast constructor — `Nimber(n)` and
+  `Ordinal::from_u128(n)` are *representation* constructors (which nimber / which
+  ordinal), not ℤ-embeddings.
+
+  **`Display` is a `Scalar` supertrait** (`Scalar: Clone + PartialEq + Debug +
+  Display`). Every backend has an `impl fmt::Display`, with `Debug` delegating to
+  `Display` (byte-identical output). The pre-existing old aliases (`Rational::int`,
+  `Fp::new`, `Zp::new`, etc.) are preserved as doc'd forwards to `from_int`.
 - **`integrality.rs`** — `HasFractionField {Frac; to_fraction}` +
   `HasRingOfIntegers {Int; is_integral/to_integer}`, with `Int:
   HasFractionField<Frac=Self>` tying the loop. Impl'd for the **five** distinct-type
@@ -305,6 +319,12 @@ carries the `ExactScalar`/`ExactFieldScalar` markers. It feeds
 - **`Surreal::birthday_ordinal`/`transfinite_sign_expansion` are `None` outside the
   representable subclass** (`√ω`, `ω−1`, `½ω`, mixed). Every *ordinal* (incl. ω^ω) is
   handled; `ε` is the one infinitesimal pinned. The honest Gonshor scope boundary.
+- **`PartialEq for Surreal` is structural, not value-based.** The previous
+  `self.cmp(other) == Ordering::Equal` was correct but allocated a subtraction.
+  CNF uniqueness (Hahn series in reduced form — see the inline proof comment on the
+  impl) guarantees structural equality and value equality coincide for all canonical
+  surreals this module produces. A proptest in `tests/scalar_axioms.rs`
+  (`surreal_structural_eq_matches_value_eq`) pins the agreement permanently.
 - **`Qp` addition is not associative across precision boundaries.** Capped-relative
   (the standard p-adic model, like float). No finite-memory exact Q_p exists.
 - **`nim_mul`'s `1u128 << (1u128 << n)` is not overflow-prone** for valid u128: bit

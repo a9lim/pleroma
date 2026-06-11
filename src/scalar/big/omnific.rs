@@ -30,11 +30,24 @@ use crate::scalar::Surreal;
 #[derive(Clone, PartialEq)]
 pub struct Omnific(Surreal);
 
-impl std::fmt::Debug for Omnific {
+impl std::fmt::Display for Omnific {
     // delegate to the inner surreal so multivector displays read `ω·e0e1`, not
     // `Omnific(ω)·e0e1`.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl std::fmt::Debug for Omnific {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
+}
+
+impl From<i128> for Omnific {
+    /// The ℤ-embedding: the unique unital ring homomorphism ℤ → Oz.
+    fn from(n: i128) -> Self {
+        Omnific::from_int(n)
     }
 }
 
@@ -95,6 +108,10 @@ impl Scalar for Omnific {
     }
     fn one() -> Self {
         Omnific(Surreal::one())
+    }
+    /// Faster direct construction; semantically identical to the default double-and-add.
+    fn from_int(n: i128) -> Self {
+        Omnific::from_int(n)
     }
     fn add(&self, rhs: &Self) -> Self {
         // sums of omnific integers are omnific integers — no re-validation needed

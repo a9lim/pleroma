@@ -373,7 +373,7 @@ macro_rules! backend_linear_map {
             /// multivector in the given algebra.
             fn image(&self, alg: &$alg, i: usize) -> PyResult<$mv> {
                 alg.ensure_linear_map(&self.inner)?;
-                if i >= alg.inner.dim {
+                if i >= alg.inner.dim() {
                     return Err(PyValueError::new_err("linear-map image index out of range"));
                 }
                 Ok($mv {
@@ -512,7 +512,7 @@ macro_rules! backend_algebra {
 
             #[getter]
             fn dim(&self) -> usize {
-                self.inner.dim
+                self.inner.dim()
             }
 
             /// Rust-name constructor for a general-bilinear metric algebra.
@@ -591,7 +591,7 @@ macro_rules! backend_algebra {
                 }
                 let metric = Metric::general(q, b, a);
                 Ok($alg {
-                    inner: Arc::new(CliffordAlgebra::new(self.inner.dim, metric)),
+                    inner: Arc::new(CliffordAlgebra::new(self.inner.dim(), metric)),
                 })
             }
 
@@ -613,7 +613,7 @@ macro_rules! backend_algebra {
 
             /// The graded (super) tensor product self ⊗̂ other ≅ Cl(self ⟂ other).
             fn graded_tensor(&self, other: &$alg) -> PyResult<$alg> {
-                if self.inner.dim + other.inner.dim > MAX_BASIS_DIM {
+                if self.inner.dim() + other.inner.dim() > MAX_BASIS_DIM {
                     return Err(PyValueError::new_err(format!(
                         "graded tensor dimension exceeds {MAX_BASIS_DIM}"
                     )));
@@ -625,7 +625,7 @@ macro_rules! backend_algebra {
 
             /// The tensor square `Cl ⊗̂ Cl`, used by the exterior Hopf coproduct.
             fn tensor_square(&self) -> PyResult<$alg> {
-                if self.inner.dim * 2 > MAX_BASIS_DIM {
+                if self.inner.dim() * 2 > MAX_BASIS_DIM {
                     return Err(PyValueError::new_err(format!(
                         "tensor square dimension exceeds {MAX_BASIS_DIM}"
                     )));
@@ -638,7 +638,7 @@ macro_rules! backend_algebra {
             /// Embed a multivector of the first graded-tensor factor into this
             /// target algebra.
             fn embed_first(&self, mv: &$mv) -> PyResult<$mv> {
-                if mv.alg.dim > self.inner.dim {
+                if mv.alg.dim() > self.inner.dim() {
                     return Err(PyValueError::new_err(
                         "source multivector dimension exceeds target algebra dimension",
                     ));
@@ -652,14 +652,15 @@ macro_rules! backend_algebra {
             /// Embed a multivector of the second graded-tensor factor into this
             /// target algebra by shifting its blade masks by `shift`.
             fn embed_second(&self, mv: &$mv, shift: usize) -> PyResult<$mv> {
-                if shift + mv.alg.dim > self.inner.dim {
+                if shift + mv.alg.dim() > self.inner.dim() {
                     return Err(PyValueError::new_err(
                         "shifted source multivector dimension exceeds target algebra dimension",
                     ));
                 }
+                let left = CliffordAlgebra::new(shift, Metric::<$scalar>::grassmann(shift));
                 Ok($mv {
                     alg: self.inner.clone(),
-                    mv: scalar_boundary(|| self.inner.embed_second(&mv.mv, shift))?,
+                    mv: scalar_boundary(|| self.inner.embed_second(&mv.mv, &left))?,
                 })
             }
 
@@ -743,7 +744,7 @@ macro_rules! backend_algebra {
                     })
             }
             fn gen(&self, i: usize) -> PyResult<$mv> {
-                if i >= self.inner.dim {
+                if i >= self.inner.dim() {
                     return Err(PyValueError::new_err("generator index out of range"));
                 }
                 Ok($mv {
@@ -754,7 +755,7 @@ macro_rules! backend_algebra {
             fn blade(&self, gens: Vec<usize>) -> PyResult<$mv> {
                 let mut seen = std::collections::BTreeSet::new();
                 for &g in &gens {
-                    if g >= self.inner.dim {
+                    if g >= self.inner.dim() {
                         return Err(PyValueError::new_err("blade generator index out of range"));
                     }
                     if !seen.insert(g) {
@@ -1012,7 +1013,7 @@ macro_rules! backend_algebra {
             }
 
             fn __repr__(&self) -> String {
-                format!("{}(dim={})", $alg_name, self.inner.dim)
+                format!("{}(dim={})", $alg_name, self.inner.dim())
             }
         }
 
@@ -1028,11 +1029,11 @@ macro_rules! backend_algebra {
             }
 
             fn ensure_linear_map(&self, lm: &LinearMap<$scalar>) -> PyResult<()> {
-                if lm.n != self.inner.dim {
+                if lm.n != self.inner.dim() {
                     return Err(PyValueError::new_err(format!(
                         "linear-map dimension {} does not match algebra dimension {}",
                         lm.n,
-                        self.inner.dim
+                        self.inner.dim()
                     )));
                 }
                 Ok(())
@@ -1254,7 +1255,7 @@ macro_rules! backend_multivector {
             /// graded tensor square `Cl ⊗̂ Cl` (a tensor `e_T ⊗ e_U` is the blade
             /// `T | (U << dim)`).
             fn coproduct(&self) -> PyResult<$mv> {
-                if self.alg.dim * 2 > MAX_BASIS_DIM {
+                if self.alg.dim() * 2 > MAX_BASIS_DIM {
                     return Err(PyValueError::new_err(format!(
                         "coproduct tensor encoding needs 2*dim <= {MAX_BASIS_DIM}"
                     )));
@@ -1750,7 +1751,7 @@ macro_rules! cga_backend {
             }
             #[getter]
             fn dim(&self) -> usize {
-                self.inner.alg.dim
+                self.inner.alg.dim()
             }
             fn n_o(&self) -> $mv {
                 self.wrap(self.inner.n_o())

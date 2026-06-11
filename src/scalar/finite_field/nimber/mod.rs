@@ -24,12 +24,24 @@ pub use galois::*;
 use crate::scalar::Scalar;
 
 /// A nimber, i.e. an element of On_2 truncated to F_{2^128}.
+///
+/// **Representation constructor vs ℤ-embedding:**
+/// `Nimber(n)` and `Nimber::from_u128(n)` are *representation* constructors —
+/// they say "the nimber *n*", treating the u128 as a nim-field element directly.
+/// The ℤ-embedding `Scalar::from_int(n)` is `n mod 2` (the unique unital ring
+/// homomorphism ℤ → F_{2^128}); for char-2, that is just 0 or 1.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Nimber(pub u128);
 
-impl std::fmt::Debug for Nimber {
+impl std::fmt::Display for Nimber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "*{}", self.0)
+    }
+}
+
+impl std::fmt::Debug for Nimber {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
     }
 }
 

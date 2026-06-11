@@ -460,9 +460,7 @@ impl GameClifford {
             relation_search_certificate(&gens, 0, true, None, &relations, false);
         let metric = Metric::new(
             q.into_iter().map(Integer).collect(),
-            b.into_iter()
-                .map(|(key, value)| (key, Integer(value)))
-                .collect(),
+            b.into_iter().map(|(key, value)| (key, Integer(value))),
         );
         Ok(GameClifford {
             alg: CliffordAlgebra::new(n, metric),

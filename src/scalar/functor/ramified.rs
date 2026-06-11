@@ -130,7 +130,7 @@ impl<S: Valued, const E: usize> Ramified<S, E> {
     }
 }
 
-impl<S: Valued, const E: usize> fmt::Debug for Ramified<S, E> {
+impl<S: Valued, const E: usize> fmt::Display for Ramified<S, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_zero() {
             return write!(f, "0 (π^{E}=ϖ)");
@@ -145,12 +145,18 @@ impl<S: Valued, const E: usize> fmt::Debug for Ramified<S, E> {
             }
             first = false;
             match i {
-                0 => write!(f, "{c:?}")?,
-                1 => write!(f, "({c:?})·π")?,
-                _ => write!(f, "({c:?})·π^{i}")?,
+                0 => write!(f, "{c}")?,
+                1 => write!(f, "({c})·π")?,
+                _ => write!(f, "({c})·π^{i}")?,
             }
         }
         Ok(())
+    }
+}
+
+impl<S: Valued, const E: usize> fmt::Debug for Ramified<S, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 

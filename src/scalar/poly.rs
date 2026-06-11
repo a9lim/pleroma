@@ -26,7 +26,7 @@ pub struct Poly<S: Scalar> {
     coeffs: Vec<S>,
 }
 
-impl<S: Scalar> std::fmt::Debug for Poly<S> {
+impl<S: Scalar> std::fmt::Display for Poly<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.coeffs.is_empty() {
             return write!(f, "0");
@@ -37,12 +37,18 @@ impl<S: Scalar> std::fmt::Debug for Poly<S> {
                 continue;
             }
             parts.push(match i {
-                0 => format!("{c:?}"),
-                1 => format!("({c:?})·x"),
-                _ => format!("({c:?})·x^{i}"),
+                0 => format!("{c}"),
+                1 => format!("({c})·x"),
+                _ => format!("({c})·x^{i}"),
             });
         }
         write!(f, "{}", parts.join(" + "))
+    }
+}
+
+impl<S: Scalar> std::fmt::Debug for Poly<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
     }
 }
 

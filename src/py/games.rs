@@ -1544,7 +1544,7 @@ impl PyGameExterior {
     }
     #[getter]
     fn dim(&self) -> usize {
-        self.inner.algebra().dim
+        self.inner.algebra().dim()
     }
     /// The underlying free Grassmann algebra before quotienting by game-group
     /// relations. Use `reduce`/`wedge`/`add` on `GameExterior` for quotient-aware
@@ -1724,7 +1724,7 @@ impl PyGameClifford {
     }
     #[getter]
     fn dim(&self) -> usize {
-        self.inner.algebra().dim
+        self.inner.algebra().dim()
     }
     /// The underlying free integer Clifford algebra before quotienting by
     /// checked game-group relations.

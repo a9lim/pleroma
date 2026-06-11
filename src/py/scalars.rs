@@ -278,7 +278,7 @@ impl PyNimber {
         ExactRoots::is_square(&self.inner)
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner)
+        format!("{}", self.inner)
     }
 }
 
@@ -452,7 +452,7 @@ impl PyNimberPoly {
         matches!(parse_nimber_poly(other), Ok(p) if p == self.inner)
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner)
+        format!("{}", self.inner)
     }
 }
 
@@ -612,7 +612,7 @@ impl PyNimberRationalFunction {
         matches!(parse_nimber_rational_function(other), Ok(f) if f == self.inner)
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner)
+        format!("{}", self.inner)
     }
 }
 
@@ -764,7 +764,7 @@ macro_rules! prime_field_pyclass {
                 self.inner.value() as usize
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
 
@@ -1038,7 +1038,7 @@ macro_rules! extension_field_pyclass {
                 matches!(other.cast::<$py>(), Ok(x) if x.borrow().inner == self.inner)
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
     };
@@ -1348,7 +1348,7 @@ macro_rules! function_field_pyclasses {
                 matches!($parse_poly(other), Ok(p) if p == self.inner)
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
 
@@ -1504,7 +1504,7 @@ macro_rules! function_field_pyclasses {
                 matches!($parse_rf(other), Ok(f) if f == self.inner)
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
     };
@@ -1716,7 +1716,7 @@ macro_rules! zp_pyclass {
                 self.inner.0 as usize
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
 
@@ -1889,7 +1889,7 @@ macro_rules! qp_pyclass {
                 matches!(other.cast::<$py>(), Ok(x) if x.borrow().inner == self.inner)
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
 
@@ -2183,7 +2183,7 @@ macro_rules! witt_vec_pyclass {
                 })
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
 
@@ -2405,7 +2405,7 @@ macro_rules! qq_pyclass {
                 matches!($parse(other), Ok(x) if x == self.inner)
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
 
@@ -2790,7 +2790,7 @@ macro_rules! laurent_pyclass {
                 matches!($parse(other), Ok(x) if x == self.inner)
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
     };
@@ -3055,7 +3055,7 @@ macro_rules! ramified_pyclass {
                 matches!($parse(other), Ok(x) if x == self.inner)
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
     };
@@ -3418,7 +3418,7 @@ macro_rules! gauss_pyclass {
                 matches!($parse(other), Ok(x) if x == self.inner)
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
     };
@@ -3901,7 +3901,7 @@ impl PyRational {
         Ok(op.matches(self.inner.cmp(&parse_rational(other)?)))
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner)
+        format!("{}", self.inner)
     }
 }
 
@@ -4213,7 +4213,7 @@ impl PySurreal {
             .map(PySignExpansion::from_inner)
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner)
+        format!("{}", self.inner)
     }
 }
 
@@ -4396,9 +4396,9 @@ impl PySurcomplex {
     }
     fn __repr__(&self) -> String {
         if self.inner.im.is_zero() {
-            format!("{:?}", self.inner.re)
+            format!("{}", self.inner.re)
         } else {
-            format!("{:?} + ({:?})i", self.inner.re, self.inner.im)
+            format!("{} + ({})i", self.inner.re, self.inner.im)
         }
     }
 }
@@ -4510,7 +4510,7 @@ impl PyInteger {
         matches!(parse_integer(other), Ok(n) if n == self.inner)
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner)
+        format!("{}", self.inner)
     }
 }
 
@@ -4659,7 +4659,7 @@ impl PyOmnific {
         matches!(parse_omnific(other), Ok(o) if o == self.inner)
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner.inner())
+        format!("{}", self.inner.inner())
     }
 }
 
@@ -4899,7 +4899,7 @@ impl PyLocalQp {
         matches!(other.cast::<PyLocalQp>(), Ok(x) if x.borrow().inner == self.inner)
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner)
+        format!("{}", self.inner)
     }
 }
 
@@ -5140,7 +5140,7 @@ impl PyAdele {
         matches!(other.cast::<PyAdele>(), Ok(a) if a.borrow().inner == self.inner)
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner)
+        format!("{}", self.inner)
     }
 }
 
@@ -5219,7 +5219,7 @@ macro_rules! tropical_pyclass {
                 self.inner == other.inner
             }
             fn __repr__(&self) -> String {
-                format!("{:?}", self.inner)
+                format!("{}", self.inner)
             }
         }
     };
@@ -5692,7 +5692,7 @@ impl PyOrdinal {
         op.matches(self.inner.cmp(&other.inner))
     }
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner)
+        format!("{}", self.inner)
     }
 }
 

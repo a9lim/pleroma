@@ -115,7 +115,7 @@ pub use small::*;
 pub use tropical::*;
 pub use valued::*;
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::ops::{Add, Mul, Neg, Sub};
 
 pub(crate) fn mod_inverse_u128(a: u128, modulus: u128) -> Option<u128> {
@@ -274,7 +274,7 @@ macro_rules! impl_scalar_ops {
     };
 }
 
-pub trait Scalar: Clone + PartialEq + Debug {
+pub trait Scalar: Clone + PartialEq + Debug + Display {
     fn zero() -> Self;
     fn one() -> Self;
     fn add(&self, rhs: &Self) -> Self;
@@ -299,6 +299,41 @@ pub trait Scalar: Clone + PartialEq + Debug {
 
     fn sub(&self, rhs: &Self) -> Self {
         self.add(&rhs.neg())
+    }
+
+    /// The unital ring homomorphism ℤ → R (the unique ring homomorphism from
+    /// the initial ring ℤ into any unital ring).
+    ///
+    /// The default implementation uses double-and-add over [`Scalar::one`] and
+    /// [`Scalar::neg`], so **for characteristic-2 worlds `from_int(n) = n mod 2`**
+    /// automatically — do NOT override for `Nimber`/`Ordinal` with a bit-cast of
+    /// `n as u128`, which would produce a REPRESENTATION constructor (which nimber)
+    /// rather than the ℤ-embedding. Override only where a direct construction is
+    /// faster AND semantically identical (e.g. `Rational::int(n)`, `Integer(n)`).
+    fn from_int(n: i128) -> Self {
+        if n == 0 {
+            return Self::zero();
+        }
+        let neg = n < 0;
+        let abs = n.unsigned_abs();
+        // double-and-add
+        let mut base = Self::one();
+        let mut acc = Self::zero();
+        let mut remaining = abs;
+        while remaining > 0 {
+            if remaining & 1 == 1 {
+                acc = acc.add(&base);
+            }
+            remaining >>= 1;
+            if remaining > 0 {
+                base = base.add(&base);
+            }
+        }
+        if neg {
+            acc.neg()
+        } else {
+            acc
+        }
     }
 }
 

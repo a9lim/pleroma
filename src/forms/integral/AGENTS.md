@@ -20,10 +20,12 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   `level` (smallest `N` with `N·G⁻¹` even-integral, via the exact `Rational` inverse),
   `clifford_metric` (rational Clifford metric), `clifford_metric_f2` (even-lattice
   mod-2 char-2 metric), `direct_sum`. The positive-definite geometry: `short_vectors`
-  (unimodular size-reduction, then **Fincke–Pohst**: float LDLᵀ bounds the search box,
+  (two-stage: an exact rational ellipsoid enumeration first for small boxes — up to
+  `SHORT_VECTOR_EXACT_ENUM_LIMIT = 2_000_000` candidates via `short_vectors_exact_bounded`
+  — else unimodular size-reduction + **Fincke–Pohst**: float LDLᵀ bounds the search box,
   exact i128 norm filters the leaves, vectors mapped back to the original basis — false
   positives from the float bound are removed; `ldl()` returns `None` on a non-positive
-  pivot and the search falls back to `None` rather than silently omitting vectors),
+  pivot and that raw search falls back to `None` rather than silently omitting vectors),
   `minimum`/`minimal_vectors`/`kissing_number`, and
   `automorphism_group_order` (closed-form diagonal/ADE/root-system fast paths, else
   backtracking over basis-vector images — every complete assignment is an
@@ -50,6 +52,9 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   signature plus the genus oddity route. `Complex64`, `weil_t`, `weil_s`,
   `weil_s_prefactor_phase_mod8`, `weil_s_recovers_milgram_phase_mod8`, and
   `verify_weil_relations` implement the discriminant-form Weil representation.
+  `is_isomorphic`/`is_isomorphic_bounded` decide finite-quadratic-module isomorphism
+  (Nikulin's criterion; `None` past `ISO_GROUP_CAP = 256` or the node budget) — the
+  computational engine behind genus-vs-discriminant-form equivalence.
   **Looks like a bug, isn't:** the standard Weil `S` prefactor is the conjugate of the
   positive Milgram phase stored by `GaussSum`; the verifier checks `S² = σ²·(γ↦−γ)`,
   `S⁴ = σ⁴·I`, and `(ST)³ = S²`, not the oversimplified `S⁴ = I`. The lattice ↔
@@ -68,13 +73,13 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   isometry invariance pin the engine.
 - **`mass_formula.rs`** — the **Minkowski–Siegel mass** of the even-unimodular genus,
   `mass_even_unimodular(n)` = `|B_{n/2}|/n · ∏_{j<n/2} |B_{2j}|/(4j)`, returned as a
-  reduced `(num, den)` `i128` fraction (Bernoulli by exact recurrence, `None` past the
-  i128 ceiling). `mass_even_unimodular(8) = (1, 696729600) = 1/|W(E_8)|` — the formula
-  *recovers* the `E_8` automorphism order the brute-force counter refuses; `n = 16, 24`
-  match the published Niemeier values (i128 reaches exactly to 24). Plus the **Leech
-  lattice** `leech()`: built from the Golay `[24,12,8]` code
-  (`extended_golay_generator_rows`, `[I₁₂|A]`) → a `√8·Λ₂₄ ⊂ ℤ²⁴` spanning set → HNF
-  basis `B` → `Gram = B·Bᵀ/8`. **Validated, not trusted:** rank-24 even unimodular with
+  reduced `(num, den)` `i128` fraction (Bernoulli by exact recurrence; hard cap `n > 24`
+  ⇒ `None`, the i128 model reaching exactly to 24). `mass_even_unimodular(8) =
+  (1, 696729600) = 1/|W(E_8)|` — the formula *recovers* the `E_8` automorphism order the
+  brute-force counter refuses; `n = 16, 24` match the published Niemeier values. Plus the
+  **Leech lattice** `leech()`: a `√8·Λ₂₄ ⊂ ℤ²⁴` spanning set (the crate-private Golay
+  `[24,12,8]` generator rows `[I₁₂|A]`, the `4(e₀+eᵢ)` glue vectors, and the odd
+  `(−3, 1²³)` vector) → HNF basis `B` → `Gram = B·Bᵀ/8`. **Validated, not trusted:** rank-24 even unimodular with
   no roots *is* Leech (Niemeier), so the test checks `det=1`, even, `short_vectors(2)`
   empty (cheap; the full kissing 196560 is not enumerated). `|Aut(Λ₂₄)| = |Co₀|` is the
   factorized constant `LEECH_AUT_ORDER`.
@@ -82,9 +87,12 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   row-reduced F₂ generator matrix; `dual`, `is_self_dual`, `is_self_orthogonal`,
   `is_doubly_even`, `minimum_distance`, `weight_enumerator`, `macwilliams_transform` are
   exact. `construction_a` uses the `1/sqrt(2)` scaling (HNF basis of `{x ∈ Z^n : x mod 2
-  ∈ C}`, dot products /2); returns `None` when the scaled Gram is not integral. Shipped
+  ∈ C}`, dot products /2); returns `None` when the scaled Gram is not integral.
+  `theta_series_via_weight_enumerator` builds the Construction A theta series straight
+  from the Hamming weight enumerator (`None` outside the doubly-even boundary). Shipped
   constructors: `hamming_code`, `extended_hamming_code`, `golay_code`,
-  `type_ii_e8_sum_code`, `type_ii_len16_code`, `d16_plus`. **Looks like a bug, isn't:**
+  `type_ii_e8_sum_code`, `type_ii_len16_code`, `d16_plus` (the factorized
+  `D16_PLUS_AUT_ORDER` pins its automorphism count). **Looks like a bug, isn't:**
   bare Golay Construction A is even unimodular rank 24 **with roots**; it is not Leech.
 - **`theta.rs` / `modular.rs`** — exact theta and modular-form bridge.
   `IntegralForm::theta_series(terms)` buckets short vectors by `Q/2`, `None` outside the

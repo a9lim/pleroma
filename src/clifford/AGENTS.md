@@ -16,8 +16,9 @@ divided-power exponents, spinor/Dickson parities, and Frobenius subfield data.
 
 ## The engine (`engine.rs` + `engine/`)
 
-`engine.rs` is a thin hub (+ product/regression tests). The associative-algebra
-core is split by concept under `engine/`:
+`engine.rs` is a thin hub (+ the engine's integration test suite: algebra
+construction, the GA ops, Cayley, even subalgebra, exercised over the Ordinal/Surreal
+backends). The associative-algebra core is split by concept under `engine/`:
 
 - **`basis.rs`** — `bits` / `grade` / `MAX_BASIS_DIM` / `wedge_sign`.
 - **`metric.rs`** — `Metric {q, b, a}`, constructors, `direct_sum`, `q_val`/
@@ -28,7 +29,9 @@ core is split by concept under `engine/`:
 - **`product.rs`** — `geom_product_blades` (the general-bilinear Chevalley product)
   plus the `cfg(test)` `reduce_word` oracle it is cross-validated against.
 - **`algebra.rs`** — `CliffordAlgebra<S>`: blade arithmetic, grade projection,
-  wedge/reverse/graded_tensor/embeddings.
+  wedge/reverse/graded_tensor/embeddings. `reverse` panics on general-bilinear
+  (`a ≠ 0`) metrics — blade-word reversal is only an anti-automorphism when `B` is
+  symmetric (pinned by `reverse_panics_on_general_bilinear_metric`).
 - **`multivector.rs`** — `Multivector<S>`: term store, zero/display helpers.
 - **`inverse.rs`** — GENERAL `multivector_inverse` via the shared `linalg::field`
   solver (used when `1+B` is not a versor, e.g. in the Cayley transform).
@@ -41,8 +44,10 @@ core is split by concept under `engine/`:
   dual/undual, grade_involution, norm2, even_part / even_subalgebra. Plus the
   product/involution suite: `clifford_conjugate`, `scalar_product ⟨ab⟩₀`,
   commutator/anticommutator (½-free, char-faithful), the regressive meet `a∨b`. Plus
-  the CAYLEY transform `cayley`/`cayley_inverse = (1−B)(1+B)⁻¹`: the exact RATIONAL
-  bivector↔rotor map (Lie algebra ↔ Spin group, no cos/sin, char≠2).
+  the CAYLEY transform: `cayley` and `cayley_inverse` both apply `(1−X)(1+X)⁻¹` (the
+  map is an involution; `cayley_inverse` delegates to `cayley`, named for intent) —
+  the exact RATIONAL bivector↔rotor map (Lie algebra ↔ Spin group, no cos/sin,
+  char≠2).
 - **`blade.rs`** — blade analysis: `blade_subspace {x : x∧A=0}`, `is_blade`,
   `factor_blade` (decompose a blade into grade-1 vectors). Char-faithful.
 - **`outermorphism.rs`** — lift a grade-1 `LinearMap<S>` to all grades
@@ -50,31 +55,40 @@ core is split by concept under `engine/`:
   `inverse_outermorphism`. Plus the char poly via exterior powers
   (`exterior_power_trace`, `trace`, `char_poly`). Char-faithful (the char-2
   determinant/permanent too).
-- **`frobenius.rs`** — the scalar-Galois ↔ Clifford bridge: turns
-  `CyclicGaloisExtension` bases/generators into `LinearMap<E::Base>` values via
-  `galois_linear_map` / `frobenius_linear_map`, plus
+- **`frobenius.rs`** — the scalar-Galois ↔ Clifford bridge: turns a
+  `CoordinateCyclicGaloisExtension` (a coordinate-aware narrowing of
+  `CyclicGaloisExtension`, defined here, that adds `coordinates()`) into
+  `LinearMap<E::Base>` values via `galois_linear_map` / `frobenius_linear_map`, plus
   `nimber_subfield_frobenius_linear_map` for small represented nimber subfields. Its
   tests pin the outermorphism spectrum (`char_poly`, determinant, exterior traces)
   against Frobenius.
 - **`hopf.rs`** — the exterior Hopf algebra: unshuffle coproduct (sign read off
-  wedge), counit, antipode = grade involution. Hopf axioms tested over Rational AND
-  Nimber.
+  wedge) into the graded-tensor codomain `tensor_square`, counit, antipode = grade
+  involution. Hopf axioms tested over Rational AND Nimber.
 - **`divided_power.rs`** — the CHAR-FAITHFUL symmetric mirror of `hopf.rs`: the
   divided power algebra Γ(V) (dual of Sym), with a BINOMIAL product and
   DECONCATENATION coproduct. Binomials reduce mod char: `(γᵢ⁽¹⁾)²=2γᵢ⁽²⁾=0` in char 2
   while `γᵢ⁽²⁾≠0` — the honest Γ≠Sym (mirror of exterior `eᵢ²=0`). Standalone (own
   monomials, not the blade engine); Python exposes it via the
   `<World>DividedPowerAlgebra` / `<World>DpVector` backend family.
-- **`cga.rs`** — conformal (Cl(n+1,1) null basis: up/down/inner/sphere/plane/meet)
-  + projective GA (`pga(n)` = `Cl(n,0,1)`, with the terminating `exp_nilpotent` motor
-  exp). Char-0 (needs ½); surreal ∞/ε radii are exact.
-- **`spinor.rs`** — concrete left-ideal spinor matrices. Char 0 uses the `∏½(1+w)`
-  idempotent search and matches the real-table classifier when it reaches a minimal
-  ideal; in char 2 (the branch is keyed on `characteristic()`, so it covers any
-  nonsingular field-like char-2 metric, Nimber the main one) a separate no-half path
-  takes blade idempotents like `e_i e_j` when they shrink the ideal and otherwise
-  keeps the complete left-regular action. `spinor_rep`/`SpinorRep` build the explicit matrix up
-  to `MAX_EXPLICIT_SPINOR_DIM`; `lazy_spinor_rep`/`LazySpinorRep` give the sparse,
+- **`cga.rs`** — conformal (Cl(n+1,1) null basis: `up`/`down`/`inner`/`sphere`/
+  `plane`/`point_pair`/`meet`, with the `no`/`ninf` generator indices and `n_o()`/
+  `n_inf()` null-basis accessors) + projective GA (`pga(n)` = `Cl(n,0,1)`, with the
+  terminating `exp_nilpotent` motor exp). Char-0 (needs ½); surreal ∞/ε radii are
+  exact.
+- **`spinor.rs`** — concrete left-ideal spinor matrices. Three paths, keyed on
+  `characteristic()` and whether the polar form `b` is diagonal: char-0 *orthogonal*
+  uses the `∏½(1+w)` idempotent search and matches the real-table classifier when it
+  reaches a minimal ideal; char-0 *nonorthogonal* (`b ≠ 0`) first diagonalizes by
+  congruence (tracking the transform), builds the ideal in the orthogonal basis, then
+  pulls generator matrices back — recording `SpinorRep::diagonalized_metric` and
+  `::orthogonal_basis_in_original`; char-2 (rejects general-bilinear `a ≠ 0` and
+  singular `b`, so any nonsingular char-2 metric, Nimber the main one) a separate
+  no-half path takes blade idempotents like `e_i e_j` when they shrink the ideal and
+  otherwise keeps the complete left-regular action. `SpinorRep` carries
+  `idempotent`/`basis`/`gen_matrices`/`is_left_regular` plus the two diagonalization
+  fields. `spinor_rep`/`SpinorRep` build the explicit matrix up to
+  `MAX_EXPLICIT_SPINOR_DIM`; `lazy_spinor_rep`/`LazySpinorRep` give the sparse,
   unbounded-dimension left-regular action beyond that cap. Clifford relations hold.
 - **`spinor_norm.rs`** — the spinor norm `N : O(Q)→F*/F*²` (= norm2 mod squares) +
   the generic `versor_grade_parity` (Dickson; `forms::dickson_of_versor` delegates

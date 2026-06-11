@@ -103,7 +103,10 @@ discretely-valued legs share **one** generic engine keyed on the `ResidueField`
 trait; the surreal leg keeps its own, exactly because its value group is divisible
 — that mismatch *is* the symmetry, not a gap. The adelic layer then glues the
 local data: Hasse–Minkowski isotropy over ℚ and Hilbert reciprocity
-`∏_v (a,b)_v = +1`. The same package recurs in **equal characteristic** over the
+`∏_v (a,b)_v = +1`. Those per-prime residues also assemble into Milnor's exact
+sequence `0 → W(ℤ) → W(ℚ) → ⊕_p W(F_p) → 0` — the global Witt group with the
+Springer residue as its boundary map and the signature as its kernel. The same
+package recurs in **equal characteristic** over the
 global function field `F_q(t)`: the tame Hilbert symbol at each monic-irreducible
 place plus the degree place `∞`, reciprocity, and Hasse–Minkowski — and here it is
 **exact** (no precision model), the char-`p` mirror of the ℚ stack. Both global
@@ -124,12 +127,16 @@ conjugate `S` prefactor.
 **the games bridge.** Red/blue/green Hackenbush is the one object that reads out
 as a surreal (blue − red), a nimber (all-green = Nim), or a general partizan game
 — and nim-multiplication itself is realized by Conway's Turning-Corners coin game.
-This is the seam where the game pillar meets the scalar pillar. And thermography
-itself **is** tropical arithmetic: the option folds are the tropical `⊕` and
-cooling is the tropical `⊗`, with the two scaffold walls living in the dual
-`(max,+)`/`(min,+)` semirings — named in `scalar/tropical.rs` (a `Semiring`, not a
-`Scalar`: an idempotent `⊕` has no inverse) and machine-checked equal to the golden
-thermograph.
+This is the seam where the game pillar meets the scalar pillar. The game pillar even
+reaches the lattice world: a greedy binary **lexicode** is built by the **mex** rule,
+so the Conway–Sloane codes (the `[7,4,3]` Hamming, the `[24,12,8]` Golay) are
+Sprague–Grundy P-sets that feed straight into the Construction A lattices of the
+integral leg — `mex → lexicode → Golay → Construction A → theta`, one chain crossing
+three pillars. And thermography itself **is** tropical arithmetic: the option folds
+are the tropical `⊕` and cooling is the tropical `⊗`, with the two scaffold walls
+living in the dual `(max,+)`/`(min,+)` semirings — named in `scalar/tropical.rs` (a
+`Semiring`, not a `Scalar`: an idempotent `⊕` has no inverse) and machine-checked
+equal to the golden thermograph.
 
 ## The char-2 point
 

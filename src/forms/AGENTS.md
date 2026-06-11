@@ -44,7 +44,11 @@ automorphism counts, node budgets. `usize` is for dimensions and matrix indices.
 
   `WittDecompose` returns the leg-specific decomp record
   (`RealWittDecomp` / `OddWittDecomp` / `Char2WittDecomp`, with `Fpn` wrapping the last
-  two in `FiniteFieldWittDecomp { Odd, Char2 }`). `BrauerWallClassify`
+  two in `FiniteFieldWittDecomp { Odd, Char2 }`). It is impl'd for `Surreal`, `Fp<P>`,
+  and `Fpn<P,N>` only — so `Char2WittDecomp` arises via the `Fpn<2,N>` path
+  (`Nimber`/`Ordinal` do not impl it). Caveat: when `Char2WittDecomp.radical_anisotropic`
+  is true, its `witt_index`/`core_anisotropic_dim`/`arf` are invariants of the chosen
+  symplectic complement, **not** isometry invariants of the whole form. `BrauerWallClassify`
   covers Surreal, Surcomplex, odd finite fields, nonsingular Nimber metrics,
   supported `Fpn<2,N>` metrics, and the documented finite ordinal windows. Rational &
   Surcomplex impl `ClassifyForm` but not `WittClassify` (their Witt data isn't a
@@ -116,6 +120,16 @@ char-0 8-fold table, Bott, and `E₈` in `integral/`.
   W(F_q)), `bw_class_nimber`, and façade dispatch for supported finite char-2
   fields/windows (char-2 Arf/Witt class `ℤ/2`, nonsingular metrics only). Law =
   graded_tensor.
+- **`witt/brauer_rational.rs`** — the **ungraded** rational 2-torsion Brauer class
+  `Brauer2Class` (a set of ramified `Place`s, `add`/`local_invariant`/
+  `satisfies_reciprocity`/`quaternion`): `hasse_brauer_class` (the Hasse–Witt
+  invariant `s(q)`) and `clifford_brauer_class` (the *actual* Clifford-algebra class
+  `c(q) = s(q) + δ(n mod 8, disc)`, corrected by Lam GSM 67 pp. 117–119). Kept strictly
+  distinct from the graded `BrauerWallClass`.
+- **`witt/milnor.rs`** — Milnor's map `W(ℚ) → ℤ ⊕ ⊕_p W(F_p)` as a computational
+  complete invariant: `global_residues` returns the signature plus the nonzero odd-`p`
+  second Springer residues (the `∂₂` boundary is the documented odd-support gap).
+  Cross-checked against `springer_decompose_qp`.
 
 (The *numeric* field invariants the ring implies — level, u-invariant — live in
 `field_invariants.rs`, not here.)
@@ -242,12 +256,14 @@ char-2 mirror, one shelf (`mod.rs` re-exports flat).
   **Frobenius-twisted** trace form `Q_k(x) = Tr_{E/F}(x·σ^k(x))` (q on the diagonal,
   the alternating polar `Tr(eᵢσ^k eⱼ + eⱼσ^k eᵢ)` off it). NOT the naive `Tr(x²)`,
   whose polar form vanishes in char 2 (Frobenius is additive) — the trap the twist
-  avoids. Instances: `Surcomplex` k=1 → the **norm form** `⟨2,2⟩`; unramified `Qq/Qp`
+  avoids. `transfer_diagonal(entries)` is the related Scharlau transfer
+  `s_*(⟨λ₁,…,λᵣ⟩)` of a diagonal form along `Tr_{E/F}` (char ≠ 2; the `k=0` case).
+  Instances: `Surcomplex` k=1 → the **norm form** `⟨2,2⟩`; unramified `Qq/Qp`
   via the Teichmuller-lifted residue basis; odd `Fpn` → a diagonalizable trace form.
   Two char-2 entry points to the **Gold form** `Tr(x^{1+2^a})`, classified →
   `ArfResult` (rank `= m − gcd(2a,m)`, Arf → the zero-count): `trace_form_arf::<E:
   …<Base=Fp<2>>>(k)` (the typed `Fpn<2,m>` path — build over `F_2`, lift `F_2 ↪
-  Nimber` via `Metric::map`), and `gold_form(m, a)` (the nim-native path over the
+  Nimber` via `Metric::map(|x| Nimber(x.value()))`), and `gold_form(m, a)` (the nim-native path over the
   subfield `F_{2^m} ⊂ Nimber`, m a power of two ≤ 128, reaching F_16/F_256/… that
   `Fpn` can't). The form has dim `[E:F]`, capped at `MAX_BASIS_DIM=128`. The same
   `CyclicGaloisExtension` basis/generator data also feeds

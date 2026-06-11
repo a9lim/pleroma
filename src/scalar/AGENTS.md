@@ -44,6 +44,11 @@ and const-generic sizes that are inherently indices.
   is the **ring of integers** of `S(t)`, so it impls `Scalar` + `HasFractionField`
   (Frac = `RationalFunction<S>`); its units are the nonzero constants, so `inv` is
   partial.
+- **`newton.rs`** — `NewtonPolygon`: the lower convex hull of `{(i, v(aᵢ))}` for
+  `f = Σ aᵢtⁱ` over a `Valued` field (`of`/`vertices`/`degree`/`slopes`/
+  `root_valuations`/`zero_root_multiplicity`). The tropicalization of the Springer
+  residue filtration — the Newton slope theorem (root valuations = negated hull
+  slopes) is the `Valued`-side oracle, tested over `Qp`/`Laurent`/`Ramified`.
 
 ## The `Scalar` trait + the trait layer
 

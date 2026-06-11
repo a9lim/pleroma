@@ -16,7 +16,8 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
 ## Files
 
 - **`mod.rs`** — the `#[pymodule]`; chains each submodule's `pub(crate) register()`
-  (`scalars` → `engine` → `forms` → `games`). Declares `#[macro_use] mod catalog`.
+  (`scalars` → `engine` → `forms` → `games`) + the module-level `version()`. Declares
+  `#[macro_use] mod catalog`.
 - **`catalog.rs`** — the backend **manifest**: three `macro_rules!` lists
   (`py_engine_backends!`, `py_divided_power_backends!`, `py_cga_backends!`) that name
   every bound `<World>Algebra`/`MV`/`LinearMap`/`DpVector`/`Cga` monomorph and its
@@ -41,11 +42,11 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
   and the Qq `FieldExtension`/`CyclicGaloisExtension` surface; Ordinal's CNF terms +
   staged `nim_mul`/`checked_inv`; the `Fpn` Galois/reduction-poly metadata
   (`ReductionPolynomialKind`).
-- **`engine.rs`** — the `backend!` macro → `<World>Algebra`/`<World>MV` pairs (driven
-  by `catalog.rs`), plus conformal GA (`<World>Cga`) over every bound char-0 scalar
-  world with a matching MV carrier. MV methods cover the full GA suite
+- **`engine.rs`** — the `backend!` macro → `<World>Algebra`/`<World>MV`/`<World>LinearMap`
+  triplets (driven by `catalog.rs`), plus conformal GA (`<World>Cga`) over every bound
+  char-0 scalar world with a matching MV carrier. MV methods cover the full GA suite
   (clifford_conjugate, scalar_product, commutator, anticommutator, undual, meet,
-  is_blade, blade_subspace, factor_blade, cayley, spinor_norm, versor_grade_parity,
+  is_blade, blade_subspace, factor_blade, cayley, cayley_inverse, spinor_norm, versor_grade_parity,
   classify_versor → `VersorClass`, plus raw `(blade_mask, coeff)` terms, `grade_part`,
   `versor_inverse`, `multivector_inverse`). Algebra methods add
   trace/char_poly/determinant/exterior_power_trace/apply_outermorphism/inverse_outermorphism, the typed
@@ -81,16 +82,18 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
   theta + modular q-expansion helpers `eisenstein_e4`/`eisenstein_e6`/`delta`/`as_modular_form`,
   `DiscriminantForm`/Milgram/Weil `S`/`T`).
 - **`games.rs`** — `Game`/`NumberGame`/`NimberGame`/`GameExterior`/`Hackenbush` +
-  typed `Color`; `nim_mul_mex` + the coin-turning/Tartan probes; `grundy_graph`/
-  `grundy`/`mex`; the kernel surface (`outcomes`/`p_positions`/`scoring_values`, typed
-  `Outcome`, `ScoreInterval`); the misère/octal surface (`misere_quotient`, `Quotient`,
-  `AbstractGame`, octal helpers); and the loopy engine (`LoopyGraph`,
+  typed `Color`; the `GameExterior` relation surface (`GameRelation`,
+  `GameRelationCertificate`, `RelationSearchCertificate`); `nim_mul_mex` + the
+  coin-turning/Tartan probes; `grundy_graph`/`grundy`/`mex`; the kernel surface
+  (`outcomes`/`p_positions`/`scoring_values`, typed `Outcome`, `ScoreInterval`); the
+  misère/octal surface (`misere_quotient`, `Quotient`, `AbstractGame`, octal helpers);
+  and the loopy engine (`LoopyGraph`, `LoopyNimber`,
   `loopy_nim_values_certified`/`LoopyNimCertificate`, `loopy_decision_sets`/
-  `loopy_quadric_probe`, the `LoopyValue` stopper catalogue). The games carry Python
-  arithmetic/order operators, the thermograph + tropical-mirror + atomic-weight
-  calculus, and the exact `Pl`/`Thermograph` wall API. Callback-backed Rust-name
-  variants (`grundy`/`try_misere_is_n`/`loopy_quadric_probe`/…) accept a Python
-  move-generator.
+  `loopy_quadric_probe`, the `LoopyValue` stopper catalogue + typed `PartizanOutcome`).
+  The games carry Python arithmetic/order operators, the thermograph + tropical-mirror
+  + atomic-weight calculus, and the exact `Pl`/`Thermograph` wall API. Callback-backed
+  Rust-name variants (`grundy`/`try_misere_is_n`/`loopy_quadric_probe`/…) accept a
+  Python move-generator.
 
 ## Binding policy
 

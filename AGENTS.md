@@ -137,7 +137,11 @@ identification (`theta_E8 = E4`, `theta_{E8+E8} = theta_{D16+} = E4^2`, the root
 Leech `q^1` oracle); and `DiscriminantForm` exposes dependency-free `Complex64` Weil
 `S`/`T` matrices, with the `S` prefactor the conjugate of the positive Milgram phase
 and `verify_weil_relations` checking the honest metaplectic relations (not the
-oversimplified `S^4 = I`).
+oversimplified `S^4 = I`). The fourth-wave joins are shipped too: Milnor's exact
+sequence `W(ℤ)→W(ℚ)→⊕_p W(F_p)` (`witt/milnor.rs::global_residues`, odd `p`), the named
+Scharlau transfer (`trace_form::transfer_diagonal`), Nikulin's genus criterion
+(`DiscriminantForm::is_isomorphic`), and the games↔integral lexicode edge
+(`games/lexicode.rs`: greedy = mex, so the `[24,12,8]` lexicode is Golay).
 
 The game-built Gold-form bridge is implemented, but the play rule is not. The
 standard chain is:

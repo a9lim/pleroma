@@ -37,8 +37,11 @@ indices, and collection lengths.
   Kummer boundary). Bound to Python as `NimberGame`.
 - **`game_exterior.rs`** — the exterior algebra of the GAME group: Λ over ℤ on game
   generators (living on all of game-world, incl. non-numbers ⋆/↑ — needs only the
-  ℤ-module structure). `GameExterior` (free Grassmann engine quotiented by integer
-  game relations such as 2⋆=0) + `GameRelation`; lattice normalization in
+  ℤ-module structure). `GameExterior` — three constructors: `new` (auto-search for
+  integer relations), `free` (no quotient), `with_relations` (explicit), and
+  `with_relation_search(bound)` — quotients the free Grassmann engine by integer game
+  relations such as 2⋆=0. Carries `GameRelation` + the `GameRelationCertificate` /
+  `RelationSearchCertificate` evidence records; lattice normalization in
   `linalg/integer.rs`.
 
 ## Temperature theory
@@ -49,7 +52,9 @@ indices, and collection lengths.
   the two-ahead rule (Siegel Constructive Atomic Weight; Larsson–Nowakowski
   arXiv:2007.03949 Thm 10). `aw` IS additive on all-small games.
 - **`piecewise.rs`** — `Pl`: exact rational piecewise-linear wall arithmetic used by
-  thermography. `add_pl`/`sub_pl` name the tropical `⊗`.
+  thermography. `add_pl` (pointwise sum) is the tropical `⊗`; `sub_pl` is the arithmetic
+  difference (`left_raw − right_raw`) in the meeting-temperature recursion, NOT a
+  tropical operation.
 - **`tropical_thermography.rs`** — names the latent tropical structure in
   thermography and machine-checks it. The option folds are tropical `⊕` in DUAL
   semirings — the left wall a `(max,+)` fold over the Left options' right walls, the
@@ -72,8 +77,8 @@ indices, and collection lengths.
   SG theorem `g(G+H)=g(G)⊕g(H)` pinned vs Bouton.
 - **`kernel.rs`** — normal-play Win/Loss/Draw outcomes of any finite game graph
   (retrograde analysis); `p_positions` = Loss. The interactive route to the open
-  question. Plus `scoring_values`: the Milnor minimax interval `(left, right): i128`
-  on a DAG — the integer-valued scoring knob.
+  question. Plus `scoring_values`: the Milnor minimax `ScoreInterval { left, right }`
+  (`i128`) on a DAG — the integer-valued scoring knob.
 - **`loopy.rs`** — loopy (cyclic) games, the third escape from XOR-linear P-sets: a
   cyclic rule admits a **Draw** outcome (a genuinely new degree of freedom). Three
   layers: `LoopyGraph` (a thin computable wrapper over `kernel::outcomes` —
@@ -82,7 +87,8 @@ indices, and collection lengths.
   non-Draw subgraph; **not additive over sums when Draw options are present** —
   values are Grundy values of the Draw-deleted subgraph, not Smith/Conway loopy
   nim-values), and the `LoopyValue` stopper catalogue
-  (on/off/over/under/dud with outcome/neg/partial order/partial sum). The payoff is
+  (`Zero`/`Star`/`On`/`Off`/`Over`/`Under`/`Dud`, with `outcome` → `PartizanOutcome
+  {P,N,L,R,Draw}`, neg/partial order/partial sum). The payoff is
   `loopy_decision_sets`/`loopy_quadric_probe`: read a cyclic rule's Loss-set AND
   Draw-set, each fit by `fit_f2_quadratic`.
 - **`misere.rs`** — checked misère-play outcomes (`try_misere_is_n`/`misere_is_p`)
@@ -90,14 +96,23 @@ indices, and collection lengths.
   Bouton; the bounded indistinguishability quotient (`misere_quotient`,
   `AbstractGame`, `Quotient`); octal games (`octal_moves`, `octal_misere_quotient`).
   The non-linear route to the open question.
+- **`lexicode.rs`** — **Bridge O**, the games ↔ integral edge: greedy binary
+  lexicodes `L(n,d)` (Conway–Sloane 1986). `lexicode`/`lexicode_naive`/
+  `lexicode_bounded` (+ `LEXICODE_NODE_BUDGET`, an honest backstop → `None`, not a
+  silent cap). The greedy step is exactly `mex(Forbidden)` over radius-`(d−1)` Hamming
+  balls (`grundy::mex`); linearity is the Sprague–Grundy theorem, *discovered* not
+  assumed. Ships the `[7,4,3]` Hamming, `[8,4,4]` extended Hamming, and `[24,12,8]`
+  Golay codes as lexicodes, chaining `mex → lexicode → Golay → Construction A → theta`.
+  **Claim level:** the degree-1 (solved, linear) side of `OPEN.md` §1 — explicitly does
+  NOT touch the open Gold-quadric question; do not cite as progress on it.
 
 ## The bridge object
 
 - **`hackenbush.rs`** — red/blue/green Hackenbush: `Hackenbush { edges }` (vertex 0
-  is the ground by convention) with the `string` stalk constructor, `to_game()` (the
-  universal evaluator), `value()` → surreal (blue–red), `grundy()` → nimber
-  (all-green = Nim). The one structure tying surreals + nimbers + sign-expansion
-  through a single object.
+  is the ground by convention; edges colored by the `Color {Blue, Red, Green}` enum)
+  with the `string` stalk constructor, `to_game()` (the universal evaluator),
+  `value()` → surreal (blue–red), `grundy()` → nimber (all-green = Nim). The one
+  structure tying surreals + nimbers + sign-expansion through a single object.
 
 ## Things that look like bugs but are not (games layer)
 

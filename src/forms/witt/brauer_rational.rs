@@ -46,9 +46,9 @@
 //! 2-torsion). This is the **ungraded** Brauer class — kept strictly distinct from
 //! the graded [`BrauerWallClass`](crate::forms::bw_class_real); conflating them is
 //! exactly what `char0.rs` declines to do, and the rational ungraded class is what
-//! Bridge F adds. The full `ℚ/ℤ` lift via cyclic algebras (Bridge K) would embed
-//! this as its 2-torsion `½`-slice (one shared class type, two constructors); that
-//! generalization is tracked in `roadmap/TODO.md`, not built here.
+//! Bridge F adds. The full `ℚ/ℤ` lift via cyclic algebras (Bridge K) is built as
+//! [`BrauerClass`](crate::forms::BrauerClass), which embeds this 2-torsion class as its
+//! `½`-slice via [`from_two_torsion`](crate::forms::BrauerClass::from_two_torsion).
 
 use std::collections::BTreeSet;
 

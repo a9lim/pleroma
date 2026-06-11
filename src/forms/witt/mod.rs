@@ -19,6 +19,11 @@
 //!   of a `ℚ`-form, which differ by the explicit `n mod 8` / discriminant correction
 //!   (Lam). The char-0/odd mirror of the char-2 Bridge B; kept strictly distinct
 //!   from the graded `brauer_wall` class.
+//! * `cyclic` — Bridge K: the **full `ℚ/ℤ`** ungraded Brauer class ([`BrauerClass`])
+//!   and the cyclic-algebra local invariant [`cyclic_algebra_invariant`]
+//!   (`inv = v(a)/n mod ℤ`, the unramified class). Lifts `brauer_rational`'s 2-torsion
+//!   surface to the full local Brauer group, with [`Brauer2Class`] embedding as the
+//!   `½`-slice ([`BrauerClass::from_two_torsion`]).
 //!
 //! The mod-8 spine lives here: `BW(ℝ) ≅ ℤ/8` is the same periodicity as the char-0
 //! 8-fold Clifford table, Bott periodicity, and `E₈` as the rank-8 even unimodular
@@ -32,11 +37,13 @@
 mod brauer_rational;
 mod brauer_wall;
 mod class;
+mod cyclic;
 mod milnor;
 mod ring;
 
 pub use brauer_rational::*;
 pub use brauer_wall::*;
 pub use class::*;
+pub use cyclic::*;
 pub use milnor::*;
 pub use ring::*;

@@ -69,7 +69,7 @@ every Winning Ways coin-turning P-set is the kernel of an `F_2`-linear map)
 says linearity is also the ceiling for that architecture. Floor and ceiling
 coincide at linear. Problem 1 is exactly whether the lexicode phenomenon admits
 a quadratic refinement — a rule producing the XOR-closure failure that the
-polar form `B` measures. Bridge O (`roadmap/TODO.md`) proposes making the
+polar form `B` measures. Bridge O (built; see `roadmap/CODA.md`) makes the
 lexicode chain executable (greedy = mex -> Golay -> Construction A -> theta);
 that is context for this problem, not progress on it.
 
@@ -350,7 +350,7 @@ Decide what, if anything, should replace the finite-field Arf/Brauer-Wall bit fo
 nim-subfield.
 
 What is implementation, not research:
-- `roadmap/DONE.md` Bridge D is the tractable engine bridge: make `Ordinal` usable as a
+- `roadmap/CODA.md` Bridge D is the tractable engine bridge: make `Ordinal` usable as a
   checked Clifford coefficient domain on the source-verified tower, and test the
   Clifford relations for genuinely transfinite squares such as `omega`.
 - If all metric entries lie in a common finite nim-subfield `F_{2^d} ⊂ On₂`,
@@ -387,7 +387,7 @@ Concrete progress targets:
   whether it agrees with any proposed Arf-like invariant.
 
 Relevant surfaces:
-- `roadmap/DONE.md` Bridge D
+- `roadmap/CODA.md` Bridge D
 - `src/scalar/big/ordinal/`
 - `src/forms/char2/`
 - `src/forms/witt/brauer_wall.rs`

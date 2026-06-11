@@ -133,6 +133,16 @@ char-0 8-fold table, Bott, and `E₈` in `integral/`.
   invariant `s(q)`) and `clifford_brauer_class` (the *actual* Clifford-algebra class
   `c(q) = s(q) + δ(n mod 8, disc)`, corrected by Lam GSM 67 pp. 117–119). Kept strictly
   distinct from the graded `BrauerWallClass`.
+- **`witt/cyclic.rs`** — Bridge K: the **full `ℚ/ℤ`** ungraded Brauer class
+  `BrauerClass` (a `BTreeMap<Place, Rational>` of `inv_v ∈ [0,1)`, `add`/`invariant_sum`/
+  `local_invariant`/`from_local`, plus the Bridge F embedding `from_two_torsion`/
+  `two_torsion`) and `cyclic_algebra_invariant::<E: CyclicGaloisExtension>(a)` where
+  `E::Base: Valued` = `v(a)/n mod ℤ` for the unramified local cyclic class (monomorphized
+  at `Qq`; reads only the valuation, so exact even on the capped model). The 2-torsion
+  `Brauer2Class` is the `½`-slice. The full-strength `F_q(t)` reciprocity leg
+  (`constant_extension_invariants`) lives in `local_global/function_field.rs`; the
+  degree-2 norm-form oracle ties `inv` to the Hasse–Minkowski layer. Ungraded, distinct
+  from `BrauerWallClass`; finite legs carry no Brauer content (Wedderburn).
 - **`witt/milnor.rs`** — Milnor's map `W(ℚ) → ℤ ⊕ ⊕_p W(F_p)` as a computational
   complete invariant: `global_residues` returns the signature plus the nonzero odd-`p`
   second Springer residues (the `∂₂` boundary is the documented odd-support gap).
@@ -201,7 +211,11 @@ char-2 mirror, one shelf (`mod.rs` re-exports flat).
   (Hasse–Minkowski, u-invariant 4 like `Q_p`, but **no archimedean place** ⇒ no
   definiteness condition), `try_ramified_places_ff` (even count). Names carry `_ff`
   where `padic.rs` collides. Exact (the product formula is `deg`-counting); odd
-  residue char only. Cross-checked against `springer_decompose_laurent`.
+  residue char only. Cross-checked against `springer_decompose_laurent`. Also carries
+  Bridge K's full-`ℚ/ℤ` reciprocity leg `constant_extension_invariants(n, a)`
+  (`inv_v = deg(v)·v(a)/n`, the constant extension `F_{qⁿ}(t)` — unramified at every
+  place, so `Σ_v inv_v = deg(div a)/n = 0` with no ramified symbol) +
+  `constant_extension_invariant_sum`; returns a `Vec` since `FFPlace` is not `Ord`.
 - **`local_global/function_field_char2.rs`** — the **equal-characteristic-2** mirror:
   the **asymmetric Artin–Schreier symbol** `[a,b)` over `F_{2^m}(t)` (`a` additive mod
   `℘`, `b` multiplicative), NOT the tame symbol. Local invariant = the **Schmid

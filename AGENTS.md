@@ -37,7 +37,8 @@ Beyond the library: `examples/` (Rust demos `tour`/`tropical` + the open-questio
 probes `interactive_kernel`, `octal_hunt`, `loopy_quadric`, `misere_quotient`,
 `bent_route`), `experiments/` (Python research probes on top of the shipped
 lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems),
-`roadmap/` (DONE.md / TODO.md — the cross-pillar bridge map and remaining boundaries),
+`roadmap/` (CODA.md — the built-bridge record + formal proofs; TODO.md — the two deferred
+bridges `*1`/`*2`; DONE.md — the go-forward ledger for new work),
 `TABLES.md` (the inventory of curated hardcoded tables), and `writeups/`
 (`goldarf.tex` — the consolidated draft note on the Gold/Arf game thread,
 including the Tier-2 no-go/construction program; `excess.tex` — the
@@ -124,11 +125,17 @@ such as `e_i e_j` when they shrink a left ideal, and otherwise the full
 regular/lazy left action. Singular polar forms and general-bilinear `a` metrics are
 rejected.
 
-The cross-pillar bridges from `roadmap/DONE.md` live in the Rust core. `IntegralForm`
-exports rational and even-mod-2 Clifford metrics plus discriminant
-Gauss-sum/Milgram checks; finite char-2 `Fpn<2,N>` classification runs through the
-façade; cyclic Galois/Frobenius maps have Clifford linear-map constructors;
-`Ordinal` serves as a Clifford scalar inside the verified Kummer boundary;
+The cross-pillar bridges live in the Rust core (full record + formal proofs in
+`roadmap/CODA.md`). `IntegralForm` exports rational and even-mod-2 Clifford metrics plus
+discriminant Gauss-sum/Milgram checks; finite char-2 `Fpn<2,N>` classification runs
+through the façade; cyclic Galois/Frobenius maps have Clifford linear-map constructors;
+the **rational 2-torsion Brauer class** `Brauer2Class` (`witt/brauer_rational.rs`:
+Hasse–Witt `s(q)` vs the Clifford invariant `c(q) = s(q) + δ(n mod 8, disc)`) and its
+**full `ℚ/ℤ` lift** `BrauerClass` (`witt/cyclic.rs`: `cyclic_algebra_invariant = v(a)/n`,
+with full-strength reciprocity over `F_q(t)`); the **valuation as (lax) tropicalization**
+with `NewtonPolygon` over the valued legs (`scalar/newton.rs`, slope = root valuation =
+Springer residue layer); `Ordinal` serves as a Clifford scalar inside the verified Kummer
+boundary;
 `forms/integral/codes.rs` carries binary codes, MacWilliams, and Construction A
 (with the `1/sqrt(2)` scaling and an `Option` boundary when the scaled Gram is not
 integral), including the Type II length-16 code whose lattice is `D16+`;
@@ -144,7 +151,12 @@ Scharlau transfer (`trace_form::transfer_diagonal`), Nikulin's genus criterion
 (`games/lexicode.rs`: greedy = mex, so the `[24,12,8]` lexicode is Golay), and the
 Brown `ℤ/8` invariant — the char-2 cell of the mod-8 spine (`char2/brown.rs`:
 `brown_f2`/`double_f2`, with `β = 4·Arf`, plus `DiscriminantForm::brown_invariant`
-giving the float-free `β ≡ sign(L) mod 8` on 2-elementary discriminant forms).
+giving the float-free `β ≡ sign(L) mod 8` on 2-elementary discriminant forms). The
+fifth-wave Bridge K is shipped too: the full `ℚ/ℤ` ungraded Brauer invariant
+(`witt/cyclic.rs`: `BrauerClass` + `cyclic_algebra_invariant` = `v(a)/n` for the
+unramified local cyclic class over the `Qq` leg) with full-strength reciprocity over
+`F_q(t)` (`constant_extension_invariants`, `Σ_v deg(v)·v(a)/n = 0`); it lifts the
+2-torsion `Brauer2Class` (which embeds as its `½`-slice) to the full local Brauer group.
 
 The game-built Gold-form bridge is implemented, but the play rule is not. The
 standard chain is:

@@ -26,7 +26,7 @@
 //! Euler's criterion `u^{(|κ|−1)/2}` in `F_q[t]/(π)`.
 
 use crate::forms::{is_square_finite, FiniteOddField};
-use crate::scalar::{Poly, RationalFunction, Scalar};
+use crate::scalar::{Poly, Rational, RationalFunction, Scalar};
 
 /// A place of `F_q(t)`: the degree place `∞`, or a finite place given by a monic
 /// irreducible `π(t)`. The mirror of [`Place`](crate::forms::Place)`{Real,Prime}`.
@@ -384,6 +384,68 @@ pub fn try_ramified_places_ff<S: FiniteOddField>(
     <RationalFunction<S> as crate::forms::GlobalField>::try_ramified_places(a, b)
 }
 
+// ───────────────────── Bridge K: the constant-extension cyclic class ─────────────────────
+
+/// The canonical representative in `[0, 1)` of `m/n` mod `ℤ` (`n > 0`).
+fn frac_mod_one_ratio(m: i128, n: i128) -> Option<Rational> {
+    Rational::try_new(m.rem_euclid(n), n)
+}
+
+/// The local invariants `inv_v = deg(v)·v(a)/n (mod ℤ)` of the **constant-extension**
+/// cyclic algebra `(χ_σ, a)` over `K = F_q(t)`, where `E = F_{qⁿ}(t)` is the degree-`n`
+/// constant extension and `σ` is the `q`-power Frobenius. This is Bridge K at full
+/// **`ℚ/ℤ` strength** over a global field — and the function-field route is the *clean*
+/// one: a constant extension is **unramified at every place** (including `∞`), with
+/// `Frob_v = σ^{deg v}`, so the general local symbol collapses to the formula above and
+/// no ramified symbols are ever needed. (Over `ℚ`, by Minkowski every cyclic extension
+/// of degree `> 1` ramifies somewhere, so the `n > 2` story needs ramified symbols —
+/// out of this bridge's scope; here it falls out for free.)
+///
+/// Returns `(place, inv_v)` at each relevant place with nonzero invariant, mirroring
+/// the shape of [`brauer_local_invariants`](crate::forms::brauer_local_invariants)
+/// (a `Vec`, since [`FFPlace`] is not `Ord`). Exact: only `deg(v)`, `v(a)`, and `n`
+/// are read. `None` if `a = 0` (not in `K*`), `n = 0`, or arithmetic overflows.
+///
+/// The reciprocity law `∑_v inv_v ≡ 0` ([`constant_extension_invariant_sum`]) is then
+/// `deg(div a)/n = 0` — the product formula the function-field layer already embodies.
+pub fn constant_extension_invariants<S: FiniteOddField>(
+    n: u128,
+    a: &RationalFunction<S>,
+) -> Option<Vec<(FFPlace<S>, Rational)>> {
+    if a.is_zero() || n == 0 {
+        return None;
+    }
+    let ni = i128::try_from(n).ok()?;
+    let mut out = Vec::new();
+    for place in try_relevant_places_ff(std::slice::from_ref(a))? {
+        let v = try_valuation_at_ff(a, &place)?;
+        let deg = match &place {
+            FFPlace::Finite(pi) => i128::try_from(pi.degree()?).ok()?,
+            FFPlace::Infinite => 1,
+        };
+        let inv = frac_mod_one_ratio(deg.checked_mul(v)?, ni)?;
+        if !inv.is_zero() {
+            out.push((place, inv));
+        }
+    }
+    Some(out)
+}
+
+/// The reciprocity sum `∑_v inv_v` mod `ℤ` of the constant-extension class — `0` for
+/// every nonzero `a` (full-`ℚ/ℤ`-strength Albert–Brauer–Hasse–Noether reciprocity over
+/// `F_q(t)`, equal to `deg(div a)/n = 0`). The function-field mirror of
+/// [`brauer_invariant_sum`](crate::forms::brauer_invariant_sum).
+pub fn constant_extension_invariant_sum<S: FiniteOddField>(
+    n: u128,
+    a: &RationalFunction<S>,
+) -> Option<Rational> {
+    let invs = constant_extension_invariants(n, a)?;
+    let sum = invs
+        .into_iter()
+        .fold(Rational::int(0), |acc, (_, inv)| acc.add(&inv));
+    frac_mod_one_ratio(sum.numer(), sum.denom())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -599,6 +661,66 @@ mod tests {
                 layer.valuation
             );
         }
+    }
+
+    #[test]
+    fn constant_extension_reciprocity_full_strength() {
+        // Bridge K at full ℚ/ℤ strength: Σ_v deg(v)·v(a)/n ≡ 0 for constant extensions
+        // of *any* degree n (not only the 2-torsion ½-slice) — reduced to deg(div a)=0,
+        // with no ramified symbols (every place is unramified in a constant extension).
+        let samples = [
+            rf(&[0, 1], &[1]),       // t
+            rf(&[1, 1], &[1]),       // t+1
+            rf(&[0, 1], &[1, 1]),    // t/(t+1)
+            rf(&[2, 0, 1], &[1]),    // t²+2 (irreducible, a degree-2 place)
+            rf(&[0, 0, 1], &[2, 1]), // t²/(t+2)
+        ];
+        for n in [2u128, 3, 4, 5] {
+            for a in &samples {
+                assert_eq!(
+                    constant_extension_invariant_sum(n, a),
+                    Some(Rational::int(0)),
+                    "reciprocity n={n} a={a:?}"
+                );
+                // independent oracle: the divisor degree Σ deg(v)·v(a) = 0.
+                let mut div_deg = 0i128;
+                for place in try_relevant_places_ff(std::slice::from_ref(a)).unwrap() {
+                    let v = try_valuation_at_ff(a, &place).unwrap();
+                    let deg = match &place {
+                        FFPlace::Finite(pi) => pi.degree().unwrap() as i128,
+                        FFPlace::Infinite => 1,
+                    };
+                    div_deg += deg * v;
+                }
+                assert_eq!(div_deg, 0, "deg(div a)=0 for a={a:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn constant_extension_image_is_full_and_good_places_split() {
+        // a unit (nonzero constant) is unramified everywhere ⇒ empty invariant map.
+        assert_eq!(constant_extension_invariants(3, &rf(&[2], &[1])), Some(vec![]));
+        // the image hits the full (1/n)ℤ/ℤ: at π = t (v=1, deg=1), inv = 1/3 for n=3.
+        let invs = constant_extension_invariants(3, &rf(&[0, 1], &[1])).unwrap();
+        let at_t = invs
+            .iter()
+            .find(|(pl, _)| *pl == FFPlace::Finite(poly(&[0, 1])))
+            .map(|(_, r)| r.clone());
+        assert_eq!(at_t, Some(Rational::try_new(1, 3).unwrap()));
+        // a degree-2 place carries deg(v)=2: at π = t²+2 (v=1), inv = 2/3 for n=3 —
+        // a value invisible to the 2-torsion Bridge F surface.
+        let invs_b = constant_extension_invariants(3, &rf(&[2, 0, 1], &[1])).unwrap();
+        let at_b = invs_b
+            .iter()
+            .find(|(pl, _)| *pl == FFPlace::Finite(poly(&[2, 0, 1])))
+            .map(|(_, r)| r.clone());
+        assert_eq!(at_b, Some(Rational::try_new(2, 3).unwrap()));
+        // n=1 (trivial extension, split Brauer): everything splits.
+        assert_eq!(constant_extension_invariants(1, &rf(&[0, 1], &[1])), Some(vec![]));
+        // degenerate inputs rejected.
+        assert_eq!(constant_extension_invariants(0, &rf(&[0, 1], &[1])), None);
+        assert_eq!(constant_extension_invariants(3, &rf(&[0], &[1])), None);
     }
 
     #[test]

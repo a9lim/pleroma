@@ -15,7 +15,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
                 return Some(self.scalar(c.inv()?));
             }
         }
-        let n = 1usize.checked_shl(self.dim.try_into().ok()?)?;
+        let n = 1usize.checked_shl(self.dim().try_into().ok()?)?;
         let mut mat = vec![vec![S::zero(); n]; n];
         for col in 0..n {
             let mut t = BTreeMap::new();

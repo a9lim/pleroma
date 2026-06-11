@@ -46,10 +46,13 @@ impl<S: Scalar> Metric<S> {
 
     /// A symmetric-polar Clifford metric: squares `q` and anticommutators `b`
     /// (i<j), with no in-order contraction (`a` empty). The ordinary case.
-    pub fn new(q: Vec<S>, b: BTreeMap<(usize, usize), S>) -> Self {
+    ///
+    /// `b` may be any `IntoIterator` of `((i, j), value)` pairs (a `BTreeMap`,
+    /// a `Vec`, a slice, …) so call sites need not build the map explicitly.
+    pub fn new(q: Vec<S>, b: impl IntoIterator<Item = ((usize, usize), S)>) -> Self {
         let metric = Metric {
             q,
-            b,
+            b: b.into_iter().collect(),
             a: BTreeMap::new(),
         };
         metric.validate_for_dim(metric.q.len());
@@ -58,12 +61,18 @@ impl<S: Scalar> Metric<S> {
 
     /// A general-bilinear-form metric: squares `q`, polar form `b` (i<j), and the
     /// in-order contraction `a` (i<j). See the struct docs.
+    ///
+    /// Both `b` and `a` may be any `IntoIterator` of `((i, j), value)` pairs.
     pub fn general(
         q: Vec<S>,
-        b: BTreeMap<(usize, usize), S>,
-        a: BTreeMap<(usize, usize), S>,
+        b: impl IntoIterator<Item = ((usize, usize), S)>,
+        a: impl IntoIterator<Item = ((usize, usize), S)>,
     ) -> Self {
-        let metric = Metric { q, b, a };
+        let metric = Metric {
+            q,
+            b: b.into_iter().collect(),
+            a: a.into_iter().collect(),
+        };
         metric.validate_for_dim(metric.q.len());
         metric
     }

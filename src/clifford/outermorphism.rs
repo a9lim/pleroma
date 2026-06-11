@@ -93,7 +93,7 @@ pub fn apply_outermorphism<S: Scalar>(
     f: &LinearMap<S>,
     mv: &Multivector<S>,
 ) -> Multivector<S> {
-    debug_assert_eq!(f.n, alg.dim, "LinearMap dimension must match the algebra");
+    debug_assert_eq!(f.n, alg.dim(), "LinearMap dimension must match the algebra");
     let mut out = alg.zero();
     for (&mask, coeff) in &mv.terms {
         // Fold f(e_i) over the set bits in ascending order, starting at 1.
@@ -157,9 +157,9 @@ fn grade_k_masks(n: usize, k: usize) -> Vec<u128> {
 /// `Λⁿf` is the [`determinant`]. Computed straight from the outermorphism:
 /// `tr Λᵏf = Σ_{|S|=k} ⟨e_S , f(e_S)⟩`, so it is character-faithful for free.
 pub fn exterior_power_trace<S: Scalar>(alg: &CliffordAlgebra<S>, f: &LinearMap<S>, k: usize) -> S {
-    debug_assert_eq!(f.n, alg.dim, "LinearMap dimension must match the algebra");
+    debug_assert_eq!(f.n, alg.dim(), "LinearMap dimension must match the algebra");
     let mut acc = S::zero();
-    for mask in grade_k_masks(alg.dim, k) {
+    for mask in grade_k_masks(alg.dim(), k) {
         let blade = alg.blade(&bits(mask));
         let img = apply_outermorphism(alg, f, &blade);
         // ⟨e_S , f(e_S)⟩ — the diagonal entry of Λᵏf at this blade.
@@ -183,7 +183,7 @@ pub fn trace<S: Scalar>(alg: &CliffordAlgebra<S>, f: &LinearMap<S>) -> S {
 /// Char-faithful — over the nimbers every sign collapses, giving the char-2
 /// characteristic polynomial with no special-casing.
 pub fn char_poly<S: Scalar>(alg: &CliffordAlgebra<S>, f: &LinearMap<S>) -> Vec<S> {
-    let n = alg.dim;
+    let n = alg.dim();
     (0..=n)
         .map(|k| {
             let ck = exterior_power_trace(alg, f, k);

@@ -94,7 +94,7 @@ mod tests {
     where
         S: Scalar + std::fmt::Debug + PartialEq,
     {
-        let n = alg.dim;
+        let n = alg.dim();
         assert_eq!(char_poly(alg, f), expected_xn_minus_one::<S>(n));
         for k in 1..n {
             assert_eq!(exterior_power_trace(alg, f, k), S::zero(), "grade {k}");

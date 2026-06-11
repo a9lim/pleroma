@@ -1,21 +1,52 @@
-use super::basis::{bits, wedge_sign};
-use super::terms::merge;
+use super::basis::bits;
+use super::terms::{merge, wedge_terms};
 use crate::scalar::Scalar;
 use std::collections::BTreeMap;
+use std::fmt;
 use std::ops::{Add, BitXor, Neg, Sub};
 
 /// A multivector: blade-mask → coefficient (zeros never stored).
+///
+/// ## Operator vs context-method policy
+///
+/// `Multivector` implements `+`, `-`, unary `-`, and `^` (wedge) as
+/// *context-free* operators — no metric needed, so they live on the type.
+/// The geometric product (`*`) and all metric-dependent operations
+/// (`mul`, `wedge`, `reverse`, `grade_part`, …) live as methods on
+/// [`super::algebra::CliffordAlgebra`] and require an algebra context:
+///
+/// ```text
+/// // correct: metric-free additive ops use operators
+/// let sum = a + b;
+/// let w   = a ^ b;   // exterior/wedge product (metric-independent)
+///
+/// // correct: metric-dependent ops use the algebra context
+/// let prod = alg.mul(&a, &b);
+/// let rev  = alg.reverse(&a);
+/// ```
+///
+/// This mirrors the scalar policy from `impl_scalar_ops!`: operators on the
+/// concrete type are for the operations that need no extra context; everything
+/// else goes through the context object (the algebra) to make the dependency
+/// on the metric explicit.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Multivector<S: Scalar> {
-    pub terms: BTreeMap<u128, S>,
+    pub(crate) terms: BTreeMap<u128, S>,
 }
 
 impl<S: Scalar> Multivector<S> {
+    /// Read-only access to the term map (blade mask → coefficient).
+    /// Zeros are never stored; the map is empty iff the multivector is zero.
+    pub fn terms(&self) -> &BTreeMap<u128, S> {
+        &self.terms
+    }
+
     pub fn is_zero(&self) -> bool {
         self.terms.is_empty()
     }
 
-    /// Human-readable form, e.g. `3 + 2*e0 + 1*e0e1`.
+    /// Human-readable form, e.g. `3 + 2*e0 + 1*e0e1` (uses `Debug` rendering for
+    /// coefficients; works for any `S: Scalar`). The Python binding calls this.
     pub fn display(&self) -> String {
         if self.terms.is_empty() {
             return "0".to_string();
@@ -38,6 +69,37 @@ impl<S: Scalar> Multivector<S> {
             }
         }
         parts.join(" + ")
+    }
+}
+
+/// `fmt::Display` for `Multivector<S>` when `S: fmt::Display` — uses `{}`
+/// (Display) for coefficients rather than `{:?}`. Scalars that implement
+/// `Display` (e.g. `Fp`, `Fpn`, `Rational` if it did) get clean output.
+/// The Python `__repr__` and `display()` method both call the Display-independent
+/// path above; this impl is for Rust code that explicitly formats with `{}`.
+impl<S: Scalar + fmt::Display> fmt::Display for Multivector<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.terms.is_empty() {
+            return write!(f, "0");
+        }
+        let one = S::one();
+        let neg_one = S::one().neg();
+        let mut parts = Vec::new();
+        for (&blade, coeff) in &self.terms {
+            if blade == 0 {
+                parts.push(format!("{}", coeff));
+                continue;
+            }
+            let label: String = bits(blade).iter().map(|i| format!("e{}", i)).collect();
+            if *coeff == one {
+                parts.push(label);
+            } else if *coeff == neg_one {
+                parts.push(format!("-{}", label));
+            } else {
+                parts.push(format!("{}*{}", coeff, label));
+            }
+        }
+        write!(f, "{}", parts.join(" + "))
     }
 }
 
@@ -82,24 +144,8 @@ impl<S: Scalar> BitXor for Multivector<S> {
     type Output = Multivector<S>;
 
     fn bitxor(self, rhs: Multivector<S>) -> Multivector<S> {
-        let mut out: BTreeMap<u128, S> = BTreeMap::new();
-        for (&ba, ca) in &self.terms {
-            for (&bb, cb) in &rhs.terms {
-                if ba & bb != 0 {
-                    continue;
-                }
-                let blade = ba | bb;
-                let coeff = ca.mul(cb).mul(&wedge_sign::<S>(ba, bb));
-                if coeff.is_zero() {
-                    continue;
-                }
-                let e = out.entry(blade).or_insert_with(S::zero);
-                *e = e.add(&coeff);
-                if e.is_zero() {
-                    out.remove(&blade);
-                }
-            }
+        Multivector {
+            terms: wedge_terms(&self.terms, &rhs.terms),
         }
-        Multivector { terms: out }
     }
 }

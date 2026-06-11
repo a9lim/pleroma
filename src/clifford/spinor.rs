@@ -71,7 +71,7 @@ pub struct LazySpinorRep<S: Scalar> {
 impl<S: Scalar> LazySpinorRep<S> {
     /// Apply left multiplication by generator `e_i` to a sparse multivector.
     pub fn apply_generator(&self, i: usize, v: &Multivector<S>) -> Option<Multivector<S>> {
-        if i >= self.algebra.dim {
+        if i >= self.algebra.dim() {
             return None;
         }
         Some(self.algebra.mul(&self.algebra.gen(i), v))
@@ -79,7 +79,7 @@ impl<S: Scalar> LazySpinorRep<S> {
 
     /// Apply a sparse linear combination `Σ coeffs[i] e_i` by left multiplication.
     pub fn apply_vector(&self, coeffs: &[S], v: &Multivector<S>) -> Option<Multivector<S>> {
-        if coeffs.len() != self.algebra.dim {
+        if coeffs.len() != self.algebra.dim() {
             return None;
         }
         let mut out = self.algebra.zero();
@@ -150,7 +150,7 @@ fn ideal_spanning_set<S: Scalar>(
     alg: &CliffordAlgebra<S>,
     f: &Multivector<S>,
 ) -> Option<Vec<Multivector<S>>> {
-    let count = blade_count(alg.dim)?;
+    let count = blade_count(alg.dim())?;
     Some(
         (0..count)
             .map(|mask| alg.mul(&alg.blade(&bits(mask)), f))
@@ -312,8 +312,8 @@ fn spinor_rep_from_idempotent<S: Scalar>(
     let k = basis.len();
 
     // gen_matrices[i][row][col]: left multiplication by e_i on the basis.
-    let mut gen_matrices = vec![vec![vec![S::zero(); k]; k]; alg.dim];
-    for i in 0..alg.dim {
+    let mut gen_matrices = vec![vec![vec![S::zero(); k]; k]; alg.dim()];
+    for i in 0..alg.dim() {
         for (col, (_, bvec)) in basis.iter().enumerate() {
             let target = alg.mul(&alg.gen(i), bvec);
             let cs = coords(alg, &basis, &target)?;
@@ -402,7 +402,7 @@ fn char2_shrinking_blade_idempotent<S: Scalar>(
     f: &Multivector<S>,
     current_dim: usize,
 ) -> Option<(Multivector<S>, usize)> {
-    let count = blade_count(alg.dim)?;
+    let count = blade_count(alg.dim())?;
     for mask in 1..count {
         let candidate = alg.blade(&bits(mask));
         if !is_idempotent(alg, &candidate) {
@@ -424,7 +424,7 @@ fn spinor_rep_char2<S: Scalar>(alg: &CliffordAlgebra<S>) -> Option<SpinorRep<S>>
     if S::characteristic() != 2 || !alg.metric.a.is_empty() {
         return None;
     }
-    blade_count(alg.dim)?;
+    blade_count(alg.dim())?;
     if !char2_metric_is_nonsingular(&alg.metric) {
         return None;
     }
@@ -444,8 +444,8 @@ fn spinor_rep_orthogonal<S: Scalar>(alg: &CliffordAlgebra<S>) -> Option<SpinorRe
     if S::characteristic() != 0 {
         return None;
     }
-    blade_count(alg.dim)?;
-    if (0..alg.dim).any(|i| alg.metric.q.get(i).map(|x| x.is_zero()).unwrap_or(true)) {
+    blade_count(alg.dim())?;
+    if (0..alg.dim()).any(|i| alg.metric.q.get(i).map(|x| x.is_zero()).unwrap_or(true)) {
         return None; // nondegenerate only (no null generators)
     }
     let half = S::one().add(&S::one()).inv()?; // needs ½ (char 0)
@@ -459,7 +459,7 @@ fn spinor_rep_orthogonal<S: Scalar>(alg: &CliffordAlgebra<S>) -> Option<SpinorRe
     let mut cur = ideal_dim(alg, &f);
     loop {
         let mut progressed = false;
-        for mask in 1..blade_count(alg.dim)? {
+        for mask in 1..blade_count(alg.dim())? {
             let w = alg.blade(&bits(mask));
             if alg.mul(&w, &w) != one {
                 continue; // need w² = +1
@@ -507,17 +507,17 @@ pub fn spinor_rep<S: Scalar>(alg: &CliffordAlgebra<S>) -> Option<SpinorRep<S>> {
     if S::characteristic() != 0 {
         return None;
     }
-    blade_count(alg.dim)?;
+    blade_count(alg.dim())?;
     let (diag_metric, transform) = diagonalize_with_transform(&alg.metric)?;
     if diag_metric.q.iter().any(|x| x.is_zero()) {
         return None;
     }
-    let diag_alg = CliffordAlgebra::new(alg.dim, diag_metric.clone());
+    let diag_alg = CliffordAlgebra::new(alg.dim(), diag_metric.clone());
     let mut rep = spinor_rep_orthogonal(&diag_alg)?;
     let inverse = inverse_matrix(transform.clone())?;
-    let mut pulled = Vec::with_capacity(alg.dim);
-    for original_i in 0..alg.dim {
-        let coeffs: Vec<S> = (0..alg.dim)
+    let mut pulled = Vec::with_capacity(alg.dim());
+    for original_i in 0..alg.dim() {
+        let coeffs: Vec<S> = (0..alg.dim())
             .map(|orth_k| inverse[orth_k][original_i].clone())
             .collect();
         pulled.push(matrix_linear_combination(&coeffs, &rep.gen_matrices));
@@ -538,7 +538,7 @@ pub fn lazy_spinor_rep<S: Scalar>(alg: &CliffordAlgebra<S>) -> Option<LazySpinor
     }
     match S::characteristic() {
         0 => {
-            if alg.dim >= MAX_BASIS_DIM {
+            if alg.dim() >= MAX_BASIS_DIM {
                 return None;
             }
             let metric = if alg.metric.b.is_empty() {
@@ -694,7 +694,7 @@ mod tests {
         let alg = CliffordAlgebra::new(metric.q.len(), metric.clone());
         let rep = spinor_rep(&alg).unwrap();
         let k = rep.basis.len();
-        for i in 0..alg.dim {
+        for i in 0..alg.dim() {
             let mi = &rep.gen_matrices[i];
             assert_eq!(
                 mat_mul(mi, mi),
@@ -702,8 +702,8 @@ mod tests {
                 "M{i}² does not match q{i}"
             );
         }
-        for i in 0..alg.dim {
-            for j in (i + 1)..alg.dim {
+        for i in 0..alg.dim() {
+            for j in (i + 1)..alg.dim() {
                 let mi = &rep.gen_matrices[i];
                 let mj = &rep.gen_matrices[j];
                 let anti = mat_add(&mat_mul(mi, mj), &mat_mul(mj, mi));
@@ -722,7 +722,7 @@ mod tests {
         let rep = spinor_rep(&alg).unwrap();
         let k = rep.basis.len();
         assert!(is_idempotent(&alg, &rep.idempotent), "f² ≠ f");
-        for i in 0..alg.dim {
+        for i in 0..alg.dim() {
             let mi = &rep.gen_matrices[i];
             assert_eq!(
                 mat_mul_nimber(mi, mi),
@@ -730,8 +730,8 @@ mod tests {
                 "M{i}² does not match q{i}"
             );
         }
-        for i in 0..alg.dim {
-            for j in (i + 1)..alg.dim {
+        for i in 0..alg.dim() {
+            for j in (i + 1)..alg.dim() {
                 let mi = &rep.gen_matrices[i];
                 let mj = &rep.gen_matrices[j];
                 let anti = mat_add_nimber(&mat_mul_nimber(mi, mj), &mat_mul_nimber(mj, mi));
@@ -892,6 +892,6 @@ mod tests {
         assert_eq!(e0, large.gen(0));
         let e0_sq = lazy.apply_generator(0, &e0).unwrap();
         assert_eq!(e0_sq, one);
-        assert!(lazy.apply_generator(large.dim, &one).is_none());
+        assert!(lazy.apply_generator(large.dim(), &one).is_none());
     }
 }

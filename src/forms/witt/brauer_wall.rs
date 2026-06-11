@@ -292,7 +292,7 @@ mod tests {
         let aw = CliffordAlgebra::new(2, w.clone());
         let tensored = av.graded_tensor(&aw);
         assert_eq!(
-            bw_class_real(&tensored.metric),
+            bw_class_real(tensored.metric()),
             Some(
                 bw_class_real(&v)
                     .unwrap()
@@ -449,7 +449,7 @@ mod tests {
         let aa = CliffordAlgebra::new(2, a.clone());
         let tensored = aa.graded_tensor(&ah);
         assert_eq!(
-            bw_class_nimber(&tensored.metric),
+            bw_class_nimber(tensored.metric()),
             Some(
                 bw_class_nimber(&a)
                     .unwrap()
@@ -466,7 +466,11 @@ mod tests {
 
         let mut upper = std::collections::BTreeMap::new();
         upper.insert((0usize, 1usize), Nimber(1));
-        let general = Metric::general(vec![Nimber(1), Nimber(1)], Default::default(), upper);
+        let general = Metric::general(
+            vec![Nimber(1), Nimber(1)],
+            std::collections::BTreeMap::<(usize, usize), Nimber>::new(),
+            upper,
+        );
         assert_eq!(bw_class_nimber(&general), None);
     }
 }

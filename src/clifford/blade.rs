@@ -75,7 +75,7 @@ fn plucker_relations_hold<S: Scalar>(
     a: &Multivector<S>,
     k: usize,
 ) -> bool {
-    let n = alg.dim;
+    let n = alg.dim();
     if k == 0 || k == 1 || k == n {
         return true;
     }
@@ -127,7 +127,7 @@ pub fn blade_subspace<S: Scalar>(
     a: &Multivector<S>,
 ) -> Option<Vec<Vec<S>>> {
     let k = homogeneous_grade(a)?;
-    let n = alg.dim;
+    let n = alg.dim();
     if k == 0 {
         return Some(vec![]);
     }
@@ -178,7 +178,7 @@ pub fn is_blade<S: Scalar>(alg: &CliffordAlgebra<S>, a: &Multivector<S>) -> bool
     match homogeneous_grade(a) {
         None => false,
         Some(0) => true,
-        Some(k) if k <= alg.dim => plucker_relations_hold(alg, a, k),
+        Some(k) if k <= alg.dim() => plucker_relations_hold(alg, a, k),
         Some(_) => false,
     }
 }

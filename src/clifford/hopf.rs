@@ -24,7 +24,7 @@
 //!
 //! A tensor element `e_T ⊗ e_U` of `Cl ⊗̂ Cl` is encoded as the blade
 //! `T | (U << dim)` of `tensor_square(alg)` (the low block is the left factor,
-//! the high block the right) — matching `embed_first` / `embed_second(·, dim)`.
+//! the high block the right) — matching `embed_first` / `embed_second(·, &alg)`.
 
 use crate::clifford::{bits, CliffordAlgebra, Multivector, MAX_BASIS_DIM};
 use crate::scalar::Scalar;
@@ -33,7 +33,7 @@ use std::collections::BTreeMap;
 /// The graded tensor square `Cl ⊗̂ Cl`, the codomain of the coproduct.
 pub fn tensor_square<S: Scalar>(alg: &CliffordAlgebra<S>) -> CliffordAlgebra<S> {
     assert!(
-        alg.dim * 2 <= MAX_BASIS_DIM,
+        alg.dim() * 2 <= MAX_BASIS_DIM,
         "tensor square needs 2*dim <= {MAX_BASIS_DIM} for u128 blade encoding"
     );
     alg.graded_tensor(alg)
@@ -46,7 +46,7 @@ fn blade_of<S: Scalar>(alg: &CliffordAlgebra<S>, mask: u128) -> Multivector<S> {
 /// The unshuffle coproduct `Δ: Cl → Cl ⊗̂ Cl`, returned as a multivector over
 /// `tensor_square(alg)` (a tensor `e_T ⊗ e_U` is the blade `T | (U << dim)`).
 pub fn coproduct<S: Scalar>(alg: &CliffordAlgebra<S>, mv: &Multivector<S>) -> Multivector<S> {
-    let dim = alg.dim;
+    let dim = alg.dim();
     assert!(
         dim * 2 <= MAX_BASIS_DIM,
         "coproduct tensor encoding needs 2*dim <= {MAX_BASIS_DIM}"
@@ -100,7 +100,7 @@ mod tests {
 
     /// Split a tensor-square multivector into a (left-mask, right-mask) → coeff map.
     fn pairs<S: Scalar>(alg: &CliffordAlgebra<S>, x: &Multivector<S>) -> BTreeMap<(u128, u128), S> {
-        let dim = alg.dim;
+        let dim = alg.dim();
         let low = if dim >= MAX_BASIS_DIM {
             u128::MAX
         } else {

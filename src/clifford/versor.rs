@@ -42,15 +42,18 @@ impl<S: Scalar> CliffordAlgebra<S> {
         // produce a map f_i ↦ e_i e_p that scales even-grade basis elements by
         // q_p^{k/2}, which is not a unit — the resulting algebra would not be
         // isomorphic to Cl(Q)⁰ over the ring.
-        let p = (0..self.dim)
+        let p = (0..self.dim())
             .rev()
             .find(|&i| self.metric.q_val(i).inv().is_some())?;
         let qp = self.metric.q_val(p);
-        let qprime: Vec<S> = (0..self.dim)
+        let qprime: Vec<S> = (0..self.dim())
             .filter(|&i| i != p)
             .map(|i| self.metric.q_val(i).mul(&qp).neg())
             .collect();
-        Some(CliffordAlgebra::new(self.dim - 1, Metric::diagonal(qprime)))
+        Some(CliffordAlgebra::new(
+            self.dim() - 1,
+            Metric::diagonal(qprime),
+        ))
     }
 
     /// The spinor norm ⟨v ṽ⟩₀ (scalar part of `v * reverse(v)`).
@@ -124,7 +127,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
     /// Left contraction a ⌟ b = Σ_{r≤s} ⟨⟨a⟩_r ⟨b⟩_s⟩_{s−r}.
     pub fn left_contract(&self, a: &Multivector<S>, b: &Multivector<S>) -> Multivector<S> {
         let mut out = self.zero();
-        let d = self.dim;
+        let d = self.dim();
         for r in 0..=d {
             let ar = self.grade_part(a, r);
             if ar.is_zero() {
@@ -145,7 +148,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
     /// Right contraction a ⌞ b = Σ_{r≥s} ⟨⟨a⟩_r ⟨b⟩_s⟩_{r−s}.
     pub fn right_contract(&self, a: &Multivector<S>, b: &Multivector<S>) -> Multivector<S> {
         let mut out = self.zero();
-        let d = self.dim;
+        let d = self.dim();
         for s in 0..=d {
             let bs = self.grade_part(b, s);
             if bs.is_zero() {
@@ -165,10 +168,10 @@ impl<S: Scalar> CliffordAlgebra<S> {
 
     /// The unit pseudoscalar I = e₀e₁…e_{dim−1}.
     pub fn pseudoscalar(&self) -> Multivector<S> {
-        let mask = if self.dim >= MAX_BASIS_DIM {
+        let mask = if self.dim() >= MAX_BASIS_DIM {
             u128::MAX
         } else {
-            (1u128 << self.dim) - 1
+            (1u128 << self.dim()) - 1
         };
         let mut terms = BTreeMap::new();
         terms.insert(mask, S::one());

@@ -189,7 +189,7 @@ pub fn exp_nilpotent<S: Scalar>(
     alg: &CliffordAlgebra<S>,
     b: &Multivector<S>,
 ) -> Option<Multivector<S>> {
-    let cap = 2 * alg.dim + 2;
+    let cap = 2 * alg.dim() + 2;
     let mut acc = alg.scalar(S::one());
     let mut power = alg.scalar(S::one()); // B^0
     let mut fact = S::one(); // 0!

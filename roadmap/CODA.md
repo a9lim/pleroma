@@ -1245,6 +1245,12 @@ full `ℚ/ℤ` reciprocity reduced to the product formula the function-field lay
     at `E = Qq<P,N,F>` over `Q_p = Qq<P,N,1>` (the only `CyclicGaloisExtension` with a
     `Valued` base); exact even over the capped model (reads only the valuation), `None` on
     `a=0` / precision loss — never a wrong value.
+- `forms/trace_form.rs`
+  - `cyclic_algebra_trace_form::<E: CyclicGaloisExtension>(a: &E::Base) -> Metric<E::Base>`
+    — the literal cyclic-algebra trace form `T_A(z)=Trd_A(z²)` for
+    `A=(E/F,σ,a)=⊕E·u^i`, in the `E·u^i` line basis. The `u^0` and, for even degree,
+    `u^{n/2}` self-blocks reuse `assemble_twisted_form`; the `i`/`n-i` line pairs are
+    pure polar blocks.
 - `forms/local_global/function_field.rs`
   - `constant_extension_invariants::<S: FiniteOddField>(n, a) -> Option<Vec<(FFPlace<S>, Rational)>>`
     — `inv_v = deg(v)·v(a)/n mod ℤ`, the exact full-`ℚ/ℤ` reciprocity oracle (everywhere
@@ -1271,6 +1277,11 @@ full `ℚ/ℤ` reciprocity reduced to the product formula the function-field lay
   over `E = ℚ(i)` splits at `v` ⇔ its reduced-norm form `⟨1,1,−a,−a⟩` (built from
   `trace_twisted_form::<Surcomplex<Rational>>(1) = ⟨2,2⟩`) is isotropic over `ℚ_v` ⇔
   `inv_v = 0` — tying the invariant to the shipped Hasse–Minkowski layer.
+- **Cyclic trace-form oracle (§6(c)):** for `A=(ℚ(i)/ℚ, conjugation, a)`,
+  `cyclic_algebra_trace_form` gives the literal `Trd(z²)` form
+  `⟨2,-2,2a,2a⟩`, not the reduced norm. The test pins the honest degree-2 relation
+  `Trd(z²)=Trd(z)^2-2·Nrd(z)` pointwise against `Nrd=⟨1,1,-a,-a⟩`, and checks over
+  `F_27/F_3` that the `u`/`u²` cross-pair block is Witt-hyperbolic.
 
 ### Scope / caveats
 
@@ -1283,9 +1294,9 @@ full `ℚ/ℤ` reciprocity reduced to the product formula the function-field lay
   simple algebra splits, so the Gold forms have no `inv` (their classifier is
   Arf/Brauer–Wall, Bridge B). K lives only on the local/global legs (`Qq`, `F_q(t)`, and
   the real place via the 2-torsion embedding).
-- The general-`n` reduced-norm / `T_A(z) = Trd(z²)` trace-form constructor is **not**
-  shipped — §6 notes it is "a composition, not new math"; the degree-2 norm-form identity
-  ships as the oracle test, the high-value honest tie.
+- `cyclic_algebra_trace_form` is **not** the reduced norm for general `n` (and is not
+  equal to it for quaternions); it is the quadratic trace companion `Trd(z²)`. The
+  degree-2 reduced-norm identity remains the separate high-value tie above.
 
 ---
 
@@ -1393,10 +1404,12 @@ char-2 trap. The reduced-norm form of `[d, a)` is the 2-fold Pfister `[1,d] ⊥ 
 **already implemented** in `function_field_char2.rs` (Schmid's residue formula); that layer
 *is* the char-2, `n=2` instance of Bridge K, shipped.
 
-**(c) General `n`.** `Nrd` is degree `n`; the quadratic companion is `T_A(z) = Trd(z²)`,
-which decomposes block-by-block over the lines `Eu^i` — each block an instance of
-`assemble_twisted_form`. A `cyclic_algebra_trace_form` constructor would be a composition,
-not new math; **not shipped** (the degree-2 oracle is the high-value tie).
+**(c) General `n`.** `Nrd` is degree `n`; the quadratic companion is `T_A(z) = Trd(z²)`.
+Since reduced trace sees only the `u^0` coefficient, `T_A` decomposes over the line
+pairs `Eu^i`/`Eu^{n-i}`: the `u^0` block, and the `u^{n/2}` block when `n` is even,
+are `assemble_twisted_form` instances, while the remaining pairs are pure polar blocks.
+This is now shipped as `cyclic_algebra_trace_form`; for `n=2` it satisfies
+`Trd(z²)=Trd(z)^2-2·Nrd(z)`, so it is adjacent to but not equal to the reduced norm.
 
 **(d) Non-tie, for honesty.** Over `Nimber`/`Fpn` every CSA splits (Wedderburn), so the
 Gold forms carry **no** `inv`; their classifier is Arf/Brauer–Wall (Bridge B). K lives only

@@ -45,6 +45,21 @@ fold the one-line structural fact into the relevant `AGENTS.md`.
   `n ≤ 128`; Brown's symmetric polar category remains distinct from the Clifford
   char-2 alternating polar, with `double_f2` still the explicit bridge.
 
+## `cyclic-trace-form` — cyclic algebra `Trd(z²)` trace form (2026-06-11)
+**Pillars:** forms ↔ scalar    **Claim level:** standard math made computational + implemented and tested
+- surface: `forms/trace_form.rs::cyclic_algebra_trace_form::<E>(&a)` builds the
+  literal cyclic-algebra quadratic trace form `T_A(z)=Trd_A(z²)` for
+  `A=(E/F,σ,a)=⊕ E·u^i`, ordered by the `E·u^i` lines. The `u^0` and, when present,
+  `u^{n/2}` self-blocks reuse `assemble_twisted_form`; the `i`/`n-i` line pairs are
+  pure polar blocks. The existing `MAX_BASIS_DIM=128` cap gives the boundary
+  `[E:F]^2 ≤ 128`.
+- oracles: over `Q(i)/Q`, the degree-2 trace form is pinned as
+  `⟨2,-2,2a,2a⟩`, and a grid check verifies the honest reduced-norm relation
+  `Trd(z²)=Trd(z)^2-2·Nrd(z)` against the shipped `⟨1,1,-a,-a⟩` norm form. Over
+  `F_27/F_3`, the `u`/`u^2` cross block is checked to be Witt-hyperbolic.
+- boundaries: this is not the reduced norm for general `n` (nor equal to it for
+  quaternions); it is the quadratic trace companion named in CODA K §6(c).
+
 ## `echo-solver` — the echo-fifo+dummy adversarial review: CONFIRM (2026-06-10)
 **Pillars:** games ↔ forms    **Claim level:** implemented and tested
 - surface: `experiments/echo_solver.py` (stdlib-only, maintained) — direct full-state

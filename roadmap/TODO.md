@@ -81,12 +81,6 @@ symbol is explicit (the tame symbol `(a,b)_v = (−1)^{v(a)v(b)} a^{v(b)}/b^{v(a
 in `μ_n`); shipping it widens `BrauerClass` to ramified cyclic classes at tame places
 on the `Qq`/`F_q(t)` legs. The **wild** symbol stays out — that is star `*4` below.
 
-### `cyclic-trace-form` — ½·(e_f∧e_s)
-**The general-`n` cyclic trace form** `T_A(z) = Trd(z²)` block-decomposed over the
-lines `E·uⁱ` — CODA K §6(c) records it as "a composition, not new math; not shipped".
-Build `cyclic_algebra_trace_form` through `assemble_twisted_form`; oracle: the degree-2
-case reproduces the shipped `⟨1,1,−a,−a⟩` reduced-norm form.
-
 ### `fqm-witt` — 3·(e_i∧e_f)
 **The full Witt group of finite quadratic modules** — the "further rung" CODA M names.
 Implement the `p`-local decomposition with Wall/Nikulin/Kawauchi–Kojima generators and

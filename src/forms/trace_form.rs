@@ -27,7 +27,7 @@
 //! Boundary: the form has dimension `[E:F]`, so as a [`Metric`] it is capped at
 //! `MAX_BASIS_DIM = 128` — exactly the degree of the full nim-field `F_{2^128}`.
 
-use crate::clifford::Metric;
+use crate::clifford::{Metric, MAX_BASIS_DIM};
 use crate::forms::ArfResult;
 use crate::scalar::{
     nim_square, nim_trace, CyclicGaloisExtension, FieldExtension, Fp, Nimber, Scalar,
@@ -66,6 +66,22 @@ fn assemble_twisted_form<E: Scalar, T: Scalar>(
     Metric::general(q, b, BTreeMap::new())
 }
 
+fn insert_metric_block<S: Scalar>(
+    q: &mut [S],
+    b: &mut BTreeMap<(usize, usize), S>,
+    offset: usize,
+    block: Metric<S>,
+) {
+    let (bq, bb, ba) = block.into_parts();
+    debug_assert!(ba.is_empty());
+    for (i, qi) in bq.into_iter().enumerate() {
+        q[offset + i] = qi;
+    }
+    for ((i, j), v) in bb {
+        b.insert((offset + i, offset + j), v);
+    }
+}
+
 /// The Frobenius-twisted trace form `Q_k(x) = Tr_{E/F}(x · σ^k(x))` of a cyclic
 /// Galois extension `E/F`, as a [`Metric`] over the base `F` in the distinguished
 /// [`basis`](CyclicGaloisExtension::basis) `(e_0,…,e_{d-1})`:
@@ -89,6 +105,73 @@ where
     E: CyclicGaloisExtension,
 {
     assemble_twisted_form(&E::basis(), |e| e.sigma_power(k), |z| z.trace())
+}
+
+/// The cyclic-algebra trace form `T_A(z) = Trd_A(z²)` for the crossed product
+/// algebra `A = (E/F, σ, a) = ⊕ᵢ E·uⁱ`, with `uⁿ = a` and `u·x = σ(x)·u`.
+/// The basis is ordered by `u`-line: `(e_0, …, e_{n-1})`,
+/// `(e_0u, …, e_{n-1}u)`, …, where `(e_i)` is
+/// [`CyclicGaloisExtension::basis`].
+///
+/// Reduced trace sees only the `u⁰` coefficient, so the form splits into the
+/// self-line `E`, the middle self-line `E·u^{n/2}` when `n` is even, and pure
+/// polar pairings between `E·uⁱ` and `E·u^{n-i}`:
+///
+/// ```text
+/// T_A(Σ x_i u^i) =
+///   Tr(x_0²)
+///   + [n even] Tr(a · x_{n/2} σ^{n/2}(x_{n/2}))
+///   + Σ_{0<i<n-i} Tr(a · (x_i σ^i(x_{n-i}) + x_{n-i} σ^{n-i}(x_i))).
+/// ```
+///
+/// This is the literal quadratic trace form, not the degree-2 reduced norm. For
+/// a quaternion algebra the relation is the Cayley-Hamilton identity
+/// `Trd(z²) = Trd(z)² - 2·Nrd(z)`.
+pub fn cyclic_algebra_trace_form<E>(a: &E::Base) -> Metric<E::Base>
+where
+    E: CyclicGaloisExtension,
+{
+    let basis = E::basis();
+    let n = basis.len();
+    let dim = n
+        .checked_mul(n)
+        .expect("cyclic algebra trace-form dimension overflowed");
+    assert!(
+        dim <= MAX_BASIS_DIM,
+        "cyclic_algebra_trace_form has dimension [E:F]^2={dim}, exceeding {MAX_BASIS_DIM}"
+    );
+
+    let mut q = vec![E::Base::zero(); dim];
+    let mut b = BTreeMap::new();
+
+    let line0 = assemble_twisted_form(&basis, |x| x.clone(), |z| z.trace());
+    insert_metric_block(&mut q, &mut b, 0, line0);
+
+    if n % 2 == 0 {
+        let mid = n / 2;
+        let middle = assemble_twisted_form(&basis, |x| x.sigma_power(mid), |z| a.mul(&z.trace()));
+        insert_metric_block(&mut q, &mut b, mid * n, middle);
+    }
+
+    for i in 1..n {
+        let j = n - i;
+        if i >= j {
+            continue;
+        }
+        for r in 0..n {
+            for s in 0..n {
+                let term = basis[r]
+                    .mul(&basis[s].sigma_power(i))
+                    .add(&basis[s].mul(&basis[r].sigma_power(j)));
+                let value = a.mul(&term.trace());
+                if !value.is_zero() {
+                    b.insert((i * n + r, j * n + s), value);
+                }
+            }
+        }
+    }
+
+    Metric::general(q, b, BTreeMap::new())
 }
 
 /// The **Scharlau transfer** `s_*(⟨λ_1,…,λ_r⟩)` of a diagonal form over `E`, pushed
@@ -177,7 +260,11 @@ pub fn gold_form(m: usize, a: usize) -> Metric<Nimber> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scalar::{Fpn, Qq, Rational, Surcomplex};
+    use crate::scalar::{Fp, Fpn, Qq, Rational, Surcomplex};
+
+    fn r(n: i128) -> Rational {
+        Rational::int(n)
+    }
 
     fn gcd(a: usize, b: usize) -> usize {
         if b == 0 {
@@ -185,6 +272,19 @@ mod tests {
         } else {
             gcd(b, a % b)
         }
+    }
+
+    fn eval_rational_metric(m: &Metric<Rational>, coords: &[i128]) -> Rational {
+        assert_eq!(m.dim(), coords.len());
+        let mut total = Rational::zero();
+        for (i, &ci) in coords.iter().enumerate() {
+            let x = r(ci);
+            total = total.add(&m.q[i].mul(&x).mul(&x));
+        }
+        for (&(i, j), bij) in &m.b {
+            total = total.add(&bij.mul(&r(coords[i])).mul(&r(coords[j])));
+        }
+        total
     }
 
     #[test]
@@ -197,6 +297,40 @@ mod tests {
     }
 
     #[test]
+    fn cyclic_trace_form_degree_two_is_literal_trd_square() {
+        // For A = (Q(i)/Q, conjugation, a), ordered as (1, i, u, iu),
+        // Trd(z^2) is <2, -2, 2a, 2a>. This is adjacent to, but not equal to,
+        // the reduced norm <1, 1, -a, -a>.
+        for a in [-3i128, -1, 2, 5] {
+            let m = cyclic_algebra_trace_form::<Surcomplex<Rational>>(&r(a));
+            assert_eq!(m.q, vec![r(2), r(-2), r(2 * a), r(2 * a)]);
+            assert!(m.b.is_empty());
+        }
+    }
+
+    #[test]
+    fn cyclic_trace_form_degree_two_satisfies_cayley_hamilton_relation() {
+        // The honest degree-2 tie to the shipped norm-form oracle is
+        // Trd(z^2) = Trd(z)^2 - 2*Nrd(z), not equality with Nrd.
+        for a in [-3i128, 2, 5] {
+            let m = cyclic_algebra_trace_form::<Surcomplex<Rational>>(&r(a));
+            for p in -1..=1 {
+                for q in -1..=1 {
+                    for u in -1..=1 {
+                        for v in -1..=1 {
+                            let lhs = eval_rational_metric(&m, &[p, q, u, v]);
+                            let trd = 2 * p;
+                            let nrd = p * p + q * q - a * u * u - a * v * v;
+                            let rhs = r(trd * trd - 2 * nrd);
+                            assert_eq!(lhs, rhs, "a={a}, coords={:?}", [p, q, u, v]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn qq_twist_uses_the_unramified_galois_basis() {
         // E = Q_9/Q_3: the same trace-form bridge now reaches the unramified local
         // leg via the Teichmüller-lifted residue basis and the Witt-Frobenius.
@@ -205,6 +339,27 @@ mod tests {
         assert_eq!(m.q.len(), 2);
         assert!(m.q.iter().all(|x| !x.is_zero()));
         assert!(m.q.iter().all(|x| x.valuation().is_some()));
+    }
+
+    #[test]
+    fn cyclic_trace_form_degree_three_has_hyperbolic_cross_pair() {
+        // For n = 3 there is one self-line (u^0) and one pure polar pair
+        // (u^1, u^2). The pair is hyperbolic, so the Witt anisotropic kernel
+        // matches the u^0 trace-square block.
+        let t = cyclic_algebra_trace_form::<Fpn<3, 3>>(&Fp::<3>::one());
+        let line0 = trace_twisted_form::<Fpn<3, 3>>(0);
+        assert_eq!(t.dim(), 9);
+        assert_eq!(&t.q[..3], line0.q());
+        assert!(t.q[3..].iter().all(|x| x.is_zero()));
+        for (&(i, j), v) in line0.b() {
+            assert_eq!(t.b.get(&(i, j)), Some(v));
+        }
+
+        let t_dec = t.witt_decompose().expect("F_3 trace form decomposition");
+        let line_dec = line0
+            .witt_decompose()
+            .expect("F_3 line trace form decomposition");
+        assert_eq!(t_dec.anisotropic_dim, line_dec.anisotropic_dim);
     }
 
     #[test]

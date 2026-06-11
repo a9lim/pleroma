@@ -280,7 +280,11 @@ char-2 mirror, one shelf (`mod.rs` re-exports flat).
   whose polar form vanishes in char 2 (Frobenius is additive) — the trap the twist
   avoids. `transfer_diagonal(entries)` is the related Scharlau transfer
   `s_*(⟨λ₁,…,λᵣ⟩)` of a diagonal form along `Tr_{E/F}` (char ≠ 2; the `k=0` case).
-  Instances: `Surcomplex` k=1 → the **norm form** `⟨2,2⟩`; unramified `Qq/Qp`
+  `cyclic_algebra_trace_form::<E>(&a)` builds the literal cyclic-algebra trace
+  form `Trd_A(z²)` for `A=(E/F,σ,a)`: self-lines route through the same assembler,
+  and `i`/`n-i` lines are pure polar pairs. It is not the reduced norm; for
+  quaternions the honest relation is `Trd(z²)=Trd(z)^2-2·Nrd(z)`. Instances:
+  `Surcomplex` k=1 → the **norm form** `⟨2,2⟩`; unramified `Qq/Qp`
   via the Teichmuller-lifted residue basis; odd `Fpn` → a diagonalizable trace form.
   Two char-2 entry points to the **Gold form** `Tr(x^{1+2^a})`, classified →
   `ArfResult` (rank `= m − gcd(2a,m)`, Arf → the zero-count): `trace_form_arf::<E:

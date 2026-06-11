@@ -31,6 +31,23 @@ When a new piece of cross-pillar work lands, add a short entry here:
 Promote anything proof-heavy or too long for working notes into `roadmap/CODA.md`, and
 fold the one-line structural fact into the relevant `AGENTS.md`.
 
+## `fqm-gauss-phase` — p-primary finite-quadratic-module phase projection   (2026-06-11)
+**Pillars:** forms ↔ integral    **Claim level:** standard math made computational + implemented and tested
+- surface: `DiscriminantForm::fqm_gauss_phase` returns `FqmGaussPhase` with
+  p-primary `FqmPrimaryPhase { prime, order, exponent, phase_mod8 }` factors and the
+  total Milgram/Brown `Z/8` phase; `milgram_signature_mod8_fqm` exposes the total.
+  The existing `GaussSum`/`milgram_signature_mod8` float route stays as an oracle.
+- oracles: tests pin the mixed-primary `A_1 ⊕ A_2` factorization, extend the 2-primary
+  phase past the old Brown-only `Z/2` slice on `A_3`, cover odd torsion on `E_6`, and
+  cross-check the FQM phase against exact lattice signature, the Conway-Sloane genus
+  oddity route, and the legacy float phase across the ADE zoo.
+- boundaries: this is the Gauss-sum phase projection of the finite quadratic module,
+  not Wall/Nikulin/Kawauchi-Kojima's full generator-and-relation Witt normal form.
+  It still enumerates represented discriminant groups (`FQM_GAUSS_GROUP_CAP = 4096`)
+  and uses the principal embedding only after an exact cyclotomic shape check chooses
+  between the two square-root branches; the full FQM normal-form item remains open in
+  `roadmap/TODO.md`.
+
 ## `loopy-partizan` — finite Left/Right loopy outcome engine   (2026-06-11)
 **Pillars:** games ↔ Python    **Claim level:** implemented and tested
 - surface: `LoopyPartizanGraph`, `LoopyPartizanOutcome`, `LoopyWinner`;

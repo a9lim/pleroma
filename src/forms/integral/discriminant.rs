@@ -15,7 +15,7 @@ use crate::forms::integral::{Genus, IntegralForm};
 use crate::linalg::field::inverse_matrix;
 use crate::linalg::integer::{normalize_relation_rows, reduce_integer_vector};
 use crate::scalar::{Rational, Scalar};
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 /// A normalized complex Gauss sum, kept dependency-free.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -121,6 +121,37 @@ pub struct DiscriminantForm {
     pub reps: Vec<Vec<i128>>,
     /// The exact inverse Gram matrix.
     pub gram_inv: Vec<Vec<Rational>>,
+}
+
+/// One p-primary Milgram/Brown phase of a finite quadratic module.
+///
+/// This is the **Gauss-sum phase projection** of the finite-quadratic-module Witt
+/// class, not Wall's full generator-and-relation normal form.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FqmPrimaryPhase {
+    /// The prime `p` of the primary subgroup.
+    pub prime: u128,
+    /// The cardinality of the p-primary subgroup.
+    pub order: usize,
+    /// The largest order of an element in this p-primary subgroup.
+    pub exponent: u128,
+    /// The normalized Gauss-sum phase `ζ_8^phase_mod8`.
+    pub phase_mod8: i128,
+}
+
+/// The Milgram/Brown `Z/8` phase projection of a finite quadratic module.
+///
+/// The full Witt group of finite quadratic modules has finer Wall/Nikulin/
+/// Kawauchi-Kojima generator data. This record intentionally exposes only the
+/// p-local normalized Gauss-sum phases and their total.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FqmGaussPhase {
+    /// The cardinality of the full finite quadratic module.
+    pub order: usize,
+    /// The total phase, i.e. the value congruent to the lattice signature mod 8.
+    pub phase_mod8: i128,
+    /// The p-primary phase factors whose sum is `phase_mod8` in `Z/8`.
+    pub primary: Vec<FqmPrimaryPhase>,
 }
 
 fn mat_identity(n: usize) -> Vec<Vec<Complex64>> {
@@ -247,6 +278,14 @@ const ISO_GROUP_CAP: usize = 256;
 /// Default node budget for the isomorphism search (candidate generator-images tried).
 const ISO_NODE_BUDGET: u128 = 50_000_000;
 
+/// Largest discriminant group for the p-primary Gauss/Brown phase projection. The
+/// path enumerates the finite module exactly, so it declines rather than silently
+/// truncating.
+const FQM_GAUSS_GROUP_CAP: usize = 4096;
+
+/// Largest cyclotomic order used by the exact algebraic Gauss-sum shape check.
+const FQM_CYCLOTOMIC_ORDER_CAP: usize = 4096;
+
 /// The finite-abelian-group data of a discriminant form needed to compare two of
 /// them: the identity index, each element's `q_L` value and additive order, and the
 /// full Cayley addition table (indices into `reps`).
@@ -255,6 +294,334 @@ struct IsoTables {
     q: Vec<Rational>,
     order: Vec<usize>,
     add: Vec<Vec<usize>>,
+}
+
+fn checked_i128_add(a: i128, b: i128) -> Option<i128> {
+    a.checked_add(b)
+}
+
+fn checked_i128_sub(a: i128, b: i128) -> Option<i128> {
+    a.checked_sub(b)
+}
+
+fn checked_i128_mul(a: i128, b: i128) -> Option<i128> {
+    a.checked_mul(b)
+}
+
+fn gcd_usize(mut a: usize, mut b: usize) -> usize {
+    while b != 0 {
+        let t = b;
+        b = a % b;
+        a = t;
+    }
+    a
+}
+
+fn lcm_usize(a: usize, b: usize) -> Option<usize> {
+    a.checked_div(gcd_usize(a, b))?.checked_mul(b)
+}
+
+fn divisors(n: usize) -> Vec<usize> {
+    let mut out = Vec::new();
+    let mut d = 1usize;
+    while d <= n / d {
+        if n.is_multiple_of(d) {
+            out.push(d);
+            if d != n / d {
+                out.push(n / d);
+            }
+        }
+        d += 1;
+    }
+    out.sort_unstable();
+    out
+}
+
+fn poly_trim(mut p: Vec<i128>) -> Vec<i128> {
+    while p.len() > 1 && p.last() == Some(&0) {
+        p.pop();
+    }
+    p
+}
+
+fn poly_mul(a: &[i128], b: &[i128]) -> Option<Vec<i128>> {
+    if a.is_empty() || b.is_empty() {
+        return Some(vec![0]);
+    }
+    let mut out = vec![0i128; a.len() + b.len() - 1];
+    for (i, &x) in a.iter().enumerate() {
+        if x == 0 {
+            continue;
+        }
+        for (j, &y) in b.iter().enumerate() {
+            if y == 0 {
+                continue;
+            }
+            let term = checked_i128_mul(x, y)?;
+            out[i + j] = checked_i128_add(out[i + j], term)?;
+        }
+    }
+    Some(poly_trim(out))
+}
+
+fn poly_div_exact(num: &[i128], den: &[i128]) -> Option<Vec<i128>> {
+    if den.is_empty() || den.last() != Some(&1) {
+        return None;
+    }
+    if num.len() < den.len() {
+        return if num.iter().all(|&x| x == 0) {
+            Some(vec![0])
+        } else {
+            None
+        };
+    }
+    let den_deg = den.len() - 1;
+    let q_len = num.len() - den_deg;
+    let mut rem = num.to_vec();
+    let mut q = vec![0i128; q_len];
+    for k in (0..q_len).rev() {
+        let coeff = rem[k + den_deg];
+        q[k] = coeff;
+        if coeff == 0 {
+            continue;
+        }
+        for j in 0..=den_deg {
+            let term = checked_i128_mul(coeff, den[j])?;
+            rem[k + j] = checked_i128_sub(rem[k + j], term)?;
+        }
+    }
+    if rem[..den_deg].iter().any(|&x| x != 0) || rem[den_deg..].iter().any(|&x| x != 0) {
+        return None;
+    }
+    Some(poly_trim(q))
+}
+
+fn cyclotomic_polynomial(n: usize, cache: &mut BTreeMap<usize, Vec<i128>>) -> Option<Vec<i128>> {
+    if let Some(p) = cache.get(&n) {
+        return Some(p.clone());
+    }
+    let phi = if n == 1 {
+        vec![-1, 1]
+    } else {
+        let mut numerator = vec![0i128; n + 1];
+        numerator[0] = -1;
+        numerator[n] = 1;
+        let mut product = vec![1i128];
+        for d in divisors(n).into_iter().filter(|&d| d < n) {
+            let pd = cyclotomic_polynomial(d, cache)?;
+            product = poly_mul(&product, &pd)?;
+        }
+        poly_div_exact(&numerator, &product)?
+    };
+    cache.insert(n, phi.clone());
+    Some(phi)
+}
+
+fn reduce_cyclotomic(mut p: Vec<i128>, phi: &[i128]) -> Option<Vec<i128>> {
+    let degree = phi.len().checked_sub(1)?;
+    if degree == 0 {
+        return None;
+    }
+    while p.len() > degree {
+        let high_idx = p.len() - 1;
+        let coeff = p.pop().expect("length checked");
+        if coeff == 0 {
+            continue;
+        }
+        let offset = high_idx - degree;
+        for (j, &c) in phi[..degree].iter().enumerate() {
+            let term = checked_i128_mul(coeff, c)?;
+            p[offset + j] = checked_i128_sub(p[offset + j], term)?;
+        }
+    }
+    p.resize(degree, 0);
+    Some(p)
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Cyclo {
+    coeffs: Vec<i128>,
+}
+
+struct CycloContext {
+    order: usize,
+    phi: Vec<i128>,
+    powers: Vec<Vec<i128>>,
+}
+
+impl CycloContext {
+    fn new(order: usize) -> Option<Self> {
+        if order == 0 || order > FQM_CYCLOTOMIC_ORDER_CAP {
+            return None;
+        }
+        let mut cache = BTreeMap::new();
+        let phi = cyclotomic_polynomial(order, &mut cache)?;
+        let mut powers = Vec::with_capacity(order);
+        for k in 0..order {
+            let mut p = vec![0i128; k + 1];
+            p[k] = 1;
+            powers.push(reduce_cyclotomic(p, &phi)?);
+        }
+        Some(CycloContext { order, phi, powers })
+    }
+
+    fn zero(&self) -> Cyclo {
+        Cyclo {
+            coeffs: vec![0; self.phi.len() - 1],
+        }
+    }
+
+    fn constant(&self, c: i128) -> Cyclo {
+        let mut out = self.zero();
+        out.coeffs[0] = c;
+        out
+    }
+
+    fn root_power(&self, exp: isize) -> Cyclo {
+        let order = self.order as isize;
+        let idx = exp.rem_euclid(order) as usize;
+        Cyclo {
+            coeffs: self.powers[idx].clone(),
+        }
+    }
+}
+
+impl Cyclo {
+    fn add_assign(&mut self, rhs: &Cyclo) -> Option<()> {
+        for (a, &b) in self.coeffs.iter_mut().zip(&rhs.coeffs) {
+            *a = checked_i128_add(*a, b)?;
+        }
+        Some(())
+    }
+
+    fn mul(&self, rhs: &Cyclo, ctx: &CycloContext) -> Option<Cyclo> {
+        let mut raw = vec![0i128; self.coeffs.len() + rhs.coeffs.len() - 1];
+        for (i, &x) in self.coeffs.iter().enumerate() {
+            if x == 0 {
+                continue;
+            }
+            for (j, &y) in rhs.coeffs.iter().enumerate() {
+                if y == 0 {
+                    continue;
+                }
+                let term = checked_i128_mul(x, y)?;
+                raw[i + j] = checked_i128_add(raw[i + j], term)?;
+            }
+        }
+        Some(Cyclo {
+            coeffs: reduce_cyclotomic(raw, &ctx.phi)?,
+        })
+    }
+
+    fn mul_root(&self, exp: isize, ctx: &CycloContext) -> Option<Cyclo> {
+        self.mul(&ctx.root_power(exp), ctx)
+    }
+
+    fn conjugate(&self, ctx: &CycloContext) -> Option<Cyclo> {
+        let mut out = ctx.zero();
+        for (i, &c) in self.coeffs.iter().enumerate() {
+            if c == 0 {
+                continue;
+            }
+            let mut term = ctx.root_power(-(i as isize));
+            for x in &mut term.coeffs {
+                *x = checked_i128_mul(*x, c)?;
+            }
+            out.add_assign(&term)?;
+        }
+        Some(out)
+    }
+
+    fn principal_real_f64(&self, ctx: &CycloContext) -> f64 {
+        let step = std::f64::consts::TAU / (ctx.order as f64);
+        self.coeffs
+            .iter()
+            .enumerate()
+            .map(|(k, &c)| (c as f64) * ((k as f64) * step).cos())
+            .sum()
+    }
+}
+
+fn phase_mod8_from_q_values<'a>(
+    q_values: impl IntoIterator<Item = &'a Rational>,
+    group_order: usize,
+) -> Option<i128> {
+    let q_values: Vec<Rational> = q_values.into_iter().cloned().collect();
+    if q_values.len() != group_order {
+        return None;
+    }
+    let mut root_order = 8usize;
+    for q in &q_values {
+        let den = usize::try_from(q.denom()).ok()?;
+        root_order = lcm_usize(root_order, den.checked_mul(2)?)?;
+    }
+    let ctx = CycloContext::new(root_order)?;
+    let mut sum = ctx.zero();
+    for q in &q_values {
+        let den = usize::try_from(q.denom()).ok()?;
+        let period = den.checked_mul(2)?;
+        let numer = q.numer().rem_euclid(i128::try_from(period).ok()?);
+        let scale = root_order.checked_div(period)?;
+        let exp = usize::try_from(numer).ok()?.checked_mul(scale)? % root_order;
+        sum.add_assign(&ctx.root_power(exp as isize))?;
+    }
+
+    let order_const = ctx.constant(i128::try_from(group_order).ok()?);
+    let eighth_shift = root_order.checked_div(8)?;
+    let mut candidates = Vec::new();
+    for beta in 0..8i128 {
+        let shift = -isize::try_from(beta.checked_mul(i128::try_from(eighth_shift).ok()?)?).ok()?;
+        let t = sum.mul_root(shift, &ctx)?;
+        if t.conjugate(&ctx)? != t {
+            continue;
+        }
+        if t.mul(&t, &ctx)? == order_const {
+            candidates.push((beta, t));
+        }
+    }
+
+    match candidates.as_slice() {
+        [(beta, _)] => Some(*beta),
+        [] => None,
+        _ => {
+            // Exact algebra has narrowed the ambiguity to the two square roots.
+            // The principal embedding chooses +sqrt(|A|) rather than its negative.
+            candidates
+                .into_iter()
+                .find(|(_, t)| t.principal_real_f64(&ctx) > 0.0)
+                .map(|(beta, _)| beta)
+        }
+    }
+}
+
+fn prime_factors_i128(n: i128) -> Vec<u128> {
+    let mut m = n.unsigned_abs();
+    let mut out = Vec::new();
+    let mut p = 2u128;
+    while p <= m / p {
+        if m.is_multiple_of(p) {
+            out.push(p);
+            while m.is_multiple_of(p) {
+                m /= p;
+            }
+        }
+        p += if p == 2 { 1 } else { 2 };
+    }
+    if m > 1 {
+        out.push(m);
+    }
+    out
+}
+
+fn is_prime_power_order(order: usize, p: u128) -> bool {
+    if order == 1 {
+        return true;
+    }
+    let mut m = order as u128;
+    while m.is_multiple_of(p) {
+        m /= p;
+    }
+    m == 1
 }
 
 /// The subgroup generated by `gens`, as the set of element indices.
@@ -469,10 +836,10 @@ impl DiscriminantForm {
     }
 
     /// Tabulate the finite abelian group `(A_L, +)` with each element's `q_L` value
-    /// and order, plus the full addition table. `None` past `ISO_GROUP_CAP`.
-    fn iso_tables(&self) -> Option<IsoTables> {
+    /// and order, plus the full addition table. `None` past `group_cap`.
+    fn tables_bounded(&self, group_cap: usize) -> Option<IsoTables> {
         let n = self.reps.len();
-        if n > ISO_GROUP_CAP {
+        if n > group_cap {
             return None;
         }
         let zero = self.reps.iter().position(|r| r.iter().all(|&x| x == 0))?;
@@ -508,6 +875,74 @@ impl DiscriminantForm {
             order,
             add,
         })
+    }
+
+    /// The p-primary Milgram/Brown Gauss-sum phase projection of this finite
+    /// quadratic module.
+    ///
+    /// This is the `Z/8` phase seen by Milgram's formula, decomposed over the
+    /// primary subgroups of `A_L`. It is **not** the full Wall/Nikulin/
+    /// Kawauchi-Kojima normal form of the FQM Witt group: distinct Witt classes can
+    /// have the same phase. The old [`gauss_sum`](Self::gauss_sum) route remains as
+    /// a floating-point oracle; this method first checks the relevant cyclotomic
+    /// equalities exactly and only then chooses the positive square-root branch in
+    /// the principal embedding.
+    pub fn fqm_gauss_phase(&self) -> Option<FqmGaussPhase> {
+        let tables = self.tables_bounded(FQM_GAUSS_GROUP_CAP)?;
+        let order = self.reps.len();
+        let total = phase_mod8_from_q_values(tables.q.iter(), order)?;
+        let mut primes = BTreeSet::new();
+        for &d in &self.group {
+            for p in prime_factors_i128(d) {
+                primes.insert(p);
+            }
+        }
+
+        let mut primary = Vec::new();
+        for p in primes {
+            let indices: Vec<usize> = tables
+                .order
+                .iter()
+                .enumerate()
+                .filter_map(|(i, &ord)| is_prime_power_order(ord, p).then_some(i))
+                .collect();
+            let exponent = indices
+                .iter()
+                .map(|&i| tables.order[i] as u128)
+                .max()
+                .unwrap_or(1);
+            let qs: Vec<&Rational> = indices.iter().map(|&i| &tables.q[i]).collect();
+            let phase_mod8 = phase_mod8_from_q_values(qs, indices.len())?;
+            primary.push(FqmPrimaryPhase {
+                prime: p,
+                order: indices.len(),
+                exponent,
+                phase_mod8,
+            });
+        }
+        let sum = primary
+            .iter()
+            .map(|c| c.phase_mod8)
+            .sum::<i128>()
+            .rem_euclid(8);
+        if sum != total {
+            return None;
+        }
+        Some(FqmGaussPhase {
+            order,
+            phase_mod8: total,
+            primary,
+        })
+    }
+
+    /// Milgram phase as `signature mod 8`, via the p-primary
+    /// [`fqm_gauss_phase`](Self::fqm_gauss_phase) projection.
+    pub fn milgram_signature_mod8_fqm(&self) -> Option<i128> {
+        Some(self.fqm_gauss_phase()?.phase_mod8)
+    }
+
+    fn iso_tables(&self) -> Option<IsoTables> {
+        self.tables_bounded(ISO_GROUP_CAP)
     }
 
     /// Whether two discriminant quadratic forms `(A_L, q_L)` and `(A_M, q_M)` are
@@ -773,14 +1208,16 @@ pub fn genus_signature_mod8(lattice: &IntegralForm) -> Option<i128> {
 }
 
 /// Verify Milgram/van der Blij for an even lattice, comparing the discriminant
-/// Gauss-sum phase against both exact real signature and the genus oddity route.
+/// FQM phase against exact real signature, the legacy floating Gauss-sum route,
+/// and the genus oddity route.
 pub fn verify_milgram(lattice: &IntegralForm) -> Option<bool> {
     let disc = DiscriminantForm::from_lattice(lattice)?;
-    let phase = disc.milgram_signature_mod8()?;
+    let phase = disc.milgram_signature_mod8_fqm()?;
+    let float_phase = disc.milgram_signature_mod8()?;
     let (pos, neg) = lattice.signature();
     let sig = (pos as i128 - neg as i128).rem_euclid(8);
     let genus_sig = genus_signature_mod8(lattice)?;
-    Some(phase == sig && genus_sig == sig)
+    Some(phase == sig && float_phase == sig && genus_sig == sig)
 }
 
 #[cfg(test)]
@@ -869,6 +1306,7 @@ mod tests {
             let a = a_n(n);
             let disc = DiscriminantForm::from_lattice(&a).unwrap();
             assert_eq!(disc.group, vec![n as i128 + 1]);
+            assert_eq!(disc.milgram_signature_mod8_fqm(), Some(n as i128 % 8));
             assert_eq!(disc.milgram_signature_mod8(), Some(n as i128 % 8));
             assert!(disc.verify_weil_relations(), "Weil relations A_{n}");
             assert_eq!(verify_milgram(&a), Some(true), "A_{n}");
@@ -877,6 +1315,7 @@ mod tests {
         let d4 = d_n(4);
         let disc = DiscriminantForm::from_lattice(&d4).unwrap();
         assert_eq!(disc.group, vec![2, 2]);
+        assert_eq!(disc.milgram_signature_mod8_fqm(), Some(4));
         assert_eq!(disc.milgram_signature_mod8(), Some(4));
         let gs = disc.gauss_sum();
         assert!((gs.re + 1.0).abs() < 1e-8 && gs.im.abs() < 1e-8);
@@ -901,10 +1340,93 @@ mod tests {
         assert_eq!(
             DiscriminantForm::from_lattice(&e8e8)
                 .unwrap()
+                .milgram_signature_mod8_fqm(),
+            Some(0)
+        );
+        assert_eq!(
+            DiscriminantForm::from_lattice(&e8e8)
+                .unwrap()
                 .milgram_signature_mod8(),
             Some(0)
         );
         assert_eq!(verify_milgram(&e8e8), Some(true));
+    }
+
+    #[test]
+    fn fqm_gauss_phase_reports_primary_factors() {
+        let a1a2 = a_n(1).direct_sum(&a_n(2));
+        let disc = DiscriminantForm::from_lattice(&a1a2).unwrap();
+        let phase = disc.fqm_gauss_phase().unwrap();
+        assert_eq!(phase.order, 6);
+        assert_eq!(phase.phase_mod8, 3);
+        assert_eq!(
+            phase.primary,
+            vec![
+                FqmPrimaryPhase {
+                    prime: 2,
+                    order: 2,
+                    exponent: 2,
+                    phase_mod8: 1,
+                },
+                FqmPrimaryPhase {
+                    prime: 3,
+                    order: 3,
+                    exponent: 3,
+                    phase_mod8: 2,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn fqm_phase_extends_past_2_elementary_brown_slice() {
+        // A_3 has discriminant group Z/4, so the old 2-elementary Brown bridge
+        // declines. The p-primary FQM phase still sees the Milgram signature.
+        let a3 = DiscriminantForm::from_lattice(&a_n(3)).unwrap();
+        assert_eq!(a3.group, vec![4]);
+        assert_eq!(a3.brown_invariant(), None);
+        assert_eq!(a3.milgram_signature_mod8_fqm(), Some(3));
+        assert_eq!(a3.fqm_gauss_phase().unwrap().primary[0].prime, 2);
+
+        // E_6 is odd torsion (Z/3): outside Brown's char-2 slice, inside the FQM
+        // Gauss phase projection.
+        let e6 = DiscriminantForm::from_lattice(&e_6()).unwrap();
+        assert_eq!(e6.group, vec![3]);
+        assert_eq!(e6.brown_invariant(), None);
+        assert_eq!(e6.milgram_signature_mod8_fqm(), Some(6));
+        assert_eq!(e6.fqm_gauss_phase().unwrap().primary[0].prime, 3);
+    }
+
+    #[test]
+    fn fqm_phase_matches_signature_genus_and_float_oracle_on_zoo() {
+        let zoo = [
+            a_n(1),
+            a_n(2),
+            a_n(3),
+            a_n(4),
+            a_n(5),
+            d_n(4),
+            d_n(5),
+            d_n(8),
+            e_6(),
+            e_7(),
+            e_8(),
+        ];
+        for l in zoo {
+            let disc = DiscriminantForm::from_lattice(&l).unwrap();
+            let fqm = disc.milgram_signature_mod8_fqm().unwrap();
+            let float = disc.milgram_signature_mod8().unwrap();
+            let (pos, neg) = l.signature();
+            let sig = (pos as i128 - neg as i128).rem_euclid(8);
+            assert_eq!(fqm, sig, "FQM phase mismatch for group {:?}", disc.group);
+            assert_eq!(
+                float, sig,
+                "float phase mismatch for group {:?}",
+                disc.group
+            );
+            assert_eq!(genus_signature_mod8(&l), Some(sig), "genus route mismatch");
+            assert_eq!(verify_milgram(&l), Some(true), "Milgram verifier mismatch");
+        }
     }
 
     #[test]

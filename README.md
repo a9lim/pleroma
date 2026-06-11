@@ -116,9 +116,10 @@ local Hilbert symbol, reciprocity, and Hasse–Minkowski once, with `ℚ` and `F
 as its two implementors.
 
 The integral leg carries its own local/global echo: even lattices produce
-discriminant quadratic modules, Milgram Gauss-sum phases, and rational or mod-2
-Clifford metrics, making the lattice signature, the real Brauer–Wall mod-8 cycle,
-and the Clifford classifier directly comparable in the core. The same leg crosses
+discriminant quadratic modules, p-primary Milgram/Brown phase projections, and
+rational or mod-2 Clifford metrics, making the lattice signature, the real
+Brauer–Wall mod-8 cycle, and the Clifford classifier directly comparable in the
+core. The same leg crosses
 the code/theta boundary — binary codes feed Construction A lattices, exact theta
 series are identified inside `ℂ[E4, E6]`, `D16+` and `E8 ⊕ E8` share the `E4²`
 theta series, Leech is pinned by rootlessness in weight 12, and discriminant forms
@@ -253,7 +254,7 @@ bridge with both feet on one island is a loop; crossing it counts like any other
 
 | bridge | banks | what it carries |
 |---|---|---|
-| A | I–C | even lattice → Clifford metric; Milgram's Gauss-sum phase = signature mod 8 |
+| A | I–C | even lattice → Clifford metric; p-primary FQM Milgram phase = signature mod 8 |
 | B | C–F | char-2 Arf/Brauer–Wall classification over the `Fpn<2,N>` coefficient fields |
 | C | S–C | Frobenius/Galois maps as outermorphisms, with flat exterior spectrum |
 | D | S–C | `Ordinal` as a checked Clifford scalar — genuinely transfinite char-2 squares |

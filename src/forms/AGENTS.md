@@ -100,7 +100,10 @@ automorphism counts, node budgets. `usize` is for dimensions and matrix indices.
   radical splitting plus line/plane reduction with exact-integer enumeration retained
   as a test oracle. `β(2q′) = 4·Arf(q′)` lands the Arf bit as the 2-torsion, and
   `DiscriminantForm::brown_invariant` gives `β ≡ sign(L) mod 8` on 2-elementary
-  discriminant forms — a fifth, float-free route to `σ mod 8`. Category trap:
+  discriminant forms — a fifth, float-free route to `σ mod 8`; the integral
+  `FqmGaussPhase` projection now carries the same Milgram/Brown phase over all shipped
+  discriminant groups, while the full Wall/Nikulin normal form remains deferred.
+  Category trap:
   Brown's `b` is symmetric-not-alternating with `b_ii = q_i mod 2`, NOT the engine's
   alternating polar — `double_f2` is the only bridge between the categories).
 

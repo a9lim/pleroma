@@ -65,16 +65,21 @@ symbol is explicit (the tame symbol `(a,b)_v = (−1)^{v(a)v(b)} a^{v(b)}/b^{v(a
 in `μ_n`); shipping it widens `BrauerClass` to ramified cyclic classes at tame places
 on the `Qq`/`F_q(t)` legs. The **wild** symbol stays out — that is star `*4` below.
 
-### `fqm-witt` — 3·(e_i∧e_f)
-**The full Witt group of finite quadratic modules** — the "further rung" CODA M names.
-Implement the `p`-local decomposition with Wall/Nikulin/Kawauchi–Kojima generators and
-relations: `ℤ/2^{k+1}`-valued refinements for higher 2-power torsion, odd-`p` Gauss
-sums exact (Legendre data, no `f64`), per-prime signatures summing to `σ mod 8`.
-Payoffs: a float-free `σ mod 8` on **all** discriminant forms (retiring the `f64`
-`GaussSum` as an oracle-only route, and closing Brown's 2-elementary boundary); the
-exact cyclotomic Gauss sum falls out for free; and Nikulin's *existence* theorem
-(1.10.1 — which `(sig, FQM)` pairs are realized by even lattices) becomes buildable
-on top as a later rung.
+### `fqm-witt` — 2·(e_i∧e_f)
+**The full Witt group of finite quadratic modules** — the Wall/Nikulin/
+Kawauchi–Kojima normal form that remains after the `fqm-gauss-phase` pass
+(`roadmap/DONE.md`). The shipped `DiscriminantForm::fqm_gauss_phase` now gives the
+p-primary Milgram/Brown phase projection and closes the Brown 2-elementary phase
+boundary for represented discriminant groups; it is deliberately **not** the full
+Witt class.
+
+Remaining work: implement the `p`-local decomposition with generators and relations
+(`ℤ/2^{k+1}`-valued normal forms for higher 2-power torsion, odd-`p` Legendre-symbol
+blocks, and the split/hyperbolic relations), add an FQM-native constructor / normal
+form that does not require lattice provenance or Cayley-table search, and use that
+normal form as the platform for Nikulin's existence theorem (1.10.1 — which
+`(sig, FQM)` pairs are realized by even lattices). The legacy `GaussSum` remains as a
+floating oracle; the remaining item is classification data, not just the phase.
 
 ## numbers — the integral wing
 

@@ -126,11 +126,14 @@ cross-checking each other.
     `IntegralForm` using the standard `A_L ~= Z^n / GZ^n` presentation. The
     representative enumeration uses normalized integer relation rows rather than
     extending Smith normal form with transform matrices.
-  - `quadratic_value_mod2`, `bilinear_value_mod1`, `GaussSum::phase_mod8`, and
-    `milgram_signature_mod8() -> Option<i128>` make the finite quadratic module
-    executable.
-  - `verify_milgram(lattice) -> Option<bool>` compares the Gauss-sum phase to the
-    exact signature and to the independent Conway-Sloane oddity route in `genus.rs`.
+  - `quadratic_value_mod2`, `bilinear_value_mod1`, `GaussSum::phase_mod8`,
+    `fqm_gauss_phase() -> Option<FqmGaussPhase>`, and
+    `milgram_signature_mod8_fqm() -> Option<i128>` make the finite quadratic module's
+    p-primary Milgram/Brown phase executable. The old `GaussSum` phase stays as the
+    floating oracle.
+  - `verify_milgram(lattice) -> Option<bool>` compares the FQM phase to the legacy
+    floating Gauss-sum route, the exact signature, and the independent Conway-Sloane
+    oddity route in `genus.rs`.
 
 ### Oracles / tests
 
@@ -1055,6 +1058,12 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
     **2-elementary** `A_L` (read off the invariant factors), enumerating `A_L` directly
     via `quadratic_value_mod2`. `b_L` is nondegenerate on `A_L`, so this slice has no
     radical and `β ≡ sign(L) mod 8`.
+  - `DiscriminantForm::fqm_gauss_phase(&self) -> Option<FqmGaussPhase>` — the
+    p-primary Milgram/Brown phase projection over all represented discriminant groups,
+    with `FqmPrimaryPhase { prime, order, exponent, phase_mod8 }` and total
+    `phase_mod8`. This extends the phase computation past the 2-elementary Brown slice
+    (`A_3`, `E_6`, mixed-primary sums, ...), while deliberately not claiming Wall's full
+    generator-and-relation normal form.
 
 ### Oracles / implemented tests
 
@@ -1064,8 +1073,12 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
   the split objects (the even hyperbolic plane and `⟨1⟩ ⊥ ⟨−1⟩`) have `β=0`; additivity
   under `⊥` across a spread of components; anisotropic-radical detection.
 - `brown_invariant` of `a_n(1)`/`e_7()`/`d_n(4)`/`d_n(8)`/`e_8()` gives `β ≡ sign mod 8`,
-  cross-checked against the shipped f64 `milgram_signature_mod8`; non-2-elementary forms
-  (`a_n(2)`, `a_n(3)`, `e_6()`) return `None`.
+  cross-checked against `fqm_gauss_phase` and the shipped f64 `milgram_signature_mod8`;
+  non-2-elementary forms (`a_n(2)`, `a_n(3)`, `e_6()`) return `None` for Brown but still
+  have FQM phases.
+- `fqm_gauss_phase` reports primary factors on `A_1 ⊕ A_2`, extends the 2-primary phase
+  to `A_3` (`Z/4`), covers odd torsion such as `E_6` (`Z/3`), and matches the exact
+  signature, genus oddity route, and legacy float oracle across the ADE zoo.
 
 ### Scope / caveats
 
@@ -1073,10 +1086,10 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
   `b_ii = q_i mod 2`, **not** the engine's alternating char-2 polar; `double_f2` is the
   only bridge between the two categories. Kept distinct from the graded
   `BrauerWallClass`/Arf exactly as Bridge F insists for its Brauer class.
-- The lattice tie is **2-elementary discriminant groups only**. Higher 2-power torsion
-  needs `ℤ/2^{k+1}`-valued refinements and odd torsion has its own odd Gauss sums — both
-  stay with the shipped f64 `GaussSum`. A full finite-quadratic-module Witt group
-  (Nikulin's generators and relations) is a further rung, not this bridge.
+- The Brown lattice tie is **2-elementary discriminant groups only**; higher 2-power and
+  odd torsion now have the `FqmGaussPhase` Milgram/Brown **phase projection**. A full
+  finite-quadratic-module Witt group (Wall/Nikulin/Kawauchi-Kojima generators and
+  relations, plus the FQM-native normal form) is still a further rung, not this bridge.
 - No new theorem: Brown 1972 is the source; the bridge is the wiring to Arf (shipped)
   and Milgram (Bridge A).
 

@@ -47,9 +47,11 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   `D_5`→3840, and the named constant `E8_WEYL_GROUP_ORDER = 696729600`.
 - **`discriminant.rs`** — the even-lattice discriminant form bridge: `DiscriminantForm
   { group, reps, gram_inv }` represents `A_L = L#/L` as `Z^n/GZ^n`;
-  `quadratic_value_mod2`, `bilinear_value_mod1`, and `GaussSum::phase_mod8` compute the
-  finite quadratic module; `verify_milgram` compares the Gauss-sum phase to the exact
-  signature plus the genus oddity route. `Complex64`, `weil_t`, `weil_s`,
+  `quadratic_value_mod2`, `bilinear_value_mod1`, `GaussSum::phase_mod8`, and the
+  p-primary `FqmGaussPhase` / `FqmPrimaryPhase` projection compute the finite
+  quadratic module's Milgram/Brown `Z/8` phase (`milgram_signature_mod8_fqm`);
+  `verify_milgram` compares that FQM phase to the legacy floating Gauss-sum oracle, the
+  exact signature, and the genus oddity route. `Complex64`, `weil_t`, `weil_s`,
   `weil_s_prefactor_phase_mod8`, `weil_s_recovers_milgram_phase_mod8`, and
   `verify_weil_relations` implement the discriminant-form Weil representation.
   `is_isomorphic`/`is_isomorphic_bounded` decide finite-quadratic-module isomorphism
@@ -58,8 +60,9 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   **Looks like a bug, isn't:** the standard Weil `S` prefactor is the conjugate of the
   positive Milgram phase stored by `GaussSum`; the verifier checks `S² = σ²·(γ↦−γ)`,
   `S⁴ = σ⁴·I`, and `(ST)³ = S²`, not the oversimplified `S⁴ = I`. The lattice ↔
-  Clifford/Brauer-Wall mod-8 seam. Even-lattice only; odd type-I refinements stay a
-  documented boundary.
+  Clifford/Brauer-Wall mod-8 seam. The FQM phase projection is not Wall's full
+  generator-and-relation normal form; that remains a separate roadmap rung. Even-lattice
+  only; odd type-I refinements stay a documented boundary.
 - **`genus.rs`** — the **genus** = (signature, det, per-prime Conway–Sloane symbol).
   Engine: the p-adic Jordan decomposition (`jordan_blocks`, exact over `Rational`):
   odd `p` diagonalizes (valuation-ordered Gram–Schmidt); `p=2` peels 1-dim type-I lines

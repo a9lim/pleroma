@@ -32,9 +32,11 @@
 mod brauer_rational;
 mod brauer_wall;
 mod class;
+mod milnor;
 mod ring;
 
 pub use brauer_rational::*;
 pub use brauer_wall::*;
 pub use class::*;
+pub use milnor::*;
 pub use ring::*;

@@ -971,6 +971,136 @@ The polygon is precisely the image of the Springer decomposition under the tropi
 
 ---
 
+---
+
+# Fourth wave — N and O (built)
+
+The fourth-wave review asked where the **symmetry table** itself (README → "The
+symmetries") was still uneven, rather than where a new number system could go. It
+proposed three bridges; **N** (the unification pass) and **O** (lexicodes) are now
+built and tested. **M** (the Brown `ℤ/8` invariant — the char-2 cell of the mod-8
+spine) remains proposed in `roadmap/TODO.md`.
+
+Claim-level discipline still applies: every item is **standard math made
+computational**, the same status A–J shipped at — not a new theorem.
+
+## Bridge N — the unification pass: four joins of already-shipped parts
+
+**Pillars:** vary per item — each joins surfaces that already exist. **Claim level:**
+IMPLEMENTED AND TESTED — standard math; each item is assembly + verification of
+shipped machinery, deliberately smaller than a headline bridge.
+
+### N.1 — Milnor's exact sequence: the Springer residues go global
+
+**Pillars:** `forms/springer/` ↔ `forms/witt/` ↔ the integral pillar's signature.
+The Witt-group-level statement of the local residue engine:
+
+```text
+0 → W(ℤ) → W(ℚ) →∂ ⊕_p W(F_p) → 0     (exact; Milnor–Husemoller Ch. IV; Lam GSM 67 Ch. IX)
+```
+
+`forms/witt/milnor.rs::global_residues(entries: &[i128]) -> Option<(i128,
+BTreeMap<u128, WittClassG>)>` returns the **signature** (`W(ℤ) ≅ ℤ`, the kernel) and
+the nonzero **odd-`p` second residues** `∂_p`, computed exactly from the `i128`
+entries (`v_p` + Legendre + the signed-discriminant square class, matching the
+`finite_odd_witt` convention) so `p` stays runtime while `Fp<P>` is const-generic.
+
+- **Oracles:** finite support (`∂_p = 0` for `p ∤ ∏aᵢ`); square/hyperbolic invariance
+  of `(signature, residues)`; residues distinguish `⟨1⟩` from `⟨3⟩`, cross-checked
+  against the shipped Hasse–Minkowski `try_is_isotropic_q`; and `∂₅` matches an
+  independent computation through `springer_decompose_qp` on the capped `Q₅` model.
+- **Boundary (load-bearing):** `∂₂` (residue char 2) is **not** Springer's residue —
+  Milnor defines it by hand. The odd-`p` sequence ships; `p = 2` is a documented
+  boundary (omitted from the map; reconstruction exact on odd-support forms). The
+  convention is not guessed. (The `F_q(t)` split-exact twin is a noted follow-on.)
+
+### N.2 — the Scharlau transfer, named
+
+**Pillars:** `scalar/extension` (`CyclicGaloisExtension`) ↔ `forms/trace_form`. The
+existing `trace_twisted_form::<E>(0)` is `s_*(⟨1⟩)` for the transfer `s_* : W(E) →
+W(F)` along `Tr_{E/F}` (Lam GSM 67 Ch. VII; Scharlau Ch. 2). New
+`trace_form::transfer_diagonal<E: CyclicGaloisExtension>(entries: &[E]) ->
+Metric<E::Base>` builds `s_*(⟨λ₁,…,λᵣ⟩) = ⟂ᵢ (x,y) ↦ Tr(λᵢ·x·y)` through the shipped
+`assemble_twisted_form` core.
+
+- **Oracles:** the `k=0` twisted form equals `transfer_diagonal(&[1])`; the transfer of
+  a hyperbolic form splits; **Frobenius reciprocity** `s_*(r*(x)·y) = x·s_*(y)` (the
+  form-level `Tr(c·λ·z) = c·Tr(λ·z)`); and **Springer's odd-degree theorem** —
+  restriction `r*` is injective for odd `[E:F]`, witnessed by `⟨1,1⟩` staying
+  anisotropic from `F₃` to `F₂₇`.
+- **Boundary:** char ≠ 2 (the `Tr(x·σ(x)) = 2N = 0` trap the module documents); the
+  char-2 transfer is the Artin–Schreier route in `function_field_char2.rs`.
+
+### N.3 — Nikulin: genus ⟺ (signature, discriminant form)
+
+**Pillars:** `forms/integral/genus` ↔ `forms/integral/discriminant`. Nikulin's
+criterion (Izv. Akad. Nauk SSSR **43** (1979), Cor. 1.9.4) upgrades the mod-8 phase
+comparison of Bridges A/I to a classification equivalence: two **even** lattices
+share a genus iff they have equal signature pairs and isomorphic discriminant
+quadratic forms. The missing piece — `DiscriminantForm::is_isomorphic(&self, other)
+-> Option<bool>` — matches invariant factors, then runs a **budgeted** homomorphism-
+extension search (minimal generators by maximal order → image assignment pruned by
+order and `q`-value → BFS extension → `q`-preservation on every element), mirroring
+`automorphism_group_order_bounded`'s `None`-past-budget pattern.
+
+- **Oracles:** `are_in_same_genus(a,b) == (equal signatures ∧ q_a ≅ q_b)` across the
+  zoo (`a_n`, `d_n`, `e_6/7/8`, sums), pinned by the **Milnor pair** (`E₈⊕E₈` vs
+  `D₁₆⁺`: same genus, non-isometric, both trivial disc form) and easy separations
+  (`A₂`: ℤ/3 vs `A₁⊕A₁`: (ℤ/2)²). `q`-sensitivity is pinned directly: `A₁` and `E₇`
+  share the group ℤ/2 but have `q`-values `1/2` vs `3/2` and are **not** isomorphic.
+- **Boundary:** even lattices only (the `from_lattice` boundary); the brute-force
+  budget is honest (`None` past `ISO_GROUP_CAP`/node budget) — a cross-check of two
+  shipped routes, not a p-adic-symbol reimplementation.
+
+### N.4 — one Bernoulli source for Eisenstein and mass
+
+**Pillars:** `forms/integral/mass_formula` ↔ `forms/integral/modular`. The mass
+constants and the Eisenstein constants `240 = −8/B₄`, `−504 = −12/B₆` are the same
+Bernoulli numbers. The Akiyama–Tanigawa helper in `mass_formula.rs` is now the shared
+`pub(crate) bernoulli` source; `modular.rs::eisenstein_e4/e6` derive their constants
+from it via `c_{2k} = −4k/B_{2k}`, with the literals kept as the pinned oracle
+(TABLES.md discipline: derived value asserted equal to curated constant).
+
+- **Oracles:** `eisenstein_constant(2) == 240`, `eisenstein_constant(3) == −504`; the
+  von Staudt–Clausen denominators `B₂…B₈` as a free check; `mass_even_unimodular(8)`
+  through the shared helper still `= 1/E8_WEYL_GROUP_ORDER`.
+
+## Bridge O — lexicodes: greedy = mex, the games ↔ integral edge
+
+**Pillars:** `games/` (mex) ↔ `forms/integral/codes` (Bridge H) → Construction A /
+theta (Bridges H/E). **Claim level:** IMPLEMENTED AND TESTED — standard math
+(Conway–Sloane, *Lexicographic codes…*, IEEE Trans. Inform. Theory **32** (1986)
+337–348). Closes the one pillar edge the bridge graph still lacked: games ↔ integral.
+
+The lexicode `L(n,d)` greedily keeps every vector at Hamming distance `≥ d` from those
+kept so far; Conway–Sloane prove the result is **linear** by Sprague–Grundy theory.
+`games/lexicode.rs` ships two routes:
+
+- `lexicode_naive(n,d)` — the literal greedy scan for small `n`, **discover-don't-
+  assert**: collect greedily, verify XOR-closure, `None` on a closure failure (which
+  would *falsify* linearity rather than hide it).
+- `lexicode(n,d)` — the production route, carrying the full distance array
+  `dist[v] = d(v,C)` and updating it in one `O(2ⁿ)` pass per generator via the coset
+  recurrence `d(v, C ∪ (g⊕C)) = min(d(v,C), d(v⊕g,C))` with a monotone cursor (so the
+  `n=24` build is fast), budgeted by `LEXICODE_NODE_BUDGET`.
+
+The greedy step is shown to be `mex(Forbidden)` (the union of radius-`(d−1)` balls)
+via [`grundy::mex`] and a toy-`n` witness; the deeper Conway–Sloane turning-game
+realization is cited for transcription in a formalization pass, **subordinate to
+`OPEN.md` §1** (the solved degree-1 shadow, not progress on the open question).
+
+- **Oracles:** `lexicode_naive == lexicode` (n ≤ 12); `d=1 → F₂ⁿ`, `d=2 → even-weight`;
+  `lexicode(7,3)`/`lexicode(8,4)` reproduce the Hamming weight enumerators;
+  `lexicode(24,8)` is `[24,12,8]` doubly-even self-dual with the **Golay** weight
+  enumerator (uniqueness of the Type II `[24,12,8]` code closes "is Golay"); and the
+  chain rung `lexicode(24,8).construction_a()` is even unimodular rank 24 **with**
+  roots — re-pinning Bridge H's Golay ≠ Leech boundary from the games side.
+- **Scope:** binary only; the nim-field `2^{2^k}` linearity statement is documented
+  context, not a shipped surface. Lexicographic order = standard bit order (coordinate
+  0 the MSB); a permuted order gives an equivalent code.
+
+---
+
 ## DONE — status snapshot
 
 Implemented and tested in the Rust core:
@@ -983,6 +1113,9 @@ Implemented and tested in the Rust core:
   Weil representation (I); the rational Brauer/Clifford invariant correction (F).
 - **Third wave (J):** the valuation as tropicalization plus Newton polygons, with the
   slope ⟺ Springer-residue-layer cross-check; formal proofs in the appendix above.
+- **Fourth wave (N, O):** the unification pass — Milnor's global residues (N.1), the
+  Scharlau transfer (N.2), Nikulin's genus criterion (N.3), one Bernoulli source
+  (N.4) — and lexicodes (greedy = mex, the `[24,12,8]` lexicode is Golay; O).
 
-Proposed/deferred bridges live in `roadmap/TODO.md`; the genuine open
-problems stay in `OPEN.md`.
+Proposed/deferred bridges live in `roadmap/TODO.md` (K, M proposed; G, L deferred);
+the genuine open problems stay in `OPEN.md`.

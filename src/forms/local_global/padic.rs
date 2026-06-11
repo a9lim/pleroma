@@ -77,7 +77,7 @@ pub(crate) fn try_square_free(n: i128) -> Option<i128> {
 }
 
 /// `p`-adic valuation `v_p(n)` (for `n ≠ 0`).
-fn val_p(n: i128, p: i128) -> u128 {
+pub(crate) fn val_p(n: i128, p: i128) -> u128 {
     let mut k = 0;
     let mut n = n.unsigned_abs();
     let p = p as u128;
@@ -89,7 +89,7 @@ fn val_p(n: i128, p: i128) -> u128 {
 }
 
 /// The `p`-adic unit part `n / p^{v_p(n)}` (sign preserved).
-fn unit_part(mut n: i128, p: i128) -> i128 {
+pub(crate) fn unit_part(mut n: i128, p: i128) -> i128 {
     while n % p == 0 {
         n /= p;
     }
@@ -97,7 +97,7 @@ fn unit_part(mut n: i128, p: i128) -> i128 {
 }
 
 /// The Legendre symbol `(a | p)` for an odd prime `p`: `0` if `p | a`, else `±1`.
-fn legendre(a: i128, p: i128) -> i128 {
+pub(crate) fn legendre(a: i128, p: i128) -> i128 {
     let p_u = p as u128;
     let a = a.rem_euclid(p) as u128;
     if a == 0 {

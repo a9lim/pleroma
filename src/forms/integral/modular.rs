@@ -7,6 +7,23 @@
 use crate::linalg::field::inverse_matrix;
 use crate::scalar::{Rational, Scalar};
 
+/// The Eisenstein normalizing constant `c_{2k} = −4k / B_{2k}`, derived from the
+/// shared Bernoulli source so `240` and `−504` are one computation with the mass
+/// formula (TABLES.md discipline: the derived value is pinned equal to the curated
+/// literal in tests). From `E_{2k} = 1 − (4k/B_{2k}) Σ σ_{2k−1}(n) qⁿ`: `c₄ = −8/B₄
+/// = 240`, `c₆ = −12/B₆ = −504`. Both are integers (`B_{2k}` has the right
+/// denominator), so the division is exact.
+fn eisenstein_constant(k: i128) -> i128 {
+    let n = usize::try_from(2 * k).expect("2k fits usize");
+    let (num, den) = crate::forms::integral::mass_formula::bernoulli(n)
+        .expect("Bernoulli B_{2k} within the i128 model");
+    let numerator = (-4 * k)
+        .checked_mul(den)
+        .expect("Eisenstein constant numerator exceeds i128");
+    debug_assert_eq!(numerator % num, 0, "−4k/B_{{2k}} is an integer");
+    numerator / num
+}
+
 fn sigma_power(n: usize, power: u32) -> i128 {
     let mut out = 0i128;
     for d in 1..=n {
@@ -75,10 +92,10 @@ pub fn eisenstein_e4(terms: usize) -> Vec<Rational> {
         return out;
     }
     out[0] = Rational::one();
+    let c4 = eisenstein_constant(2); // −8/B₄ = 240
     for (n, coeff) in out.iter_mut().enumerate().skip(1) {
         *coeff = Rational::int(
-            240i128
-                .checked_mul(sigma_power(n, 3))
+            c4.checked_mul(sigma_power(n, 3))
                 .expect("E4 coefficient exceeds i128"),
         );
     }
@@ -92,10 +109,10 @@ pub fn eisenstein_e6(terms: usize) -> Vec<Rational> {
         return out;
     }
     out[0] = Rational::one();
+    let c6 = eisenstein_constant(3); // −12/B₆ = −504
     for (n, coeff) in out.iter_mut().enumerate().skip(1) {
         *coeff = Rational::int(
-            -504i128
-                .checked_mul(sigma_power(n, 5))
+            c6.checked_mul(sigma_power(n, 5))
                 .expect("E6 coefficient exceeds i128"),
         );
     }
@@ -219,6 +236,21 @@ mod tests {
             qexp_from_i128(&[1, -504, -16632, -122976])
         );
         assert_eq!(delta(4), qexp_from_i128(&[0, 1, -24, 252]));
+    }
+
+    #[test]
+    fn eisenstein_constants_derive_from_the_shared_bernoulli_source() {
+        // The TABLES.md discipline: the curated literals 240 / −504 are pinned equal
+        // to the values derived from the single Bernoulli source the mass formula uses.
+        assert_eq!(eisenstein_constant(2), 240, "c₄ = −8/B₄");
+        assert_eq!(eisenstein_constant(3), -504, "c₆ = −12/B₆");
+
+        // Free cross-check: von Staudt–Clausen denominators of B₂…B₈.
+        use crate::forms::integral::mass_formula::bernoulli;
+        assert_eq!(bernoulli(2), Some((1, 6)));
+        assert_eq!(bernoulli(4), Some((-1, 30)));
+        assert_eq!(bernoulli(6), Some((1, 42)));
+        assert_eq!(bernoulli(8), Some((-1, 30)));
     }
 
     #[test]

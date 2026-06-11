@@ -1,50 +1,11 @@
-//! Integral lattices: the ℤ-Gram-matrix view of a quadratic form.
-//!
-//! The forms pillar elsewhere classifies a quadratic form *over a field* (by its
-//! square classes / Witt class / Arf invariant). An **integral lattice** is the
-//! complementary object: a free ℤ-module `L ≅ ℤⁿ` with an integer-valued
-//! symmetric bilinear form, recorded by its Gram matrix `G = (⟨eᵢ, eⱼ⟩)`. Its
-//! invariants are arithmetic, not just field-theoretic — the determinant, the
-//! level, the minimum and kissing number, the automorphism group order — and the
-//! coarse classification is the **genus** (local equivalence at every place),
-//! built on the same p-adic primitives `local_global/padic.rs` and
-//! `local_global/adelic.rs` already carry. This module is the M1 core (the
-//! geometry of one lattice); `integral/root_lattices.rs`, `integral/genus.rs`,
-//! and `integral/mass_formula.rs` build the A/D/E catalogue, the genus
-//! equivalence, and the Conway–Sloane mass formula on top.
-//!
-//! Conventions. The **norm** of `x ∈ L` is `Q(x) = xᵀ G x` (so a "norm-2 vector"
-//! has `Q = 2`, matching the root-lattice literature; this is twice the value of
-//! the associated quadratic form `½Q` when the lattice is even). The geometric
-//! routines — [`IntegralForm::minimum`], [`minimal_vectors`](IntegralForm::minimal_vectors),
-//! [`kissing_number`](IntegralForm::kissing_number),
-//! [`automorphism_group_order`](IntegralForm::automorphism_group_order) — assume the
-//! lattice is **positive definite** and return `None` otherwise (an indefinite
-//! lattice has infinitely many vectors of every norm and an infinite
-//! automorphism group). Vectors are reported in lattice (basis) coordinates as
-//! integer vectors, both signs included.
-//!
-//! Honest cutoff. Short-vector enumeration first tries an exact rational ellipsoid
-//! box from `G⁻¹` when the box is small enough; larger boxes apply a conservative
-//! unimodular size-reduction pass (integral shears/swaps, so the lattice is
-//! unchanged), then run Fincke–Pohst (an LDL-bounded box search with exact norm
-//! filtering) and map the vectors back to the original coordinates. Automorphism
-//! counting first checks closed-form families: diagonal signed-permutation
-//! lattices, literal `A`/`D`/`E` Cartan bases, and then basis-independent root
-//! systems recovered from the norm-2 roots. Everything else falls back to a
-//! backtracking search over basis images, which is **exponential** in general.
-//! The fallback is bounded by an explicit node budget ([`AUTO_NODE_BUDGET`]);
-//! when the search exceeds it the count is reported as `None` rather than
-//! silently truncated. Use
-//! [`automorphism_group_order_bounded`](IntegralForm::automorphism_group_order_bounded)
-//! to choose the budget explicitly.
+//! Short-vector enumeration (Fincke–Pohst) and automorphism counting for
+//! positive-definite integral lattices. These are the expensive geometric
+//! routines that build on top of the basic [`IntegralForm`](super::core::IntegralForm)
+//! arithmetic in `core.rs`.
 
-use crate::forms::integral::diagonal::{
-    rational_congruence_diagonal, signature_from_diagonal, DegenerateBehavior,
-};
+use super::core::{dot, IntegralForm};
 use crate::linalg::field::inverse_matrix;
-use crate::linalg::integer::smith_normal_form;
-use crate::scalar::{Nimber, Rational, Scalar};
+use crate::scalar::{Rational, Scalar};
 use std::collections::{BTreeMap, VecDeque};
 
 /// The default node budget for [`IntegralForm::automorphism_group_order`]. Beyond
@@ -52,39 +13,11 @@ use std::collections::{BTreeMap, VecDeque};
 /// large for brute-force automorphism enumeration — e.g. `E₈`, whose Weyl group
 /// has order ~7·10⁸, or the Leech lattice). The bound is explicit, not silent.
 pub const AUTO_NODE_BUDGET: u128 = 100_000_000;
-const SHORT_VECTOR_EXACT_ENUM_LIMIT: u128 = 2_000_000;
+pub(super) const SHORT_VECTOR_EXACT_ENUM_LIMIT: u128 = 2_000_000;
 
-/// A positive-definite or indefinite integral lattice, recorded by its symmetric integer
-/// Gram matrix `G`. Construct with [`IntegralForm::new`] (validates square +
-/// symmetric) or [`IntegralForm::diagonal`]; the Gram is kept private so the
-/// symmetry invariant cannot be broken by a bare struct literal.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct IntegralForm {
-    gram: Vec<Vec<i128>>,
-}
+// ── small combinatorial helpers ──
 
-fn gcd_i128(a: i128, b: i128) -> i128 {
-    let (mut a, mut b) = (a.abs(), b.abs());
-    while b != 0 {
-        let t = b;
-        b = a % b;
-        a = t;
-    }
-    a
-}
-
-fn lcm_i128(a: i128, b: i128) -> i128 {
-    if a == 0 || b == 0 {
-        return 0;
-    }
-    let g = gcd_i128(a, b);
-    (a / g)
-        .checked_mul(b)
-        .expect("lattice level exceeds i128")
-        .abs()
-}
-
-fn checked_factorial(n: usize) -> Option<u128> {
+pub(super) fn checked_factorial(n: usize) -> Option<u128> {
     let mut acc = 1u128;
     for k in 2..=n {
         acc = acc.checked_mul(k as u128)?;
@@ -92,7 +25,7 @@ fn checked_factorial(n: usize) -> Option<u128> {
     Some(acc)
 }
 
-fn checked_pow2(n: usize) -> Option<u128> {
+pub(super) fn checked_pow2(n: usize) -> Option<u128> {
     if n >= 128 {
         None
     } else {
@@ -100,11 +33,11 @@ fn checked_pow2(n: usize) -> Option<u128> {
     }
 }
 
-fn signed_permutation_order(n: usize) -> Option<u128> {
+pub(super) fn signed_permutation_order(n: usize) -> Option<u128> {
     checked_pow2(n)?.checked_mul(checked_factorial(n)?)
 }
 
-fn a_root_automorphism_order(n: usize) -> Option<u128> {
+pub(super) fn a_root_automorphism_order(n: usize) -> Option<u128> {
     if n == 0 {
         None
     } else if n == 1 {
@@ -114,7 +47,7 @@ fn a_root_automorphism_order(n: usize) -> Option<u128> {
     }
 }
 
-fn d_root_automorphism_order(n: usize) -> Option<u128> {
+pub(super) fn d_root_automorphism_order(n: usize) -> Option<u128> {
     match n {
         0 | 1 => None,
         2 => signed_permutation_order(2),  // D_2 = A_1 x A_1.
@@ -284,256 +217,9 @@ fn simple_laced_cartan_matches(gram: &[Vec<i128>], edges: &[(usize, usize)]) -> 
     true
 }
 
-/// Fraction-free (Bareiss) determinant of a square integer matrix — exact, no
-/// rational intermediates. Overflow on the integer intermediates is the same
-/// i128 limit the rest of the crate carries.
-fn bareiss_det(mut a: Vec<Vec<i128>>) -> i128 {
-    let n = a.len();
-    if n == 0 {
-        return 1;
-    }
-    let mut sign = 1i128;
-    let mut prev = 1i128;
-    for k in 0..n - 1 {
-        if a[k][k] == 0 {
-            match (k + 1..n).find(|&r| a[r][k] != 0) {
-                Some(r) => {
-                    a.swap(k, r);
-                    sign = -sign;
-                }
-                None => return 0,
-            }
-        }
-        for i in k + 1..n {
-            for j in k + 1..n {
-                let p1 = a[i][j]
-                    .checked_mul(a[k][k])
-                    .expect("Bareiss determinant exceeds i128");
-                let p2 = a[i][k]
-                    .checked_mul(a[k][j])
-                    .expect("Bareiss determinant exceeds i128");
-                a[i][j] = (p1 - p2) / prev; // exact by the Bareiss identity
-            }
-        }
-        prev = a[k][k];
-    }
-    sign * a[n - 1][n - 1]
-}
+// ── geometry methods on IntegralForm ──
 
 impl IntegralForm {
-    /// Build a lattice from a symmetric integer Gram matrix. Returns `None` if
-    /// the matrix is not square or not symmetric.
-    pub fn new(gram: Vec<Vec<i128>>) -> Option<Self> {
-        let n = gram.len();
-        if gram.iter().any(|row| row.len() != n) {
-            return None;
-        }
-        for i in 0..n {
-            for j in 0..n {
-                if gram[i][j] != gram[j][i] {
-                    return None;
-                }
-            }
-        }
-        Some(IntegralForm { gram })
-    }
-
-    /// The diagonal lattice `⟨d₀, d₁, …⟩` (an orthogonal sum of rank-1 forms).
-    pub fn diagonal(diag: &[i128]) -> Self {
-        let n = diag.len();
-        let mut gram = vec![vec![0i128; n]; n];
-        for (i, &d) in diag.iter().enumerate() {
-            gram[i][i] = d;
-        }
-        IntegralForm { gram }
-    }
-
-    /// The rank `n` of the lattice.
-    pub fn dim(&self) -> usize {
-        self.gram.len()
-    }
-
-    /// The Gram matrix `G = (⟨eᵢ, eⱼ⟩)`.
-    pub fn gram(&self) -> &[Vec<i128>] {
-        &self.gram
-    }
-
-    /// The bilinear pairing `⟨x, y⟩ = xᵀ G y`.
-    pub fn inner(&self, x: &[i128], y: &[i128]) -> i128 {
-        let n = self.dim();
-        debug_assert_eq!(x.len(), n);
-        debug_assert_eq!(y.len(), n);
-        let mut acc = 0i128;
-        for i in 0..n {
-            if x[i] == 0 {
-                continue;
-            }
-            let mut row = 0i128;
-            for j in 0..n {
-                row = row
-                    .checked_add(
-                        self.gram[i][j]
-                            .checked_mul(y[j])
-                            .expect("lattice inner product exceeds i128"),
-                    )
-                    .expect("lattice inner product exceeds i128");
-            }
-            acc = acc
-                .checked_add(x[i].checked_mul(row).expect("lattice norm exceeds i128"))
-                .expect("lattice norm exceeds i128");
-        }
-        acc
-    }
-
-    /// The norm `Q(x) = xᵀ G x`.
-    pub fn norm(&self, x: &[i128]) -> i128 {
-        self.inner(x, x)
-    }
-
-    /// The determinant `det G` (Bareiss; exact). For a positive-definite lattice
-    /// this is the squared covolume and is positive; `|det G|` is the order of
-    /// the discriminant group `L# / L`.
-    pub fn determinant(&self) -> i128 {
-        bareiss_det(self.gram.clone())
-    }
-
-    /// `|det G| = 1`: the lattice is unimodular (`L# = L`, self-dual).
-    pub fn is_unimodular(&self) -> bool {
-        self.determinant().abs() == 1
-    }
-
-    /// Every diagonal Gram entry is even, i.e. `Q(x)` is even for all `x` (an
-    /// *even* lattice). Off-diagonal symmetry already makes the cross terms
-    /// `2⟨eᵢ, eⱼ⟩` even.
-    pub fn is_even(&self) -> bool {
-        (0..self.dim()).all(|i| self.gram[i][i] % 2 == 0)
-    }
-
-    /// Positive definiteness, via Sylvester's criterion: every leading principal
-    /// minor is `> 0` (computed exactly with Bareiss).
-    pub fn is_positive_definite(&self) -> bool {
-        let n = self.dim();
-        for k in 1..=n {
-            let minor: Vec<Vec<i128>> = (0..k).map(|i| self.gram[i][..k].to_vec()).collect();
-            if bareiss_det(minor) <= 0 {
-                return false;
-            }
-        }
-        true
-    }
-
-    /// The real signature `(p, q)`: positive and negative dimensions after exact
-    /// rational congruence diagonalization. Degenerate directions, if any, are
-    /// omitted from the pair.
-    pub fn signature(&self) -> (usize, usize) {
-        let diag = rational_congruence_diagonal(&self.gram, DegenerateBehavior::StopAtRadical);
-        signature_from_diagonal(&diag)
-    }
-
-    /// The invariant factors `d₀ | d₁ | …` of the discriminant group (Smith
-    /// normal form of `G`): `L# / L ≅ ⨁ ℤ/dᵢ`. For a nonsingular lattice the
-    /// nonzero factors multiply to `|det G|`.
-    pub fn invariant_factors(&self) -> Vec<i128> {
-        smith_normal_form(self.gram.clone())
-    }
-
-    /// The **level** `N`: the smallest positive integer with `N·G⁻¹` an even
-    /// integral matrix (integral, with even diagonal). Returns `None` if `G` is
-    /// singular. An even unimodular lattice has level 1. For even lattices this
-    /// equals the level of the modular form the theta series of `L` belongs to;
-    /// for odd lattices this is the lattice-theoretic level only — the theta
-    /// series of an odd lattice is not a standard modular form for this level.
-    pub fn level(&self) -> Option<i128> {
-        let n = self.dim();
-        if n == 0 {
-            return Some(1);
-        }
-        let mat: Vec<Vec<Rational>> = self
-            .gram
-            .iter()
-            .map(|row| row.iter().map(|&x| Rational::int(x)).collect())
-            .collect();
-        let inv = inverse_matrix(mat)?;
-        let mut level = 1i128;
-        for i in 0..n {
-            for j in 0..n {
-                let e = &inv[i][j];
-                let den = e.denom(); // > 0, coprime to numerator
-                                     // N·(num/den) ∈ ℤ ⟺ den | N. On the diagonal also need it even:
-                                     // (N/den)·num even, which forces a further factor of 2 when num is odd.
-                let modulus = if i == j && e.numer() % 2 != 0 {
-                    den.checked_mul(2).expect("lattice level exceeds i128")
-                } else {
-                    den
-                };
-                level = lcm_i128(level, modulus);
-            }
-        }
-        Some(level)
-    }
-
-    /// The rational Clifford metric attached to the lattice bilinear form:
-    /// `e_i^2 = G_ii` and `{e_i,e_j} = 2G_ij`.
-    pub fn clifford_metric(&self) -> crate::clifford::Metric<Rational> {
-        let n = self.dim();
-        let q = (0..n).map(|i| Rational::int(self.gram[i][i])).collect();
-        let mut b = BTreeMap::new();
-        for i in 0..n {
-            for j in (i + 1)..n {
-                let v = self.gram[i][j]
-                    .checked_mul(2)
-                    .expect("lattice Clifford metric exceeds i128");
-                if v != 0 {
-                    b.insert((i, j), Rational::int(v));
-                }
-            }
-        }
-        crate::clifford::Metric::new(q, b)
-    }
-
-    /// The characteristic-2 quadratic refinement of an even lattice, reduced
-    /// modulo 2 from `Q/2`: `q_i = G_ii/2 (mod 2)` and `b_ij = G_ij (mod 2)`.
-    /// Returns `None` for odd lattices, where `Q/2` is not integral.
-    pub fn clifford_metric_f2(&self) -> Option<crate::clifford::Metric<Nimber>> {
-        if !self.is_even() {
-            return None;
-        }
-        let n = self.dim();
-        let q = (0..n)
-            .map(|i| Nimber((self.gram[i][i] / 2).rem_euclid(2) as u128))
-            .collect();
-        let mut b = BTreeMap::new();
-        for i in 0..n {
-            for j in (i + 1)..n {
-                let v = self.gram[i][j].rem_euclid(2) as u128;
-                if v != 0 {
-                    b.insert((i, j), Nimber(v));
-                }
-            }
-        }
-        Some(crate::clifford::Metric::new(q, b))
-    }
-
-    /// The orthogonal direct sum `L ⟂ M` (block-diagonal Gram).
-    pub fn direct_sum(&self, other: &IntegralForm) -> IntegralForm {
-        let n = self.dim();
-        let m = other.dim();
-        let mut gram = vec![vec![0i128; n + m]; n + m];
-        for i in 0..n {
-            for j in 0..n {
-                gram[i][j] = self.gram[i][j];
-            }
-        }
-        for i in 0..m {
-            for j in 0..m {
-                gram[n + i][n + j] = other.gram[i][j];
-            }
-        }
-        IntegralForm { gram }
-    }
-
-    // ---- positive-definite geometry (Fincke–Pohst + backtracking) ----
-
     /// The LDLᵀ decomposition in floating point: returns `Some((d, u))` where
     /// `d[i]` is the `i`-th pivot and `u[i][j]` (`j > i`) is the upper unit factor,
     /// giving `Q(x) ≈ Σᵢ d[i]·(x[i] + Σ_{j>i} u[i][j]·x[j])²`. Returns `None` if
@@ -544,7 +230,7 @@ impl IntegralForm {
     /// false positives are removed, but when a pivot rounds to zero or below the
     /// corresponding branch may be skipped — use `short_vectors_exact_bounded` for
     /// small lattices where the float bound is not needed.
-    fn ldl(&self) -> Option<(Vec<f64>, Vec<Vec<f64>>)> {
+    pub(super) fn ldl(&self) -> Option<(Vec<f64>, Vec<Vec<f64>>)> {
         let n = self.dim();
         let mut d = vec![0.0f64; n];
         let mut l = vec![vec![0.0f64; n]; n]; // unit lower triangular
@@ -692,7 +378,11 @@ impl IntegralForm {
         )
     }
 
-    fn short_vectors_exact_bounded(&self, bound: i128, limit: u128) -> Option<Vec<Vec<i128>>> {
+    pub(super) fn short_vectors_exact_bounded(
+        &self,
+        bound: i128,
+        limit: u128,
+    ) -> Option<Vec<Vec<i128>>> {
         let n = self.dim();
         let mat: Vec<Vec<Rational>> = self
             .gram
@@ -1074,269 +764,5 @@ impl IntegralForm {
             }
         }
         true
-    }
-
-    /// `G·x` as an integer vector.
-    fn matvec(&self, x: &[i128]) -> Vec<i128> {
-        let n = self.dim();
-        (0..n)
-            .map(|i| {
-                let mut acc = 0i128;
-                for j in 0..n {
-                    acc = acc
-                        .checked_add(
-                            self.gram[i][j]
-                                .checked_mul(x[j])
-                                .expect("lattice matvec exceeds i128"),
-                        )
-                        .expect("lattice matvec exceeds i128");
-                }
-                acc
-            })
-            .collect()
-    }
-}
-
-fn dot(a: &[i128], b: &[i128]) -> i128 {
-    let mut acc = 0i128;
-    for (&x, &y) in a.iter().zip(b) {
-        acc = acc
-            .checked_add(x.checked_mul(y).expect("lattice dot exceeds i128"))
-            .expect("lattice dot exceeds i128");
-    }
-    acc
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn a_n(n: usize) -> IntegralForm {
-        // A_n Cartan matrix: 2 on the diagonal, -1 on the off-diagonals.
-        let mut g = vec![vec![0i128; n]; n];
-        for i in 0..n {
-            g[i][i] = 2;
-            if i + 1 < n {
-                g[i][i + 1] = -1;
-                g[i + 1][i] = -1;
-            }
-        }
-        IntegralForm::new(g).unwrap()
-    }
-
-    fn d4() -> IntegralForm {
-        IntegralForm::new(vec![
-            vec![2, -1, 0, 0],
-            vec![-1, 2, -1, -1],
-            vec![0, -1, 2, 0],
-            vec![0, -1, 0, 2],
-        ])
-        .unwrap()
-    }
-
-    fn e8() -> IntegralForm {
-        // E_8 Cartan matrix (Bourbaki labelling): even unimodular, det 1.
-        IntegralForm::new(vec![
-            vec![2, -1, 0, 0, 0, 0, 0, 0],
-            vec![-1, 2, -1, 0, 0, 0, 0, 0],
-            vec![0, -1, 2, -1, 0, 0, 0, 0],
-            vec![0, 0, -1, 2, -1, 0, 0, 0],
-            vec![0, 0, 0, -1, 2, -1, 0, -1],
-            vec![0, 0, 0, 0, -1, 2, -1, 0],
-            vec![0, 0, 0, 0, 0, -1, 2, 0],
-            vec![0, 0, 0, 0, -1, 0, 0, 2],
-        ])
-        .unwrap()
-    }
-
-    fn permute_basis(l: &IntegralForm, perm: &[usize]) -> IntegralForm {
-        let n = l.dim();
-        assert_eq!(perm.len(), n);
-        let mut g = vec![vec![0i128; n]; n];
-        for i in 0..n {
-            for j in 0..n {
-                g[i][j] = l.gram()[perm[i]][perm[j]];
-            }
-        }
-        IntegralForm::new(g).unwrap()
-    }
-
-    #[test]
-    fn rejects_non_symmetric() {
-        assert!(IntegralForm::new(vec![vec![1, 2], vec![3, 4]]).is_none());
-        assert!(IntegralForm::new(vec![vec![1, 2, 3], vec![2, 4]]).is_none());
-        assert!(IntegralForm::new(vec![vec![2, -1], vec![-1, 2]]).is_some());
-    }
-
-    #[test]
-    fn determinants_and_evenness() {
-        assert_eq!(a_n(2).determinant(), 3);
-        assert_eq!(a_n(3).determinant(), 4);
-        assert_eq!(d4().determinant(), 4);
-        assert_eq!(e8().determinant(), 1);
-        assert!(e8().is_unimodular());
-        assert!(e8().is_even());
-        assert!(a_n(2).is_even());
-        // Z^3 is odd unimodular.
-        let z3 = IntegralForm::diagonal(&[1, 1, 1]);
-        assert_eq!(z3.determinant(), 1);
-        assert!(z3.is_unimodular());
-        assert!(!z3.is_even());
-    }
-
-    #[test]
-    fn invariant_factors_track_discriminant_group() {
-        assert_eq!(a_n(2).invariant_factors(), vec![1, 3]); // ℤ/3
-        assert_eq!(d4().invariant_factors(), vec![1, 1, 2, 2]); // (ℤ/2)²
-        assert_eq!(e8().invariant_factors(), vec![1, 1, 1, 1, 1, 1, 1, 1]);
-        // product of nonzero factors = |det|
-        let prod: i128 = d4().invariant_factors().iter().product();
-        assert_eq!(prod, d4().determinant().abs());
-    }
-
-    #[test]
-    fn levels_match_known_values() {
-        assert_eq!(IntegralForm::diagonal(&[2]).level(), Some(4)); // A_1 = ⟨2⟩
-        assert_eq!(a_n(2).level(), Some(3)); // hexagonal lattice, level 3
-        assert_eq!(e8().level(), Some(1)); // even unimodular
-                                           // ℤ = ⟨1⟩ is odd: G⁻¹ = [1] has odd diagonal, so the smallest N making
-                                           // N·G⁻¹ even-integral is 2 (cf. A_1 = ⟨2⟩ → 4).
-        assert_eq!(IntegralForm::diagonal(&[1]).level(), Some(2));
-    }
-
-    #[test]
-    fn signature_handles_indefinite_and_skew_bases() {
-        assert_eq!(IntegralForm::diagonal(&[1, 1, -1]).signature(), (2, 1));
-        let hyp = IntegralForm::new(vec![vec![0, 1], vec![1, 0]]).unwrap();
-        assert_eq!(hyp.signature(), (1, 1));
-        assert_eq!(
-            IntegralForm::new(vec![vec![0, 0], vec![0, 0]])
-                .unwrap()
-                .signature(),
-            (0, 0)
-        );
-    }
-
-    #[test]
-    fn lattice_clifford_metrics_preserve_q_and_polar_data() {
-        let a2 = a_n(2);
-        let rat = a2.clifford_metric();
-        assert_eq!(rat.q, vec![Rational::int(2), Rational::int(2)]);
-        assert_eq!(rat.b[&(0, 1)], Rational::int(-2));
-
-        let f2 = a2.clifford_metric_f2().unwrap();
-        assert_eq!(f2.q, vec![Nimber(1), Nimber(1)]);
-        assert_eq!(f2.b[&(0, 1)], Nimber(1));
-        assert!(IntegralForm::diagonal(&[1]).clifford_metric_f2().is_none());
-    }
-
-    #[test]
-    fn minimum_and_kissing_numbers() {
-        // Root lattices: minimum 2, kissing = number of roots.
-        assert_eq!(a_n(2).minimum(), Some(2));
-        assert_eq!(a_n(2).kissing_number(), Some(6)); // n(n+1) = 6
-        assert_eq!(a_n(3).kissing_number(), Some(12)); // 3·4
-        assert_eq!(d4().minimum(), Some(2));
-        assert_eq!(d4().kissing_number(), Some(24)); // 2n(n-1) = 24
-        assert_eq!(e8().minimum(), Some(2));
-        assert_eq!(e8().kissing_number(), Some(240));
-        // ℤ²: minimum 1, the four ±eᵢ.
-        let z2 = IntegralForm::diagonal(&[1, 1]);
-        assert_eq!(z2.minimum(), Some(1));
-        assert_eq!(z2.kissing_number(), Some(4));
-    }
-
-    #[test]
-    fn short_vectors_return_original_coordinates_after_basis_reduction() {
-        // Uᵀ I U for U = [[1, 10], [0, 1]] is a badly skewed basis of Z².
-        // The norm-1 vectors in this basis are ±(1,0) and ±(-10,1).
-        let g = IntegralForm::new(vec![vec![1, 10], vec![10, 101]]).unwrap();
-        let mut exact = g
-            .short_vectors_exact_bounded(1, SHORT_VECTOR_EXACT_ENUM_LIMIT)
-            .expect("small rational ellipsoid box is enumerated exactly");
-        exact.sort();
-        let mut vecs = g.short_vectors(1).unwrap();
-        vecs.sort();
-        assert_eq!(exact, vecs);
-        assert_eq!(
-            vecs,
-            vec![vec![-10, 1], vec![-1, 0], vec![1, 0], vec![10, -1]]
-        );
-        assert!(vecs.iter().all(|v| g.norm(v) == 1));
-    }
-
-    #[test]
-    fn short_vectors_are_indefinite_safe() {
-        // An indefinite form has no finite short-vector set.
-        let hyp = IntegralForm::new(vec![vec![0, 1], vec![1, 0]]).unwrap();
-        assert!(!hyp.is_positive_definite());
-        assert_eq!(hyp.short_vectors(4), None);
-        assert_eq!(hyp.minimum(), None);
-        assert_eq!(hyp.automorphism_group_order(), None);
-    }
-
-    #[test]
-    fn automorphism_orders_match_known() {
-        // Aut(Z^n) = signed permutations = 2^n · n!.
-        assert_eq!(
-            IntegralForm::diagonal(&[1, 1]).automorphism_group_order(),
-            Some(8)
-        );
-        assert_eq!(
-            IntegralForm::diagonal(&[1, 1, 1]).automorphism_group_order(),
-            Some(48)
-        );
-        // Aut(A_2) = dihedral of order 12 (W(A_2)=S_3 times ±1).
-        assert_eq!(a_n(2).automorphism_group_order(), Some(12));
-        // Aut(A_3) = W(A_3) × {±1} = 24 · 2 = 48.
-        assert_eq!(a_n(3).automorphism_group_order(), Some(48));
-        // |Aut(D_4)| = 1152.
-        assert_eq!(d4().automorphism_group_order(), Some(1152));
-        // E_8 is recognized by its standard Cartan basis instead of brute-forced.
-        assert_eq!(e8().automorphism_group_order_bounded(1), Some(696_729_600));
-    }
-
-    #[test]
-    fn automorphism_budget_cutoff_reports_none() {
-        // Permuted root bases are now recognized by the root-system fast path,
-        // independent of the standard Cartan syntax.
-        let d4_permuted = permute_basis(&d4(), &[2, 0, 1, 3]);
-        assert_eq!(d4_permuted.automorphism_group_order_bounded(1), Some(1152));
-
-        // A tiny budget still forces the fallback search to give up rather than
-        // silently truncating on a non-root lattice: an honest None, not a wrong count.
-        let generic = IntegralForm::new(vec![vec![2, 1], vec![1, 3]]).unwrap();
-        assert_eq!(generic.automorphism_group_order_bounded(0), None);
-    }
-
-    #[test]
-    fn direct_sum_is_block_diagonal() {
-        let sum = a_n(2).direct_sum(&IntegralForm::diagonal(&[1]));
-        assert_eq!(sum.dim(), 3);
-        assert_eq!(sum.determinant(), 3); // det(A_2) · det(⟨1⟩)
-                                          // E_8 ⟂ E_8 is rank-16 even unimodular.
-        let e8e8 = e8().direct_sum(&e8());
-        assert_eq!(e8e8.dim(), 16);
-        assert_eq!(e8e8.determinant(), 1);
-        assert!(e8e8.is_even());
-        for i in 0..8 {
-            for j in 8..16 {
-                assert_eq!(e8e8.gram()[i][j], 0);
-            }
-        }
-    }
-
-    #[test]
-    fn ldl_returns_none_on_indefinite_gram() {
-        // The internal ldl() helper must return None rather than producing a
-        // non-positive pivot when called on an indefinite Gram matrix. This
-        // guards against the search silently dropping short vectors due to a
-        // divide-by-zero or negative-sqrt in the float bound.
-        let hyp = IntegralForm::new(vec![vec![0, 1], vec![1, 0]]).unwrap();
-        assert!(hyp.ldl().is_none());
-        // A positive-definite lattice must produce a valid decomposition.
-        assert!(a_n(2).ldl().is_some());
-        let (d, _) = a_n(2).ldl().unwrap();
-        assert!(d.iter().all(|&di| di > 0.0));
     }
 }

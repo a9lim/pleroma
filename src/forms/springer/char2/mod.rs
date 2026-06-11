@@ -65,14 +65,27 @@
 //! binary block plus a two-class quasilinear tail, all nonsingular ranks via the AJ
 //! kernel, one-class singular tails via the odd-dimensional Clifford invariant, and
 //! `≥ 5` always isotropic.)
+//!
+//! # Module layout
+//!
+//! - `asnf` — κ-local arithmetic helpers and the Artin–Schreier normal form
+//!   (the private crate layer that feeds the decomposition).
+//! - `global` — global isotropy over `F_q(t)` ([`global_is_pe`], [`ff_is_square`],
+//!   [`relevant_places_char2`], [`is_isotropic_global_char2`]).
+//! - This hub — `Char2QuadForm`, `Char2LocalDecomp`, the Aravire–Jacob decomposition
+//!   ([`springer_decompose_local_char2`]), and local isotropy
+//!   ([`local_anisotropic_dim_char2`], [`local_is_isotropic_char2`]).
 
-use crate::forms::function_field_char2::{
-    char2_monic_irreducible_factors, hensel_series, inverse_mod, ps_eval_poly, strip_factor,
-    trace_kappa_to_f2,
-};
-use crate::forms::{artin_schreier_class_finite, as_symbol_at, Char2Place, FiniteChar2Field};
+pub(super) mod asnf;
+mod global;
+
+pub use global::{ff_is_square, global_is_pe, is_isotropic_global_char2, relevant_places_char2};
+
+use crate::forms::{as_symbol_at, Char2Place, FiniteChar2Field};
 use crate::scalar::{Poly, RationalFunction, Scalar};
 use std::collections::BTreeMap;
+
+use asnf::{asnf, kmul, laurent, local_is_pe, local_is_square, merge_psi, valuation};
 
 /// A characteristic-2 quadratic form over `F_q(t)`: a sum of nonsingular binary
 /// blocks `[a_i, b_i] = a_i x² + xy + b_i y²` and a totally-singular part
@@ -121,297 +134,6 @@ pub struct Char2LocalDecomp<S: FiniteChar2Field> {
     pub psi: BTreeMap<usize, Poly<S>>,
     /// The `W_q(κ) ≅ F₂` Arf bit of the `⟨π⟩`-scaled part `φ₁`.
     pub phi1: u128,
-}
-
-// ───────────────────────── κ-local arithmetic at a place ─────────────────────────
-
-/// `x^e` in any `Scalar` field by square-and-multiply (used for `F_q` square roots
-/// at `∞`, where `√z = z^{q/2}` since Frobenius is the squaring map).
-fn s_pow<S: Scalar>(x: &S, mut e: u128) -> S {
-    let mut base = x.clone();
-    let mut acc = S::one();
-    while e > 0 {
-        if e & 1 == 1 {
-            acc = acc.mul(&base);
-        }
-        base = base.mul(&base);
-        e >>= 1;
-    }
-    acc
-}
-
-/// `a · b` in the residue field `κ` at `place`.
-fn kmul<S: FiniteChar2Field>(a: &Poly<S>, b: &Poly<S>, place: &Char2Place<S>) -> Poly<S> {
-    match place {
-        Char2Place::Finite(p) => a.mul_mod(b, p),
-        Char2Place::Infinite => Poly::constant(a.coeff(0).mul(&b.coeff(0))),
-    }
-}
-
-/// `√z` in `κ` at `place`: `z^{|κ|/2}` (Frobenius inverse; `κ` is a perfect finite
-/// field of char 2, so the square root is unique).
-fn kappa_sqrt<S: FiniteChar2Field>(z: &Poly<S>, place: &Char2Place<S>) -> Poly<S> {
-    match place {
-        Char2Place::Finite(p) => {
-            let d = p.degree().expect("a place modulus has degree ≥ 1") as u128;
-            let order = S::field_order().pow(
-                d.try_into()
-                    .expect("place degree fits the platform exponent type"),
-            ); // |κ| = q^{deg P}
-            z.pow_mod(order / 2, p)
-        }
-        Char2Place::Infinite => Poly::constant(s_pow(&z.coeff(0), S::field_order() / 2)),
-    }
-}
-
-/// `Tr_{κ/F₂}(z) ∈ {0,1}` at `place` (the `W_q(κ) ≅ F₂` Arf class of `[1, z]`).
-fn trace_at<S: FiniteChar2Field>(z: &Poly<S>, place: &Char2Place<S>) -> u128 {
-    match place {
-        Char2Place::Finite(p) => trace_kappa_to_f2(z, p),
-        Char2Place::Infinite => artin_schreier_class_finite(z.coeff(0)),
-    }
-}
-
-// ───────────────────────── local Laurent expansion ─────────────────────────
-
-/// `v(a)` (the `π`-adic valuation) at `place`; `None` iff `a = 0`.
-fn valuation<S: FiniteChar2Field>(a: &RationalFunction<S>, place: &Char2Place<S>) -> Option<i128> {
-    if a.is_zero() {
-        return None;
-    }
-    match place {
-        Char2Place::Finite(p) => {
-            let (mn, _) = strip_factor(a.num().clone(), p);
-            let (md, _) = strip_factor(a.den().clone(), p);
-            Some(mn as i128 - md as i128)
-        }
-        Char2Place::Infinite => Some(
-            a.den().degree().expect("nonzero den") as i128
-                - a.num().degree().expect("nonzero num") as i128,
-        ),
-    }
-}
-
-/// Laurent coefficients of `a = num/den` at the finite place `P`, for the inclusive
-/// exponent range `[n_lo, n_hi]` (`out[k]` = coefficient of `π^{n_lo+k}`, `π = P`).
-/// `a = P^v · g`, `g = (P-free part of num)·(P-free part of den)⁻¹` a unit at `P`,
-/// expanded as a `κ[[P]]` power series by `P`-adic digit extraction.
-fn laurent_finite<S: FiniteChar2Field>(
-    num: &Poly<S>,
-    den: &Poly<S>,
-    p: &Poly<S>,
-    n_lo: i128,
-    n_hi: i128,
-) -> Vec<Poly<S>> {
-    let len = (n_hi - n_lo + 1) as usize;
-    if num.is_zero() {
-        return vec![Poly::zero(); len];
-    }
-    let (mn, ncof) = strip_factor(num.clone(), p);
-    let (md, e) = strip_factor(den.clone(), p);
-    let val = mn as i128 - md as i128;
-    let hi_i = n_hi - val; // need power-series digits g_0 .. g_{hi_i}
-    if hi_i < 0 {
-        return vec![Poly::zero(); len];
-    }
-    let count = (hi_i + 1) as usize;
-    let mut pmod = Poly::one();
-    for _ in 0..count {
-        pmod = pmod.mul(p);
-    }
-    let e_inv = inverse_mod(&e, &pmod);
-    let b = ncof.mul(&e_inv).rem(&pmod); // g mod P^count
-    let t = hensel_series(p, count);
-    let coeffs = ps_eval_poly(&b, &t, count, p); // g(T(u)) in κ[[u]]
-    let mut out = Vec::with_capacity(len);
-    for n in n_lo..=n_hi {
-        let i = n - val;
-        if i < 0 || (i as usize) >= coeffs.len() {
-            out.push(Poly::zero());
-        } else {
-            out.push(coeffs[i as usize].clone());
-        }
-    }
-    out
-}
-
-/// Laurent coefficients of `a = num/den` at `∞` (`π = 1/t`), inclusive range
-/// `[n_lo, n_hi]`. `a = π^v · (Ñ/D̃)` with `Ñ, D̃` the coefficient-reversed
-/// polynomials; the unit `Ñ·D̃⁻¹` is expanded as an `F_q[[π]]` power series.
-fn laurent_infinite<S: FiniteChar2Field>(
-    num: &Poly<S>,
-    den: &Poly<S>,
-    n_lo: i128,
-    n_hi: i128,
-) -> Vec<Poly<S>> {
-    let len = (n_hi - n_lo + 1) as usize;
-    if num.is_zero() {
-        return vec![Poly::zero(); len];
-    }
-    let dn = num.degree().expect("nonzero num") as i128;
-    let dd = den.degree().expect("nonzero den") as i128;
-    let val = dd - dn;
-    let hi_i = n_hi - val;
-    if hi_i < 0 {
-        return vec![Poly::zero(); len];
-    }
-    let prec = (hi_i + 1) as usize;
-    let nt: Vec<S> = num.coeffs().iter().rev().cloned().collect(); // Ñ
-    let dt: Vec<S> = den.coeffs().iter().rev().cloned().collect(); // D̃ (dt[0] = lead den ≠ 0)
-    let d0_inv = dt[0].inv().expect("lead(den) inverts");
-    let mut binv = vec![S::zero(); prec]; // D̃⁻¹
-    binv[0] = d0_inv;
-    for i in 1..prec {
-        let mut acc = S::zero();
-        for j in 1..=i {
-            if j < dt.len() {
-                acc = acc.add(&dt[j].mul(&binv[i - j]));
-            }
-        }
-        binv[i] = acc.mul(&d0_inv); // char 2: −d0⁻¹·acc = d0⁻¹·acc
-    }
-    let mut g = vec![S::zero(); prec]; // Ñ · D̃⁻¹
-    for (i, gi) in g.iter_mut().enumerate() {
-        let mut acc = S::zero();
-        for j in 0..=i {
-            if j < nt.len() {
-                acc = acc.add(&nt[j].mul(&binv[i - j]));
-            }
-        }
-        *gi = acc;
-    }
-    let mut out = Vec::with_capacity(len);
-    for n in n_lo..=n_hi {
-        let i = n - val;
-        if i < 0 || (i as usize) >= prec {
-            out.push(Poly::zero());
-        } else {
-            out.push(Poly::constant(g[i as usize]));
-        }
-    }
-    out
-}
-
-/// Laurent coefficients of `a` at `place`, inclusive range `[n_lo, n_hi]`.
-fn laurent<S: FiniteChar2Field>(
-    a: &RationalFunction<S>,
-    place: &Char2Place<S>,
-    n_lo: i128,
-    n_hi: i128,
-) -> Vec<Poly<S>> {
-    match place {
-        Char2Place::Finite(p) => laurent_finite(a.num(), a.den(), p, n_lo, n_hi),
-        Char2Place::Infinite => laurent_infinite(a.num(), a.den(), n_lo, n_hi),
-    }
-}
-
-// ───────────────────────── the Artin–Schreier normal form ─────────────────────────
-
-/// Reduce a `≤ 0`-degree Laurent tail `c = Σ_{n ≤ 0} c_n π^n` (given as a sparse map
-/// over `[lo, 0]`) modulo `℘(K_v)`: clear even negative poles bottom-up, leaving a
-/// `κ`-constant and odd negative poles. Returns `(Tr_{κ/F₂}(c₀), R_π map)`.
-fn asnf<S: FiniteChar2Field>(
-    coeffs: &BTreeMap<i128, Poly<S>>,
-    lo: i128,
-    place: &Char2Place<S>,
-) -> (u128, BTreeMap<usize, Poly<S>>) {
-    let mut m = coeffs.clone();
-    let mut n = lo;
-    while n < 0 {
-        if n & 1 == 0 {
-            // even negative power: subtract ℘(√c_n · π^{n/2}) to kill it
-            if let Some(v) = m.get(&n).cloned() {
-                if !v.is_zero() {
-                    let s = kappa_sqrt(&v, place);
-                    m.insert(n, Poly::zero());
-                    let half = n / 2;
-                    let cur = m.get(&half).cloned().unwrap_or_else(Poly::zero);
-                    m.insert(half, cur.add(&s));
-                }
-            }
-        }
-        n += 1;
-    }
-    let eps = m.get(&0).map(|v| trace_at(v, place)).unwrap_or(0);
-    let mut r = BTreeMap::new();
-    for (k, v) in &m {
-        if *k < 0 && (k & 1 == 1) && !v.is_zero() {
-            r.insert((-k) as usize, v.clone());
-        }
-    }
-    (eps, r)
-}
-
-/// Merge `k ↦ v` into a sparse `R_π` map (κ-addition; drop a coefficient that cancels).
-fn merge_psi<S: FiniteChar2Field>(psi: &mut BTreeMap<usize, Poly<S>>, k: usize, v: Poly<S>) {
-    let cur = psi.get(&k).cloned().unwrap_or_else(Poly::zero);
-    let sum = cur.add(&v);
-    if sum.is_zero() {
-        psi.remove(&k);
-    } else {
-        psi.insert(k, sum);
-    }
-}
-
-/// The local AS class of `c ∈ F_q(t)` at `place`: `(Tr_{κ/F₂}(c₀), R_π map)`.
-/// `c ∈ ℘(K_v)` iff this is `(0, ∅)`.
-fn local_as_class<S: FiniteChar2Field>(
-    c: &RationalFunction<S>,
-    place: &Char2Place<S>,
-) -> (u128, BTreeMap<usize, Poly<S>>) {
-    match valuation(c, place) {
-        None => (0, BTreeMap::new()), // c = 0 ∈ ℘(K_v)
-        Some(v) => {
-            let lo = std::cmp::min(v, 0);
-            let coeffs = laurent(c, place, lo, 0);
-            let mut map = BTreeMap::new();
-            for n in lo..=0 {
-                let cc = coeffs[(n - lo) as usize].clone();
-                if !cc.is_zero() {
-                    map.insert(n, cc);
-                }
-            }
-            asnf(&map, lo, place)
-        }
-    }
-}
-
-/// Whether `c ∈ ℘(K_v)` at `place` (the local Artin–Schreier triviality test).
-fn local_is_pe<S: FiniteChar2Field>(c: &RationalFunction<S>, place: &Char2Place<S>) -> bool {
-    let (e, r) = local_as_class(c, place);
-    e == 0 && r.is_empty()
-}
-
-fn dpoly<S: Scalar>(p: &Poly<S>) -> Poly<S> {
-    let cs = p.coeffs();
-    if cs.len() <= 1 {
-        return Poly::zero();
-    }
-    let mut out = vec![S::zero(); cs.len() - 1];
-    for (i, c) in cs.iter().enumerate().skip(1) {
-        if i & 1 == 1 {
-            out[i - 1] = c.clone();
-        }
-    }
-    Poly::new(out)
-}
-
-fn rational_derivative_is_zero<S: FiniteChar2Field>(f: &RationalFunction<S>) -> bool {
-    dpoly(f.num())
-        .mul(f.den())
-        .add(&f.num().mul(&dpoly(f.den())))
-        .is_zero()
-}
-
-/// Whether `f ∈ K_v²` in the completion at `place`.
-fn local_is_square<S: FiniteChar2Field>(f: &RationalFunction<S>, place: &Char2Place<S>) -> bool {
-    let Some(v) = valuation(f, place) else {
-        return true;
-    };
-    if v & 1 != 0 {
-        return false;
-    }
-    rational_derivative_is_zero(f)
 }
 
 // ───────────────────────── the decomposition ─────────────────────────
@@ -649,143 +371,6 @@ pub fn local_is_isotropic_char2<S: FiniteChar2Field>(
         return Some(true);
     }
     local_anisotropic_dim_char2(form, place).map(|d| d < rank)
-}
-
-// ───────────────────────── global isotropy over F_q(t) ─────────────────────────
-
-/// Whether `f ∈ F_q(t)` is a **square**, i.e. lies in `K² = F_q(t²)`. Since
-/// `[F_q(t) : F_q(t)²] = 2` (`F_q` perfect, basis `{1, t}` over `K²`), `f = N/D` is a
-/// square iff `N·D ∈ F_q[t]²`, and a char-2 polynomial over a perfect field is a
-/// square iff every **odd-degree** coefficient vanishes (the even ones are squares
-/// automatically). The additive `℘`-analogue of this is [`global_is_pe`].
-fn ff_is_square<S: FiniteChar2Field>(f: &RationalFunction<S>) -> bool {
-    if f.is_zero() {
-        return true;
-    }
-    let prod = f.num().mul(f.den());
-    prod.coeffs()
-        .iter()
-        .enumerate()
-        .all(|(i, c)| i & 1 == 0 || c.is_zero())
-}
-
-/// Whether `f ∈ ℘(F_q(t))` — the **global** Artin–Schreier triviality test
-/// (`℘(x) = x² + x`). By the local–global principle for `℘` over the rational
-/// function field, `f ∈ ℘(F_q(t))` iff `f ∈ ℘(K_v)` at **every** place; and the only
-/// places that can carry an obstruction are the poles of `f` (finite places dividing
-/// `den f`) and `∞` (which also sees the leftover constant's `Tr_{F_q/F₂}`). So a
-/// finite sweep of `{∞} ∪ {P | den f}` decides it. The additive analogue of the
-/// odd-char `is_global_square_ff`.
-pub fn global_is_pe<S: FiniteChar2Field>(f: &RationalFunction<S>) -> bool {
-    if f.is_zero() {
-        return true;
-    }
-    if !local_is_pe(f, &Char2Place::Infinite) {
-        return false;
-    }
-    char2_monic_irreducible_factors(f.den())
-        .into_iter()
-        .all(|p| local_is_pe(f, &Char2Place::Finite(p)))
-}
-
-/// The finite set of places of `F_q(t)` that can make `form` anisotropic: `∞` plus
-/// every monic irreducible dividing a numerator or denominator of some coefficient.
-/// At every **other** place all coefficients are units, so a rank-`≥ 3` form reduces
-/// to a `> 2`-variable form over the finite residue field `κ` — isotropic by
-/// Chevalley–Warning and liftable by Hensel — and need not be checked.
-pub fn relevant_places_char2<S: FiniteChar2Field>(form: &Char2QuadForm<S>) -> Vec<Char2Place<S>> {
-    let mut primes: Vec<Poly<S>> = Vec::new();
-    let mut push = |g: &Poly<S>| {
-        for p in char2_monic_irreducible_factors(g) {
-            if !primes.contains(&p) {
-                primes.push(p);
-            }
-        }
-    };
-    for (a, b) in &form.blocks {
-        push(a.num());
-        push(a.den());
-        push(b.num());
-        push(b.den());
-    }
-    for c in &form.singular {
-        push(c.num());
-        push(c.den());
-    }
-    let mut places = vec![Char2Place::Infinite];
-    places.extend(primes.into_iter().map(Char2Place::Finite));
-    places
-}
-
-/// Whether `form` is **isotropic over `F_q(t)`** (the global Hasse–Minkowski verdict
-/// in characteristic 2). The dispatch, all source-pinned (Aravire–Jacob;
-/// Elman–Karpenko–Merkurjev; Csahók–Kutas–Montessinos–Zábrádi; Tsen–Lang `C₂`):
-///
-/// * a null coefficient (`⟨0⟩`) or a hyperbolic block (`[0,b]`/`[a,0]`) ⇒ isotropic;
-/// * `rank ≥ 5` ⇒ isotropic — `u(F_q(t)) = 4` (`F_q(t)` is a `C₂` field);
-/// * **totally singular** part (`℘`-free, quasilinear): `[K : K²] = 2`, so `≥ 3`
-///   singular entries are isotropic, and a binary `⟨c₁, c₂⟩` is isotropic iff
-///   `c₁c₂ ∈ K²` (`ff_is_square`); an anisotropic binary quasilinear part is
-///   *universal*, so it isotropises any form carrying a nonzero block;
-/// * **rank 2** `[a, b]`: isotropic iff `ab ∈ ℘(F_q(t))` ([`global_is_pe`]) — *not* a
-///   finite bad-place sweep, since the constant-trace obstruction lives at infinitely
-///   many odd-degree places (caught by the global `℘` test);
-/// * **rank 3/4 non-degenerate**: Hasse–Minkowski — isotropic iff isotropic over
-///   `K_v` at every [`relevant_places_char2`] (a finite set).
-///
-/// The return type stays optional for API symmetry with the local routines; the
-/// current local engine covers every shape routed here.
-pub fn is_isotropic_global_char2<S: FiniteChar2Field>(form: &Char2QuadForm<S>) -> Option<bool> {
-    // A null direction or a hyperbolic block isotropises the whole form.
-    if form.singular.iter().any(|c| c.is_zero()) {
-        return Some(true);
-    }
-    if form.blocks.iter().any(|(a, b)| a.is_zero() || b.is_zero()) {
-        return Some(true);
-    }
-    let nb = form.blocks.len();
-    let ns = form.singular.len();
-    let rank = 2 * nb + ns;
-    if rank == 0 {
-        return Some(false); // the empty form is anisotropic by convention
-    }
-    if rank >= 5 {
-        return Some(true); // u(F_q(t)) = 4
-    }
-    // Totally-singular handling (the quasilinear part), elementary over F_q(t).
-    if ns >= 3 {
-        return Some(true); // ≥ 3 entries are K²-dependent
-    }
-    if ns == 2 {
-        // A binary block present ⇒ the (universal-if-anisotropic) singular pair
-        // isotropises it; otherwise it is the pure quasilinear ⟨c₁,c₂⟩.
-        if nb >= 1 {
-            return Some(true);
-        }
-        let prod = form.singular[0].mul(&form.singular[1]);
-        return Some(ff_is_square(&prod)); // ⟨c₁,c₂⟩ iso ⟺ c₁c₂ ∈ K²
-    }
-    // Non-degenerate from here (#singular ≤ 1).
-    match (nb, ns) {
-        (0, 1) => Some(false), // ⟨c⟩, c ≠ 0
-        (1, 0) => {
-            // rank 2: [a,b] isotropic ⟺ ab ∈ ℘(F_q(t)).
-            let (a, b) = &form.blocks[0];
-            Some(global_is_pe(&a.mul(b)))
-        }
-        // rank 3 ([a,b]⊥⟨c⟩) and rank 4 ([a,b]⊥[a,b]): Hasse–Minkowski.
-        _ => {
-            let mut all_iso = true;
-            for place in relevant_places_char2(form) {
-                match local_is_isotropic_char2(form, &place) {
-                    Some(true) => {}
-                    Some(false) => return Some(false),
-                    None => all_iso = false,
-                }
-            }
-            all_iso.then_some(true)
-        }
-    }
 }
 
 #[cfg(test)]
@@ -1274,7 +859,7 @@ mod tests {
         let p_sq = p_poly.mul(&p_poly);
         let wp = R2::new(p2(&[0, 1, 0, 1]).coeffs().to_vec(), p_sq.coeffs().to_vec());
 
-        assert!(local_is_pe(&wp, &place));
+        assert!(asnf::local_is_pe(&wp, &place));
         let form = Char2QuadForm::from_blocks(vec![(r2(&[1], &[1]), wp)]);
         let d = springer_decompose_local_char2(&form, &place);
         assert_eq!((d.phi0, d.phi1), (0, 0));

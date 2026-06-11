@@ -12,30 +12,34 @@ spine (`BW(ℝ)=ℤ/8`, Bott, the 8-fold table) and the lattice world — `E₈`
 unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
 "norm-2 root" has `Q=2`).
 
-- **`lattice.rs`** — `IntegralForm { gram: Vec<Vec<i128>> }` (private Gram, built via
-  `new` (square+symmetric-checked) / `diagonal`, never a struct literal).
-  `determinant` (fraction-free **Bareiss**, exact), `is_even`/`is_unimodular`,
-  `is_positive_definite` (Sylvester leading-minors via Bareiss), `signature` (exact
-  rational diagonalization), `invariant_factors` (SNF → discriminant group `L#/L`),
-  `level` (smallest `N` with `N·G⁻¹` even-integral, via the exact `Rational` inverse),
-  `clifford_metric` (rational Clifford metric), `clifford_metric_f2` (even-lattice
-  mod-2 char-2 metric), `direct_sum`. The positive-definite geometry: `short_vectors`
-  (two-stage: an exact rational ellipsoid enumeration first for small boxes — up to
-  `SHORT_VECTOR_EXACT_ENUM_LIMIT = 2_000_000` candidates via `short_vectors_exact_bounded`
-  — else unimodular size-reduction + **Fincke–Pohst**: float LDLᵀ bounds the search box,
-  exact i128 norm filters the leaves, vectors mapped back to the original basis — false
-  positives from the float bound are removed; `ldl()` returns `None` on a non-positive
-  pivot and that raw search falls back to `None` rather than silently omitting vectors),
-  `minimum`/`minimal_vectors`/`kissing_number`, and
-  `automorphism_group_order` (closed-form diagonal/ADE/root-system fast paths, else
-  backtracking over basis-vector images — every complete assignment is an
-  automorphism, so the count is exact). **Looks like a bug, isn't:** (a) the geometry
-  methods return `None` for indefinite lattices on purpose (infinitely many vectors of
-  each norm); (b) |Aut| is bounded by an explicit node budget (`AUTO_NODE_BUDGET`) and
-  returns `None` past it (`automorphism_group_order_bounded` exposes the budget) — an
-  honest `None`, not silent truncation; (c) `level(⟨1⟩)=2`, not 1 — `ℤ` is odd. Oracles:
-  `A_2`/`A_3`/`D_4`/`E_8` det, kissing (6/12/24/240), |Aut| (12/48/1152), level (3/·/·/1),
-  `Z^n` (|Aut| `2ⁿ·n!`).
+- **`lattice/`** (split from `lattice.rs`) — two-file subdirectory:
+  - **`lattice/core.rs`** — `IntegralForm { gram: Vec<Vec<i128>> }` (private Gram, built
+    via `new` (square+symmetric-checked) / `diagonal`, never a struct literal).
+    `determinant` (fraction-free **Bareiss**, exact), `is_even`/`is_unimodular`,
+    `is_positive_definite` (Sylvester leading-minors via Bareiss), `signature` (exact
+    rational diagonalization), `invariant_factors` (SNF → discriminant group `L#/L`),
+    `level` (smallest `N` with `N·G⁻¹` even-integral, via the exact `Rational` inverse),
+    `clifford_metric` (rational Clifford metric), `clifford_metric_f2` (even-lattice
+    mod-2 char-2 metric), `direct_sum`. Internal helpers `gcd_i128`, `lcm_i128`,
+    `bareiss_det`, `matvec`, `dot` are `pub(super)` for `geometry.rs`.
+  - **`lattice/geometry.rs`** — the positive-definite geometry: `short_vectors`
+    (two-stage: an exact rational ellipsoid enumeration first for small boxes — up to
+    `SHORT_VECTOR_EXACT_ENUM_LIMIT = 2_000_000` candidates via `short_vectors_exact_bounded`
+    — else unimodular size-reduction + **Fincke–Pohst**: float LDLᵀ bounds the search box,
+    exact i128 norm filters the leaves, vectors mapped back to the original basis — false
+    positives from the float bound are removed; `ldl()` returns `None` on a non-positive
+    pivot and that raw search falls back to `None` rather than silently omitting vectors),
+    `minimum`/`minimal_vectors`/`kissing_number`, and
+    `automorphism_group_order` (closed-form diagonal/ADE/root-system fast paths, else
+    backtracking over basis-vector images — every complete assignment is an
+    automorphism, so the count is exact). **Looks like a bug, isn't:** (a) the geometry
+    methods return `None` for indefinite lattices on purpose (infinitely many vectors of
+    each norm); (b) |Aut| is bounded by an explicit node budget (`AUTO_NODE_BUDGET`) and
+    returns `None` past it (`automorphism_group_order_bounded` exposes the budget) — an
+    honest `None`, not silent truncation; (c) `level(⟨1⟩)=2`, not 1 — `ℤ` is odd.
+  - **`lattice/mod.rs`** — hub: declares and re-exports; tests with Oracles:
+    `A_2`/`A_3`/`D_4`/`E_8` det, kissing (6/12/24/240), |Aut| (12/48/1152), level (3/·/·/1),
+    `Z^n` (|Aut| `2ⁿ·n!`).
 - **`diagonal.rs`** — `pub(crate)` exact-rational diagonalization helpers shared by
   `lattice`, `genus`, and `discriminant` (signature, Sylvester minors, p-adic
   Gram–Schmidt). Not a public surface.
@@ -45,23 +49,29 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   roots generate `L`, index off the HNF pivots). Det/kissing/Coxeter oracles protect
   every construction; |Aut| oracles include `A_n`→`2(n+1)!` (n≥2; `A_1`→2), `D_4`→1152,
   `D_5`→3840, and the named constant `E8_WEYL_GROUP_ORDER = 696729600`.
-- **`discriminant.rs`** — the even-lattice discriminant form bridge: `DiscriminantForm
-  { group, reps, gram_inv }` represents `A_L = L#/L` as `Z^n/GZ^n`;
-  `quadratic_value_mod2`, `bilinear_value_mod1`, `GaussSum::phase_mod8`, and the
-  p-primary `FqmGaussPhase` / `FqmPrimaryPhase` projection compute the finite
-  quadratic module's Milgram/Brown `Z/8` phase (`milgram_signature_mod8_fqm`);
-  `verify_milgram` compares that FQM phase to the legacy floating Gauss-sum oracle, the
-  exact signature, and the genus oddity route. `Complex64`, `weil_t`, `weil_s`,
-  `weil_s_prefactor_phase_mod8`, `weil_s_recovers_milgram_phase_mod8`, and
-  `verify_weil_relations` implement the discriminant-form Weil representation.
-  `is_isomorphic`/`is_isomorphic_bounded` decide finite-quadratic-module isomorphism
-  (Nikulin's criterion; `None` past `ISO_GROUP_CAP = 256` or the node budget) — the
-  computational engine behind genus-vs-discriminant-form equivalence.
-  **Looks like a bug, isn't:** the standard Weil `S` prefactor is the conjugate of the
-  positive Milgram phase stored by `GaussSum`; the verifier checks `S² = σ²·(γ↦−γ)`,
-  `S⁴ = σ⁴·I`, and `(ST)³ = S²`, not the oversimplified `S⁴ = I`. The lattice ↔
-  Clifford/Brauer-Wall mod-8 seam. Even-lattice only; odd type-I refinements stay a
-  documented boundary.
+- **`discriminant/`** (split from `discriminant.rs`) — four-file subdirectory:
+  - **`discriminant/complex.rs`** — hand-rolled `Complex64` (dependency-free;
+    deliberately shadows `num_complex::Complex64`).
+  - **`discriminant/gauss_sum.rs`** — `GaussSum` and matrix helpers (`mat_identity`,
+    `mat_mul`, `mat_pow`, `mat_scale`, `mat_approx_eq`); all matrix helpers
+    `pub(super)`.
+  - **`discriminant/form.rs`** — `DiscriminantForm { group, reps, gram_inv }` representing
+    `A_L = L#/L` as `Z^n/GZ^n`; `quadratic_value_mod2`, `bilinear_value_mod1`,
+    `GaussSum::phase_mod8`, and the p-primary `FqmGaussPhase` / `FqmPrimaryPhase`
+    projection (`milgram_signature_mod8_fqm`); `verify_milgram`; `Complex64`, `weil_t`,
+    `weil_s`, `weil_s_prefactor_phase_mod8`, `weil_s_recovers_milgram_phase_mod8`, and
+    `verify_weil_relations`. `is_isomorphic`/`is_isomorphic_bounded` (Nikulin's
+    criterion). `pub(crate)` surface: `IsoTables`, `phase_mod8_from_q_values`
+    (used by `fqm_witt.rs`). **Looks like a bug, isn't:** the standard Weil `S` prefactor
+    is the conjugate of the positive Milgram phase stored by `GaussSum`; the verifier
+    checks `S² = σ²·(γ↦−γ)`, `S⁴ = σ⁴·I`, and `(ST)³ = S²`, not the oversimplified
+    `S⁴ = I`. The lattice ↔ Clifford/Brauer-Wall mod-8 seam. Even-lattice only; odd
+    type-I refinements stay a documented boundary.
+  - **`discriminant/phases.rs`** — `FqmPrimaryPhase` and `FqmGaussPhase`: the p-primary
+    Milgram/Brown Gauss-sum phase projection of a finite quadratic module. Separated
+    from `form.rs` so that type records don't pull in cyclotomic arithmetic.
+  - **`discriminant/mod.rs`** — hub: re-exports public surface + `pub(crate)` items
+    `IsoTables`/`phase_mod8_from_q_values`; tests.
 - **`fqm_witt.rs`** — finite-quadratic-module Witt classes: `FiniteQuadraticModule`
   gives a native cyclic-product presentation, while `DiscriminantForm::fqm_witt_class`
   and `is_fqm_witt_equivalent` reduce p-primary modules by isotropic cyclic quotients

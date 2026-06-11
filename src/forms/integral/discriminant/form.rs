@@ -1,202 +1,17 @@
-//! Discriminant quadratic forms of even integral lattices and Milgram's Gauss sum.
-//!
-//! For a nonsingular even lattice `L` with Gram matrix `G`, this module uses the
-//! standard presentation
-//!
-//! ```text
-//! A_L = L#/L ~= Z^n / G Z^n,    y |-> G^{-1} y
-//! q_L(y) = y^T G^{-1} y mod 2Z.
-//! ```
-//!
-//! The normalized Gauss sum of `q_L` has phase `exp(2*pi*i*signature/8)`.
+//! The `DiscriminantForm` core: the finite quadratic module `A_L = L#/L` of an even
+//! integral lattice, its Gauss sum, and the Weil representation (`S`, `T` matrices).
 
+use super::complex::Complex64;
+use super::gauss_sum::{mat_approx_eq, mat_identity, mat_mul, mat_pow, mat_scale, GaussSum};
 use crate::forms::integral::diagonal::{rational_congruence_diagonal, DegenerateBehavior};
 use crate::forms::integral::{Genus, IntegralForm};
 use crate::linalg::field::inverse_matrix;
 use crate::linalg::integer::{normalize_relation_rows, reduce_integer_vector};
 use crate::scalar::{Rational, Scalar};
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::BTreeSet;
+use std::collections::HashSet;
 
-/// A normalized complex Gauss sum, kept dependency-free.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GaussSum {
-    pub re: f64,
-    pub im: f64,
-}
-
-impl GaussSum {
-    pub fn abs(&self) -> f64 {
-        self.re.hypot(self.im)
-    }
-
-    /// Phase as an eighth-root index: `0` for `1`, `1` for `exp(pi*i/4)`, ... .
-    /// Returns `None` if the magnitude or angle is not close to an eighth root.
-    pub fn phase_mod8(&self, tol: f64) -> Option<i128> {
-        if (self.abs() - 1.0).abs() > tol {
-            return None;
-        }
-        let step = std::f64::consts::FRAC_PI_4;
-        let raw = (self.im.atan2(self.re) / step).round() as i128;
-        let k = raw.rem_euclid(8);
-        let target = (k as f64) * step;
-        if (self.re - target.cos()).abs() <= tol && (self.im - target.sin()).abs() <= tol {
-            Some(k)
-        } else {
-            None
-        }
-    }
-}
-
-/// A tiny dependency-free complex number for Gauss sums and Weil matrices.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Complex64 {
-    pub re: f64,
-    pub im: f64,
-}
-
-impl Complex64 {
-    pub fn zero() -> Self {
-        Complex64 { re: 0.0, im: 0.0 }
-    }
-
-    pub fn one() -> Self {
-        Complex64 { re: 1.0, im: 0.0 }
-    }
-
-    pub fn cis(theta: f64) -> Self {
-        Complex64 {
-            re: theta.cos(),
-            im: theta.sin(),
-        }
-    }
-
-    /// `exp(pi*i*k/4)`.
-    pub fn eighth_root(k: i128) -> Self {
-        Complex64::cis((k.rem_euclid(8) as f64) * std::f64::consts::FRAC_PI_4)
-    }
-
-    pub fn abs(&self) -> f64 {
-        self.re.hypot(self.im)
-    }
-
-    pub fn add(&self, rhs: &Self) -> Self {
-        Complex64 {
-            re: self.re + rhs.re,
-            im: self.im + rhs.im,
-        }
-    }
-
-    pub fn sub(&self, rhs: &Self) -> Self {
-        Complex64 {
-            re: self.re - rhs.re,
-            im: self.im - rhs.im,
-        }
-    }
-
-    pub fn mul(&self, rhs: &Self) -> Self {
-        Complex64 {
-            re: self.re * rhs.re - self.im * rhs.im,
-            im: self.re * rhs.im + self.im * rhs.re,
-        }
-    }
-
-    pub fn scale(&self, c: f64) -> Self {
-        Complex64 {
-            re: self.re * c,
-            im: self.im * c,
-        }
-    }
-
-    pub fn approx_eq(&self, rhs: &Self, tol: f64) -> bool {
-        self.sub(rhs).abs() <= tol
-    }
-}
-
-/// The finite discriminant quadratic module of an even lattice.
-#[derive(Clone, Debug, PartialEq)]
-pub struct DiscriminantForm {
-    /// Nontrivial invariant factors of `A_L`.
-    pub group: Vec<i128>,
-    /// Canonical representatives `y` for `Z^n / GZ^n`.
-    pub reps: Vec<Vec<i128>>,
-    /// The exact inverse Gram matrix.
-    pub gram_inv: Vec<Vec<Rational>>,
-}
-
-/// One p-primary Milgram/Brown phase of a finite quadratic module.
-///
-/// This is the **Gauss-sum phase projection** of the finite-quadratic-module Witt
-/// class, not Wall's full generator-and-relation normal form.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FqmPrimaryPhase {
-    /// The prime `p` of the primary subgroup.
-    pub prime: u128,
-    /// The cardinality of the p-primary subgroup.
-    pub order: usize,
-    /// The largest order of an element in this p-primary subgroup.
-    pub exponent: u128,
-    /// The normalized Gauss-sum phase `ζ_8^phase_mod8`.
-    pub phase_mod8: i128,
-}
-
-/// The Milgram/Brown `Z/8` phase projection of a finite quadratic module.
-///
-/// The full Witt group of finite quadratic modules has finer Wall/Nikulin/
-/// Kawauchi-Kojima generator data. This record intentionally exposes only the
-/// p-local normalized Gauss-sum phases and their total.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FqmGaussPhase {
-    /// The cardinality of the full finite quadratic module.
-    pub order: usize,
-    /// The total phase, i.e. the value congruent to the lattice signature mod 8.
-    pub phase_mod8: i128,
-    /// The p-primary phase factors whose sum is `phase_mod8` in `Z/8`.
-    pub primary: Vec<FqmPrimaryPhase>,
-}
-
-fn mat_identity(n: usize) -> Vec<Vec<Complex64>> {
-    let mut out = vec![vec![Complex64::zero(); n]; n];
-    for (i, row) in out.iter_mut().enumerate() {
-        row[i] = Complex64::one();
-    }
-    out
-}
-
-fn mat_mul(a: &[Vec<Complex64>], b: &[Vec<Complex64>]) -> Vec<Vec<Complex64>> {
-    let n = a.len();
-    let m = b.first().map_or(0, Vec::len);
-    let inner = b.len();
-    let mut out = vec![vec![Complex64::zero(); m]; n];
-    for i in 0..n {
-        for k in 0..inner {
-            for j in 0..m {
-                out[i][j] = out[i][j].add(&a[i][k].mul(&b[k][j]));
-            }
-        }
-    }
-    out
-}
-
-fn mat_pow(a: &[Vec<Complex64>], exp: usize) -> Vec<Vec<Complex64>> {
-    let mut out = mat_identity(a.len());
-    for _ in 0..exp {
-        out = mat_mul(a, &out);
-    }
-    out
-}
-
-fn mat_scale(a: &[Vec<Complex64>], c: Complex64) -> Vec<Vec<Complex64>> {
-    a.iter()
-        .map(|row| row.iter().map(|x| x.mul(&c)).collect())
-        .collect()
-}
-
-fn mat_approx_eq(a: &[Vec<Complex64>], b: &[Vec<Complex64>], tol: f64) -> bool {
-    a.len() == b.len()
-        && a.iter().zip(b).all(|(ra, rb)| {
-            ra.len() == rb.len() && ra.iter().zip(rb).all(|(x, y)| x.approx_eq(y, tol))
-        })
-}
+// ── rational / integer helpers ──
 
 fn rational_mod_int(x: Rational, modulus: i128) -> Rational {
     debug_assert!(modulus > 0);
@@ -207,7 +22,7 @@ fn rational_mod_int(x: Rational, modulus: i128) -> Rational {
     Rational::new(x.numer().rem_euclid(mden), den)
 }
 
-fn rational_to_f64(x: &Rational) -> f64 {
+pub(super) fn rational_to_f64(x: &Rational) -> f64 {
     (x.numer() as f64) / (x.denom() as f64)
 }
 
@@ -270,6 +85,129 @@ fn enumerate_hnf_reps(rows: &[Vec<i128>]) -> Option<Vec<Vec<i128>>> {
     Some(reps.into_iter().collect())
 }
 
+// ── genus-signature helpers (used by genus_signature_mod8 / verify_milgram) ──
+
+fn pow_mod8(mut base: i128, mut exp: u128) -> i128 {
+    base = base.rem_euclid(8);
+    let mut acc = 1i128;
+    while exp > 0 {
+        if exp & 1 == 1 {
+            acc = (acc * base).rem_euclid(8);
+        }
+        base = (base * base).rem_euclid(8);
+        exp >>= 1;
+    }
+    acc
+}
+
+fn v_p_i128(mut x: i128, p: i128) -> i128 {
+    debug_assert!(x != 0);
+    let mut k = 0i128;
+    while x % p == 0 {
+        x /= p;
+        k += 1;
+    }
+    k
+}
+
+fn unit_part_i128(mut x: i128, p: i128) -> i128 {
+    while x % p == 0 {
+        x /= p;
+    }
+    x
+}
+
+fn rat_val(r: &Rational, p: i128) -> i128 {
+    v_p_i128(r.numer(), p) - v_p_i128(r.denom(), p)
+}
+
+fn unit_mod8(r: &Rational) -> i128 {
+    let a = unit_part_i128(r.numer(), 2).rem_euclid(8);
+    let b = unit_part_i128(r.denom(), 2).rem_euclid(8);
+    (a * b).rem_euclid(8)
+}
+
+fn is_antisquare_2(u: i128) -> bool {
+    matches!(u.rem_euclid(8), 3 | 5)
+}
+
+fn mod_pow_u128(mut base: u128, mut exp: u128, modulus: u128) -> u128 {
+    let mut acc = 1u128;
+    base %= modulus;
+    while exp > 0 {
+        if exp & 1 == 1 {
+            acc = (acc * base) % modulus;
+        }
+        base = (base * base) % modulus;
+        exp >>= 1;
+    }
+    acc
+}
+
+fn is_square_mod_odd_p(unit: i128, p: i128) -> bool {
+    let u = unit.rem_euclid(p) as u128;
+    if u == 0 {
+        return true;
+    }
+    mod_pow_u128(u, ((p as u128) - 1) / 2, p as u128) == 1
+}
+
+fn unit_is_antisquare_odd(r: &Rational, p: i128) -> bool {
+    let a = unit_part_i128(r.numer(), p);
+    let b = unit_part_i128(r.denom(), p);
+    let unit = (a.rem_euclid(p) * b.rem_euclid(p)).rem_euclid(p);
+    !is_square_mod_odd_p(unit, p)
+}
+
+fn diagonal_entries(lattice: &IntegralForm) -> Option<Vec<Rational>> {
+    if lattice.determinant() == 0 {
+        return None;
+    }
+    Some(rational_congruence_diagonal(
+        lattice.gram(),
+        DegenerateBehavior::RequireNonsingular,
+    ))
+}
+
+fn relevant_odd_primes(det: i128) -> Vec<u128> {
+    let mut n = det.unsigned_abs();
+    while n.is_multiple_of(2) {
+        n /= 2;
+    }
+    let mut ps = Vec::new();
+    let mut d = 3u128;
+    while d <= n / d {
+        if n.is_multiple_of(d) {
+            ps.push(d);
+            while n.is_multiple_of(d) {
+                n /= d;
+            }
+        }
+        d += 2;
+    }
+    if n > 1 {
+        ps.push(n);
+    }
+    ps
+}
+
+fn two_adic_oddity(diag: &[Rational]) -> i128 {
+    diag.iter()
+        .map(|d| {
+            let u = unit_mod8(d);
+            let antisquare = rat_val(d, 2).rem_euclid(2) != 0 && is_antisquare_2(u);
+            (u + if antisquare { 4 } else { 0 }).rem_euclid(8)
+        })
+        .sum::<i128>()
+        .rem_euclid(8)
+}
+
+fn symbol_p_excess_mod8(p: u128, scale: u128, dim: usize, sign: i128) -> i128 {
+    let q = pow_mod8(p as i128, scale);
+    let antisquare = if scale % 2 == 1 && sign < 0 { 4 } else { 0 };
+    ((dim as i128) * (q - 1) + antisquare).rem_euclid(8)
+}
+
 /// Largest discriminant group [`DiscriminantForm::is_isomorphic`] will tabulate; past
 /// it the Cayley-table build is refused with `None` (an honest budget, like
 /// [`crate::forms::AUTO_NODE_BUDGET`]), never a wrong answer.
@@ -277,14 +215,6 @@ const ISO_GROUP_CAP: usize = 256;
 
 /// Default node budget for the isomorphism search (candidate generator-images tried).
 const ISO_NODE_BUDGET: u128 = 50_000_000;
-
-/// Largest discriminant group for the p-primary Gauss/Brown phase projection. The
-/// path enumerates the finite module exactly, so it declines rather than silently
-/// truncating.
-const FQM_GAUSS_GROUP_CAP: usize = 4096;
-
-/// Largest cyclotomic order used by the exact algebraic Gauss-sum shape check.
-const FQM_CYCLOTOMIC_ORDER_CAP: usize = 4096;
 
 /// The finite-abelian-group data of a discriminant form needed to compare two of
 /// them: the identity index, each element's `q_L` value and additive order, and the
@@ -396,7 +326,10 @@ fn poly_div_exact(num: &[i128], den: &[i128]) -> Option<Vec<i128>> {
     Some(poly_trim(q))
 }
 
-fn cyclotomic_polynomial(n: usize, cache: &mut BTreeMap<usize, Vec<i128>>) -> Option<Vec<i128>> {
+fn cyclotomic_polynomial(
+    n: usize,
+    cache: &mut std::collections::BTreeMap<usize, Vec<i128>>,
+) -> Option<Vec<i128>> {
     if let Some(p) = cache.get(&n) {
         return Some(p.clone());
     }
@@ -454,7 +387,7 @@ impl CycloContext {
         if order == 0 || order > FQM_CYCLOTOMIC_ORDER_CAP {
             return None;
         }
-        let mut cache = BTreeMap::new();
+        let mut cache = std::collections::BTreeMap::new();
         let phi = cyclotomic_polynomial(order, &mut cache)?;
         let mut powers = Vec::with_capacity(order);
         for k in 0..order {
@@ -542,6 +475,14 @@ impl Cyclo {
     }
 }
 
+/// Largest discriminant group for the p-primary Gauss/Brown phase projection. The
+/// path enumerates the finite module exactly, so it declines rather than silently
+/// truncating.
+pub(super) const FQM_GAUSS_GROUP_CAP: usize = 4096;
+
+/// Largest cyclotomic order used by the exact algebraic Gauss-sum shape check.
+const FQM_CYCLOTOMIC_ORDER_CAP: usize = 4096;
+
 pub(crate) fn phase_mod8_from_q_values<'a>(
     q_values: impl IntoIterator<Item = &'a Rational>,
     group_order: usize,
@@ -613,7 +554,7 @@ fn prime_factors_i128(n: i128) -> Vec<u128> {
     out
 }
 
-fn is_prime_power_order(order: usize, p: u128) -> bool {
+pub(super) fn is_prime_power_order(order: usize, p: u128) -> bool {
     if order == 1 {
         return true;
     }
@@ -722,6 +663,17 @@ fn search_iso(
         img.pop();
     }
     Some(false)
+}
+
+/// The finite discriminant quadratic module of an even lattice.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DiscriminantForm {
+    /// Nontrivial invariant factors of `A_L`.
+    pub group: Vec<i128>,
+    /// Canonical representatives `y` for `Z^n / GZ^n`.
+    pub reps: Vec<Vec<i128>>,
+    /// The exact inverse Gram matrix.
+    pub gram_inv: Vec<Vec<Rational>>,
 }
 
 impl DiscriminantForm {
@@ -887,7 +839,8 @@ impl DiscriminantForm {
     /// a floating-point oracle; this method first checks the relevant cyclotomic
     /// equalities exactly and only then chooses the positive square-root branch in
     /// the principal embedding.
-    pub fn fqm_gauss_phase(&self) -> Option<FqmGaussPhase> {
+    pub fn fqm_gauss_phase(&self) -> Option<super::phases::FqmGaussPhase> {
+        use super::phases::FqmPrimaryPhase;
         let tables = self.tables_bounded(FQM_GAUSS_GROUP_CAP)?;
         let order = self.reps.len();
         let total = phase_mod8_from_q_values(tables.q.iter(), order)?;
@@ -928,7 +881,7 @@ impl DiscriminantForm {
         if sum != total {
             return None;
         }
-        Some(FqmGaussPhase {
+        Some(super::phases::FqmGaussPhase {
             order,
             phase_mod8: total,
             primary,
@@ -990,7 +943,7 @@ impl DiscriminantForm {
         search_iso(&lt, &mt, &gens, &mut img, &mut budget)
     }
 
-    fn equivalent_mod_lattice(&self, a: &[i128], b: &[i128]) -> bool {
+    pub(super) fn equivalent_mod_lattice(&self, a: &[i128], b: &[i128]) -> bool {
         let n = self.gram_inv.len();
         if a.len() != n || b.len() != n {
             return false;
@@ -1115,77 +1068,6 @@ impl DiscriminantForm {
     }
 }
 
-fn pow_mod8(mut base: i128, mut exp: u128) -> i128 {
-    base = base.rem_euclid(8);
-    let mut acc = 1i128;
-    while exp > 0 {
-        if exp & 1 == 1 {
-            acc = (acc * base).rem_euclid(8);
-        }
-        base = (base * base).rem_euclid(8);
-        exp >>= 1;
-    }
-    acc
-}
-
-fn v_p_i128(mut x: i128, p: i128) -> i128 {
-    debug_assert!(x != 0);
-    let mut k = 0i128;
-    while x % p == 0 {
-        x /= p;
-        k += 1;
-    }
-    k
-}
-
-fn unit_part_i128(mut x: i128, p: i128) -> i128 {
-    while x % p == 0 {
-        x /= p;
-    }
-    x
-}
-
-fn rat_val(r: &Rational, p: i128) -> i128 {
-    v_p_i128(r.numer(), p) - v_p_i128(r.denom(), p)
-}
-
-fn unit_mod8(r: &Rational) -> i128 {
-    let a = unit_part_i128(r.numer(), 2).rem_euclid(8);
-    let b = unit_part_i128(r.denom(), 2).rem_euclid(8);
-    (a * b).rem_euclid(8)
-}
-
-fn is_antisquare_2(u: i128) -> bool {
-    matches!(u.rem_euclid(8), 3 | 5)
-}
-
-fn diagonal_entries(lattice: &IntegralForm) -> Option<Vec<Rational>> {
-    if lattice.determinant() == 0 {
-        return None;
-    }
-    Some(rational_congruence_diagonal(
-        lattice.gram(),
-        DegenerateBehavior::RequireNonsingular,
-    ))
-}
-
-fn two_adic_oddity(diag: &[Rational]) -> i128 {
-    diag.iter()
-        .map(|d| {
-            let u = unit_mod8(d);
-            let antisquare = rat_val(d, 2).rem_euclid(2) != 0 && is_antisquare_2(u);
-            (u + if antisquare { 4 } else { 0 }).rem_euclid(8)
-        })
-        .sum::<i128>()
-        .rem_euclid(8)
-}
-
-fn symbol_p_excess_mod8(p: u128, scale: u128, dim: usize, sign: i128) -> i128 {
-    let q = pow_mod8(p as i128, scale);
-    let antisquare = if scale % 2 == 1 && sign < 0 { 4 } else { 0 };
-    ((dim as i128) * (q - 1) + antisquare).rem_euclid(8)
-}
-
 /// Signature mod 8 from the Conway-Sloane oddity formula, using exact rational
 /// diagonalization as an independent check on Milgram's Gauss sum.
 pub fn genus_signature_mod8(lattice: &IntegralForm) -> Option<i128> {
@@ -1218,266 +1100,4 @@ pub fn verify_milgram(lattice: &IntegralForm) -> Option<bool> {
     let sig = (pos as i128 - neg as i128).rem_euclid(8);
     let genus_sig = genus_signature_mod8(lattice)?;
     Some(phase == sig && float_phase == sig && genus_sig == sig)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::forms::{a_n, are_in_same_genus, d16_plus, d_n, e_6, e_7, e_8, IntegralForm};
-
-    /// Nikulin's right-hand side: equal signature pairs and isomorphic discriminant
-    /// quadratic forms. Both lattices must be even (the `from_lattice` boundary).
-    fn nikulin_rhs(a: &IntegralForm, b: &IntegralForm) -> bool {
-        if a.signature() != b.signature() {
-            return false;
-        }
-        let qa = DiscriminantForm::from_lattice(a).expect("even lattice a");
-        let qb = DiscriminantForm::from_lattice(b).expect("even lattice b");
-        qa.is_isomorphic(&qb) == Some(true)
-    }
-
-    #[test]
-    fn discriminant_iso_is_reflexive_and_q_sensitive() {
-        for l in [a_n(1), a_n(3), d_n(4), e_6(), e_7(), e_8()] {
-            let q = DiscriminantForm::from_lattice(&l).unwrap();
-            assert_eq!(q.is_isomorphic(&q), Some(true), "reflexive");
-        }
-        // A_1 and E_7 share the group ℤ/2 but have q-values 1/2 vs 3/2 — *not*
-        // isomorphic forms. The search must see q, not just the group.
-        let a1 = DiscriminantForm::from_lattice(&a_n(1)).unwrap();
-        let e7 = DiscriminantForm::from_lattice(&e_7()).unwrap();
-        assert_eq!(a1.group, e7.group, "same invariant factors ℤ/2");
-        assert_eq!(a1.is_isomorphic(&e7), Some(false), "q distinguishes them");
-        // Different groups: ℤ/3 (A_2) vs (ℤ/2)² (A_1 ⊕ A_1).
-        let a2 = DiscriminantForm::from_lattice(&a_n(2)).unwrap();
-        let a1a1 = DiscriminantForm::from_lattice(&a_n(1).direct_sum(&a_n(1))).unwrap();
-        assert_eq!(a2.is_isomorphic(&a1a1), Some(false));
-    }
-
-    #[test]
-    fn nikulin_genus_iff_signature_and_discriminant_form() {
-        // The Milnor pair: even unimodular rank 16, same genus, non-isometric, both
-        // with trivial discriminant form — Nikulin says same genus, and it is.
-        let e8e8 = e_8().direct_sum(&e_8());
-        let d16 = d16_plus();
-        assert!(nikulin_rhs(&e8e8, &d16));
-        assert!(are_in_same_genus(&e8e8, &d16));
-
-        // are_in_same_genus ⟺ (equal signatures ∧ isomorphic discriminant forms)
-        // across the even-lattice zoo.
-        let zoo = [
-            a_n(1),
-            a_n(2),
-            a_n(3),
-            a_n(1).direct_sum(&a_n(1)),
-            d_n(4),
-            e_6(),
-            e_7(),
-            e_8(),
-        ];
-        for (i, a) in zoo.iter().enumerate() {
-            for b in &zoo[i..] {
-                assert_eq!(
-                    are_in_same_genus(a, b),
-                    nikulin_rhs(a, b),
-                    "Nikulin equivalence failed for a pair"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn a1_discriminant_form_has_quarter_turn_phase() {
-        let a1 = a_n(1);
-        let disc = DiscriminantForm::from_lattice(&a1).unwrap();
-        assert_eq!(disc.group, vec![2]);
-        assert_eq!(disc.reps.len(), 2);
-        assert_eq!(disc.quadratic_value_mod2(&[1]), Rational::new(1, 2));
-        assert_eq!(disc.milgram_signature_mod8(), Some(1));
-        assert_eq!(disc.weil_s_prefactor_phase_mod8(), Some(7));
-        assert_eq!(disc.weil_s_recovers_milgram_phase_mod8(), Some(1));
-        assert!(disc.verify_weil_relations());
-        assert_eq!(verify_milgram(&a1), Some(true));
-    }
-
-    #[test]
-    fn ade_root_lattices_match_milgram_phase() {
-        for n in 1..=5 {
-            let a = a_n(n);
-            let disc = DiscriminantForm::from_lattice(&a).unwrap();
-            assert_eq!(disc.group, vec![n as i128 + 1]);
-            assert_eq!(disc.milgram_signature_mod8_fqm(), Some(n as i128 % 8));
-            assert_eq!(disc.milgram_signature_mod8(), Some(n as i128 % 8));
-            assert!(disc.verify_weil_relations(), "Weil relations A_{n}");
-            assert_eq!(verify_milgram(&a), Some(true), "A_{n}");
-        }
-
-        let d4 = d_n(4);
-        let disc = DiscriminantForm::from_lattice(&d4).unwrap();
-        assert_eq!(disc.group, vec![2, 2]);
-        assert_eq!(disc.milgram_signature_mod8_fqm(), Some(4));
-        assert_eq!(disc.milgram_signature_mod8(), Some(4));
-        let gs = disc.gauss_sum();
-        assert!((gs.re + 1.0).abs() < 1e-8 && gs.im.abs() < 1e-8);
-        assert_eq!(disc.weil_s_recovers_milgram_phase_mod8(), Some(4));
-        assert!(disc.verify_weil_relations());
-        assert_eq!(verify_milgram(&d4), Some(true));
-    }
-
-    #[test]
-    fn e8_is_unimodular_and_milgram_trivial() {
-        let e8 = e_8();
-        let disc = DiscriminantForm::from_lattice(&e8).unwrap();
-        assert!(disc.group.is_empty());
-        assert_eq!(disc.reps, vec![vec![0; 8]]);
-        assert_eq!(disc.milgram_signature_mod8(), Some(0));
-        assert_eq!(disc.weil_t(), vec![Complex64::one()]);
-        assert_eq!(disc.weil_s().unwrap(), vec![vec![Complex64::one()]]);
-        assert!(disc.verify_weil_relations());
-        assert_eq!(verify_milgram(&e8), Some(true));
-
-        let e8e8 = e8.direct_sum(&e8);
-        assert_eq!(
-            DiscriminantForm::from_lattice(&e8e8)
-                .unwrap()
-                .milgram_signature_mod8_fqm(),
-            Some(0)
-        );
-        assert_eq!(
-            DiscriminantForm::from_lattice(&e8e8)
-                .unwrap()
-                .milgram_signature_mod8(),
-            Some(0)
-        );
-        assert_eq!(verify_milgram(&e8e8), Some(true));
-    }
-
-    #[test]
-    fn fqm_gauss_phase_reports_primary_factors() {
-        let a1a2 = a_n(1).direct_sum(&a_n(2));
-        let disc = DiscriminantForm::from_lattice(&a1a2).unwrap();
-        let phase = disc.fqm_gauss_phase().unwrap();
-        assert_eq!(phase.order, 6);
-        assert_eq!(phase.phase_mod8, 3);
-        assert_eq!(
-            phase.primary,
-            vec![
-                FqmPrimaryPhase {
-                    prime: 2,
-                    order: 2,
-                    exponent: 2,
-                    phase_mod8: 1,
-                },
-                FqmPrimaryPhase {
-                    prime: 3,
-                    order: 3,
-                    exponent: 3,
-                    phase_mod8: 2,
-                },
-            ]
-        );
-    }
-
-    #[test]
-    fn fqm_phase_extends_past_2_elementary_brown_slice() {
-        // A_3 has discriminant group Z/4, so the old 2-elementary Brown bridge
-        // declines. The p-primary FQM phase still sees the Milgram signature.
-        let a3 = DiscriminantForm::from_lattice(&a_n(3)).unwrap();
-        assert_eq!(a3.group, vec![4]);
-        assert_eq!(a3.brown_invariant(), None);
-        assert_eq!(a3.milgram_signature_mod8_fqm(), Some(3));
-        assert_eq!(a3.fqm_gauss_phase().unwrap().primary[0].prime, 2);
-
-        // E_6 is odd torsion (Z/3): outside Brown's char-2 slice, inside the FQM
-        // Gauss phase projection.
-        let e6 = DiscriminantForm::from_lattice(&e_6()).unwrap();
-        assert_eq!(e6.group, vec![3]);
-        assert_eq!(e6.brown_invariant(), None);
-        assert_eq!(e6.milgram_signature_mod8_fqm(), Some(6));
-        assert_eq!(e6.fqm_gauss_phase().unwrap().primary[0].prime, 3);
-    }
-
-    #[test]
-    fn fqm_phase_matches_signature_genus_and_float_oracle_on_zoo() {
-        let zoo = [
-            a_n(1),
-            a_n(2),
-            a_n(3),
-            a_n(4),
-            a_n(5),
-            d_n(4),
-            d_n(5),
-            d_n(8),
-            e_6(),
-            e_7(),
-            e_8(),
-        ];
-        for l in zoo {
-            let disc = DiscriminantForm::from_lattice(&l).unwrap();
-            let fqm = disc.milgram_signature_mod8_fqm().unwrap();
-            let float = disc.milgram_signature_mod8().unwrap();
-            let (pos, neg) = l.signature();
-            let sig = (pos as i128 - neg as i128).rem_euclid(8);
-            assert_eq!(fqm, sig, "FQM phase mismatch for group {:?}", disc.group);
-            assert_eq!(
-                float, sig,
-                "float phase mismatch for group {:?}",
-                disc.group
-            );
-            assert_eq!(genus_signature_mod8(&l), Some(sig), "genus route mismatch");
-            assert_eq!(verify_milgram(&l), Some(true), "Milgram verifier mismatch");
-        }
-    }
-
-    #[test]
-    fn brown_invariant_recovers_signature_mod8_on_2_elementary_forms() {
-        // β ≡ sign(L) mod 8 — the fifth route to σ mod 8, exact-integer (Bridge M).
-        // 2-elementary generators: A_1 (ℤ/2, β=1), E_7 (ℤ/2, β=7), D_4 ((ℤ/2)², β=4),
-        // D_8 ((ℤ/2)², β=0), and the unimodular E_8 (β=0).
-        for (l, want) in [
-            (a_n(1), 1u128),
-            (e_7(), 7),
-            (d_n(4), 4),
-            (d_n(8), 0),
-            (e_8(), 0),
-        ] {
-            let disc = DiscriminantForm::from_lattice(&l).unwrap();
-            let brown = disc.brown_invariant().expect("2-elementary");
-            assert_eq!(brown.beta, want, "β mismatch");
-            assert_eq!(brown.radical_dim, 0, "discriminant b is nondegenerate");
-            // cross-check against the shipped f64 Milgram phase.
-            let milgram = disc.milgram_signature_mod8().unwrap().rem_euclid(8) as u128;
-            assert_eq!(brown.beta, milgram, "β ≢ Milgram phase");
-        }
-    }
-
-    #[test]
-    fn brown_invariant_is_none_off_the_2_elementary_slice() {
-        // A_2 has discriminant group ℤ/3 (odd torsion); A_3 has ℤ/4 (exponent 4).
-        // Neither is 2-elementary — the Brown slice declines, honestly.
-        assert_eq!(
-            DiscriminantForm::from_lattice(&a_n(2))
-                .unwrap()
-                .brown_invariant(),
-            None
-        );
-        assert_eq!(
-            DiscriminantForm::from_lattice(&a_n(3))
-                .unwrap()
-                .brown_invariant(),
-            None
-        );
-        // E_6 has discriminant group ℤ/3 as well.
-        assert_eq!(
-            DiscriminantForm::from_lattice(&e_6())
-                .unwrap()
-                .brown_invariant(),
-            None
-        );
-    }
-
-    #[test]
-    fn odd_lattices_have_no_even_discriminant_quadratic_form() {
-        assert!(DiscriminantForm::from_lattice(&IntegralForm::diagonal(&[1])).is_none());
-    }
 }

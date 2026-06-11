@@ -147,8 +147,12 @@ char-0 8-fold table, Bott, and `E₈` in `integral/`.
 - **`witt/milnor.rs`** — Milnor's map `W(ℚ) → ℤ ⊕ ⊕_p W(F_p)` as a computational
   complete invariant: `global_residues` returns the signature plus all nonzero
   residues. Odd `p` uses the second Springer residue; `p=2` uses Milnor's hand
-  boundary, represented as the `W(F_2) ≅ Z/2` `Char2` carrier. Cross-checked against
-  `springer_decompose_qp` and Hasse–Minkowski reconstruction tests.
+  boundary, represented as the `W(F_2) ≅ Z/2` `Char2` carrier. The equal-characteristic
+  twin is `global_residues_ff`, the split odd-`F_q(t)` map
+  `W(F_q(t)) ≅ W(F_q) ⊕ ⊕_π W(F_q[t]/π)`: infinity gives the constant-field summand,
+  finite monic irreducibles give the nonzero second residues. Cross-checked against
+  `springer_decompose_qp`, Hasse–Minkowski reconstruction tests, and exact
+  function-field place tests.
 
 (The *numeric* field invariants the ring implies — level, u-invariant — live in
 `field_invariants.rs`, not here.)

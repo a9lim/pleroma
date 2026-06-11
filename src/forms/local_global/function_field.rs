@@ -72,7 +72,7 @@ fn strip_factor<S: Scalar>(mut p: Poly<S>, pi: &Poly<S>) -> (i128, Poly<S>) {
 // ───────────────────────── per-place local data ─────────────────────────
 
 /// The residue field order `|κ| = q^{deg π}` (or `q` at the degree place).
-fn try_kappa_order<S: FiniteOddField>(place: &FFPlace<S>) -> Option<u128> {
+pub(crate) fn try_kappa_order<S: FiniteOddField>(place: &FFPlace<S>) -> Option<u128> {
     let q = S::field_order();
     match place {
         FFPlace::Finite(pi) => {
@@ -112,7 +112,7 @@ pub fn try_valuation_at_ff<S: FiniteOddField>(
 /// The residue unit `(a / ϖ^{v(a)}) mod ϖ ∈ κ*` of a **nonzero** `a`, as an element
 /// of the residue field: a [`Poly`] of degree `< deg π` at a finite place, or a
 /// constant (an `F_q` element) at the degree place.
-fn try_residue_unit_at<S: FiniteOddField>(
+pub(crate) fn try_residue_unit_at<S: FiniteOddField>(
     a: &RationalFunction<S>,
     place: &FFPlace<S>,
 ) -> Option<Poly<S>> {
@@ -141,7 +141,7 @@ fn try_residue_unit_at<S: FiniteOddField>(
 /// The residue quadratic character `χ_κ(u) ∈ {+1, −1}` of a **nonzero** residue
 /// unit `u ∈ κ*` — Euler's criterion `u^{(|κ|−1)/2}` in `F_q[t]/(π)` (or in `F_q`
 /// at the degree place).
-fn try_chi_kappa<S: FiniteOddField>(unit: &Poly<S>, place: &FFPlace<S>) -> Option<i128> {
+pub(crate) fn try_chi_kappa<S: FiniteOddField>(unit: &Poly<S>, place: &FFPlace<S>) -> Option<i128> {
     match place {
         FFPlace::Finite(pi) => {
             let e = (try_kappa_order(place)?.checked_sub(1)?) / 2;

@@ -24,6 +24,11 @@
 //!   (`inv = v(a)/n mod ℤ`, the unramified class). Lifts `brauer_rational`'s 2-torsion
 //!   surface to the full local Brauer group, with [`Brauer2Class`] embedding as the
 //!   `½`-slice ([`BrauerClass::from_two_torsion`]).
+//! * `milnor` — Bridge N.1: Milnor residue maps as global Witt invariants.
+//!   [`global_residues`] returns the signature plus the nonzero residues of
+//!   `W(ℚ) → ℤ ⊕ ⊕_p W(F_p)`, including Milnor's hand-defined dyadic cell, and
+//!   [`global_residues_ff`] returns the split odd-characteristic function-field map
+//!   `W(F_q(t)) ≅ W(F_q) ⊕ ⊕_π W(F_q[t]/π)`.
 //!
 //! The mod-8 spine lives here: `BW(ℝ) ≅ ℤ/8` is the same periodicity as the char-0
 //! 8-fold Clifford table, Bott periodicity, and `E₈` as the rank-8 even unimodular

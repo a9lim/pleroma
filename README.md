@@ -108,8 +108,9 @@ sequence `0 → W(ℤ) → W(ℚ) → ⊕_p W(F_p) → 0` — the global Witt gr
 Springer residue as its boundary map and the signature as its kernel. The same
 package recurs in **equal characteristic** over the
 global function field `F_q(t)`: the tame Hilbert symbol at each monic-irreducible
-place plus the degree place `∞`, reciprocity, and Hasse–Minkowski — and here it is
-**exact** (no precision model), the char-`p` mirror of the ℚ stack. Both global
+place plus the degree place `∞`, reciprocity, Hasse–Minkowski, and the split Milnor
+map `W(F_q(t)) ≅ W(F_q) ⊕ ⊕_π W(F_q[t]/π)` — and here it is **exact** (no precision
+model), the char-`p` mirror of the ℚ stack. Both global
 fields answer **one** interface: the `GlobalField` trait states the places, the
 local Hilbert symbol, reciprocity, and Hasse–Minkowski once, with `ℚ` and `F_q(t)`
 as its two implementors.
@@ -261,7 +262,7 @@ bridge with both feet on one island is a loop; crossing it counts like any other
 | J | S–F | the valuation as (lax) tropicalization; Newton slopes **are** Springer layers |
 | K | S–F | the full `ℚ/ℤ` cyclic-algebra Brauer invariant; reciprocity over `F_q(t)` |
 | M | F–I | the Brown `ℤ/8` invariant — the char-2 cell of the mod-8 spine, float-free |
-| N.1 | F–I | Milnor's exact sequence: the Springer residues go global (odd `p`) |
+| N.1 | F–I | Milnor's exact sequence: the Springer residues go global over `ℚ` and `F_q(t)` |
 | N.2 | S–F | the Scharlau transfer, named and tested |
 | N.3 | I–I | Nikulin: genus ⟺ (signature, discriminant form) |
 | N.4 | I–I | one Bernoulli source for the Eisenstein constants and the mass formula |

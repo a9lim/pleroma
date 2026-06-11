@@ -1104,13 +1104,33 @@ square class, matching the `finite_odd_witt` convention) so `p` stays runtime wh
 parity of diagonal lines with odd dyadic valuation, represented in the existing
 `W(F_2) ≅ Z/2` carrier `WittClassG::Char2 { field_degree: 1, arf }`.
 
+The equal-characteristic twin now ships too. For odd constant fields, the split
+affine-line form
+
+```text
+W(F_q(t)) ≅ W(F_q) ⊕ ⊕_π W(F_q[t]/π)
+```
+
+is exposed as `forms/witt/milnor.rs::global_residues_ff(entries:
+&[RationalFunction<S>]) -> Option<FunctionFieldMilnorResidues<S>>`.
+The first component is the `W(F_q)` class selected by the even-valuation layer at
+the degree place `∞`; the vector contains the nonzero second residues at finite
+monic irreducible places. It reuses the exact `F_q(t)` place helpers
+(`try_valuation_at_ff`, `try_residue_unit_at`, `try_chi_kappa`) rather than the
+capped local-field models.
+
 - **Oracles:** finite support (`∂_p = 0` for `p ∤ ∏aᵢ`, plus zero dyadic parity);
   square/hyperbolic invariance of `(signature, residues)`; residues distinguish
   `⟨1⟩` from `⟨3⟩` and `⟨1⟩` from `⟨2⟩`, cross-checked against the shipped
   Hasse–Minkowski `try_is_isotropic_q`; `∂₅` matches an independent computation
-  through `springer_decompose_qp` on the capped `Q₅` model; and `⟨2⟩`/`⟨1,2⟩`/`⟨−2⟩`
-  pin the dyadic cell.
-- **Boundary:** The `F_q(t)` split-exact twin is a noted follow-on (`milnor-ff`).
+  through `springer_decompose_qp` on the capped `Q₅` model; `⟨2⟩`/`⟨1,2⟩`/`⟨−2⟩`
+  pin the dyadic cell; and the function-field leg pins constants, the `t` place,
+  nonsquare constants, a degree-2 finite place, square-multiple invariance,
+  hyperbolic cancellation, and radical-entry rejection.
+- **Boundary:** `global_residues_ff` is odd-characteristic only (`FiniteOddField`).
+  Characteristic-2 function fields keep using the separate Artin-Schreier /
+  Aravire-Jacob layer; tame and wild norm-residue symbols are Bridge K follow-ons,
+  not part of this Witt-residue map.
 
 ### N.2 — the Scharlau transfer, named
 

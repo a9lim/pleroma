@@ -1,8 +1,8 @@
 //! Bridge N.1 — Milnor's exact sequence: the Springer residues assembled globally.
 //!
 //! The shipped Springer engine (`springer/`) computes per-place residue buckets and
-//! the local–global layer decides per-form isotropy, but the Witt-**group**-level
-//! global statement is assembled nowhere. Milnor's exact sequence supplies it
+//! the local–global layer decides per-form isotropy; this module assembles the
+//! Witt-**group**-level global statement. Milnor's exact sequence supplies it
 //! (Milnor–Husemoller, *Symmetric Bilinear Forms*, Ch. IV; Lam, GSM 67, Ch. IX):
 //!
 //! ```text
@@ -19,6 +19,18 @@
 //! the sequence ties three pillar surfaces together (the Springer residues, the
 //! global field layer, and the integral pillar's signature).
 //!
+//! The equal-characteristic odd leg uses the split form of the same idea:
+//!
+//! ```text
+//! W(F_q(t)) ≅ W(F_q) ⊕ ⊕_π W(F_q[t]/π).
+//! ```
+//!
+//! [`global_residues_ff`] returns the `W(F_q)` summand from the even-valuation layer
+//! at the degree place `∞`, plus the nonzero second residues at finite monic
+//! irreducible places. This is exact on the shipped `RationalFunction`/`Poly`
+//! backend and uses the same `FFPlace` arithmetic as the function-field Hilbert and
+//! Hasse–Minkowski layers.
+//!
 //! **Claim level:** standard math (Milnor; Lam GSM 67, Ch. IX) made computational.
 //! The residue is computed directly from the `i128` entries (`v_p`, the Legendre
 //! symbol, and the signed-discriminant square class), matching the
@@ -30,11 +42,22 @@
 //! the crate's existing char-2 [`WittClassG`] carrier as the `W(F₂) ≅ ℤ/2` target:
 //! `Char2 { field_degree: 1, arf }`, with `arf` the parity of odd dyadic valuation
 //! lines. The char-2 constant fields of `F_q(t)` are a separate matter (the
-//! Aravire–Jacob layer in `springer/char2.rs`).
+//! Aravire–Jacob layer in `springer/char2.rs`), and tame/wild norm-residue symbols
+//! stay with the cyclic-Brauer follow-ons rather than this Witt-residue map.
 
 use crate::forms::local_global::padic::{legendre, relevant_primes, unit_part, val_p};
-use crate::forms::WittClassG;
+use crate::forms::{
+    try_chi_kappa, try_kappa_order, try_relevant_places_ff, try_residue_unit_at,
+    try_valuation_at_ff, FFPlace, FiniteOddField, WittClassG,
+};
+use crate::scalar::{Poly, RationalFunction, Scalar};
 use std::collections::BTreeMap;
+
+/// The split Milnor invariant of a diagonal form over odd `F_q(t)`.
+///
+/// The first component is the constant-field class selected at `∞`; the vector is
+/// the finite-place support of nonzero second residues.
+pub type FunctionFieldMilnorResidues<S> = (WittClassG, Vec<(FFPlace<S>, WittClassG)>);
 
 /// The second residue `∂_p⟨a_1,…,a_n⟩` at an **odd** prime `p`, as a Witt class over
 /// `F_p`. It collects the residue units of the entries of **odd** `p`-valuation and
@@ -116,12 +139,92 @@ pub fn global_residues(entries: &[i128]) -> Option<(i128, BTreeMap<u128, WittCla
     Some((signature, residues))
 }
 
+fn oddchar_witt_from_residue_units<S: FiniteOddField>(
+    units: &[Poly<S>],
+    place: &FFPlace<S>,
+) -> Option<WittClassG> {
+    let mut chi_prod: i128 = 1;
+    for unit in units {
+        chi_prod *= try_chi_kappa(unit, place)?;
+    }
+    let m = i128::try_from(units.len()).ok()?;
+    let field_order = try_kappa_order(place)?;
+    let chi_neg1 = if field_order % 4 == 1 { 1 } else { -1 };
+    let signed_chi = if ((m * (m - 1) / 2) & 1) == 1 {
+        chi_prod * chi_neg1
+    } else {
+        chi_prod
+    };
+    Some(WittClassG::OddChar {
+        field_order,
+        kappa: if chi_neg1 == 1 { 0 } else { 1 },
+        e0: (m & 1) as u128,
+        sclass: if signed_chi == 1 { 0 } else { 1 },
+    })
+}
+
+fn second_residue_at_ff<S: FiniteOddField>(
+    entries: &[RationalFunction<S>],
+    place: &FFPlace<S>,
+) -> Option<WittClassG> {
+    let mut units = Vec::new();
+    for entry in entries {
+        if try_valuation_at_ff(entry, place)?.rem_euclid(2) != 0 {
+            units.push(try_residue_unit_at(entry, place)?);
+        }
+    }
+    oddchar_witt_from_residue_units(&units, place)
+}
+
+fn constant_class_at_infinity_ff<S: FiniteOddField>(
+    entries: &[RationalFunction<S>],
+) -> Option<WittClassG> {
+    let place = FFPlace::Infinite;
+    let mut units = Vec::new();
+    for entry in entries {
+        if try_valuation_at_ff(entry, &place)?.rem_euclid(2) == 0 {
+            units.push(try_residue_unit_at(entry, &place)?);
+        }
+    }
+    oddchar_witt_from_residue_units(&units, &place)
+}
+
+/// The split Milnor map for a diagonal form over `F_q(t)` with odd `q`:
+/// `W(F_q(t)) ≅ W(F_q) ⊕ ⊕_π W(F_q[t]/π)`.
+///
+/// The first component is the `W(F_q)` class obtained by the even-valuation
+/// layer at the degree place `∞`; the vector contains the nonzero second
+/// residues at finite monic irreducible places. Zero residues are omitted.
+///
+/// `None` if any entry is zero. Characteristic-2 function fields use the
+/// separate Artin-Schreier/Aravire-Jacob layer, not this tame odd-residue
+/// sequence.
+pub fn global_residues_ff<S: FiniteOddField>(
+    entries: &[RationalFunction<S>],
+) -> Option<FunctionFieldMilnorResidues<S>> {
+    if entries.iter().any(|entry| entry.is_zero()) {
+        return None;
+    }
+    let constant = constant_class_at_infinity_ff(entries)?;
+    let mut residues = Vec::new();
+    for place in try_relevant_places_ff(entries)? {
+        if matches!(place, FFPlace::Infinite) {
+            continue;
+        }
+        let w = second_residue_at_ff(entries, &place)?;
+        if !is_zero_residue(&w) {
+            residues.push((place, w));
+        }
+    }
+    Some((constant, residues))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::clifford::Metric;
     use crate::forms::{springer_decompose_qp, try_is_isotropic_q};
-    use crate::scalar::Qp;
+    use crate::scalar::{Fp, Qp, RationalFunction};
 
     /// `∂₅` via the capped `Q₅` Springer engine: the Witt class of the odd-valuation
     /// (parity-1) residue layer, built independently of the `i128` route.
@@ -155,6 +258,36 @@ mod tests {
             field_degree: 1,
             arf,
         }
+    }
+
+    type F5 = RationalFunction<Fp<5>>;
+    type Poly5 = Poly<Fp<5>>;
+
+    fn rf(num: &[i128], den: &[i128]) -> F5 {
+        RationalFunction::new(
+            num.iter().map(|&n| Fp::<5>::new(n)).collect(),
+            den.iter().map(|&n| Fp::<5>::new(n)).collect(),
+        )
+    }
+
+    fn poly(c: &[i128]) -> Poly5 {
+        Poly::new(c.iter().map(|&n| Fp::<5>::new(n)).collect())
+    }
+
+    fn odd_class(field_order: u128, e0: u128, sclass: u128) -> WittClassG {
+        WittClassG::OddChar {
+            field_order,
+            kappa: if field_order % 4 == 1 { 0 } else { 1 },
+            e0,
+            sclass,
+        }
+    }
+
+    fn residue_at<'a>(
+        residues: &'a [(FFPlace<Fp<5>>, WittClassG)],
+        place: &FFPlace<Fp<5>>,
+    ) -> Option<&'a WittClassG> {
+        residues.iter().find(|(pl, _)| pl == place).map(|(_, w)| w)
     }
 
     #[test]
@@ -225,6 +358,59 @@ mod tests {
     #[test]
     fn radical_entry_is_rejected() {
         assert_eq!(global_residues(&[1, 0, 2]), None);
+    }
+
+    #[test]
+    fn function_field_residues_split_at_infinity() {
+        let (constant, residues) = global_residues_ff(&[rf(&[1], &[1])]).unwrap();
+        assert_eq!(constant, odd_class(5, 1, 0));
+        assert!(
+            residues.is_empty(),
+            "constant forms have no finite residues"
+        );
+
+        let (constant, residues) = global_residues_ff(&[rf(&[0, 1], &[1])]).unwrap();
+        assert_eq!(constant, odd_class(5, 0, 0));
+        assert_eq!(
+            residue_at(&residues, &FFPlace::Finite(poly(&[0, 1]))),
+            Some(&odd_class(5, 1, 0))
+        );
+
+        let (constant, residues) = global_residues_ff(&[rf(&[1], &[0, 1])]).unwrap();
+        assert_eq!(constant, odd_class(5, 0, 0));
+        assert_eq!(
+            residue_at(&residues, &FFPlace::Finite(poly(&[0, 1]))),
+            Some(&odd_class(5, 1, 0))
+        );
+
+        let (constant, residues) = global_residues_ff(&[rf(&[2], &[1])]).unwrap();
+        assert_eq!(constant, odd_class(5, 1, 1), "2 is nonsquare in F_5");
+        assert!(residues.is_empty());
+    }
+
+    #[test]
+    fn function_field_residues_see_degree_two_places() {
+        let place = FFPlace::Finite(poly(&[2, 0, 1])); // t^2 + 2 irreducible over F_5
+        let (constant, residues) = global_residues_ff(&[rf(&[2, 0, 1], &[1])]).unwrap();
+        assert_eq!(constant, odd_class(5, 1, 0));
+        assert_eq!(residue_at(&residues, &place), Some(&odd_class(25, 1, 0)));
+    }
+
+    #[test]
+    fn function_field_residues_are_square_and_hyperbolic_stable() {
+        let base = global_residues_ff(&[rf(&[0, 1], &[1])]).unwrap();
+        let square = rf(&[1, 1], &[1]).mul(&rf(&[1, 1], &[1]));
+        let square_multiple = global_residues_ff(&[rf(&[0, 1], &[1]).mul(&square)]).unwrap();
+        assert_eq!(square_multiple, base);
+
+        let hyperbolic = global_residues_ff(&[rf(&[0, 1], &[1]), rf(&[0, 4], &[1])]).unwrap();
+        assert_eq!(hyperbolic.0, odd_class(5, 0, 0));
+        assert!(hyperbolic.1.is_empty());
+    }
+
+    #[test]
+    fn function_field_residues_reject_radical_entries() {
+        assert_eq!(global_residues_ff(&[rf(&[1], &[1]), rf(&[0], &[1])]), None);
     }
 
     #[test]

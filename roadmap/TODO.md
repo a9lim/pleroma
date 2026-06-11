@@ -49,14 +49,6 @@ level — the Bad census — and the fifo+dummy mechanism is identified
 pass/pair axes remain unswept, and the general-n linking *proof* is loopy-valued in
 `OPEN.md` tis (§1), not a number here.)
 
-### `milnor-ff` — 1·e_f
-**The `F_q(t)` split-exact twin** of N.1 (the "noted follow-on" in CODA):
-`0 → W(F_q) → W(F_q(t)) → ⊕_v W(F_{q^{deg v}}) → 0` (Milnor–Husemoller; Harder). The
-local residue engine already exists (`local_global/function_field.rs` per-place
-valuations + `springer` buckets); the build is the global assembly and the splitting
-(evaluation at the `∞` place). Mirrors `global_residues` field-for-field — the
-local↔global symmetry made literal on the equal-characteristic leg.
-
 ### `bw-rational` — 2·e_f
 **The graded rational Brauer–Wall class** — the lift Bridge F deliberately stopped
 short of ("do not conflate `Brauer2Class` with the graded `BrauerWallClass` *until a
@@ -203,8 +195,9 @@ boundary.
 
 ### `py-waves` — 1·e_y
 **Python exposure for waves J/K/M/N/O.** Verified absent from `src/py/`: `lexicode`,
-`brown_f2`/`brown_invariant`, `global_residues`, `transfer_diagonal`, `is_isomorphic`,
-`NewtonPolygon`/`tropicalize`, `BrauerClass`/`cyclic_algebra_invariant`/
+`brown_f2`/`brown_invariant`, `global_residues`/`global_residues_ff`,
+`transfer_diagonal`, `is_isomorphic`, `NewtonPolygon`/`tropicalize`,
+`BrauerClass`/`cyclic_algebra_invariant`/
 `constant_extension_invariants` — while waves A/E/H/I (theta, Weil, Construction A,
 discriminant forms) are bound. Bind per the `catalog.rs` policy (these are
 fixed-monomorph-friendly, mostly `i128`/`u128` payloads), and add the matching

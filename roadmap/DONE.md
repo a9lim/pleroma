@@ -87,8 +87,26 @@ fold the one-line structural fact into the relevant `AGENTS.md`.
 - oracles: tests pin `⟨2⟩`, `⟨1,2⟩`, and `⟨-2⟩` as nonzero dyadic residue classes,
   verify `⟨2,-2⟩` cancels, check mixed support such as `⟨6⟩`, and cross-check
   reconstruction against `try_is_isotropic_q` for `⟨2⟩` vs `⟨8⟩` and `⟨2⟩` vs `⟨1⟩`.
-- boundaries: the equal-characteristic `F_q(t)` split-exact twin remains the
-  separate `milnor-ff` TODO item.
+- boundaries: this is only the dyadic `W(ℚ)` cell; the equal-characteristic
+  `F_q(t)` twin shipped separately as `milnor-ff`.
+
+## `milnor-ff` — split Milnor residues over `F_q(t)` (2026-06-11)
+**Pillars:** forms    **Claim level:** standard math made computational + implemented and tested
+- surface: `forms/witt/milnor.rs::global_residues_ff` implements the split
+  equal-characteristic Milnor map for odd constant fields:
+  `W(F_q(t)) ≅ W(F_q) ⊕ ⊕_π W(F_q[t]/π)`. The first component is the constant-field
+  class selected by the even-valuation layer at the degree place `∞`;
+  `FunctionFieldMilnorResidues<S>` records that class plus the finite vector of
+  nonzero second residues at monic irreducible places, using the exact
+  `local_global/function_field.rs` valuation, residue-unit, and residue-character
+  helpers.
+- oracles: tests pin constant forms, the `t` place, nonsquare constants, a degree-2
+  irreducible place over `F_5`, square-multiple invariance, hyperbolic cancellation,
+  and radical-entry rejection.
+- boundaries: odd constant fields only (`FiniteOddField`); characteristic-2
+  function fields stay on the separate Artin-Schreier/Aravire-Jacob layer, and this
+  does not claim tame or wild norm-residue symbols beyond the second-residue Witt
+  map.
 
 ## `echo-solver` — the echo-fifo+dummy adversarial review: CONFIRM (2026-06-10)
 **Pillars:** games ↔ forms    **Claim level:** implemented and tested

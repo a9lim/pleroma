@@ -72,8 +72,11 @@ and const-generic sizes that are inherently indices.
 
   **`Display` is a `Scalar` supertrait** (`Scalar: Clone + PartialEq + Debug +
   Display`). Every backend has an `impl fmt::Display`, with `Debug` delegating to
-  `Display` (byte-identical output). The pre-existing old aliases (`Rational::int`,
-  `Fp::new`, `Zp::new`, etc.) are preserved as doc'd forwards to `from_int`.
+  `Display` (byte-identical output). The legacy ℤ-embedding spellings
+  (`Rational::int`, `Fp::new`, `Zp::new`, `Qp::from_i128`) were retired in the
+  taste sweep — `from_int` is the one spelling, trait-level with per-backend
+  overrides; representation constructors with different semantics keep their
+  own names (see above).
 - **`integrality.rs`** — `HasFractionField {Frac; to_fraction}` +
   `HasRingOfIntegers {Int; is_integral/to_integer}`, with `Int:
   HasFractionField<Frac=Self>` tying the loop. Impl'd for the **five** distinct-type
@@ -148,7 +151,7 @@ and const-generic sizes that are inherently indices.
   exotic backends are trusted. (Overflow is a known limit; the surreal backend is the
   real char-0 home.)
 - **`integer.rs`** — exact ℤ, the coefficient ring for the exterior algebra of the
-  game group (`games/game_exterior.rs`): games are a ℤ-module, not a ring, so Λ over
+  game group (`games/game_exterior/`): games are a ℤ-module, not a ring, so Λ over
   ℤ is the structure that lives on all of game-world. Only ±1 invertible.
 
 ## `big/` — the transfinite worlds

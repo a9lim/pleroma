@@ -99,7 +99,7 @@ backends). The associative-algebra core is split by concept under `engine/`:
 - **`spinor_norm.rs`** — the spinor norm `N : O(Q)→F*/F*²` (= norm2 mod squares) +
   the generic `versor_grade_parity` (Dickson; `forms::dickson_of_versor` delegates
   here) + `classify_versor` → `VersorInvariants<S>` (the spinor-norm + Dickson-parity
-  record; Python exposes the Python class under the legacy name `VersorClass`).
+  record; Python exposes the Python class under the legacy name `VersorInvariants`).
   Char-2 codomain is `F/℘(F)`.
 
 ## Operator vs context-method policy

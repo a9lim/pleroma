@@ -115,8 +115,9 @@ e_i e_j + e_j e_i = b_ij
 
 The polar form is alternating, so `b_ii = 0`, while `q_i` can be nonzero. If the
 engine collapses `q` and `b`, the char-2 Clifford product becomes the wrong
-commutative object. The char-2 form layer reports `ArfResult { arf: u128, rank,
-radical_dim, radical_anisotropic, o_type }`; for degenerate forms, the Arf of the
+commutative object. The char-2 form layer reports `ArfInvariants { arf: u128, rank,
+radical_dim, radical_anisotropic }` plus the derived `o_type()` →
+`OrthogonalType`; for degenerate forms, the Arf of the
 nonsingular core is not the whole form. On nonsingular metrics over `Nimber`,
 supported `Fpn<2,N>`, and the documented finite ordinal windows, the same Arf bit is
 the Brauer-Wall class `BW(F_{2^m}) ≅ Z/2`; hyperbolic planes are `0`, the
@@ -296,5 +297,5 @@ The narrow Gold/Arf game thread and the genuine open problems live in `OPEN.md`;
 draft notes are `writeups/goldarf.tex` (Gold/Arf) and `writeups/excess.tex`
 (transfinite excess). Read `OPEN.md` before touching `forms/char2/`,
 `forms/quadric_fit.rs`, `forms/char0.rs`, `games/coin_turning.rs`, `games/kernel.rs`,
-`games/misere.rs`, `games/loopy.rs`, `forms/witt/`, `experiments/`, or the
+`games/misere.rs`, `games/loopy/`, `forms/witt/`, `experiments/`, or the
 open-question example probes.

@@ -47,7 +47,7 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
   char-0 scalar world with a matching MV carrier. MV methods cover the full GA suite
   (clifford_conjugate, scalar_product, commutator, anticommutator, undual, meet,
   is_blade, blade_subspace, factor_blade, cayley, cayley_inverse, spinor_norm, versor_grade_parity,
-  classify_versor → `VersorClass`, plus raw `(blade_mask, coeff)` terms, `grade_part`,
+  classify_versor → `VersorInvariants`, plus raw `(blade_mask, coeff)` terms, `grade_part`,
   `versor_inverse`, `multivector_inverse`). Algebra methods add
   trace/char_poly/determinant/exterior_power_trace/apply_outermorphism/inverse_outermorphism, the typed
   `<World>LinearMap` pyclass, fixed-dispatch Frobenius/Galois map constructors
@@ -64,7 +64,7 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
 - **`forms.rs`** — the classifier / invariant / lattice bindings: `classify_real`/
   `classify_complex`/`classify_rational`, the Brauer–Wall classes, the runtime form
   façades `OddFiniteFieldForm` (Fp/Fpn) and `Char2FiniteFieldForm` (`Fpn<2,N>`,
-  N=1..4), `FiniteFieldClass` + leg-specific classifiers, constructible
+  N=1..4), `FiniteFieldInvariants` + leg-specific classifiers, constructible
   `WittClass`/`WittClassG`/`BrauerWallClass` records, base-field isometry helpers, the
   Springer decompositions (the Surreal `springer_decompose`; `springer_decompose_qp`/
   `_qq`/`_laurent`/`_ramified_qp4_e{2,3}` + the generic `springer_decompose_local` and

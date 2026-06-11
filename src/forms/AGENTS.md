@@ -29,33 +29,47 @@ automorphism counts, node budgets. `usize` is for dimensions and matrix indices.
 
 ## The façade
 
-- **`classify.rs`** — the classifier FAÇADE: `ClassifyForm` + `WittClassify` +
-  `IsometryClassify` + `WittDecompose` + `BrauerWallClassify`, keyed on the scalar so
+- **`classify.rs`** — the classifier FAÇADE: `ClassifyForm` + `ClassifyWitt` +
+  `ClassifyIsometry` + `DecomposeWitt` + `ClassifyBrauerWall`, keyed on the scalar so
   `metric.classify()` / `.witt_class()` / `.isometric_to()` / `.witt_decompose()` /
-  `.bw_class()` pick the right leg **at compile time**:
-  - `Surreal` → `CliffordType`
-  - `Fp<P>` (odd primes only) → `OddCharType`. `Fp<2>` is OUTSIDE the façade:
+  `.bw_class()` pick the right leg **at compile time**. The façade methods return
+  `Result<_, ClassifyError>` (`#[non_exhaustive]`: `GeneralBilinearMetric` /
+  `SingularForm` / `UnsupportedFieldOrWindow` / `DiagonalizerFailure`) so callers
+  see *why* a metric is out of domain; the underlying leg functions keep their
+  honest single-valued `Option`s.
+
+  **Naming glossary** (the record-suffix discipline): `…Class` is reserved for an
+  element of an actual group/classifying set carrying a law (`WittClass`,
+  `BrauerWallClass`, `Brauer2Class`, `BrauerClass`, `FqmWittClass`); `…Decomp` is
+  a decomposition; `…Invariants` is a classifier's report record
+  (`ArfInvariants`, `BrownInvariants`, `CliffordInvariants`, `OddCharInvariants`,
+  `FiniteFieldInvariants`, `SymplecticInvariants`); `…Signature` stays for the
+  literal mathematical signature. Façade traits are verb-first (`ClassifyForm`,
+  `ClassifyWitt`, `ClassifyIsometry`, `ClassifyBrauerWall`, `DecomposeWitt`).
+  New types follow this glossary. Leg dispatch:
+  - `Surreal` → `CliffordInvariants`
+  - `Fp<P>` (odd primes only) → `OddCharInvariants`. `Fp<2>` is OUTSIDE the façade:
     `classify_finite_odd` returns `None` for `P=2` (the char-2 Arf path requires
     the `(q,b)` metric, not the char-0 diagonalizer). Use `Fpn<2,N>` for char-2
     extension fields.
-  - `Fpn<P,N>` → `FiniteFieldClass::{Odd, Char2}` (dispatched on `P==2` at runtime)
-  - `Nimber` → `ArfResult`
-  - finite-window `Ordinal` → `ArfResult`
+  - `Fpn<P,N>` → `FiniteFieldInvariants::{Odd, Char2}` (dispatched on `P==2` at runtime)
+  - `Nimber` → `ArfInvariants`
+  - finite-window `Ordinal` → `ArfInvariants`
 
-  `WittDecompose` returns the leg-specific decomp record
+  `DecomposeWitt` returns the leg-specific decomp record
   (`RealWittDecomp` / `OddWittDecomp` / `Char2WittDecomp`, with `Fpn` wrapping the last
   two in `FiniteFieldWittDecomp { Odd, Char2 }`). It is impl'd for `Surreal`, `Fp<P>`,
   and `Fpn<P,N>` only — so `Char2WittDecomp` arises via the `Fpn<2,N>` path
   (`Nimber`/`Ordinal` do not impl it). Caveat: when `Char2WittDecomp.radical_anisotropic`
   is true, its `witt_index`/`core_anisotropic_dim`/`arf` are invariants of the chosen
-  symplectic complement, **not** isometry invariants of the whole form. `BrauerWallClassify`
+  symplectic complement, **not** isometry invariants of the whole form. `ClassifyBrauerWall`
   covers Surreal, Surcomplex, odd finite fields, nonsingular Nimber metrics,
   supported `Fpn<2,N>` metrics, and the documented finite ordinal windows. Rational &
-  Surcomplex impl `ClassifyForm` but not `WittClassify` (their Witt data isn't a
+  Surcomplex impl `ClassifyForm` but not `ClassifyWitt` (their Witt data isn't a
   single `WittClassG` — honest, not a gap).
 
-  **Cross-leg asymmetry in `BrauerWallClassify` for singular metrics.** The
-  char-2 legs (`bw_class_nimber`, `BrauerWallClassify for Fpn<2,N>`) return `None`
+  **Cross-leg asymmetry in `ClassifyBrauerWall` for singular metrics.** The
+  char-2 legs (`bw_class_nimber`, `ClassifyBrauerWall for Fpn<2,N>`) return `None`
   for singular (non-nonsingular-polar) metrics.  The char-0 legs (`bw_class_real`,
   `bw_class_complex`) and the odd-char leg (`bw_class_finite_odd`) silently project
   the radical away and return the Brauer-Wall class of the nondegenerate core
@@ -88,7 +102,7 @@ automorphism counts, node budgets. `usize` is for dimensions and matrix indices.
   invariant: `arf_f2` F₂ bitmask, `arf_nimber` for the represented nimber field,
   `arf_char2`/`arf_fpn_char2` for supported finite char-2 fields, `arf_ordinal_finite`
   for detected finite ordinal-nimber subfields; all use symplectic reduction + trace and
-  return `ArfResult { arf: u128, ... }`), `dickson.rs` (`dickson_matrix = rank(g−I)
+  return `ArfInvariants { arf: u128, ... }`), `dickson.rs` (`dickson_matrix = rank(g−I)
   mod 2`, ker = SO; `dickson_of_versor` validates the input is a versor then delegates
   to the generic versor grade parity), `field.rs` (`FiniteChar2Field` — the
   **additive** mirror of `FiniteOddField`: carries `artin_schreier_class =
@@ -96,7 +110,7 @@ automorphism counts, node budgets. `usize` is for dimensions and matrix indices.
   class is trivial and the working datum is `F/℘(F) ≅ F₂`; impl for `Fp<2>`/`Fpn<2,N>`,
   NOT `Nimber` — same boundary as `FiniteOddField`), `brown.rs` (the **Brown
   invariant** `β ∈ ℤ/8` of a `ℤ/4`-valued quadratic refinement — the char-2 cell of
-  the mod-8 spine, Bridge M: `brown_f2`/`double_f2` + `BrownResult`, computed by
+  the mod-8 spine, Bridge M: `brown_f2`/`double_f2` + `BrownInvariants`, computed by
   radical splitting plus line/plane reduction with exact-integer enumeration retained
   as a test oracle. `β(2q′) = 4·Arf(q′)` lands the Arf bit as the 2-torsion, and
   `DiscriminantForm::brown_invariant` gives `β ≡ sign(L) mod 8` on 2-elementary
@@ -185,7 +199,7 @@ char-2 mirror, one shelf (`mod.rs` re-exports flat).
   layer collapses), residue ℝ is a signature not a finite square-class. Keeps its own
   engine (the flat `ResidueForm`/`SpringerDecomp`/`springer_decompose` names) — that
   mismatch IS the symmetry, not a gap. So it stays out of `ResidueField`.
-- **`springer/char2.rs`** — the **char-2 local Witt/Springer decomposition**
+- **`springer/char2/`** — the **char-2 local Witt/Springer decomposition**
   (Aravire–Jacob `(φ₀, ψ, φ₁)`) + global isotropy over `F_q(t)`. Tightly coupled to
   `local_global/function_field_char2.rs` (it reuses that engine's `pub(crate)`
   helpers); detailed in the local–global section.
@@ -237,8 +251,8 @@ char-2 mirror, one shelf (`mod.rs` re-exports flat).
   `as_symbol_*` / `Char2Place`. The crate-private helpers (`strip_factor`/
   `inverse_mod`/`trace_kappa_to_f2`, and `char2_monic_irreducible_factors` — a thin
   wrapper over the shared `poly_factor` finite-field factorizer) are `pub(crate)` so
-  `springer/char2.rs` reuses them.
-- **`springer/char2.rs`** (detail) — the equal-char-2 mirror of `springer/local.rs`
+  `springer/char2/` reuses them.
+- **`springer/char2/`** (detail) — the equal-char-2 mirror of `springer/local.rs`
   (but NOT the odd story at `p=2`: the wild `R_π` summand the `W=W(k)²` grading
   misses). `springer_decompose_local_char2(form, place)` gives the **Aravire–Jacob**
   `(φ₀, ψ, φ₁)` (`Char2LocalDecomp`): split each block coeff by Laurent-parity
@@ -296,7 +310,7 @@ char-2 mirror, one shelf (`mod.rs` re-exports flat).
   `Surcomplex` k=1 → the **norm form** `⟨2,2⟩`; unramified `Qq/Qp`
   via the Teichmuller-lifted residue basis; odd `Fpn` → a diagonalizable trace form.
   Two char-2 entry points to the **Gold form** `Tr(x^{1+2^a})`, classified →
-  `ArfResult` (rank `= m − gcd(2a,m)`, Arf → the zero-count): `trace_form_arf::<E:
+  `ArfInvariants` (rank `= m − gcd(2a,m)`, Arf → the zero-count): `trace_form_arf::<E:
   …<Base=Fp<2>>>(k)` (the typed `Fpn<2,m>` path — build over `F_2`, lift `F_2 ↪
   Nimber` via `Metric::map(|x| Nimber(x.value()))`), and `gold_form(m, a)` (the nim-native path over the
   subfield `F_{2^m} ⊂ Nimber`, m a power of two ≤ 128, reaching F_16/F_256/… that
@@ -319,5 +333,5 @@ char-2 mirror, one shelf (`mod.rs` re-exports flat).
 - **The odd-char Hasse invariant is ≡ +1** over a finite field — genuinely trivial
   there, unlike the p-adic Hilbert symbol in `local_global/padic.rs` (where Hasse does
   real work).
-- **Rational & Surcomplex impl `ClassifyForm` but not `WittClassify`** — their Witt
+- **Rational & Surcomplex impl `ClassifyForm` but not `ClassifyWitt`** — their Witt
   data isn't a single `WittClassG`. Honest, not a gap.

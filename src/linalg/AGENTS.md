@@ -21,12 +21,12 @@ solver data on the repo-wide width contract.
     leading columns, positive pivots, zeros below each pivot, above-pivot entries
     reduced mod the pivot) + `reduce_integer_vector`. `normalize_relation_rows` is
     consumed by the integral-lattice layer (`forms/integral/`); `reduce_integer_vector`
-    by the game exterior algebra's lattice quotient (`games/game_exterior.rs`).
+    by the game exterior algebra's lattice quotient (`games/game_exterior/`).
   - `ext_gcd` (Bézout `a·x + b·y = gcd`) and `smith_normal_form` (invariant factors
     `d₀ | d₁ | …` via unimodular `ext_gcd`-based row/column combines; `∏ dᵢ = |det|`,
     cokernel `ℤⁿ/Mℤⁿ ≅ ⨁ ℤ/dᵢ`). Used by the integral-lattice layer:
-    `forms/integral/lattice.rs` reads invariant factors off SNF;
-    `forms/integral/discriminant.rs` enumerates `Z^n/GZ^n` representatives via the
+    `forms/integral/lattice/` reads invariant factors off SNF;
+    `forms/integral/discriminant/` enumerates `Z^n/GZ^n` representatives via the
     normalized relation rows.
 
 This module is matrix-heavy and walks index-parallel arrays; the crate-level

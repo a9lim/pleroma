@@ -73,7 +73,7 @@ computational. The headline bridge — it proves the project's spine crosses pil
 ### The mathematics
 
 For an **even** integral lattice `L` (Gram `G`, so `G[i][i]` even), three objects
-now meet in `integral/lattice.rs` and `integral/discriminant.rs`:
+now meet in `integral/lattice/` and `integral/discriminant/`:
 
 - the **signature** `σ = p − q`, computed by exact rational diagonalization,
 - the **dual** `L# = G⁻¹L`, using the exact `Rational` inverse already used by `level`,
@@ -113,7 +113,7 @@ cross-checking each other.
 
 ### Implemented surface
 
-- `integral/lattice.rs`
+- `integral/lattice/`
   - `IntegralForm::signature(&self) -> (usize, usize)` diagonalizes `G` over `ℚ`
     and counts signs of the rational pivots, so indefinite lattices are supported.
   - `IntegralForm::clifford_metric(&self) -> Metric<Rational>` — the warm-up rung:
@@ -121,7 +121,7 @@ cross-checking each other.
     `classify_real`. `E₈ → Cl(8,0) → M₁₆(ℝ)`. Also a mod-2 reduction
     `clifford_metric_f2(&self) -> Option<Metric<Nimber>>` for even lattices,
     using `Q/2 mod 2` on the diagonal and `G_ij mod 2` off-diagonal.
-- `integral/discriminant.rs`
+- `integral/discriminant/`
   - `DiscriminantForm { group, reps, gram_inv }` is built from a nonsingular even
     `IntegralForm` using the standard `A_L ~= Z^n / GZ^n` presentation. The
     representative enumeration uses normalized integer relation rows rather than
@@ -173,16 +173,16 @@ generic scalar operations plus the absolute trace.
 ### Implemented surface
 
 - `char2/arf.rs`
-  - `arf_char2<F: FiniteChar2Field>(metric) -> Option<ArfResult>` runs generic
+  - `arf_char2<F: FiniteChar2Field>(metric) -> Option<ArfInvariants>` runs generic
     char-2 symplectic reduction over `Fp<2>` / `Fpn<2,N>`.
   - `arf_fpn_char2<const P, const N>(metric)` is the const-generic façade helper:
     it returns `None` unless `P = 2` and the extension polynomial is supported.
-  - `ArfResult::arf` and the Artin-Schreier class are carried as `u128` bits, in
+  - `ArfInvariants::arf` and the Artin-Schreier class are carried as `u128` bits, in
     line with the repo-wide integer-width policy.
 - `classify.rs`
-  - `Fpn<P,N>` now classifies to `FiniteFieldClass::{Odd, Char2}`, so the same
+  - `Fpn<P,N>` now classifies to `FiniteFieldInvariants::{Odd, Char2}`, so the same
     monomorphized façade works for odd extensions and characteristic-2 extensions.
-  - `WittClassify`, `IsometryClassify`, and `BrauerWallClassify` dispatch to the
+  - `ClassifyWitt`, `ClassifyIsometry`, and `ClassifyBrauerWall` dispatch to the
     char-2 Arf invariant when `P = 2`.
 
 ### Oracles / tests
@@ -552,7 +552,7 @@ identity uses the Hamming enumerator and the exact `θ₂`/`θ₃` q-expansions.
 
 ## Bridge I — the Weil representation of the discriminant form
 
-**Pillars:** `forms/integral/discriminant.rs` (Bridge A) ↔ `forms/integral/theta.rs`
+**Pillars:** `forms/integral/discriminant/` (Bridge A) ↔ `forms/integral/theta.rs`
 (Bridge E) ↔ `forms/witt/brauer_wall` (the mod-8 phase).
 **Claim level:** IMPLEMENTED AND TESTED — standard math (Weil; Nikulin; Borcherds). The elegant
 connector: it makes the **already-built** Bridge A the local-global "bulk" whose
@@ -586,7 +586,7 @@ Bridge A's positive `phase_mod8`. The honest metaplectic relations are
 
 ### Implemented surface
 
-- `forms/integral/discriminant.rs`
+- `forms/integral/discriminant/`
   - `Complex64` — dependency-free complex entries for Gauss sums and Weil matrices.
   - `DiscriminantForm::weil_t(&self)` — the diagonal `T`-multipliers `e^{πi q_L(γ)}`.
   - `DiscriminantForm::weil_s(&self) -> Option<Vec<Vec<Complex64>>>` — the `S`
@@ -969,7 +969,7 @@ The polygon is precisely the image of the Springer decomposition under the tropi
 ## 4. Scope boundaries and non-claims
 
 - **Discretely-valued legs only.** The surreal leg has 2-divisible value group: the second Springer layer collapses ($W(\mathrm{No}) = W(\mathbb{R})$, `springer/surreal.rs`) and there is no integer Newton lattice. Polygons over divisible $\Gamma$ are definable but are *not claimed or scheduled* — the same boundary the Springer engine already documents, and itself an instance of the local↔global symmetry.
-- **Char-2 residue fields.** J.5/J.6/J.12(i)–(ii) hold for any residue characteristic; J.10/J.12(iii) require $\operatorname{char} k \ne 2$. The char-2 local Witt theory is the separate Aravire–Jacob layer (`springer/char2.rs`) and is outside Bridge J.
+- **Char-2 residue fields.** J.5/J.6/J.12(i)–(ii) hold for any residue characteristic; J.10/J.12(iii) require $\operatorname{char} k \ne 2$. The char-2 local Witt theory is the separate Aravire–Jacob layer (`springer/char2/`) and is outside Bridge J.
 - **Precision.** On the capped-relative models (`Qp`/`Qq`/`Laurent`/`Ramified`/`Gauss`), valuations of *represented nonzero* elements are exact, so polygons of represented coefficients are exact; a coefficient whose true valuation exceeds the precision horizon renders as $0$ (vertex absent). J.1(ii) is truncation-safe; equality claims hold off the vanishing locus. The $\mathbb{F}_q(t)$ leg (Corollary J.9) is exact outright.
 - **Choice of $\varpi$.** $\mathrm{ac}$, $\mathrm{in}_\lambda$, and $\partial_1$ depend on it; the code pins it to `Valued::uniformizer` via `residue_unit`. $\partial_0$ and the polygon do not.
 - **No strictness claim** for "$v$ is a semiring homomorphism" (Remark J.2). No new theorem anywhere in this bridge: J is standard math made computational, the same status as shipped bridges A–I.
@@ -1003,7 +1003,7 @@ computational**, the same status A–J shipped at — not a new theorem.
 
 ## Bridge M — the Brown invariant: the char-2 cell of the mod-8 spine
 
-**Pillars:** `forms/char2/` (Arf) ↔ `forms/integral/discriminant.rs` (Milgram,
+**Pillars:** `forms/char2/` (Arf) ↔ `forms/integral/discriminant/` (Milgram,
 Bridge A) ↔ `forms/witt/brauer_wall.rs` (the mod-8 cycle).
 **Claim level:** IMPLEMENTED AND TESTED — standard math (E. H. Brown, *Generalizations of
 the Kervaire invariant*, Ann. of Math. **95** (1972); C. T. C. Wall, *Quadratic forms
@@ -1047,10 +1047,10 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
 ### Implemented surface
 
 - `forms/char2/brown.rs`
-  - `brown_f2(n, q4: &[u128], bmat: &[u128]) -> BrownResult` — the `arf_f2` idiom with
+  - `brown_f2(n, q4: &[u128], bmat: &[u128]) -> BrownInvariants` — the `arf_f2` idiom with
     `q4` (values mod 4) replacing the diagonal; `bmat` is the **off-diagonal** symmetric
-    polar (the diagonal `b_ii = q4[i] mod 2` is derived). `BrownResult { beta, rank,
-    radical_dim, radical_anisotropic }` mirrors `ArfResult` field-for-field.
+    polar (the diagonal `b_ii = q4[i] mod 2` is derived). `BrownInvariants { beta, rank,
+    radical_dim, radical_anisotropic }` mirrors `ArfInvariants` field-for-field.
   - **Reduction route** with exact-integer oracles: split off `rad(b)` (`q|rad` is
     linear into `{0,2}`, so `Σ_V` factors), then reduce the nonsingular core into odd
     lines (`β = 1`/`7`) and even planes (`β = 0`/`4`) and add the phases in `ℤ/8`.
@@ -1058,8 +1058,8 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
     old direct Gauss-sum enumeration is retained as a test-only oracle through the
     former `rank ≤ 26` budget edge.
   - `double_f2(qd, bmat)` — the `q′ ↦ 2q′` embedding from `arf_f2` input data.
-- `forms/integral/discriminant.rs`
-  - `DiscriminantForm::brown_invariant(&self) -> Option<BrownResult>` — `Some` only for
+- `forms/integral/discriminant/`
+  - `DiscriminantForm::brown_invariant(&self) -> Option<BrownInvariants>` — `Some` only for
     **2-elementary** `A_L` (read off the invariant factors), enumerating `A_L` directly
     via `quadratic_value_mod2`. `b_L` is nondegenerate on `A_L`, so this slice has no
     radical and `β ≡ sign(L) mod 8`.

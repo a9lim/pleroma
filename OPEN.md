@@ -9,7 +9,7 @@ game-valued ledger — items there are referenced by slug from here).
 
 Numbering: an open problem is a loopy game, played without a termination
 guarantee, so every entry wears a value from the loopy-stopper lexicon — the
-shipped catalogue (`games/loopy.rs`: `on`, `off`, `over`, `under`, `dud`, `±`,
+shipped catalogue (`games/loopy/`: `on`, `off`, `over`, `under`, `dud`, `±`,
 `tis`, `tisn`, and integer `s&t` tags). The code can now compute their finite
 starter-pair outcomes; the open part is the game-semantic recasting problem, not
 the vocabulary. The values come in dual pairs, and so do the problems:
@@ -284,7 +284,7 @@ Relevant surfaces:
 - `examples/loopy_quadric.rs`
 - `examples/bent_route.rs`
 - `src/forms/quadric_fit.rs`
-- `src/games/kernel.rs`, `src/games/misere.rs`, `src/games/loopy.rs`
+- `src/games/kernel.rs`, `src/games/misere.rs`, `src/games/loopy/`
 
 ## tisn (§2) — quadratic deformation of the game exterior algebra
 
@@ -333,7 +333,7 @@ Concrete progress targets:
   target and a proof that the data is natural rather than merely chosen by hand.
 
 Relevant surfaces:
-- `src/games/game_exterior.rs`
+- `src/games/game_exterior/`
 - `src/games/AGENTS.md`
 - `examples/tour.rs`
 - `demo.py`
@@ -569,8 +569,8 @@ Concrete progress targets:
   (shipped); a game realizing `beta` would be a game computing a lattice signature.
 
 Relevant surfaces:
-- `src/forms/char2/brown.rs`, `src/forms/integral/discriminant.rs` (Bridge M)
-- `src/games/loopy.rs`, `src/games/misere.rs`
+- `src/forms/char2/brown.rs`, `src/forms/integral/discriminant/` (Bridge M)
+- `src/games/loopy/`, `src/games/misere.rs`
 - `writeups/goldarf.tex` §5 (the extraspecial reframing this lifts)
 - `tis` (§1) — the `ℤ/2` floor of this question
 

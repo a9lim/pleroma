@@ -35,18 +35,23 @@ indices, and collection lengths.
   `No ↔ On₂` symmetry at the games layer (the rest lives at the scalar layer via the
   shared CNF core, reaching Clifford through `Scalar for Ordinal` inside the checked
   Kummer boundary). Bound to Python as `NimberGame`.
-- **`game_exterior.rs`** — the exterior algebra of the GAME group: Λ over ℤ on game
+- **`game_exterior/`** — the exterior algebra of the GAME group: Λ over ℤ on game
   generators (living on all of game-world, incl. non-numbers ⋆/↑ — needs only the
-  ℤ-module structure). `GameExterior` — three constructors: `new` (auto-search for
-  integer relations), `free` (no quotient), `with_relations` (explicit), and
-  `with_relation_search(bound)` — quotients the free Grassmann engine by integer game
-  relations such as 2⋆=0. Carries `GameRelation` + the `GameRelationCertificate` /
-  `RelationSearchCertificate` evidence records; lattice normalization in
-  `linalg/integer.rs`. `GameClifford` is the checked integer-valued deformation
-  surface: hand-supplied `q`/polar tables are accepted only when every game relation
-  is null and polar-radical, so torsion-free targets force the documented vanishings
-  (for example, `2⋆=0` kills `Q(⋆)` and all pairings with ⋆). This is not a
-  game-native quadratic-data theorem; that remains in `OPEN.md`.
+  ℤ-module structure). Split into three layers:
+  - `game_exterior/relations.rs` — `GameRelation`, `GameRelationCertificate`,
+    `RelationSearchCertificate` + certificate helpers (`pub(super)` to `lambda.rs`
+    and `clifford.rs`).
+  - `game_exterior/lambda.rs` — `GameExterior` (free Grassmann engine quotiented by
+    integer game relations such as `2⋆=0`) + all private helpers; lattice
+    normalization in `linalg/integer.rs`.
+  - `game_exterior/clifford.rs` — `GameCliffordError` and `GameClifford`: the checked
+    integer-valued deformation surface; hand-supplied `q`/polar tables are accepted
+    only when every game relation is null and polar-radical, so torsion-free targets
+    force the documented vanishings (for example, `2⋆=0` kills `Q(⋆)` and all
+    pairings with ⋆). This is not a game-native quadratic-data theorem; that remains
+    in `OPEN.md`.
+  - `game_exterior/mod.rs` — hub; re-exports everything flat so `games::GameExterior`
+    etc. remain unchanged.
 
 ## Temperature theory
 
@@ -83,21 +88,29 @@ indices, and collection lengths.
   (retrograde analysis); `p_positions` = Loss. The interactive route to the open
   question. Plus `scoring_values`: the Milnor minimax `ScoreInterval { left, right }`
   (`i128`) on a DAG — the integer-valued scoring knob.
-- **`loopy.rs`** — loopy (cyclic) games, the third escape from XOR-linear P-sets: a
-  cyclic rule admits a **Draw** outcome (a genuinely new degree of freedom). Four
-  layers: `LoopyGraph` (a thin computable wrapper over `kernel::outcomes` —
-  loss/win/draw sets), `LoopyPartizanGraph` (finite two-sided Left/Right retrograde
-  analysis, returning exact starter pairs via `LoopyPartizanOutcome` and only
-  projecting to `PartizanOutcome {P,N,L,R,Draw}` when that projection is honest),
-  `loopy_nim_values`/`loopy_nim_values_certified` (+ `LoopyNimCertificate`: Draw ⇒
-  `Side`/∞, else a nimber; exact on an acyclic non-Draw subgraph; bounded sidling
-  only when the mex fixed point is unique; additive finite-nimber claims require the
-  checked `recovery_condition_holds` flag), and the `LoopyValue` catalogue
-  (`Zero`/`Star`/`On`/`Off`/`Over`/`Under`/`PlusMinus`/`Tis`/`Tisn`/`Dud` plus
-  integer `s&t` tags, with exact starter-pair `outcome`, `partizan_outcome`,
-  `sides`, neg/partial order/partial sum). The payoff is
-  `loopy_decision_sets`/`loopy_quadric_probe`: read a cyclic rule's Loss-set AND
-  Draw-set, each fit by `fit_f2_quadratic`.
+- **`loopy/`** — loopy (cyclic) games, the third escape from XOR-linear P-sets: a
+  cyclic rule admits a **Draw** outcome (a genuinely new degree of freedom). Split
+  into five layers:
+  - `loopy/catalogue.rs` — `LoopyWinner`, `LoopyPartizanOutcome`, `PartizanOutcome`,
+    and the `LoopyValue` catalogue (`Zero`/`Star`/`On`/`Off`/`Over`/`Under`/
+    `PlusMinus`/`Tis`/`Tisn`/`Dud` plus integer `s&t` tags, with exact
+    starter-pair `outcome`, `partizan_outcome`, `sides`, neg/partial order/partial
+    sum).
+  - `loopy/graph.rs` — `LoopyGraph` (a thin computable wrapper over
+    `kernel::outcomes` — loss/win/draw sets).
+  - `loopy/partizan.rs` — `LoopyPartizanGraph`: finite two-sided Left/Right
+    retrograde analysis, returning exact starter pairs via `LoopyPartizanOutcome`
+    and only projecting to `PartizanOutcome {P,N,L,R,Draw}` when that projection
+    is honest.
+  - `loopy/nim_values.rs` — `LoopyNimber`, `LoopyNimCertificate`,
+    `loopy_nim_values`/`loopy_nim_values_certified`: Draw ⇒ `Side`/∞, else a
+    nimber; exact on an acyclic non-Draw subgraph; bounded sidling only when the
+    mex fixed point is unique; additive finite-nimber claims require the checked
+    `recovery_condition_holds` flag.
+  - `loopy/research.rs` — `loopy_decision_sets`/`loopy_quadric_probe`: read a
+    cyclic rule's Loss-set AND Draw-set, each fit by `fit_f2_quadratic`.
+  - `loopy/mod.rs` — hub; re-exports everything flat so `games::LoopyValue` etc.
+    remain unchanged.
 - **`misere.rs`** — checked misère-play outcomes (`try_misere_is_n`/`misere_is_p`)
   for finite acyclic impartial games; cycles return `None`. Covers misère Nim vs
   Bouton; the bounded indistinguishability quotient (`misere_quotient`,

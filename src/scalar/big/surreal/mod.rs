@@ -243,23 +243,27 @@ impl Scalar for Surreal {
     }
 }
 
-/// Format coeff·ω^exp for a *non-negative* magnitude coefficient.
+/// Format `coeff⋅ω↑exp` (canonical ogham, Display v2 §9) for a *non-negative*
+/// magnitude coefficient. The exponent renders bare iff it is a (possibly
+/// negative) integer (`ω↑-1`); any other exponent — a non-integer rational or a
+/// compound surreal — is parenthesized (`ω↑(1/2)`, `ω↑(ω)`).
 fn fmt_term_mag(e: &Surreal, mag: &Rational) -> String {
     if e.is_zero() {
-        return format!("{}", mag); // a plain constant
+        return format!("{mag}"); // a plain constant
     }
     let base = if *e == Surreal::one() {
         "ω".to_string()
-    } else if e.terms.len() == 1 && e.terms[0].0.is_zero() {
-        // exponent is a bare rational: ω^2, ω^-1, ω^(1/2) — no parens needed
-        format!("ω^{}", e.terms[0].1)
+    } else if e.terms.len() == 1 && e.terms[0].0.is_zero() && e.terms[0].1.is_integer() {
+        // exponent is a (signed) integer: ω↑2, ω↑-1 — no parens needed
+        format!("ω↑{}", e.terms[0].1)
     } else {
-        format!("ω^({})", e)
+        // non-integer rational (ω↑(1/2)) or compound surreal (ω↑(ω)) — parens
+        format!("ω↑({e})")
     };
     if *mag == Rational::one() {
         base
     } else {
-        format!("{}{}", mag, base)
+        format!("{mag}⋅{base}")
     }
 }
 
@@ -364,6 +368,31 @@ mod tests {
             w_to_w.mul(&w_to_w),
             Surreal::omega_pow(Surreal::omega().mul(&int(2)))
         );
+    }
+
+    #[test]
+    fn display_v2_canonical_ogham() {
+        let w = Surreal::omega();
+        // 3⋅ω↑2 - ω + 5 : explicit ⋅, ↑, first-term sign, ` - ` join kept.
+        let x = Surreal::omega_pow(int(2))
+            .mul(&int(3))
+            .sub(&w)
+            .add(&int(5));
+        assert_eq!(format!("{x:?}"), "3⋅ω↑2 - ω + 5");
+        // ω↑-1 : a negative *integer* exponent renders bare.
+        assert_eq!(format!("{:?}", Surreal::epsilon()), "ω↑-1");
+        // ω↑(1/2) : a non-integer rational exponent parenthesizes.
+        let sqrt_w = Surreal::omega_pow(Surreal::from_rational(Rational::new(1, 2)));
+        assert_eq!(format!("{sqrt_w:?}"), "ω↑(1/2)");
+        // ω↑(ω) : a compound surreal exponent parenthesizes.
+        assert_eq!(format!("{:?}", Surreal::omega_pow(w)), "ω↑(ω)");
+        // a plain dyadic constant still renders as the bare rational.
+        assert_eq!(
+            format!("{:?}", Surreal::from_rational(Rational::new(1, 2))),
+            "1/2"
+        );
+        // char-0 zero renders `0`, not `*0`.
+        assert_eq!(format!("{:?}", Surreal::zero()), "0");
     }
 
     #[test]

@@ -116,7 +116,7 @@ pub use tropical::*;
 pub use valued::*;
 
 use std::fmt::{Debug, Display};
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, BitXor, Mul, Neg, Sub};
 
 pub(crate) fn mod_inverse_u128(a: u128, modulus: u128) -> Option<u128> {
     if modulus <= 1 {
@@ -208,12 +208,23 @@ pub(crate) fn is_prime_u128(p: u128) -> bool {
     true
 }
 
-/// Generate the owned-value operators `+`, `-` (binary and unary), and `*` for a
-/// [`Scalar`] backend by forwarding to its trait methods, so downstream code can
-/// write `a + b`, `a * b`, `-a` instead of `a.add(&b)`, `a.mul(&b)`, `a.neg()`.
+/// Generate the owned-value operators `+`, `-` (binary and unary), `*`, and
+/// `^ u128` (power) for a [`Scalar`] backend by forwarding to its trait
+/// methods, so downstream code can write `a + b`, `a * b`, `-a`, `a ^ 3`
+/// instead of `a.add(&b)`, `a.mul(&b)`, `a.neg()`, and an explicit loop.
 /// Only use this for backends whose multiplication is total on the represented
 /// domain; `Ordinal` gets hand-written additive operators and keeps its partial
-/// product behind `nim_mul`.
+/// product behind `nim_mul` / `nim_pow`.
+///
+/// **`^` is power (ogham `↑`), not XOR.** The RHS is deliberately `u128`
+/// so that `x ^ y` never compiles when `y` has the same element type as `x` —
+/// the type system enforces the "no element-element XOR" rule (on `Nimber`,
+/// `x ^ x` would silently mean nim-*addition*). The exponent is an unsigned
+/// meta-integer: `x ^ 0 == one()`.
+///
+/// **Precedence caveat (§5 `spec/ogham.md`):** Rust's `^` binds looser than
+/// `*`. `a * b ^ 3` is `a * (b ^ 3)` in ogham but `(a * b) ^ 3` in Rust.
+/// Parenthesize when mixing product and power operators.
 ///
 /// Deliberately *not* a [`Scalar`] supertrait bound: these are concrete-type
 /// conveniences for callers (`Surreal + Surreal`, `-nimber`), so generic engine
@@ -249,6 +260,32 @@ macro_rules! impl_scalar_ops {
             #[inline]
             fn neg(self) -> $ty { <$ty as $crate::scalar::Scalar>::neg(&self) }
         }
+        impl<$($gen)*> BitXor<u128> for $ty {
+            type Output = $ty;
+            /// Square-and-multiply power: `x ^ 0 == one()`, `x ^ k` via [`Scalar::mul`].
+            ///
+            /// `^` is power (ogham `↑`). The RHS is `u128` so element-element `^`
+            /// does not compile — no [`BitXor<Self>`] impl exists on any backend.
+            /// **Precedence caveat:** Rust's `^` binds looser than `*`; parenthesize
+            /// when mixing with product.
+            #[inline]
+            fn bitxor(self, mut k: u128) -> $ty {
+                if k == 0 {
+                    return <$ty as $crate::scalar::Scalar>::one();
+                }
+                let mut acc = <$ty as $crate::scalar::Scalar>::one();
+                let mut base = self;
+                loop {
+                    if k & 1 == 1 {
+                        acc = <$ty as $crate::scalar::Scalar>::mul(&acc, &base);
+                    }
+                    k >>= 1;
+                    if k == 0 { break; }
+                    base = <$ty as $crate::scalar::Scalar>::mul(&base, &base);
+                }
+                acc
+            }
+        }
     };
     ($ty:ty) => {
         impl Add for $ty {
@@ -270,6 +307,32 @@ macro_rules! impl_scalar_ops {
             type Output = $ty;
             #[inline]
             fn neg(self) -> $ty { <$ty as $crate::scalar::Scalar>::neg(&self) }
+        }
+        impl BitXor<u128> for $ty {
+            type Output = $ty;
+            /// Square-and-multiply power: `x ^ 0 == one()`, `x ^ k` via [`Scalar::mul`].
+            ///
+            /// `^` is power (ogham `↑`). The RHS is `u128` so element-element `^`
+            /// does not compile — no [`BitXor<Self>`] impl exists on any backend.
+            /// **Precedence caveat:** Rust's `^` binds looser than `*`; parenthesize
+            /// when mixing with product.
+            #[inline]
+            fn bitxor(self, mut k: u128) -> $ty {
+                if k == 0 {
+                    return <$ty as $crate::scalar::Scalar>::one();
+                }
+                let mut acc = <$ty as $crate::scalar::Scalar>::one();
+                let mut base = self;
+                loop {
+                    if k & 1 == 1 {
+                        acc = <$ty as $crate::scalar::Scalar>::mul(&acc, &base);
+                    }
+                    k >>= 1;
+                    if k == 0 { break; }
+                    base = <$ty as $crate::scalar::Scalar>::mul(&base, &base);
+                }
+                acc
+            }
         }
     };
 }
@@ -401,6 +464,24 @@ mod ops_tests {
         assert_eq!(x + y, Scalar::add(&x, &y));
         assert_eq!(x * y, Scalar::mul(&x, &y));
         assert_eq!(-x, x);
+    }
+
+    #[test]
+    fn scalar_power_operator_basic_cases() {
+        // Nimber: *2 ^ 2 = nim_mul(2,2) = 3  (since 2*2=3 in nim arithmetic)
+        // i.e. Nimber(2) ^ 2 == Nimber(3)
+        assert_eq!(Nimber(2) ^ 2u128, Nimber(3));
+        // x ^ 0 == one() for all total-product backends
+        assert_eq!(Nimber(5) ^ 0u128, Nimber::one());
+        assert_eq!(Rational::from_int(7) ^ 0u128, Rational::one());
+        // Fp case: 3 ^ 2 == 9 mod p = 2 in F_5
+        use crate::scalar::Fp;
+        let three: Fp<5> = Fp::from_int(3);
+        assert_eq!(three ^ 2u128, Fp::from_int(4)); // 3^2 = 9 ≡ 4 mod 5
+        // consistency with repeated mul
+        let r2 = Rational::from_int(2);
+        let r8 = Rational::from_int(8);
+        assert_eq!(r2 ^ 3u128, r8);
     }
 
     #[test]

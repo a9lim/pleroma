@@ -132,10 +132,10 @@ mod tests {
         assert_eq!(sum - e1.clone(), e0);
         assert_eq!(-e1.clone(), alg.scalar_mul(&r(-1), &e1));
 
-        let e01 = e0.clone() ^ e1.clone();
+        let e01 = e0.clone() & e1.clone();
         assert_eq!(e01, alg.wedge(&e0, &e1));
         assert_eq!(
-            e1 ^ e0,
+            e1 & e0,
             alg.scalar_mul(&r(-1), &alg.wedge(&alg.e(0), &alg.e(1)))
         );
     }
@@ -476,5 +476,61 @@ mod tests {
             algn.mul(&algn.e(0), &algn.e(1)),
         ];
         assert_associative(&algn, &gensn);
+    }
+
+    // ── CliffordAlgebra::pow tests ────────────────────────────────────────────
+
+    #[test]
+    fn pow_zero_is_scalar_one() {
+        // char 0
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![r(1), r(1)]));
+        let e0 = alg.e(0);
+        assert_eq!(alg.pow(&e0, 0), alg.scalar(r(1)));
+        // char 2
+        let algn = CliffordAlgebra::new(2, Metric::diagonal(vec![Nimber(1), Nimber(1)]));
+        let ne0 = algn.e(0);
+        assert_eq!(alg.pow(&e0, 0), alg.scalar(r(1)));
+        assert_eq!(algn.pow(&ne0, 0), algn.scalar(Nimber(1)));
+    }
+
+    #[test]
+    fn pow_one_is_identity() {
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![r(1), r(1)]));
+        let e0 = alg.e(0);
+        assert_eq!(alg.pow(&e0, 1), e0);
+
+        let algn = CliffordAlgebra::new(2, Metric::diagonal(vec![Nimber(1), Nimber(1)]));
+        let ne0 = algn.e(0);
+        assert_eq!(algn.pow(&ne0, 1), ne0);
+    }
+
+    #[test]
+    fn pow_e0_squared_equals_q0_char0() {
+        // In Cl(p,q) over char 0, e0^2 = q[0] (the quadratic form value).
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![r(3), r(-1)]));
+        let e0 = alg.e(0);
+        // e0^2 should equal scalar(q[0]) = scalar(3)
+        assert_eq!(alg.pow(&e0, 2), alg.scalar(r(3)));
+    }
+
+    #[test]
+    fn pow_mixed_grade_element_char0() {
+        // v = e0 + e1 in a 2D algebra; verify v^3 == v * v * v via three mul calls.
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![r(1), r(1)]));
+        let v = alg.add(&alg.e(0), &alg.e(1));
+        let v3_direct = alg.mul(&alg.mul(&v, &v), &v);
+        assert_eq!(alg.pow(&v, 3), v3_direct);
+    }
+
+    #[test]
+    fn pow_mixed_grade_element_char2() {
+        // char-2 (Nimber): v = e0 + e1, verify pow(v,3) == v*v*v.
+        let alg = CliffordAlgebra::new(
+            2,
+            Metric::diagonal(vec![Nimber(1), Nimber(1)]),
+        );
+        let v = alg.add(&alg.e(0), &alg.e(1));
+        let v3_direct = alg.mul(&alg.mul(&v, &v), &v);
+        assert_eq!(alg.pow(&v, 3), v3_direct);
     }
 }

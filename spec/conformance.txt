@@ -1,0 +1,245 @@
+# ogham conformance corpus — v0.1 (hand-verified, 2026-06-11)
+# Format: spec/ogham.md §14.
+#   @world ‹args as after ":world"›   resets bindings
+#   > input        ~ canonical echo (optional)        = value display
+#   ! E_Kind: message-substring
+# Every vector below is hand-verified against standard nim/surreal arithmetic
+# and the Display v2 rules. The --bless harness mode may APPEND engine-generated
+# vectors; it must never modify this hand-verified prefix.
+
+# ---------------------------------------------------------------- nimber, scalars
+@world nimber 0
+
+> *3 + *5
+= *6
+
+> * + *2
+~ *1 + *2
+= *3
+
+> *2 . *2
+~ *2⋅*2
+= *3
+
+> *2 ⋅ *3
+= *1
+
+> *3 ⋅ *3
+= *2
+
+> *4 ⋅ *4
+= *6
+
+> *3 + *3
+= *0
+
+> - *7
+= *7
+
+> /*2
+= *3
+
+> *2 ^ -1
+~ *2↑-1
+= *3
+
+> *2 ↑ 2
+= *3
+
+> *5 / *5
+= *1
+
+> frob(*2)
+= *3
+
+> tr(*7, 4)
+= *0
+
+> 3
+! E_BareInt: did you mean `*3`?
+
+> w
+! E_WrongWorld:
+
+> *0 ↑ 0
+= *1
+
+# ------------------------------------------------- nimber, orthogonal plane
+@world nimber 2 q=[*1,*1]
+
+> e0 . e0
+~ e0⋅e0
+= *1
+
+> e0 & e0
+~ e0∧e0
+= *0
+
+> [*1,*2] & [*1,*3]
+~ [*1, *2] ∧ [*1, *3]
+= e0∧e1
+
+> [*1,*2] ⋅ [*1,*3]
+= e0∧e1
+
+> rev(e0 ∧ e1)
+= e0∧e1
+
+> e0 ⋅ e1 == e0 ∧ e1
+= true
+
+> e0 ⋅ e1 + e1 ⋅ e0
+= *0
+
+> e0 ^ e1
+! E_ExpSort: wedge
+
+> [*1]
+! E_DimMismatch:
+
+> e2
+! E_BladeIndex:
+
+# --------------------------------- nimber, char-2 polar pair (q and b independent)
+@world nimber 2 q=[*1,*1] b=[(0,1):*1]
+
+> e0 ⋅ e1 + e1 ⋅ e0
+= *1
+
+# ---------------------------------------------------------------- ordinal, scalars
+@world ordinal 0
+
+> *3 + *5
+= *6
+
+> *w + *1
+~ *ω + *1
+= *(ω + 1)
+
+> *w ⋅ *w
+~ *ω⋅*ω
+= *(ω↑2)
+
+> *ω ↑ 3
+= *2
+
+> *(ω↑2) ⋅ *ω == *2
+= true
+
+> *(1 + ω)
+! E_CnfOrder:
+
+> w
+! E_BareOrdinal: *ω
+
+> *(ω↑(ω↑ω)) ⋅ *2
+! E_KummerEscape:
+
+# ------------------------------------------------------------- ordinal, the hero
+@world ordinal 3 q=[*1,*1,*1]
+
+> v = [*3, *1, *4]
+> u = [*w, *0, *w]
+> v & u
+~ v ∧ u
+= *ω⋅e0∧e1 + *(ω⋅7)⋅e0∧e2 + *ω⋅e1∧e2
+
+# ---------------------------------------------------------------- surreal, scalars
+@world surreal 0
+
+> 1/2 + 1/2
+= 1
+
+> w + 1
+~ ω + 1
+= ω + 1
+
+> 3.w^2 - w + 5
+~ 3⋅ω↑2 - ω + 5
+= 3⋅ω↑2 - ω + 5
+
+> w^-1
+~ ω↑-1
+= ω↑-1
+
+> w^w
+~ ω↑(ω)
+= ω↑(ω)
+
+> w^(1/2)
+~ ω↑(1/2)
+= ω↑(1/2)
+
+> 2 ↑ 3
+= 8
+
+> /(w + 1)
+! E_NotInvertible: Hahn
+
+> *3
+! E_WrongWorld: nimber
+
+# ------------------------------------------------------- surreal, hyperbolic-ish
+@world surreal 2 q=[1,-1]
+
+> e1 ⋅ e1
+= -1
+
+> [1,1] ⋅ [1,1]
+= 0
+
+> e0 ∧ e1 == e0 ⋅ e1
+= true
+
+# ---------------------------------------------------------- integer, grassmann
+@world integer 2 grassmann
+
+> [1,2] & [3,4]
+~ [1, 2] ∧ [3, 4]
+= -2⋅e0∧e1
+
+> e0 ⋅ e0
+= 0
+
+> /e0
+! E_NotInvertible:
+
+> 1/2
+! E_NotInvertible:
+
+# ---------------------------------------------------------------- fp5, scalars
+@world fp5 0
+
+> 3 + 4
+= 2
+
+> /2
+= 3
+
+> 2 ↑ -1
+= 3
+
+> 2.3
+~ 2⋅3
+= 1
+
+# ---------------------------------------------------------------- f8, scalars
+@world f8 0
+
+> x ⋅ x
+= x↑2
+
+> x + x
+= 0
+
+> frob(x)
+= x↑2
+
+# ---------------------------------------------------------------- reserved syntax
+@world nimber 0
+
+> {0|0}
+! E_Reserved:
+
+> *2 ↑↑ 3
+! E_Reserved:

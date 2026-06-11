@@ -554,12 +554,13 @@ impl<const P: u128, const N: usize> fmt::Display for Fpn<P, N> {
             if c == 0 {
                 continue;
             }
+            // Display v2 (§9): explicit `⋅` and `↑`, coefficient-1 suppressed.
             let term = match i {
                 0 => format!("{c}"),
                 1 if c == 1 => "x".to_string(),
-                1 => format!("{c}x"),
-                _ if c == 1 => format!("x^{i}"),
-                _ => format!("{c}x^{i}"),
+                1 => format!("{c}⋅x"),
+                _ if c == 1 => format!("x↑{i}"),
+                _ => format!("{c}⋅x↑{i}"),
             };
             parts.push(term);
         }
@@ -805,6 +806,22 @@ mod tests {
             Fpn::<2, 3>::from_coeffs(&[1, 0, 1])
         );
         assert!(std::panic::catch_unwind(|| Fpn::<2, 3>::from_coeffs(&[1, 0, 0, 1])).is_err());
+    }
+
+    #[test]
+    fn display_v2_canonical_ogham() {
+        // Display v2 (§9): explicit `⋅` and `↑`, coefficient-1 suppressed.
+        // The §9 example `3⋅x↑2 + 2⋅x + 1` needs coefficient 3, so it is only
+        // realizable in a field whose characteristic exceeds 3 (in F_27 the
+        // coefficient 3 reduces to 0). Pin it in F_125.
+        let f125 = Fpn::<5, 3>::from_coeffs(&[1, 2, 3]);
+        assert_eq!(format!("{f125:?}"), "3⋅x↑2 + 2⋅x + 1");
+        // Over F_27 (the menu's `Fpn<3,3>`), pin a realizable element.
+        let f27 = Fpn::<3, 3>::from_coeffs(&[1, 1, 2]);
+        assert_eq!(format!("{f27:?}"), "2⋅x↑2 + x + 1");
+        // Coefficient-1 and bare-`x` suppression: `x↑2`, `x`.
+        assert_eq!(format!("{:?}", Fpn::<5, 3>::from_coeffs(&[0, 1, 1])), "x↑2 + x");
+        assert_eq!(format!("{:?}", Fpn::<3, 3>::zero()), "0");
     }
 
     #[test]

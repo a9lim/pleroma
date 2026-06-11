@@ -40,6 +40,9 @@ lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems),
 `roadmap/` (CODA.md — the built-bridge record + formal proofs; TODO.md — the game-valued
 ledger of buildable items plus the deferred stars `*1`/`*2`/`*4`; DONE.md — the
 go-forward ledger for new work),
+`spec/` (ogham.md — the expression-language spec, the shipped Display-v2 +
+host-operator contract, and the WP2–6 build plan; conformance.txt — the
+hand-verified corpus the language must pass),
 `TABLES.md` (the inventory of curated hardcoded tables), and `writeups/`
 (`goldarf.tex` — the consolidated draft note on the Gold/Arf game thread,
 including the Tier-2 no-go/construction program; `excess.tex` — the
@@ -260,14 +263,31 @@ python3 experiments/linking_game.py all 5     # linking-reduction harness (stdli
   `lib.rs`; targeted `#[allow]`s carry a one-line reason). License: AGPL-3.0-or-later.
 - Numeric payload style is deliberate: non-index fixed-width integers are
   `u128`/`i128` throughout the core, docs, examples, and tests.
-- Display is deliberate: blades render `e0e1`; coefficients `1`/`-1` elided; nimbers
-  print `*n`; surreals print CNF (`3ω^2 - ω + 5`, `ω^(ω)`, `ω^-1`).
+- Display is deliberate and canonical (ogham Display v2, `spec/ogham.md` §9):
+  blades render as wedge expressions `e0∧e1` (`∧` = U+2227); coefficients attach
+  `coeff⋅label` (`⋅` = U+22C5) with coefficient-`1` elided and `-1` → `-label`
+  (compared via `S::one().neg()`, never a literal). A term whose rendering starts
+  with `-` joins with ` - ` (string-level, char-agnostic); the empty multivector
+  renders as `S::zero()`'s display (`*0` in nim-worlds, `0` elsewhere). Nimbers
+  print `*n`; ordinals are star-wrapped (`*5`, `*ω`, else `*(…)`: `*(ω + 1)`,
+  `*(ω↑2)`, `*(ω⋅3)`, `*(ω↑(ω))`); surreals print CNF (`3⋅ω↑2 - ω + 5`, `ω↑(ω)`,
+  `ω↑-1`, `ω↑(1/2)` — exponent bare iff a signed integer); `Fpn` `3⋅x↑2 + 2⋅x + 1`;
+  `Poly` uses variable `t` (`1 + 2⋅t`, parens on a non-atomic coefficient);
+  `RationalFunction` `(num)/(den)`. Atomic = no spaces and no `⋅ ∧ ↑ / + -`
+  outside balanced parens.
 - Rust scalar operators: total-product backends have `+ - *` and unary `-`
-  (concrete-only, via `impl_scalar_ops!`). `Ordinal` deliberately omits owned `*`
-  because transfinite nim-multiplication is partial at the verified Kummer boundary;
-  use `nim_mul` for the checked path. Generic engine code over `S: Scalar` still
-  calls `.add(&x)`/`.mul(&x)` — operators are NOT a supertrait (see
-  `src/scalar/AGENTS.md`).
+  (concrete-only, via `impl_scalar_ops!`), plus `^ u128` for power (`x ^ 3` =
+  square-and-multiply via `Scalar::mul`; `x ^ 0 == one()`). The `u128` RHS
+  prevents element-element `^` from compiling — on `Nimber`, `x ^ x` would silently
+  mean nim-addition (XOR), so no `BitXor<Self>` impl exists on any backend. **Rust
+  `^` binds looser than `*`; parenthesize when mixing product and power.**
+  `Multivector` has `&` (wedge, ogham `∧`) via `impl BitAnd`; **no `^` operator on
+  `Multivector`** — the geometric product needs the metric, so use
+  `CliffordAlgebra::pow(&self, v, k)` for repeated geometric multiplication.
+  `Ordinal` deliberately omits owned `*` and `^` because transfinite
+  nim-multiplication is partial at the verified Kummer boundary; use `nim_mul` and
+  `nim_pow` for the checked paths. Generic engine code over `S: Scalar` still calls
+  `.add(&x)`/`.mul(&x)` — operators are NOT a supertrait (see `src/scalar/AGENTS.md`).
 
 ## Testing
 

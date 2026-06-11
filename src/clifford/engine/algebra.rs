@@ -9,13 +9,17 @@ use std::collections::BTreeMap;
 ///
 /// ## Operator vs context-method policy
 ///
-/// Metric-free additive operations (`+`, `-`, unary `-`, `^` for wedge) are
+/// Metric-free additive operations (`+`, `-`, unary `-`, `&` for wedge) are
 /// implemented directly on [`Multivector`] as operators. The geometric product
 /// and all metric-dependent operations are methods on this type, which provides
-/// the metric as context. Use `a + b` / `a ^ b` for the metric-free ops;
+/// the metric as context. Use `a + b` / `a & b` for the metric-free ops;
 /// `alg.mul(&a, &b)` / `alg.wedge(&a, &b)` for the metric-dependent ones.
 /// This mirrors the scalar policy: operators on the concrete type require no
 /// extra context; everything that needs context goes through the algebra.
+///
+/// **Note:** `^` is reserved for scalar power (`x ^ k: u128`); `&` is wedge
+/// (`∧` in ogham). See [`Multivector`]'s `BitAnd` impl for the precedence
+/// caveat (Rust `&` binds looser than `+` and `*`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct CliffordAlgebra<S: Scalar> {
     pub(crate) metric: Metric<S>,
@@ -97,7 +101,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
         Multivector { terms }
     }
 
-    /// The basis vector `e_i` — named for the `e0e1` display language (and to
+    /// The basis vector `e_i` — named for the `e0∧e1` display language (and to
     /// stay clear of the `gen` keyword reserved in Rust 2024). Python keeps
     /// exposing this as `gen(i)`.
     pub fn e(&self, i: usize) -> Multivector<S> {
@@ -203,5 +207,42 @@ impl<S: Scalar> CliffordAlgebra<S> {
     /// The grade-0 (scalar) coefficient.
     pub fn scalar_part(&self, v: &Multivector<S>) -> S {
         v.terms.get(&0).cloned().unwrap_or_else(S::zero)
+    }
+
+    /// Raise a multivector to a non-negative integer power using square-and-multiply.
+    ///
+    /// `pow(v, 0)` returns the scalar `1` (the algebra's multiplicative identity),
+    /// `pow(v, 1)` returns `v.clone()`, and higher powers are computed via repeated
+    /// geometric product — i.e. `self.mul`.
+    ///
+    /// **Why no `^` operator on `Multivector`?** The geometric product needs the
+    /// metric (stored here on the algebra), so iterated geometric multiplication is
+    /// not metric-free and cannot live as a bare operator on the `Multivector` type.
+    /// Scalar power (`x ^ k: u128` via `impl BitXor<u128>`) is total-product only,
+    /// so it CAN live on the scalar type without a metric context. Ogham's `a ↑ k`
+    /// desugars to this method for multivectors.
+    ///
+    /// **Precedence caveat (§5 `spec/ogham.md`):** Rust's `^` binds looser than `*`.
+    /// When using scalar `x ^ k`, parenthesize if the intended precedence differs
+    /// from ogham's power-tighter-than-product table.
+    pub fn pow(&self, v: &Multivector<S>, k: u128) -> Multivector<S> {
+        if k == 0 {
+            return self.scalar(S::one());
+        }
+        let mut acc = self.scalar(S::one());
+        let mut base = v.clone();
+        let mut exp = k;
+        // square-and-multiply (binary exponentiation)
+        loop {
+            if exp & 1 == 1 {
+                acc = self.mul(&acc, &base);
+            }
+            exp >>= 1;
+            if exp == 0 {
+                break;
+            }
+            base = self.mul(&base, &base);
+        }
+        acc
     }
 }

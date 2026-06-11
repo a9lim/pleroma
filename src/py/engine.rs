@@ -1150,13 +1150,24 @@ macro_rules! backend_multivector {
                     mv: acc,
                 })
             }
-            /// Exterior (wedge) product; also bound to the `^` operator.
+            /// Exterior (wedge) product — ogham `∧`.
+            ///
+            /// Bound to `&` (`__and__`) in Python, matching the Rust `BitAnd`
+            /// operator on `Multivector`. `__xor__` also delegates here during a
+            /// deprecation window (changing Python dunders is WP6; see
+            /// `spec/ogham.md` §13).
+            ///
+            /// **Precedence caveat:** Python's `&` binds looser than `+`; ogham's
+            /// `∧` is tighter than `⋅`. Parenthesize when mixing.
             fn wedge(&self, other: &$mv) -> PyResult<$mv> {
                 self.ensure_same_algebra(other)?;
                 Ok($mv {
                     alg: self.alg.clone(),
                     mv: scalar_boundary(|| self.alg.wedge(&self.mv, &other.mv))?,
                 })
+            }
+            fn __and__(&self, other: &$mv) -> PyResult<$mv> {
+                self.wedge(other)
             }
             fn __xor__(&self, other: &$mv) -> PyResult<$mv> {
                 self.wedge(other)

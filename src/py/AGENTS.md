@@ -142,7 +142,10 @@ runtime type is bound. What stays Rust-only is structural, not a backlog:
 - **Per-backend, no mixing.** Each Python backend monomorphises the generic engine to
   one concrete scalar type. Mixing scalar worlds in one algebra raises `TypeError` by
   construction — intended; do not add a runtime-tagged "any scalar" path.
-- **Python operators:** `*` geometric, `^` wedge, `<<`/`>>` left/right contraction,
-  `~` reverse, `/` divide (scalar or versor), `**` power, `+`/`-`, `==`.
+- **Python operators:** `*` geometric, `&` wedge (ogham `∧`; `^` also works during
+  a deprecation window — WP6 will align the dunder set), `<<`/`>>` left/right
+  contraction, `~` reverse, `/` divide (scalar or versor), `**` power, `+`/`-`, `==`.
+  Scalar power: `x ^ k` (integer RHS) on total-product backends; Ordinal: `nim_pow`
+  method. **Rust `&` binds looser than `+`/`*` in both Python and Rust — parenthesize.**
 - The smoke test is `demo.py` (rebuild via `maturin develop` first); add a section
   there when you bind something new, and a backend to `catalog.rs` when you add one.

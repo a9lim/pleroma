@@ -30,7 +30,8 @@ pub(super) fn add_term<S: Scalar>(out: &mut BTreeMap<u128, S>, blade: u128, coef
 }
 
 /// The exterior (wedge) product of two term maps — the shared implementation
-/// used by both `Multivector::bitxor` and `CliffordAlgebra::wedge`. Metric-independent.
+/// used by both `Multivector::bitand` (`&` operator) and `CliffordAlgebra::wedge`.
+/// Metric-independent.
 pub(super) fn wedge_terms<S: Scalar>(
     a: &BTreeMap<u128, S>,
     b: &BTreeMap<u128, S>,

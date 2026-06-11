@@ -218,6 +218,6 @@ mod tests {
         let w = NimberGame::from_ordinal(&Ordinal::omega());
         assert!(w.add(&w).grundy().is_zero(), "⋆ω + ⋆ω = 0 (XOR, not ω·2)");
         let wp1 = w.add(&NimberGame::nim_heap(1));
-        assert_eq!(format!("{:?}", wp1.grundy()), "ω + 1");
+        assert_eq!(format!("{:?}", wp1.grundy()), "*(ω + 1)");
     }
 }

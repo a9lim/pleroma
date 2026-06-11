@@ -712,16 +712,16 @@ print("  inv_v(−1,−1), sum            :", pl.brauer_local_invariants((-1, 1)
 section("runtime p-adic cells + adeles — the scalar side of local–global")
 k3 = pl.adele_prec(3)
 third_3 = pl.LocalQp.from_rational(3, k3, 1, 3)
-two_3 = pl.LocalQp.from_i128(3, k3, 2)
+two_3 = pl.LocalQp.from_int(3, k3, 2)
 print("  1/3 in Q₃ has valuation     :", third_3.valuation(), " unit:", third_3.unit)
-print("  Local/fixed Qp from_i128     :", pl.LocalQp.from_i128(3, k3, 9).valuation(),
-      pl.Qp3_4.from_i128(9).valuation())
+print("  Local/fixed Qp from_int     :", pl.LocalQp.from_int(3, k3, 9).valuation(),
+      pl.Qp3_4.from_int(9).valuation())
 print("  2·(1/3) in Q₃               :", two_3 * third_3)
 adelic = pl.Adele.from_rational(2, 3)
 print("  diagonal 2/3 local at 3      :", adelic.local_at(3),
       " norm:", adelic.idele_norm(), " product formula:", adelic.satisfies_product_formula())
 print("  adelic precision policy       :", pl.adele_prec(3))
-print("  adding a 3-adic correction   :", adelic.with_correction(3, pl.LocalQp.from_i128(3, k3, 1)).local_at(3))
+print("  adding a 3-adic correction   :", adelic.with_correction(3, pl.LocalQp.from_int(3, k3, 1)).local_at(3))
 adele_alg = pl.AdeleAlgebra([adelic])
 adele_cga = pl.AdeleCga(1)
 adele_pt = adele_cga.up([adelic])
@@ -752,13 +752,13 @@ print("  Q₅ Springer repeat check     :",
       same_local_springer(pl.springer_decompose_local(Q5), q5_sp))
 print("  Q₅ residue/integral package  :",
       pl.Qp5_4.uniformizer().valuation(), pl.Qp5_4.teichmuller(pl.Fp5(2)).residue(),
-      pl.Qp5_4.from_i128(25).to_integer(), q5.residue(), q5.residue_unit(),
+      pl.Qp5_4.from_int(25).to_integer(), q5.residue(), q5.residue_unit(),
       q5.is_integral())
 print("  valued polynomial Gauss min  :",
       pl.min_coeff_valuation([pl.Qp5_4.from_p_power(2), pl.Qp5_4.zero(), pl.Qp5_4.from_p_power(1)]))
 print("  p-adic checked roots         :",
       pl.Zp2_4(4).is_square(), raises_value_error(lambda: pl.Zp2_4(4).sqrt()),
-      pl.Qp5_4.from_i128(4).sqrt())
+      pl.Qp5_4.from_int(4).sqrt())
 f9_ns = pl.F9.primitive_element()
 w9_ns = pl.WittVec3_4_2.teichmuller(f9_ns)
 q9_ns = pl.Qq3_4_2.from_witt(w9_ns)
@@ -985,7 +985,7 @@ a1_disc = pl.DiscriminantForm.from_lattice(pl.IntegralForm.a(1))
 print("  discriminant form iso/Brown  :",
       a1_disc.is_isomorphic(a1_disc),
       a1_disc.brown_invariant())
-np = pl.newton_polygon([pl.Qp5_4.from_i128(-5), pl.Qp5_4.zero(), pl.Qp5_4.one()])
+np = pl.newton_polygon([pl.Qp5_4.from_int(-5), pl.Qp5_4.zero(), pl.Qp5_4.one()])
 print("  Newton roots of x²-5 over Q₅ :", np.root_valuations(),
       " τ(5²)=", pl.tropicalize(pl.Qp5_4.from_p_power(2)))
 transfer = pl.transfer_diagonal(3, 2, [1])

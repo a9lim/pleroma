@@ -156,6 +156,36 @@ impl Ordinal {
         }
     }
 
+    /// Checked power via square-and-multiply over [`nim_mul`](Self::nim_mul).
+    ///
+    /// `nim_pow(x, 0)` returns `Some(one())` regardless of `x` (including zero,
+    /// which is the convention `x^0 = 1` in rings). `None` propagates whenever
+    /// any intermediate [`nim_mul`](Self::nim_mul) call returns `None` — i.e.
+    /// whenever a product escapes the verified Kummer boundary (`≥ ω^(ω^ω)` or
+    /// a carry past the certified prime table).
+    ///
+    /// Use this instead of `Scalar::mul`-based iteration when an explicit
+    /// `Option` boundary is needed, consistent with the deliberate omission of
+    /// owned `*` and `^` on `Ordinal`.
+    pub fn nim_pow(&self, mut k: u128) -> Option<Ordinal> {
+        if k == 0 {
+            return Some(Ordinal::from_u128(1));
+        }
+        let mut acc = Ordinal::from_u128(1);
+        let mut base = self.clone();
+        loop {
+            if k & 1 == 1 {
+                acc = acc.nim_mul(&base)?;
+            }
+            k >>= 1;
+            if k == 0 {
+                break;
+            }
+            base = base.nim_mul(&base)?;
+        }
+        Some(acc)
+    }
+
     /// Checked multiplicative inverse on represented finite subfields. Finite
     /// nimbers use the `u128` backend; detected finite ordinal-nimber fields use
     /// the Frobenius formula `x^(2^m-2)` inside their minimal `F_{2^m}`.
@@ -214,38 +244,56 @@ impl Scalar for Ordinal {
     }
 }
 
+/// The omega-power base `ω↑exp` (canonical ogham, Display v2 §9). Empty for a
+/// finite (exponent-0) term, bare `ω` for exponent 1, `ω↑k` for a plain finite
+/// exponent `k`, and `ω↑(…)` for any compound ordinal exponent.
 fn fmt_exp(e: &Ordinal) -> String {
     if e.is_zero() {
         String::new()
     } else if *e == Ordinal::from_u128(1) {
         "ω".to_string()
     } else if e.terms.len() == 1 && e.terms[0].0.is_zero() {
-        format!("ω^{}", e.terms[0].1) // ω^k for a finite exponent k
+        format!("ω↑{}", e.terms[0].1) // ω↑k for a finite exponent k
     } else {
-        format!("ω^({})", e)
+        format!("ω↑({})", fmt_cnf(e)) // ω↑(…) for a compound ordinal exponent
     }
+}
+
+/// The bare (un-starred) CNF body, e.g. `ω↑2 + ω⋅3 + 5` — the canonical inside
+/// of a star-literal. Terms join with ` + `; the omega-power and its coefficient
+/// join with `⋅` (U+22C5).
+fn fmt_cnf(x: &Ordinal) -> String {
+    let parts: Vec<String> = x
+        .terms
+        .iter()
+        .map(|(e, c)| {
+            let base = fmt_exp(e);
+            if base.is_empty() {
+                format!("{c}") // finite term
+            } else if *c == 1 {
+                base
+            } else {
+                format!("{base}⋅{c}")
+            }
+        })
+        .collect();
+    parts.join(" + ")
 }
 
 impl fmt::Display for Ordinal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.terms.is_empty() {
-            return write!(f, "0");
+            return write!(f, "*0"); // the zero nimber
         }
-        let parts: Vec<String> = self
-            .terms
-            .iter()
-            .map(|(e, c)| {
-                let base = fmt_exp(e);
-                if base.is_empty() {
-                    format!("{}", c) // finite term
-                } else if *c == 1 {
-                    base
-                } else {
-                    format!("{}·{}", base, c)
-                }
-            })
-            .collect();
-        write!(f, "{}", parts.join(" + "))
+        // A bare star applies only to a finite value (`*5`) or bare ω (`*ω`);
+        // every compound ordinal index takes parens (`*(ω + 1)`, `*(ω↑2)`).
+        let bare = (self.terms.len() == 1 && self.terms[0].0.is_zero())
+            || *self == Ordinal::omega();
+        if bare {
+            write!(f, "*{}", fmt_cnf(self))
+        } else {
+            write!(f, "*({})", fmt_cnf(self))
+        }
     }
 }
 
@@ -283,11 +331,21 @@ mod tests {
 
     #[test]
     fn display_reads_as_cnf() {
-        assert_eq!(format!("{:?}", Ordinal::omega()), "ω");
-        assert_eq!(format!("{:?}", Ordinal::monomial(fin(1), 3)), "ω·3");
-        assert_eq!(format!("{:?}", Ordinal::omega_pow(fin(2))), "ω^2");
-        assert_eq!(format!("{:?}", Ordinal::omega().nim_add(&fin(1))), "ω + 1");
-        assert_eq!(format!("{:?}", fin(5)), "5");
+        // Display v2 (§9): star-wrapped, bare star only for finite/bare-ω.
+        assert_eq!(format!("{:?}", Ordinal::omega()), "*ω");
+        assert_eq!(format!("{:?}", Ordinal::monomial(fin(1), 3)), "*(ω⋅3)");
+        assert_eq!(format!("{:?}", Ordinal::omega_pow(fin(2))), "*(ω↑2)");
+        assert_eq!(
+            format!("{:?}", Ordinal::omega().nim_add(&fin(1))),
+            "*(ω + 1)"
+        );
+        assert_eq!(format!("{:?}", fin(5)), "*5");
+        assert_eq!(format!("{:?}", Ordinal::zero()), "*0");
+        // ω↑(ω): a bare-ω exponent parenthesizes.
+        assert_eq!(
+            format!("{:?}", Ordinal::omega_pow(Ordinal::omega())),
+            "*(ω↑(ω))"
+        );
     }
 
     #[test]
@@ -315,5 +373,30 @@ mod tests {
     fn scalar_mul_panics_past_verified_tower() {
         let out_of_range = Ordinal::omega_pow(Ordinal::omega_pow(Ordinal::omega()));
         let _ = out_of_range.mul(&Ordinal::omega());
+    }
+
+    // ── nim_pow tests ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn nim_pow_zero_is_one() {
+        // x^0 = 1 regardless of x.
+        assert_eq!(Ordinal::omega().nim_pow(0), Some(fin(1)));
+        assert_eq!(fin(0).nim_pow(0), Some(fin(1)));
+        assert_eq!(fin(5).nim_pow(0), Some(fin(1)));
+    }
+
+    #[test]
+    fn nim_pow_omega_cubed_is_two() {
+        // Conway: ω is the nim cube root of 2, so ω^3 = 2 (= *2 in ordinal display).
+        let omega = Ordinal::omega();
+        assert_eq!(omega.nim_pow(3), Some(fin(2)));
+    }
+
+    #[test]
+    fn nim_pow_propagates_none_on_escape() {
+        // ω^(ω^ω) is outside the verified Kummer boundary; any multiplication
+        // involving it should return None.
+        let out_of_range = Ordinal::omega_pow(Ordinal::omega_pow(Ordinal::omega()));
+        assert_eq!(out_of_range.nim_pow(2), None);
     }
 }

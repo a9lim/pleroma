@@ -43,7 +43,11 @@ and const-generic sizes that are inherently indices.
   layer (`forms/function_field.rs`) uses its `divrem`/`gcd`/`pow_mod`. As `S[t]` it
   is the **ring of integers** of `S(t)`, so it impls `Scalar` + `HasFractionField`
   (Frac = `RationalFunction<S>`); its units are the nonzero constants, so `inv` is
-  partial.
+  partial. Display is canonical ogham (Display v2, `spec/ogham.md` §9): variable
+  `t`, explicit `⋅`, coefficient parens only when non-atomic — and it owns the
+  shared `pub(crate)` `atomic`/`attach_coeff` helpers the `Multivector` display
+  also uses (atomic = no spaces and no `⋅ ∧ ↑ / + -` outside balanced parens; a
+  single leading `-` is a unary sign, carried bare).
 - **`newton.rs`** — `NewtonPolygon`: the lower convex hull of `{(i, v(aᵢ))}` for
   `f = Σ aᵢtⁱ` over a `Valued` field (`of`/`vertices`/`degree`/`slopes`/
   `root_valuations`/`zero_root_multiplicity`). The tropicalization of the Springer

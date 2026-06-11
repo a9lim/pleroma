@@ -37,7 +37,12 @@ backends). The associative-algebra core is split by concept under `engine/`:
   `reverse_panics_on_general_bilinear_metric`).
 - **`multivector.rs`** — `Multivector<S>`: term store, zero/display helpers.
   `terms` field is `pub(crate)`; use the `terms()` accessor for external reads.
-  `impl fmt::Display` renders with `{}` — same as `display()`.
+  `impl fmt::Display` renders with `{}` — same as `display()` — in canonical
+  ogham (Display v2, `spec/ogham.md` §9): wedge blades `e0∧e1`, coefficient
+  attachment `coeff⋅label` (parens iff non-atomic, via `scalar::poly::attach_coeff`),
+  `1`/`-1` elision, the leading-`-` ` - ` join rule, and the zero rule (empty MV →
+  `S::zero()`'s display, `*0` in nim-worlds). Signs still flow through
+  `S::one().neg()`, never a literal.
 - **`inverse.rs`** — GENERAL `multivector_inverse` via the shared `linalg::field`
   solver (used when `1+B` is not a versor, e.g. in the Cayley transform).
 - **`terms.rs`** — term-map helpers: `add_term` (canonical insert-and-remove-if-zero),
@@ -104,15 +109,18 @@ backends). The associative-algebra core is split by concept under `engine/`:
 
 ## Operator vs context-method policy
 
-Metric-free additive operations (`+`, `-`, unary `-`, `^` for exterior product) are
+Metric-free additive operations (`+`, `-`, unary `-`, `&` for exterior product) are
 implemented as operators directly on `Multivector<S>` — no algebra context required.
 Every metric-dependent operation (geometric product `mul`, `reverse`, contractions,
 dual, spinor norm, …) is a method on `CliffordAlgebra<S>`, which provides the metric
-as context. Use `a + b` / `a ^ b` for the metric-free ops; `alg.mul(&a, &b)` /
+as context. Use `a + b` / `a & b` for the metric-free ops; `alg.mul(&a, &b)` /
 `alg.wedge(&a, &b)` (or the free wedge `alg.wedge(…)`) for metric-dependent ones.
+Use `alg.pow(&v, k)` for repeated geometric multiplication — `^` is reserved for
+scalar power (`x ^ k: u128`), not multivector power.
 This mirrors the scalar layer: operators on the concrete type carry no extra context;
-everything that needs context threads through the algebra value. (Python bindings
-follow the same split: `^` on MVs, named methods on the algebra object.)
+everything that needs context threads through the algebra value. (Python bindings:
+`&` / `__and__` is wedge; `**` / `__pow__` is MV power; `__xor__` stays as wedge
+during a deprecation window — WP6 will align the Python dunder set.)
 
 ## Hard rules (clifford-specific)
 

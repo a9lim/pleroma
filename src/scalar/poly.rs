@@ -26,6 +26,43 @@ pub struct Poly<S: Scalar> {
     coeffs: Vec<S>,
 }
 
+/// Display v2 (§9) operational atomicity: a coefficient rendering attaches bare
+/// iff it contains no spaces and no operator character (`⋅ ∧ ↑ / + -`) outside
+/// balanced parentheses; otherwise it is wrapped so `coeff⋅t↑i` stays
+/// unambiguous (`(x + 1)⋅t↑2`, but `x⋅t↑2`).
+pub(crate) fn atomic(s: &str) -> bool {
+    let mut depth: i32 = 0;
+    for ch in s.chars() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ' ' if depth == 0 => return false,
+            '⋅' | '∧' | '↑' | '/' | '+' | '-' if depth == 0 => return false,
+            _ => {}
+        }
+    }
+    true
+}
+
+/// Attach a scalar coefficient to a label as `coeff⋅label`, parenthesizing the
+/// coefficient only when its rendering is non-atomic (§9). A single leading `-`
+/// is a unary sign, not an internal operator, so it is checked separately and
+/// carried through bare (`-2⋅e0∧e1`); the Multivector join rule then lifts it to
+/// a ` - ` separator. Only a `-`/operator/space *inside* the magnitude forces
+/// parens (`(x + 1)⋅e0∧e1`).
+pub(crate) fn attach_coeff<S: Scalar>(c: &S, label: &str) -> String {
+    let cs = c.to_string();
+    let (sign, mag) = match cs.strip_prefix('-') {
+        Some(rest) => ("-", rest),
+        None => ("", cs.as_str()),
+    };
+    if atomic(mag) {
+        format!("{sign}{mag}⋅{label}")
+    } else {
+        format!("({cs})⋅{label}")
+    }
+}
+
 impl<S: Scalar> std::fmt::Display for Poly<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.coeffs.is_empty() {
@@ -36,10 +73,12 @@ impl<S: Scalar> std::fmt::Display for Poly<S> {
             if c.is_zero() {
                 continue;
             }
+            // Display v2 (§9): variable `t` (matches `F_q[t]`), explicit `⋅`,
+            // coefficient parens only when the coefficient renders non-atomically.
             parts.push(match i {
                 0 => format!("{c}"),
-                1 => format!("({c})·x"),
-                _ => format!("({c})·x^{i}"),
+                1 => attach_coeff(c, "t"),
+                _ => attach_coeff(c, &format!("t↑{i}")),
             });
         }
         write!(f, "{}", parts.join(" + "))
@@ -344,6 +383,37 @@ mod tests {
         assert_eq!(g, p(&[1, 1]));
         // make_monic divides through by the leading coeff: 2x + 2 → x + 1
         assert_eq!(p(&[2, 2]).make_monic(), p(&[1, 1]));
+    }
+
+    #[test]
+    fn display_v2_canonical_ogham() {
+        use crate::scalar::Fpn;
+        // Atomic coefficients (a single F_5 residue) attach bare: `1 + 2⋅t`.
+        assert_eq!(p(&[1, 2]).to_string(), "1 + 2⋅t");
+        assert_eq!(p(&[0, 0, 3]).to_string(), "3⋅t↑2");
+        assert_eq!(P5::zero().to_string(), "0");
+        // Non-atomic coefficients (an F_8 element `x + 1`) parenthesize.
+        // (Poly renders low-degree-first and does not suppress a coefficient-1
+        // term — the §9 delta only changes `x→t`, `·→⋅`, and the paren rule.)
+        type Q = Poly<Fpn<2, 3>>;
+        let xp1 = Fpn::<2, 3>::from_coeffs(&[1, 1]); // x + 1 (non-atomic)
+        let x = Fpn::<2, 3>::from_coeffs(&[0, 1]); // x (atomic)
+        let one = Fpn::<2, 3>::one();
+        // 1 + x⋅t + (x + 1)⋅t↑2
+        let poly = Q::new(vec![one, x, xp1]);
+        assert_eq!(poly.to_string(), "1 + x⋅t + (x + 1)⋅t↑2");
+    }
+
+    #[test]
+    fn atomicity_rule() {
+        assert!(atomic("42"));
+        assert!(atomic("*5"));
+        assert!(atomic("*ω"));
+        assert!(atomic("x"));
+        assert!(atomic("*(ω⋅7)")); // operators only inside balanced parens
+        assert!(!atomic("x + 1"));
+        assert!(!atomic("ω↑-1"));
+        assert!(!atomic("3⋅x")); // bare `⋅`
     }
 
     #[test]

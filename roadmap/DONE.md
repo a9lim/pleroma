@@ -36,6 +36,34 @@ fold the one-line structural fact into the relevant `AGENTS.md`.
 
 ## completed items
 
+### 2026-06-11: `ogham-foundations`
+**Summary:** the expression-language spec, canonical-ogham Display v2, and host operator alignment
+**Pillars:** scalar ↔ clifford (+py and games touchpoints)    **Claim level:** engineering — design contract + behavior-preserving display/operator refactor
+- surface: [`spec/ogham.md`](../spec/ogham.md) — the implementation contract
+  (canonical-unicode/ASCII-sugar layering `ω ↑ ∧ ⋅` over `w ^ & .`, star as the
+  value marker in nim-worlds, structural CNF star-literals, two-sort
+  Element/Index typing, the 15-world v1 menu, error taxonomy, work packages) —
+  plus [`spec/conformance.txt`](../spec/conformance.txt), the hand-verified
+  corpus (incl. `*ω↑3 = *2` and the char-2 polar-pair vector). Display v2
+  (spec §9): Ordinal star-wrapped (`*5`, `*ω`, `*(ω + 1)`, `*(ω↑(ω))`),
+  Surreal/Fpn explicit `⋅`/`↑`, Poly `x→t`, RationalFunction `(num)/(den)`,
+  Multivector `e0∧e1` blades with the ` - ` join rule and the `S::zero()` zero
+  rule. Operators (spec §13): `&` is wedge — element-element `BitXor` removed
+  and banned on every type (on `Nimber` it would read as XOR = nim-addition);
+  `CliffordAlgebra::pow(v, k)`; `x ^ k` (`u128` RHS) scalar power via
+  `impl_scalar_ops!`; `Ordinal::nim_pow` checked beside `nim_mul`. Also:
+  demo.py `from_i128`→`from_int` repair (missed by the taste-sweep rename).
+- oracles: display unit tests pinning the §9 strings per backend;
+  `CliffordAlgebra::pow` tests in char 0 and char 2; `nim_pow(ω, 3) = *2`
+  (Conway's cube root) + escape-returns-`None`; operator-forwarding tests
+  migrated to `&`; full gate green (cargo test 813+16, clippy, cold rustdoc,
+  `--features python` check+clippy, demo.py tour end-to-end).
+- boundaries: the language itself is **unbuilt** — WP2–6 (lexer/parser/
+  unparser, worlds + evaluator, REPL, conformance harness, Python `eval` +
+  the `__xor__`→error flip) are spec'd in §15 and next; Python `__xor__`
+  stays wedge during the deprecation window; poly/ratfunc, precision worlds,
+  and `{L|R}` game forms are reserved syntax, not shipped.
+
 ### 2026-06-11: `taste-sweep`
 **Summary:** the taste-audit ledger, played
 **Pillars:** scalar ↔ clifford ↔ forms ↔ integral ↔ games (+py touchpoints)

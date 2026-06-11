@@ -45,14 +45,13 @@
 //! β(2q') = 4 · Arf(q')   ∈ {0, 4} ⊂ ℤ/8.
 //! ```
 //!
-//! ## Implementation: the enumeration route
+//! ## Implementation: the reduction route
 //!
-//! Primary route is **direct enumeration with exact integer phase recovery** — the
-//! same `2^n` budget [`DiscriminantForm`](crate::forms::DiscriminantForm) already
-//! pays, with no floating point. The input mirrors
-//! [`arf_f2`](crate::forms::arf_f2) field-for-field: `q4` (the values mod 4 on the
-//! basis) replaces the `F₂` diagonal, and `bmat` carries the **off-diagonal**
-//! symmetric polar `b` (the diagonal `b_ii = q4[i] mod 2` is forced, not input).
+//! Primary route is **orthogonal reduction**, with no floating point and no
+//! `2^rank` public budget. The input mirrors [`arf_f2`](crate::forms::arf_f2)
+//! field-for-field: `q4` (the values mod 4 on the basis) replaces the `F₂`
+//! diagonal, and `bmat` carries the **off-diagonal** symmetric polar `b` (the
+//! diagonal `b_ii = q4[i] mod 2` is forced, not input).
 //!
 //! Splitting off the radical of `b`, `q` restricted to `rad(b)` is **linear** into
 //! `{0, 2}` (since `b = 0` there forces `2·q(x) ≡ 0 mod 4`), so `V = core ⊥ rad`
@@ -63,9 +62,12 @@
 //!   Σ_rad = 2^{radical_dim}  if q|rad ≡ 0,  else 0  (radical_anisotropic).
 //! ```
 //!
-//! So `β` is read off the **core** Gauss sum (never zero), reported alongside the
-//! radical data exactly as [`ArfResult`](crate::forms::ArfResult) reports its
-//! radical. The lattice tie ([`DiscriminantForm::brown_invariant`]) and the third
+//! On the nonsingular core, the algorithm repeatedly splits off either an odd
+//! line (`q(v) = 1` or `3`) or an even symplectic plane; the known block phases
+//! (`1`, `7`, `0`, or `4`) add in `ℤ/8`. So `β` is reduced block-by-block and
+//! reported alongside the radical data exactly as [`ArfResult`](crate::forms::ArfResult)
+//! reports its radical. The old direct enumeration route remains only as a test
+//! oracle. The lattice tie ([`DiscriminantForm::brown_invariant`]) and the third
 //! identification (`β ≡ sign(L) mod 8` on 2-elementary discriminant forms) live in
 //! `integral/discriminant.rs`; this module is the pure-`F₂` core.
 //!
@@ -88,12 +90,6 @@ pub struct BrownResult {
     /// the core. Data, not a panic — exactly as `ArfResult::radical_anisotropic`.
     pub radical_anisotropic: bool,
 }
-
-/// Enumeration is `2^rank`; past this rank the value-distribution sweep is refused
-/// with a panic (an honest budget, not a silent hang). Real Brown forms — the
-/// discriminant forms of 2-elementary lattices, the small hand-built test planes —
-/// are far below it. Larger forms want the reduction route (not yet built).
-const BROWN_MAX_ENUM_RANK: usize = 26;
 
 /// Bits of a mask strictly above position `i`.
 fn above(i: usize) -> u128 {
@@ -119,6 +115,18 @@ fn q_of4(x: u128, q4: &[u128], bmat: &[u128]) -> u128 {
         cross ^= inter.count_ones() & 1;
     }
     (lin + 2 * cross as u128) % 4
+}
+
+/// `b(x,y)` for the full symmetric polar matrix, diagonal included.
+fn b_pair(x: u128, y: u128, full_b: &[u128]) -> bool {
+    let mut parity = 0u32;
+    let mut xx = x;
+    while xx != 0 {
+        let i = xx.trailing_zeros() as usize;
+        xx &= xx - 1;
+        parity ^= (full_b[i] & y).count_ones() & 1;
+    }
+    parity == 1
 }
 
 /// Insert `v` into an `F₂` XOR-basis keyed by lowest set bit. Returns `true` iff
@@ -167,6 +175,70 @@ fn radical_basis(full_b: &[u128], n: usize) -> Vec<u128> {
     null
 }
 
+/// A coordinate-axis complement to the radical. Since the radical is orthogonal to
+/// all of `V`, any linear complement carries the nonsingular core.
+fn core_complement_basis(radical: &[u128], n: usize) -> Vec<u128> {
+    let mut lin: [Option<u128>; 128] = [None; 128];
+    for &x in radical {
+        xor_insert(&mut lin, x);
+    }
+    let mut basis = Vec::new();
+    for i in 0..n {
+        if xor_insert(&mut lin, 1u128 << i) {
+            basis.push(1u128 << i);
+        }
+    }
+    basis
+}
+
+/// Reduce a nonsingular Brown core into odd lines and even planes, adding the
+/// block Brown phases in `ℤ/8`.
+fn reduce_brown_core(mut basis: Vec<u128>, q4: &[u128], bmat: &[u128], full_b: &[u128]) -> u128 {
+    let mut beta = 0u128;
+    while !basis.is_empty() {
+        if let Some(p) = basis.iter().position(|&v| b_pair(v, v, full_b)) {
+            let v = basis.swap_remove(p);
+            let qv = q_of4(v, q4, bmat);
+            debug_assert!(qv == 1 || qv == 3);
+            beta = (beta + if qv == 1 { 1 } else { 7 }) % 8;
+            for w in &mut basis {
+                if b_pair(*w, v, full_b) {
+                    *w ^= v;
+                }
+            }
+            continue;
+        }
+
+        let v = basis
+            .pop()
+            .expect("nonempty basis already checked before even-plane reduction");
+        let p = basis
+            .iter()
+            .position(|&w| b_pair(v, w, full_b))
+            .expect("a nonsingular alternating core has a symplectic partner");
+        let w = basis.swap_remove(p);
+        let qv = q_of4(v, q4, bmat);
+        let qw = q_of4(w, q4, bmat);
+        debug_assert!(qv == 0 || qv == 2);
+        debug_assert!(qw == 0 || qw == 2);
+        if qv == 2 && qw == 2 {
+            beta = (beta + 4) % 8;
+        }
+
+        for x in &mut basis {
+            let xv = b_pair(*x, v, full_b);
+            let xw = b_pair(*x, w, full_b);
+            if xw {
+                *x ^= v;
+            }
+            if xv {
+                *x ^= w;
+            }
+        }
+    }
+    beta
+}
+
 /// Recover `β ∈ ℤ/8` from the **exact** core Gauss sum `G = re + im·i`, where
 /// `G = 2^{rank/2}·ζ₈^β`. The eight cases split into axis values (`β` even, one of
 /// `re`/`im` zero) and diagonal values (`β` odd, `|re| = |im|`), so `β` is read off
@@ -198,10 +270,18 @@ pub(crate) fn beta_from_gauss(re: i128, im: i128) -> Option<u128> {
 /// ⇔ `b_{ij}=1`, `i ≠ j`; the diagonal `b_ii = q4[i] mod 2` is derived, so any
 /// diagonal bits in `bmat` are ignored). Mirrors [`arf_f2`](crate::forms::arf_f2).
 ///
-/// Enumeration route: split off `rad(b)`, enumerate the `2^rank` core vectors, tally
-/// the value distribution into the exact Gaussian integer `(n₀−n₂) + i(n₁−n₃)`, and
-/// read `β` off it. Panics if `rank > BROWN_MAX_ENUM_RANK` (a documented budget).
+/// Reduction route: split off `rad(b)`, then reduce the nonsingular core into odd
+/// lines and even planes, adding their known Brown phases in `ℤ/8`.
 pub fn brown_f2(n: usize, q4: &[u128], bmat: &[u128]) -> BrownResult {
+    assert!(
+        n <= 128,
+        "brown_f2 uses u128 bitmasks, so n must be at most 128"
+    );
+    assert!(
+        q4.len() >= n && bmat.len() >= n,
+        "brown_f2 needs q4 and bmat entries for every basis vector"
+    );
+
     // Full symmetric polar including the forced diagonal b_ii = q4[i] mod 2.
     let full_b: Vec<u128> = (0..n)
         .map(|i| {
@@ -215,38 +295,9 @@ pub fn brown_f2(n: usize, q4: &[u128], bmat: &[u128]) -> BrownResult {
     // q|rad is linear into {0,2}; anisotropic iff some radical basis vector has q=2.
     let radical_anisotropic = radical.iter().any(|&x| q_of4(x, q4, bmat) == 2);
 
-    // A complement to rad: greedily collect coordinate axes e_i independent of rad.
-    let mut lin: [Option<u128>; 128] = [None; 128];
-    for &x in &radical {
-        xor_insert(&mut lin, x);
-    }
-    let mut coords: Vec<usize> = Vec::new();
-    for i in 0..n {
-        if xor_insert(&mut lin, 1u128 << i) {
-            coords.push(i);
-        }
-    }
-    let rank = coords.len(); // = n − radical_dim
-    assert!(
-        rank <= BROWN_MAX_ENUM_RANK,
-        "brown_f2 enumeration is 2^rank; rank {rank} exceeds the budget \
-         (use the reduction route for large forms)"
-    );
-
-    let mut counts = [0i128; 4];
-    for mask in 0u128..(1u128 << rank) {
-        let mut x = 0u128;
-        for (b, &c) in coords.iter().enumerate() {
-            if (mask >> b) & 1 == 1 {
-                x |= 1u128 << c;
-            }
-        }
-        counts[q_of4(x, q4, bmat) as usize] += 1;
-    }
-
-    let re = counts[0] - counts[2];
-    let im = counts[1] - counts[3];
-    let beta = beta_from_gauss(re, im).expect("a nonsingular core has an eighth-root Gauss sum");
+    let core = core_complement_basis(&radical, n);
+    let rank = core.len(); // = n − radical_dim
+    let beta = reduce_brown_core(core, q4, bmat, &full_b);
     BrownResult {
         beta,
         rank,
@@ -268,6 +319,46 @@ pub fn double_f2(qd: &[bool], bmat: &[u128]) -> BrownResult {
 mod tests {
     use super::*;
     use crate::forms::arf_f2;
+
+    /// The old exact Gauss-sum route, retained as an oracle for the reduction path.
+    fn brown_f2_by_enumeration(n: usize, q4: &[u128], bmat: &[u128]) -> BrownResult {
+        let full_b: Vec<u128> = (0..n)
+            .map(|i| {
+                let off = bmat[i] & !(1u128 << i);
+                off | (if q4[i] % 2 == 1 { 1u128 << i } else { 0 })
+            })
+            .collect();
+
+        let radical = radical_basis(&full_b, n);
+        let radical_dim = radical.len();
+        let radical_anisotropic = radical.iter().any(|&x| q_of4(x, q4, bmat) == 2);
+        let core = core_complement_basis(&radical, n);
+        let rank = core.len();
+        assert!(
+            rank < 128,
+            "test-only enumeration needs a representable 2^rank loop bound"
+        );
+
+        let mut counts = [0i128; 4];
+        for mask in 0u128..(1u128 << rank) {
+            let mut x = 0u128;
+            for (b, &v) in core.iter().enumerate() {
+                if (mask >> b) & 1 == 1 {
+                    x ^= v;
+                }
+            }
+            counts[q_of4(x, q4, bmat) as usize] += 1;
+        }
+
+        let re = counts[0] - counts[2];
+        let im = counts[1] - counts[3];
+        BrownResult {
+            beta: beta_from_gauss(re, im).expect("a nonsingular core has an eighth-root Gauss sum"),
+            rank,
+            radical_dim,
+            radical_anisotropic,
+        }
+    }
 
     /// Block-diagonal `⊥` of two Brown forms (disjoint generators, no cross polar).
     fn ortho_sum(
@@ -379,6 +470,54 @@ mod tests {
         assert_eq!(
             (r0.beta, r0.rank, r0.radical_dim, r0.radical_anisotropic),
             (0, 2, 1, false)
+        );
+    }
+
+    #[test]
+    fn reduction_matches_enumeration_on_all_four_dimensional_inputs() {
+        for qmask in 0u128..(1u128 << 8) {
+            let q4: Vec<u128> = (0..4).map(|i| (qmask >> (2 * i)) & 0b11).collect();
+            for edges in 0u128..(1u128 << 6) {
+                let mut bmat = vec![0u128; 4];
+                let mut bit = 0;
+                for i in 0..4 {
+                    for j in (i + 1)..4 {
+                        if (edges >> bit) & 1 == 1 {
+                            bmat[i] |= 1u128 << j;
+                            bmat[j] |= 1u128 << i;
+                        }
+                        bit += 1;
+                    }
+                }
+                assert_eq!(
+                    brown_f2(4, &q4, &bmat),
+                    brown_f2_by_enumeration(4, &q4, &bmat),
+                    "reduction/enumeration mismatch for q={q4:?}, b={bmat:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn reduction_matches_old_budget_edge() {
+        // Twenty-six odd lines hit the old public enumeration ceiling exactly.
+        let q4 = vec![1u128; 26];
+        let bmat = vec![0u128; 26];
+        assert_eq!(
+            brown_f2(26, &q4, &bmat),
+            brown_f2_by_enumeration(26, &q4, &bmat)
+        );
+    }
+
+    #[test]
+    fn brown_f2_reduces_past_the_old_enumeration_budget() {
+        // Forty odd lines would have panicked under the old rank <= 26 budget.
+        let q4 = vec![1u128; 40];
+        let bmat = vec![0u128; 40];
+        let r = brown_f2(40, &q4, &bmat);
+        assert_eq!(
+            (r.beta, r.rank, r.radical_dim, r.radical_anisotropic),
+            (0, 40, 0, false)
         );
     }
 }

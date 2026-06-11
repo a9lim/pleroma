@@ -1039,11 +1039,12 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
     `q4` (values mod 4) replacing the diagonal; `bmat` is the **off-diagonal** symmetric
     polar (the diagonal `b_ii = q4[i] mod 2` is derived). `BrownResult { beta, rank,
     radical_dim, radical_anisotropic }` mirrors `ArfResult` field-for-field.
-  - **Enumeration route** with exact-integer phase recovery: split off `rad(b)` (`q|rad`
-    is linear into `{0,2}`, so `Σ_V` factors), enumerate the `2^rank` core vectors, tally
-    the value distribution into the Gaussian integer `(n₀−n₂)+i(n₁−n₃)`, and read `β` off
-    it by integer sign/magnitude alone — no `f64`. An anisotropic radical vanishes the
-    full sum; `beta` still reports the core. (Budget: `rank ≤ 26`, an honest panic above.)
+  - **Reduction route** with exact-integer oracles: split off `rad(b)` (`q|rad` is
+    linear into `{0,2}`, so `Σ_V` factors), then reduce the nonsingular core into odd
+    lines (`β = 1`/`7`) and even planes (`β = 0`/`4`) and add the phases in `ℤ/8`.
+    An anisotropic radical vanishes the full sum; `beta` still reports the core. The
+    old direct Gauss-sum enumeration is retained as a test-only oracle through the
+    former `rank ≤ 26` budget edge.
   - `double_f2(qd, bmat)` — the `q′ ↦ 2q′` embedding from `arf_f2` input data.
 - `forms/integral/discriminant.rs`
   - `DiscriminantForm::brown_invariant(&self) -> Option<BrownResult>` — `Some` only for

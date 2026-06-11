@@ -31,6 +31,20 @@ When a new piece of cross-pillar work lands, add a short entry here:
 Promote anything proof-heavy or too long for working notes into `roadmap/CODA.md`, and
 fold the one-line structural fact into the relevant `AGENTS.md`.
 
+## `brown-reduce` — Brown invariant by reduction, not enumeration (2026-06-11)
+**Pillars:** forms    **Claim level:** standard math made computational + implemented and tested
+- surface: `forms/char2/brown.rs::brown_f2` now splits off the polar radical and
+  reduces the nonsingular `ℤ/4`-quadratic core into odd lines and even symplectic
+  planes, adding their Brown phases in `ℤ/8`; `BROWN_MAX_ENUM_RANK` is gone, so the
+  public route no longer panics above rank 26.
+- oracles: the old exact Gauss-sum enumeration route is retained as a test-only
+  checker; tests exhaust every four-dimensional input, compare the former rank-26
+  budget edge against enumeration, preserve the Arf-doubling/additivity/radical
+  checks, and verify a rank-40 form reduces past the old ceiling.
+- boundaries: the `u128` bitmask surface still bounds represented dimensions to
+  `n ≤ 128`; Brown's symmetric polar category remains distinct from the Clifford
+  char-2 alternating polar, with `double_f2` still the explicit bridge.
+
 ## `echo-solver` — the echo-fifo+dummy adversarial review: CONFIRM (2026-06-10)
 **Pillars:** games ↔ forms    **Claim level:** implemented and tested
 - surface: `experiments/echo_solver.py` (stdlib-only, maintained) — direct full-state

@@ -87,13 +87,6 @@ lines `E·uⁱ` — CODA K §6(c) records it as "a composition, not new math; no
 Build `cyclic_algebra_trace_form` through `assemble_twisted_form`; oracle: the degree-2
 case reproduces the shipped `⟨1,1,−a,−a⟩` reduced-norm form.
 
-### `brown-reduce` — 1·e_f
-**Brown by reduction, not enumeration.** `brown_f2` enumerates `2^rank` vectors and
-panics past rank 26. Nondegenerate ℤ/4-valued forms split into rank ≤ 2 pieces with
-known `β` (Wall 1963, *Quadratic forms on finite groups*); implement the plane-by-plane
-reduction (the `arf_f2` idiom one level up) and retire `BROWN_MAX_ENUM_RANK`. Oracle:
-equality with the enumeration route for every rank ≤ 26 input.
-
 ### `fqm-witt` — 3·(e_i∧e_f)
 **The full Witt group of finite quadratic modules** — the "further rung" CODA M names.
 Implement the `p`-local decomposition with Wall/Nikulin/Kawauchi–Kojima generators and

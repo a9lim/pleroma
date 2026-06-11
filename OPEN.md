@@ -28,7 +28,9 @@ The original numerals survive as aliases — the rest of the repo cites them.
 `dud` stays unassigned: `dud + G = dud` for every `G`, and no problem has yet
 earned absorbing the whole roadmap. May none ever.
 
-## tis (§1) — natural Gold-quadric game rule
+## open problems
+
+### tis (§1): `natural Gold-quadric game rule`
 
 Find, or rule out under a precise naturality condition, a non-tautological game
 rule whose P-positions are the zero set `{Q = 0}` of a game-built Gold quadratic
@@ -286,7 +288,7 @@ Relevant surfaces:
 - `src/forms/quadric_fit.rs`
 - `src/games/kernel.rs`, `src/games/misere.rs`, `src/games/loopy/`
 
-## tisn (§2) — quadratic deformation of the game exterior algebra
+### tisn (§2): `quadratic deformation of the game exterior algebra`
 
 Decide whether the current `GameExterior` construction admits a genuinely
 game-native quadratic deformation on torsion-carrying game subgroups, rather than
@@ -338,7 +340,7 @@ Relevant surfaces:
 - `examples/tour.rs`
 - `demo.py`
 
-## on (§3) — ordinal nim multiplication beyond the verified excess table
+### on (§3): `ordinal nim multiplication beyond the verified excess table`
 
 Push transfinite nim multiplication beyond the source-verified Lenstra-DiMuro
 excess table. Historically the first missing carry in this checkout was
@@ -465,7 +467,7 @@ Relevant surfaces:
 - `src/scalar/AGENTS.md`
 - `examples/tour.rs`
 
-## off (§4) — transfinite Arf/Witt classification for ordinal-nimber coefficients
+### off (§4): `transfinite Arf/Witt classification for ordinal-nimber coefficients`
 
 Decide what, if anything, should replace the finite-field Arf/Brauer-Wall bit for
 `CliffordAlgebra<Ordinal>` metrics whose coefficients do not all lie in one finite
@@ -516,7 +518,7 @@ Relevant surfaces:
 - `src/forms/witt/brauer_wall.rs`
 - `src/clifford/`
 
-## over — the mod-8 spine in game semantics
+### over: `the mod-8 spine in game semantics`
 
 Decide whether the Brown invariant — the char-2 cell of the mod-8 spine, shipped as
 Bridge M — has a game-theoretic reading the way the Arf bit does, i.e. whether the
@@ -574,7 +576,7 @@ Relevant surfaces:
 - `writeups/goldarf.tex` §5 (the extraspecial reframing this lifts)
 - `tis` (§1) — the `ℤ/2` floor of this question
 
-## under — thermography ↔ Newton polygons: one tropical object or two?
+### under: `thermography ↔ Newton polygons: one tropical object or two?`
 
 Decide whether the project's two tropical consumers — thermography (`MaxPlus`, the
 games axis) and the valuation/Newton-polygon stack (`MinPlus`, the place axis,
@@ -623,7 +625,7 @@ Relevant surfaces:
 - `roadmap/CODA.md` Bridge J (the formal appendix, esp. J.1–J.3, J.5–J.6)
 - `examples/tropical.rs` (the shipped thermography = tropical identity)
 
-## References For The Open Threads
+## references for the open threads
 
 - Conway, *On Numbers and Games*: surreal numbers and nimbers.
 - Berlekamp-Conway-Guy, *Winning Ways*: coin-turning games, Turning-Corners/nim

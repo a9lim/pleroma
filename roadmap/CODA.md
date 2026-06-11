@@ -64,13 +64,15 @@ Building the four closes the pillar graph: every pair of pillars that *can* talk
 
 ---
 
-## Bridge A — Lattice ↔ Clifford ↔ Brauer–Wall, via Milgram's Gauss sum
+## first wave — A–D (built)
+
+### Bridge A: `Lattice ↔ Clifford ↔ Brauer–Wall, via Milgram's Gauss sum`
 
 **Pillars:** `forms/integral/` ↔ `clifford/` ↔ `forms/witt/` ↔ `forms/char0`.
 **Claim level:** standard math (Milgram/van der Blij; Conway–Sloane) made
 computational. The headline bridge — it proves the project's spine crosses pillars.
 
-### The mathematics
+#### The mathematics
 
 For an **even** integral lattice `L` (Gram `G`, so `G[i][i]` even), three objects
 now meet in `integral/lattice/` and `integral/discriminant/`:
@@ -111,7 +113,7 @@ There is a **free internal oracle**: `genus.rs` already computes the `p=2` *oddi
 (mod 8)` must agree with the Milgram phase. Two independent routes to `σ mod 8`,
 cross-checking each other.
 
-### Implemented surface
+#### Implemented surface
 
 - `integral/lattice/`
   - `IntegralForm::signature(&self) -> (usize, usize)` diagonalizes `G` over `ℚ`
@@ -139,13 +141,13 @@ cross-checking each other.
     floating Gauss-sum route, the exact signature, and the independent Conway-Sloane
     oddity route in `genus.rs`.
 
-### Oracles / tests
+#### Oracles / tests
 
 Implemented tests cover `A_n`, `D_4`, `E₈`, `E₈ ⊕ E₈`, odd-lattice rejection, exact
 signature on indefinite forms, and the rational / char-2 Clifford metric rungs.
 The Milgram phase is checked against the exact signature and genus oddity route.
 
-### Scope / caveats
+#### Scope / caveats
 
 - The clean Milgram statement is for **even** lattices. Odd (type-I) lattices need
   the oddity-corrected version; ship even-only first, document the boundary, and
@@ -156,13 +158,13 @@ The Milgram phase is checked against the exact signature and genus oddity route.
 
 ---
 
-## Bridge B — the char-2 Arf classifier over the `Fpn<2,N>` fields
+### Bridge B: `the char-2 Arf classifier over the Fpn<2,N> fields`
 
 **Pillars:** `clifford/` (over `Fpn<2,N>`) ↔ `forms/char2/`.
 **Claim level:** implemented-and-tested (standard Arf theory over finite char-2
 fields); the *bridge* is new code, the math is classical.
 
-### What landed
+#### What landed
 
 `CliffordAlgebra<Fpn<2,3>>` — a Clifford algebra over **F₈** (degree 3, which the
 `u128` nimber backend cannot reach: it only holds subfields of 2-power degree) —
@@ -170,7 +172,7 @@ now builds **and** classifies. `Nimber` keeps its optimized `nim_trace` path, wh
 supported `Fpn<2,N>` fields use the same symplectic-reduction algorithm over
 generic scalar operations plus the absolute trace.
 
-### Implemented surface
+#### Implemented surface
 
 - `char2/arf.rs`
   - `arf_char2<F: FiniteChar2Field>(metric) -> Option<ArfInvariants>` runs generic
@@ -185,13 +187,13 @@ generic scalar operations plus the absolute trace.
   - `ClassifyWitt`, `ClassifyIsometry`, and `ClassifyBrauerWall` dispatch to the
     char-2 Arf invariant when `P = 2`.
 
-### Oracles / tests
+#### Oracles / tests
 
 Implemented tests cross-check `arf_char2` against `arf_f2` when all entries are in
 `F₂`, exercise genuine `F₈` coefficients through the absolute trace, verify
 additivity over `⊥`, and brute-force the `F₈` zero-count bias for planes.
 
-### Scope / caveats
+#### Scope / caveats
 
 Honest non-claim (`AGENTS.md`): this is *not* a new classification theorem for all
 char-2 Clifford algebras — it computes Arf/BW for the finite `Fpn<2,N>` fields,
@@ -199,14 +201,14 @@ the same status the README states for the implemented finite char-2 legs.
 
 ---
 
-## Bridge C — Frobenius as an outermorphism
+### Bridge C: `Frobenius as an outermorphism`
 
 **Pillars:** `scalar/finite_field` (Galois) ↔ `clifford/outermorphism` ↔
 `forms/trace_form`.
 **Claim level:** implemented-and-tested (the theorems are standard finite-field
 theory); the bridge code and the cross-checks are new.
 
-### The mathematics
+#### The mathematics
 
 The Frobenius `σ : F_{p^m} → F_{p^m}, x ↦ x^p` is `F_p`-**linear**. Pick an
 `F_p`-basis (the project has them: `FiniteField` / `CyclicGaloisExtension::basis`),
@@ -225,7 +227,7 @@ sign hardcoded — the full spectral suite of `σ`:
 - **Determinant** `det(σ) = ∏ (m-th roots of unity) = ±1` — the constant term of
   the char poly; verifiable.
 
-### The tie to `trace_form.rs`
+#### The tie to `trace_form.rs`
 
 `trace_form.rs` builds the **Frobenius-twisted** form `Tr_{E/F}(x · σᵏ(x))` (the
 norm form over `Surcomplex`, the Gold form over the nim-fields). The trace itself
@@ -235,7 +237,7 @@ the trace-form construction: lift `σ` to the exterior algebra of `E`-as-`F`-spa
 and the `Λᵏ` action organizes the twisted forms across grades. This is a genuine
 conceptual link, not just a spectral cross-check.
 
-### Implemented surface
+#### Implemented surface
 
 - `clifford/frobenius.rs`
   - `CoordinateCyclicGaloisExtension` extends the cyclic Galois basis with a
@@ -250,21 +252,21 @@ Tests pin `char_poly = xᵐ ± 1`, the vanishing middle `Λᵏ`-traces, `det = �
 composition of Frobenius powers over `Fpn<2,m>`, odd-characteristic `Fpn`, and a
 small nimber subfield.
 
-### Scope / caveats
+#### Scope / caveats
 
 Pure cross-domain wiring + verification; no new theorem. Its value is that it makes
 three pillars share one computation and gives `trace_form` a structural home.
 
 ---
 
-## Bridge D — transfinite char-2 Clifford (`OrdinalAlgebra`)
+### Bridge D: `transfinite char-2 Clifford (OrdinalAlgebra)`
 
 **Pillars:** `scalar/big/ordinal` ↔ `clifford/`.
 **Claim level:** implemented-and-tested for the checked engine/symmetry completion.
 Classification of genuinely transfinite coefficients is still out of scope and
 tracked in `OPEN.md`.
 
-### The target and the totality boundary
+#### The target and the totality boundary
 
 `CliffordAlgebra<Ordinal>` would be the char-2 mirror of `SurrealAlgebra` (the
 transfinite char-0 Clifford algebra), completing `No ↔ On₂` at the Clifford layer
@@ -276,7 +278,7 @@ exactly as `NimberGame` completed it at the games layer. A metric like
 mathematical surface. Products inside the source-verified Kummer tower are exact;
 products past the verified table or outside the staged segment are rejected.
 
-### The honest design
+#### The honest design
 
 `Scalar for Ordinal` follows the **`Rational` precedent** (`Rational` is already an
 overflow-prone `i128` engine-validation scalar, not the "real" char-0 home — that
@@ -284,7 +286,7 @@ is `Surreal`). The `mul` panic message names the verified-tower escape, while
 `nim_mul` / `checked_inv` are available for callers that need an explicit `Option`
 boundary.
 
-### What it actually adds (be honest)
+#### What it actually adds (be honest)
 
 The finite odd-degree char-2 fields (`F₈`, `F₃₂`, …) are **already** reachable as
 Clifford coefficients via `Fpn<2,N>` (and, with Bridge B, classifiable). So the
@@ -293,7 +295,7 @@ coefficients — `ω`, `ω+1` as squares — the exact char-2 twin of `SurrealAl
 `ω`/`ε`. It is a symmetry-completion and a demo of the `No ↔ On₂` mirror, not a new
 computational capability over the finite case.
 
-### Classification boundary
+#### Classification boundary
 
 This bridge does not try to classify every `Metric<Ordinal>`.
 
@@ -307,7 +309,7 @@ This bridge does not try to classify every `Metric<Ordinal>`.
   Arf/Witt/Brauer-Wall. The genuinely transfinite classifier remains an open
   problem.
 
-### Implemented surface
+#### Implemented surface
 
 - `scalar/big/ordinal/` — `impl Scalar for Ordinal` (panic-on-escape `mul`,
   `neg = id`, `characteristic() = 2`, `nim_mul`, finite-subfield detection, and
@@ -319,7 +321,7 @@ This bridge does not try to classify every `Metric<Ordinal>`.
 
 ---
 
-## Status Snapshot
+## status snapshot
 
 All four bridges are independently implemented and tested in the Rust core:
 
@@ -344,7 +346,7 @@ all stay in `OPEN.md`.
 
 ---
 
-# Second wave — E/F/H/I implemented
+## second wave — E/F/H/I implemented
 
 The first wave (A–D) closed the *pillar graph*: every pair of pillars that can talk
 now does. The second wave **deepens the spine** — it strengthens the mod-8 / `E₈` /
@@ -375,13 +377,13 @@ classical but not buildable from the current surface.
                                               └── witt/Brauer (rational)
 ```
 
-## Bridge E — theta series, modular forms, and the Milnor isospectral pair
+### Bridge E: `theta series, modular forms, and the Milnor isospectral pair`
 
 **Pillars:** `forms/integral/` ↔ a small new modular-forms layer.
 **Claim level:** IMPLEMENTED AND TESTED — standard math (Hecke; Milnor 1964; Conway–Sloane
 Ch. 7) made computational. **The headline bridge of the second wave.**
 
-### The mathematics
+#### The mathematics
 
 For a **positive-definite even** lattice `L` of rank `n` (Gram `G`), the theta
 series is the generating function of representation numbers
@@ -432,7 +434,7 @@ series (`n = 24`'s 24 Niemeier classes, or a small multi-class non-unimodular
 genus). Ship the `n = 16` consistency check, document the degeneracy, and mark the
 non-trivial Siegel–Weil as a further rung.
 
-### Implemented surface
+#### Implemented surface
 
 - `forms/integral/theta.rs`
   - `IntegralForm::theta_series(&self, terms: usize) -> Option<Vec<i128>>` — the
@@ -452,7 +454,7 @@ non-trivial Siegel–Weil as a further rung.
 - `d16_plus()` via Bridge H's `construction_a` on the indecomposable Type II
   length-16 code.
 
-### Oracles / implemented tests
+#### Oracles / implemented tests
 
 - `θ_{E₈} = E₄`; `r(1) = 240`.
 - `θ_{E₈⊕E₈} = θ_{D₁₆⁺} = E₄²` to many terms, while `Genus`/isometry confirm the two
@@ -464,7 +466,7 @@ non-trivial Siegel–Weil as a further rung.
   `automorphism_group_order` returns `None` past its node budget, so this follows the
   `LEECH_AUT_ORDER` convention.
 
-### Scope / caveats
+#### Scope / caveats
 
 - Positive-definite only (indefinite theta is not a holomorphic modular form).
 - Even lattices for the clean full-level statement; odd lattices and level-`N`
@@ -474,14 +476,14 @@ non-trivial Siegel–Weil as a further rung.
 
 ---
 
-## Bridge H — Construction A: codes ↔ lattices, MacWilliams ↔ theta transformation
+### Bridge H: `Construction A: codes ↔ lattices, MacWilliams ↔ theta transformation`
 
 **Pillars:** a new `forms/integral/codes.rs` ↔ `forms/integral/` (lattices, theta)
 ↔ `forms/char2/` and `clifford_metric_f2` (the F₂ refinement).
 **Claim level:** IMPLEMENTED AND TESTED — standard math (Conway–Sloane Ch. 7; MacWilliams). The
 **most on-spine** second-wave idea: it is "the same duality read three ways."
 
-### The mathematics
+#### The mathematics
 
 A binary linear code `C ⊆ F₂ⁿ` of dimension `k`. **Construction A**:
 
@@ -519,7 +521,7 @@ L_C = (1/√2) · { x ∈ ℤⁿ : (x mod 2) ∈ C }.
    lattice **interface**, with Leech as its known rootless refinement — never
    "Golay → Leech."
 
-### Implemented surface
+#### Implemented surface
 
 - `forms/integral/codes.rs`
   - `BinaryCode` (checked row-reduced F₂ row space).
@@ -532,7 +534,7 @@ L_C = (1/√2) · { x ∈ ℤⁿ : (x mod 2) ∈ C }.
     `extended_hamming_code()`, the split `E₈⊕E₈` Type II length-16 code, and the
     indecomposable Type II length-16 code that yields `D₁₆⁺` for Bridge E.
 
-### Oracles / implemented tests
+#### Oracles / implemented tests
 
 - MacWilliams: `code.macwilliams_transform() == code.dual().weight_enumerator()` on
   Hamming `[7,4]` and Golay `[24,12]`.
@@ -543,14 +545,14 @@ L_C = (1/√2) · { x ∈ ℤⁿ : (x mod 2) ∈ C }.
   test; and Golay's `construction_a` is even unimodular rank 24 **with** roots
   (`short_vectors(2)` nonempty), pinned **distinct** from `leech()`.
 
-### Scope / caveats
+#### Scope / caveats
 
 Binary codes and Construction A only (not B/D/E); the weight-enumerator↔theta
 identity uses the Hamming enumerator and the exact `θ₂`/`θ₃` q-expansions.
 
 ---
 
-## Bridge I — the Weil representation of the discriminant form
+### Bridge I: `the Weil representation of the discriminant form`
 
 **Pillars:** `forms/integral/discriminant/` (Bridge A) ↔ `forms/integral/theta.rs`
 (Bridge E) ↔ `forms/witt/brauer_wall` (the mod-8 phase).
@@ -558,7 +560,7 @@ identity uses the Hamming enumerator and the exact `θ₂`/`θ₃` q-expansions.
 connector: it makes the **already-built** Bridge A the local-global "bulk" whose
 unimodular boundary is exactly Bridge E.
 
-### The mathematics
+#### The mathematics
 
 The finite quadratic module `(A_L, q_L)` of Bridge A carries the **Weil
 representation** `ρ_L` of (a metaplectic cover of) `SL₂(ℤ)` on `ℂ[A_L] = ⊕_{γ∈A_L}
@@ -584,7 +586,7 @@ Bridge A's positive `phase_mod8`. The honest metaplectic relations are
 `S² = σ²·(γ ↦ −γ)`, `S⁴ = σ⁴·I`, and `(ST)³ = S²`; for unimodular signature
 `0 mod 8` they collapse to the familiar scalar relations.
 
-### Implemented surface
+#### Implemented surface
 
 - `forms/integral/discriminant/`
   - `Complex64` — dependency-free complex entries for Gauss sums and Weil matrices.
@@ -595,7 +597,7 @@ Bridge A's positive `phase_mod8`. The honest metaplectic relations are
   - `verify_weil_relations(&self) -> bool` — the corrected metaplectic relations
     above plus the Milgram phase recovery.
 
-### Oracles / implemented tests
+#### Oracles / implemented tests
 
 - The metaplectic relations on the `A_n`/`D_4`/`E_8` discriminant forms already
   exercised by Bridge A.
@@ -603,14 +605,14 @@ Bridge A's positive `phase_mod8`. The honest metaplectic relations are
 - Unimodular `E₈` ⇒ `|A_L| = 1`, a `1×1` scalar collapse whose weight matches Bridge
   E's `θ_{E₈} = E₄`.
 
-### Scope / caveats
+#### Scope / caveats
 
 Even lattices (so `q_L` is well-defined), matching Bridge A's boundary; matrices in
 `f64` with verified unit modulus, the same convention the Gauss sum uses.
 
 ---
 
-## Bridge F — the rational Brauer class: Hasse invariant vs Clifford invariant
+### Bridge F: `the rational Brauer class: Hasse invariant vs Clifford invariant`
 
 **Pillars:** `clifford/` (even subalgebra) ↔ `forms/local_global/` (Hilbert symbols)
 ↔ a rational Brauer class in `forms/witt/brauer_rational.rs`.
@@ -622,7 +624,7 @@ and the codebase already declined to claim it (`forms/char0.rs` notes rational
 classification is not a full Brauer/BW class); F adds the **corrected** ungraded
 rational class.
 
-### The mathematics (corrected)
+#### The mathematics (corrected)
 
 Over `ℚ`, the quadratic-form invariants live in `Br(ℚ)[2]`, which by
 Hasse–Brauer–Noether injects into `⊕_v Br(ℚ_v)[2] = ⊕_v {±1}` — a finite set of
@@ -659,7 +661,7 @@ The honest bridge verifies the *correction*, not an identity:
 This is precisely the char-0 analogue of Bridge B: the algebra the `clifford` pillar
 builds, classified by the symbols the `forms` pillar computes — done correctly.
 
-### Implemented surface
+#### Implemented surface
 
 - `forms/witt/brauer_rational.rs`
   - `Brauer2Class { ramified: BTreeSet<Place> }` (private field) with `add` =
@@ -674,7 +676,7 @@ builds, classified by the symbols the `forms` pillar computes — done correctly
 - `Place` (in `local_global/padic.rs`) gained `Ord`/`PartialOrd` so the
   ramification set is a `BTreeSet` (ℝ before `Q_2`, `Q_3`, …).
 
-### Oracles / implemented tests
+#### Oracles / implemented tests
 
 - Reciprocity: every class has `|ramified|` even (`satisfies_reciprocity`), over a
   sweep of rank-2…6 forms.
@@ -686,7 +688,7 @@ builds, classified by the symbols the `forms` pillar computes — done correctly
 - The correction table itself: `c(q) = s(q) + δ` checked across `n = 1…8`, with `δ`
   recomputed independently in the test from `Brauer2Class::quaternion`.
 
-### Scope / caveats
+#### Scope / caveats
 
 `ℚ` (and `ℚ_v`) only; 2-torsion only (quadratic-form Brauer classes are 2-torsion).
 **Do not** conflate `Brauer2Class` (ungraded Brauer) with the graded
@@ -697,7 +699,7 @@ would add the ungraded rational class correctly.
 
 ---
 
-# Third wave — Bridge J (built)
+## third wave — Bridge J (built)
 
 The third wave came out of a deliberate "deepen, don't sprawl" review: the project is
 near-saturated on the **place axis**, so the high-leverage moves are no longer *new
@@ -712,7 +714,7 @@ this file) and deferred (L, now `*2` in `roadmap/TODO.md`) respectively.
 Claim-level discipline still applies: J is **standard math made computational**, the
 same status A–I shipped at — not a new theorem.
 
-## Bridge J — the valuation as tropicalization; Newton polygons as tropical curves
+### Bridge J: `the valuation as tropicalization; Newton polygons as tropical curves`
 
 **Pillars:** `scalar/tropical` ↔ `scalar/valued` ↔ `scalar/newton` ↔ the local-field
 backends (`small/`, `functor/`, `global/`) ↔ `forms/springer`.
@@ -721,7 +723,7 @@ Newton–Puiseux; valuation theory) made computational. The on-thesis **twin of 
 already-shipped "thermography = tropical arithmetic" identity**, applied to the
 *place axis* instead of the game axis.
 
-### The mathematics
+#### The mathematics
 
 `scalar/tropical.rs` (the `Semiring`, min-plus / max-plus) is currently consumed
 **only** by `games/tropical_thermography` — it is marooned on the games side. Yet the
@@ -752,7 +754,7 @@ filtration**: each Newton slope *is* a residue layer. This closes a real asymmet
 thermography names its option-fold `⊕` and cooling `⊗`; the valuation does the
 identical algebra on the scalar side and currently says so nowhere.
 
-### Implemented surface
+#### Implemented surface
 
 - `scalar/valued.rs` — the `Valued` trait docs name `valuation` as the (lax)
   tropicalization morphism into `Tropical<MinPlus>`, plus the free adaptor
@@ -773,7 +775,7 @@ identical algebra on the scalar side and currently says so nowhere.
   sees `(valuation, dim)` per layer and forgets the residue square class, the
   forgetful hierarchy `NP(f_q) ≺ {in_λ(f_q)} ≺ q`.
 
-### Oracles / implemented tests
+#### Oracles / implemented tests
 
 - The tropicalization laws (J.1): multiplicativity, the `⊕`-internal subadditivity,
   and equality off the vanishing locus — over `Qp`/`Qq`/`Laurent`, truncation-safe.
@@ -788,7 +790,7 @@ identical algebra on the scalar side and currently says so nowhere.
   parity grouping reproduces `parity_layer`; `polygon_outlives_springer`: over
   residue char 2 the polygon succeeds while Springer returns `None`.
 
-### Scope / caveats
+#### Scope / caveats
 
 - Discretely-valued legs only. The **divisible**-value-group surreal leg has no integer
   Newton lattice — the same boundary `springer/surreal.rs` already documents, and itself
@@ -798,7 +800,7 @@ identical algebra on the scalar side and currently says so nowhere.
 - Tropical here is `MinPlus` (valuations); the `MaxPlus` dual is the thermography
   convention. Note the sign mirror rather than duplicating the semiring.
 
-### Formalized
+#### Formalized
 
 The full lemmas — J.1 (valuation↔tropical dictionary, with the lax/strict subtlety),
 J.3 (graded ring `gr_v K ≅ k[u,u⁻¹]`), J.5 (slope theorem, with proof), J.6 (Dumas
@@ -810,7 +812,7 @@ are in the formal-proofs appendix below.
 
 ---
 
-## Bridge J — formal statements and proofs (formalization-pass appendix)
+### Bridge J: `formal statements and proofs (formalization-pass appendix)`
 
 > Moved here from the former `BRIDGES-DRAFT.md` (a parallel formalization front).
 > Standard math made computational unless marked; the lemma/theorem numbering (J.1,
@@ -818,7 +820,7 @@ are in the formal-proofs appendix below.
 
 **Status.** Everything below is **standard math** (no new theorems), per the third-wave discipline in `roadmap/CODA.md` (this file). Items marked ⟦implemented⟧ are witnessed by tests in this checkout; items marked ⟦proposed⟧ name the tests that would witness the proposed `NewtonPolygon` surface. Nothing here is at *interpretation* or *open* level.
 
-## 0. Setup and notation
+#### 0. Setup and notation
 
 Throughout, $(K, v)$ is a field with a **normalized discrete valuation**: $v : K^\times \twoheadrightarrow \mathbb{Z}$ with $v(xy) = v(x) + v(y)$ and $v(x+y) \ge \min(v(x), v(y))$, extended by $v(0) = +\infty$. Write $\mathcal{O} = \{v \ge 0\}$, $\mathfrak{m} = \{v \ge 1\}$, residue field $k = \mathcal{O}/\mathfrak{m}$, and fix the uniformizer $\varpi$ (so $v(\varpi) = 1$). The **angular component** of $x \ne 0$ is $\mathrm{ac}(x) = \overline{x\varpi^{-v(x)}} \in k^\times$ (it depends on the choice of $\varpi$).
 
@@ -838,7 +840,7 @@ Dictionary to the code (all in `/Users/a9lim/Work/ogdoad`):
 
 ---
 
-## 1. (a) The valuation is the tropicalization
+#### 1. (a) The valuation is the tropicalization
 
 **Lemma J.1 (valuation–tropical dictionary).** ⟦standard math⟧ Define $\tau : K \to \mathbb{T}$ by $\tau(x) = v(x)$ (so $\tau(0) = \infty$). Then:
 
@@ -883,7 +885,7 @@ The two lemmas together say: **the valuation/tropical filtration of $K$ has trop
 
 ---
 
-## 2. (b) The Newton-polygon slope theorem
+#### 2. (b) The Newton-polygon slope theorem
 
 **Definition J.4 (Newton polygon).** For $f = \sum_{i=0}^{n} a_i x^i \in K[x]$ with $a_0 a_n \ne 0$, the **Newton polygon** $\mathrm{NP}(f)$ is the lower boundary of the convex hull of $\{(i, v(a_i)) : a_i \ne 0\} \subset \mathbb{R}^2$, a convex piecewise-linear chain from $(0, v(a_0))$ to $(n, v(a_n))$ with strictly increasing side slopes in $\mathbb{Q}$. (If $a_0 = 0$, factor out $x^m$ first; those $m$ roots are $0$, "valuation $\infty$".)
 
@@ -922,7 +924,7 @@ This is exactly the project's `Ramified<S, E>` ($x^E - \varpi$): its *renormaliz
 
 ---
 
-## 3. (c) Slopes are the Springer residue layers
+#### 3. (c) Slopes are the Springer residue layers
 
 **Theorem J.10 (Springer).** ⟦standard math: Springer, Indag. Math. 17 (1955); Lam, GSM 67, Ch. VI⟧ Let $K$ be complete discretely valued with $\operatorname{char} k \ne 2$, and fix $\varpi$. Every nondegenerate diagonal form over $K$ is isometric to $q_0 \perp \varpi\, q_1$ with $q_0, q_1$ having unit diagonal entries, and the two **residue homomorphisms** $\partial_0, \partial_1$ (sending $\langle u \rangle \mapsto \langle \bar{u} \rangle$ and $\langle \varpi u \rangle \mapsto \langle \bar{u} \rangle$ respectively) induce a group isomorphism
 $$
@@ -966,7 +968,7 @@ The polygon is precisely the image of the Springer decomposition under the tropi
 
 ---
 
-## 4. Scope boundaries and non-claims
+#### 4. Scope boundaries and non-claims
 
 - **Discretely-valued legs only.** The surreal leg has 2-divisible value group: the second Springer layer collapses ($W(\mathrm{No}) = W(\mathbb{R})$, `springer/surreal.rs`) and there is no integer Newton lattice. Polygons over divisible $\Gamma$ are definable but are *not claimed or scheduled* — the same boundary the Springer engine already documents, and itself an instance of the local↔global symmetry.
 - **Char-2 residue fields.** J.5/J.6/J.12(i)–(ii) hold for any residue characteristic; J.10/J.12(iii) require $\operatorname{char} k \ne 2$. The char-2 local Witt theory is the separate Aravire–Jacob layer (`springer/char2/`) and is outside Bridge J.
@@ -974,7 +976,7 @@ The polygon is precisely the image of the Springer decomposition under the tropi
 - **Choice of $\varpi$.** $\mathrm{ac}$, $\mathrm{in}_\lambda$, and $\partial_1$ depend on it; the code pins it to `Valued::uniformizer` via `residue_unit`. $\partial_0$ and the polygon do not.
 - **No strictness claim** for "$v$ is a semiring homomorphism" (Remark J.2). No new theorem anywhere in this bridge: J is standard math made computational, the same status as shipped bridges A–I.
 
-## 5. References
+#### 5. References
 
 - T. A. Springer, *Quadratic forms over fields with a discrete valuation I*, Indag. Math. **17** (1955).
 - T. Y. Lam, *Introduction to Quadratic Forms over Fields*, GSM 67, AMS, 2005 — Ch. VI (residue homomorphisms, Springer's theorem).
@@ -990,7 +992,7 @@ The polygon is precisely the image of the Springer decomposition under the tropi
 
 ---
 
-# Fourth wave — M, N, O (built)
+## fourth wave — M, N, O (built)
 
 The fourth-wave review asked where the **symmetry table** itself (README → "The
 symmetries") was still uneven, rather than where a new number system could go. It
@@ -1001,7 +1003,7 @@ are now built and tested.
 Claim-level discipline still applies: every item is **standard math made
 computational**, the same status A–J shipped at — not a new theorem.
 
-## Bridge M — the Brown invariant: the char-2 cell of the mod-8 spine
+### Bridge M: `the Brown invariant: the char-2 cell of the mod-8 spine`
 
 **Pillars:** `forms/char2/` (Arf) ↔ `forms/integral/discriminant/` (Milgram,
 Bridge A) ↔ `forms/witt/brauer_wall.rs` (the mod-8 cycle).
@@ -1009,7 +1011,7 @@ Bridge A) ↔ `forms/witt/brauer_wall.rs` (the mod-8 cycle).
 the Kervaire invariant*, Ann. of Math. **95** (1972); C. T. C. Wall, *Quadratic forms
 on finite groups*, Topology **2** (1963); Milgram/van der Blij) made computational.
 
-### The asymmetry it repairs
+#### The asymmetry it repairs
 
 The mod-8 spine otherwise lives entirely on the char-0 side: the exact rational
 signature, the genus oddity (`genus_signature_mod8`), the Milgram Gauss-sum phase
@@ -1018,7 +1020,7 @@ routes to `σ mod 8`. The char-2 side carried only the `ℤ/2` Arf bit. The clas
 object filling the char-2 mod-8 cell is the **Brown invariant** of `ℤ/4`-valued
 quadratic refinements.
 
-### The mathematics
+#### The mathematics
 
 A `ℤ/4`-quadratic form `q : V → ℤ/4` on an `F₂`-space satisfies
 `q(x+y) = q(x) + q(y) + 2·b(x,y)` with `b : V×V → F₂` symmetric (and `b_ii = q_i mod 2`,
@@ -1044,7 +1046,7 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
 3. **The generators are shipped lattices.** `a_n(1)` (`A₁`): `β = 1 ≡ σ`; `e_7()`:
    `β = 7 ≡ σ`; `d_n(4)`: `β = 4 ≡ σ`; the unimodular `e_8()`: `β = 0`.
 
-### Implemented surface
+#### Implemented surface
 
 - `forms/char2/brown.rs`
   - `brown_f2(n, q4: &[u128], bmat: &[u128]) -> BrownInvariants` — the `arf_f2` idiom with
@@ -1077,7 +1079,7 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
     after quotienting isotropic cyclic subgroups.
   - `DiscriminantForm::is_fqm_witt_equivalent` — equality in the FQM Witt group.
 
-### Oracles / implemented tests
+#### Oracles / implemented tests
 
 - `double_f2(q′).beta == 4 * arf_f2(q′).arf` across nonsingular metrics; doubled forms
   land in `{0,4}`.
@@ -1095,7 +1097,7 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
   `A_1` from `E_7`, reduces `⟨1/2⟩ ⊕ ⟨3/2⟩` and `A_2 ⊕ E_6` to the trivial Witt class,
   and keeps `fqm_gauss_phase` as its phase projection.
 
-### Scope / caveats
+#### Scope / caveats
 
 - **Category trap (load-bearing):** Brown's `b` is symmetric-not-alternating with
   `b_ii = q_i mod 2`, **not** the engine's alternating char-2 polar; `double_f2` is the
@@ -1108,13 +1110,13 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
 - No new theorem: Brown 1972 is the source; the bridge is the wiring to Arf (shipped)
   and Milgram (Bridge A).
 
-## Bridge N — the unification pass: four joins of already-shipped parts
+### Bridge N: `the unification pass: four joins of already-shipped parts`
 
 **Pillars:** vary per item — each joins surfaces that already exist. **Claim level:**
 IMPLEMENTED AND TESTED — standard math; each item is assembly + verification of
 shipped machinery, deliberately smaller than a headline bridge.
 
-### N.1 — Milnor's exact sequence: the Springer residues go global
+#### N.1 — Milnor's exact sequence: the Springer residues go global
 
 **Pillars:** `forms/springer/` ↔ `forms/witt/` ↔ the integral pillar's signature.
 The Witt-group-level statement of the local residue engine:
@@ -1160,7 +1162,7 @@ capped local-field models.
   Aravire-Jacob layer; tame and wild norm-residue symbols are Bridge K follow-ons,
   not part of this Witt-residue map.
 
-### N.2 — the Scharlau transfer, named
+#### N.2 — the Scharlau transfer, named
 
 **Pillars:** `scalar/extension` (`CyclicGaloisExtension`) ↔ `forms/trace_form`. The
 existing `trace_twisted_form::<E>(0)` is `s_*(⟨1⟩)` for the transfer `s_* : W(E) →
@@ -1177,7 +1179,7 @@ Metric<E::Base>` builds `s_*(⟨λ₁,…,λᵣ⟩) = ⟂ᵢ (x,y) ↦ Tr(λᵢ�
 - **Boundary:** char ≠ 2 (the `Tr(x·σ(x)) = 2N = 0` trap the module documents); the
   char-2 transfer is the Artin–Schreier route in `function_field_char2.rs`.
 
-### N.3 — Nikulin: genus ⟺ (signature, discriminant form)
+#### N.3 — Nikulin: genus ⟺ (signature, discriminant form)
 
 **Pillars:** `forms/integral/genus` ↔ `forms/integral/discriminant`. Nikulin's
 criterion (Izv. Akad. Nauk SSSR **43** (1979), Cor. 1.9.4) upgrades the mod-8 phase
@@ -1198,7 +1200,7 @@ order and `q`-value → BFS extension → `q`-preservation on every element), mi
   budget is honest (`None` past `ISO_GROUP_CAP`/node budget) — a cross-check of two
   shipped routes, not a p-adic-symbol reimplementation.
 
-### N.4 — one Bernoulli source for Eisenstein and mass
+#### N.4 — one Bernoulli source for Eisenstein and mass
 
 **Pillars:** `forms/integral/mass_formula` ↔ `forms/integral/modular`. The mass
 constants and the Eisenstein constants `240 = −8/B₄`, `−504 = −12/B₆` are the same
@@ -1211,7 +1213,7 @@ from it via `c_{2k} = −4k/B_{2k}`, with the literals kept as the pinned oracle
   von Staudt–Clausen denominators `B₂…B₈` as a free check; `mass_even_unimodular(8)`
   through the shared helper still `= 1/E8_WEYL_GROUP_ORDER`.
 
-## Bridge O — lexicodes: greedy = mex, the games ↔ integral edge
+### Bridge O: `lexicodes: greedy = mex, the games ↔ integral edge`
 
 **Pillars:** `games/` (mex) ↔ `forms/integral/codes` (Bridge H) → Construction A /
 theta (Bridges H/E). **Claim level:** IMPLEMENTED AND TESTED — standard math
@@ -1256,7 +1258,7 @@ realization is cited for transcription in a formalization pass, **subordinate to
 
 ---
 
-# Fifth wave — Bridge K (built)
+## fifth wave — Bridge K (built)
 
 Bridge K was the last unbuilt **non-deferred** bridge — the natural completion of the
 Brauer thread. It lifts the shipped 2-torsion rational Brauer surface (`adelic.rs`,
@@ -1264,7 +1266,7 @@ Bridge F) to the **full local Brauer group** `Br(K_v) ≅ ℚ/ℤ`, via the cycl
 invariant of local class field theory, built from the Galois data Bridge C already
 exposes (`CyclicGaloisExtension`). Standard math made computational — not a new theorem.
 
-## Bridge K — cyclic algebras: the full `ℚ/ℤ` Brauer invariant
+### Bridge K: `cyclic algebras: the full ℚ/ℤ Brauer invariant`
 
 **Pillars:** `scalar/extension` (`CyclicGaloisExtension`) ↔ a new ungraded Brauer class
 in `forms/witt/cyclic.rs` ↔ `forms/local_global/{adelic,function_field}` (the
@@ -1274,7 +1276,7 @@ Gille–Szamuely §§6.3–6.4; Reiner §§31–32; Tate in Cassels–Fröhlich 
 **2-torsion** Brauer surface to the full **`Br(K_v) = ℚ/ℤ`** image; Bridge F's rational
 Clifford invariant sits inside as the `½`-slice.
 
-### The mathematics
+#### The mathematics
 
 A cyclic extension `E/K` of degree `n` with distinguished generator `σ` and `a ∈ K*`
 defines the cyclic algebra `(χ_σ, a) = ⊕_{i<n} E·uⁱ`, `uⁿ = a`, `u·x = σ(x)·u`. Over a
@@ -1295,7 +1297,7 @@ is `F_q(t)`, where the **constant extension** `F_{qⁿ}(t)` is unramified at *ev
 with `Frob_v = σ^{deg v}`, so `inv_v = deg(v)·v(a)/n` and `∑_v inv_v = deg(div a)/n = 0` —
 full `ℚ/ℤ` reciprocity reduced to the product formula the function-field layer embodies.
 
-### Implemented surface
+#### Implemented surface
 
 - `forms/witt/cyclic.rs`
   - `BrauerClass` (private `local: BTreeMap<Place, Rational>`; values in `[0,1)`, zeros
@@ -1320,7 +1322,7 @@ full `ℚ/ℤ` reciprocity reduced to the product formula the function-field lay
     unramified, no ramified symbols). A `Vec` since `FFPlace` is not `Ord`. Plus
     `constant_extension_invariant_sum` (`∑_v inv_v = 0`).
 
-### Oracles / implemented tests
+#### Oracles / implemented tests
 
 - **Degree-2 compatibility (the lift is a lift):** `cyclic_algebra_invariant::<Qq<5,4,2>>`
   matches the shipped `brauer_local_invariants(d, a)` at `Prime(5)` (`d=2`, a nonsquare
@@ -1346,7 +1348,7 @@ full `ℚ/ℤ` reciprocity reduced to the product formula the function-field lay
   `Trd(z²)=Trd(z)^2-2·Nrd(z)` pointwise against `Nrd=⟨1,1,-a,-a⟩`, and checks over
   `F_27/F_3` that the `u`/`u²` cross-pair block is Witt-hyperbolic.
 
-### Scope / caveats
+#### Scope / caveats
 
 - **Unramified-at-`v` only** for `v(a)/n`; ramified local symbols are out of scope (the
   `F_q(t)` route delivers full `ℚ/ℤ` strength without them). Reads only `v(a)`, `n`,
@@ -1363,7 +1365,7 @@ full `ℚ/ℤ` reciprocity reduced to the product formula the function-field lay
 
 ---
 
-## Bridge K — formal statements (formalization-pass appendix)
+### Bridge K: `formal statements (formalization-pass appendix)`
 
 > Moved here from `roadmap/TODO.md` on building K. Standard math made computational; the
 > theorems below are LCFT, the surface that realizes them shipped as in the section above.
@@ -1371,7 +1373,7 @@ full `ℚ/ℤ` reciprocity reduced to the product formula the function-field lay
 **Status:** IMPLEMENTED AND TESTED. Every theorem is **standard math** (local/global class
 field theory); the bridge made it computational on surfaces the crate already ships.
 
-### 1. The cyclic algebra *(standard math)*
+#### 1. The cyclic algebra *(standard math)*
 
 For a cyclic Galois `E/K` of degree `n` with generator `σ` and character
 `χ_σ : Gal(E/K) → (1/n)ℤ/ℤ`, `χ_σ(σ) = 1/n`, and `a ∈ K*`, the **cyclic algebra**
@@ -1387,7 +1389,7 @@ containing `E` as a maximal subfield (Gille–Szamuely, Ch. 2):
 `CyclicGaloisExtension` carries exactly this data: `basis()`, `sigma()`/`sigma_power(k)`,
 `FieldExtension::{trace, norm, extension_degree}`.
 
-### 2. The local invariant *(standard math)*
+#### 2. The local invariant *(standard math)*
 
 For `K` nonarchimedean local, `E/K` **unramified** of degree `n`, `σ` the arithmetic
 Frobenius, the invariant isomorphism `inv_K : Br(K) ≅ ℚ/ℤ` satisfies
@@ -1416,7 +1418,7 @@ shipped quaternion route, and entered through the 2-torsion `from_two_torsion` e
 invariant; the general local symbol is needed. The shipped surface is scoped to
 unramified-at-`v` data, which suffices for everything below.
 
-### 3. Global reciprocity *(standard math)*
+#### 3. Global reciprocity *(standard math)*
 
 For a global field `K` the Albert–Brauer–Hasse–Noether sequence
 `0 → Br(K) → ⊕_v Br(K_v) → ℚ/ℤ → 0` (Reiner §32; Tate in Cassels–Fröhlich Ch. VII) gives
@@ -1432,7 +1434,7 @@ to "principal divisors have degree 0", the product formula already shipped
 (`constant_extension_invariant_sum`). (`Br(F_q(t))` via residues: Faddeev, Gille–Szamuely
 §6.4, using `Br(F_q) = 0`.)
 
-### 4. The degree-2 lift of the shipped 2-torsion surface
+#### 4. The degree-2 lift of the shipped 2-torsion surface
 
 Quaternions are the `n=2` cyclic algebras. For `p` odd and `d` a nonsquare unit at `p`,
 `E = ℚ_p(√d)` is the unramified quadratic and
@@ -1442,7 +1444,7 @@ Quaternions are the `n=2` cyclic algebras. For `p` odd and `d` a nonsquare unit 
 ramified places" by "a `ℚ/ℤ`-valued divisor of places", with the shipped surface as its
 `{0, ½}` slice.
 
-### 5. Bridge F as the 2-torsion part
+#### 5. Bridge F as the 2-torsion part
 
 `Brauer2Class` (a `BTreeSet<Place>`, symmetric-difference addition) embeds via
 `from_two_torsion`: `v ↦ ½·[v ∈ ramified]`, a group monomorphism onto the 2-torsion of
@@ -1452,7 +1454,7 @@ ramified places" by "a `ℚ/ℤ`-valued divisor of places", with the shipped sur
 One ambient group, two constructors. Reciprocity restricted to the `½`-slice is
 "`|ramified|` even". Kept **ungraded**, strictly distinct from `BrauerWallClass`.
 
-### 6. The tie to `trace_form.rs` *(standard math)*
+#### 6. The tie to `trace_form.rs` *(standard math)*
 
 The honest statements behind the one-line gloss:
 
@@ -1478,7 +1480,7 @@ This is now shipped as `cyclic_algebra_trace_form`; for `n=2` it satisfies
 Gold forms carry **no** `inv`; their classifier is Arf/Brauer–Wall (Bridge B). K lives only
 on the local/global legs (`Qq`, `F_q(t)`, `ℝ`).
 
-### 7–9. Surface, tests, scope
+#### 7–9. Surface, tests, scope
 
 As built — see "Implemented surface", "Oracles / implemented tests", and "Scope / caveats"
 in the section above. References: §§1–3, 6 standard math (Serre, *Local Fields* Ch. XII,
@@ -1487,7 +1489,7 @@ Ch. VII; Lam, GSM 67, Ch. III, V). No interpretation- or open-level claims are i
 
 ---
 
-## DONE — status snapshot
+## status snapshot
 
 Implemented and tested in the Rust core:
 

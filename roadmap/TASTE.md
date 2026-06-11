@@ -82,7 +82,7 @@ most useful kind of finding.
 
 ## numbers — buildable now
 
-### `int-embedding-babel` — 1·e_s
+### 1·e_s: `int-embedding-babel`
 **The canonical map ℤ → R is spelled six ways across a table whose entire
 thesis is uniformity.** `Rational::int`, `Surreal::from_int`,
 `Omnific::from_int`, `Qq::from_int`, `WittVec::from_int`, `Qp::from_i128`,
@@ -98,7 +98,7 @@ the ergonomic inherent shortcuts as aliases, and let generic forms/code stop
 hand-rolling small-integer lifts. `impl From<i128>` for the concrete worlds
 where it's total is then a free one-liner each.
 
-### `debug-as-display` — 1·(e_s∧e_c∧e_f)
+### 1·(e_s∧e_c∧e_f): `debug-as-display`
 **The crate's entire human-facing rendering layer lives in hand-written `Debug`
 impls; there is exactly one `Display` impl in the whole crate**
 (`GameCliffordError`). Seven types carry a bespoke `pub fn display(&self) ->
@@ -119,7 +119,7 @@ into `Display`) changes test-failure output crate-wide — that's a `±2` switch
 a9 should call deliberately, and "don't" is a defensible answer; the additive
 half is just hygiene.
 
-### `monolith-modules` — 1·(e_f∧e_g)
+### 1·(e_f∧e_g): `monolith-modules`
 **The crate has a demonstrated, excellent splitting pattern — and five files
 that ignore it.** `clifford/engine/` splits at ~100–500 lines by concept
 (basis/metric/product/algebra/multivector/inverse/terms); `nimber/` likewise
@@ -133,7 +133,7 @@ discipline is what makes the engine readable, and the forms/games pillars'
 hardest files are exactly the ones that didn't get it. Mechanical, low-risk,
 pattern already in-house.
 
-### `record-suffix-zoo` — ±1·e_f
+### ±1·e_f: `record-suffix-zoo`
 **The forms layer names the same kind of object — "the record a classifier
 returns" — under at least five suffix conventions.** `ArfResult` and
 `BrownResult`; `CliffordType`, `RationalCliffordType`, `OddCharType`;
@@ -152,7 +152,7 @@ seniority). Fold in the façade-trait word-order wobble while there:
 two grammars. A switch because it's rename churn across forms/ + py/forms.rs
 docs; the blast radius is internal but wide.
 
-### `none-reasons` — ±1·e_f
+### ±1·e_f: `none-reasons`
 **`Option` is doing error-enum work in the classifier façade.** 278
 `Option`-returning fns in forms/ vs 17 `Result`s. For genuinely partial math
 (`inv`, `sqrt`) bare `None` is the honest house style and should stay. But
@@ -169,7 +169,7 @@ docs are currently load-bearing in a place types are cheaper.
 
 ## halves — an afternoon each
 
-### `engine-encapsulation-split` — ½·e_c
+### ½·e_c: `engine-encapsulation-split`
 **Three core engine types, three different encapsulation postures, one rule.**
 `Metric` is the hard-rule type ("never the bare struct literal") and is
 properly guarded: `pub(crate)` fields, validating constructors, accessors,
@@ -187,7 +187,7 @@ state the operator-vs-context-method policy for `Multivector` the way
 `alg.add(&a,&b)` and `a ^ b` / `alg.wedge(&a,&b)` coexist with no canonical
 choice on record.
 
-### `terms-idiom-dup` — ½·e_c
+### ½·e_c: `terms-idiom-dup`
 **The "add into entry, remove if zero" dance is hand-inlined five-plus times,
 and `BitXor` duplicates `wedge` verbatim.** `terms.rs` exists precisely to hold
 this idiom but only ships `merge`/`scale`; the single-term form
@@ -199,7 +199,7 @@ bug waiting for whichever one gets fixed first. Fix: `add_term(&mut BTreeMap,
 blade, coeff)` in `terms.rs`, a shared `wedge_terms` free fn both call. Pure
 deletion; the associativity suite already pins behavior.
 
-### `metric-ctor-ergonomics` — ½·e_c
+### ½·e_c: `metric-ctor-ergonomics`
 **Every off-diagonal metric in the repo is built with a three-line `BTreeMap`
 ritual.** `let mut b = BTreeMap::new(); b.insert((0,1), x); Metric::new(q, b)` —
 in the engine tests alone this appears a dozen times, and it's the documented
@@ -213,7 +213,7 @@ deprecation-cycle) would make the family self-describing:
 `diagonal / grassmann / with_polar / general`. The iterator change is free;
 the rename is optional polish.
 
-### `stringly-edges` — ½·e_f
+### ½·e_f: `stringly-edges`
 **Three small sharp edges where the strong-typing discipline lapses.**
 (1) `ArfResult.o_type: &'static str` — an invariant ("O+"/"O−") carried as a
 string in the crate's flagship char-2 record, *and* it's derivable from the
@@ -228,7 +228,7 @@ the honest one; `zero()` could go, or become `zero_f2()`).
 
 ## ups — worth less than any number, still strictly positive
 
-### `gen-keyword` — ↑·e_c
+### ↑·e_c: `gen-keyword`
 `CliffordAlgebra::gen` collides with the `gen` keyword reserved in Rust
 edition 2024 — an edition migration rewrites every call site to `r#gen(i)`,
 which is ugly enough to count as breakage. The repo is 2021 so nothing is
@@ -237,7 +237,7 @@ on fire, but the rename is better done by choice than by `cargo fix`:
 (`e_i`), and frees the keyword. (`blade(&[i])` already exists as the general
 form.)
 
-### `complex64-placement` — ↑·e_i
+### ↑·e_i: `complex64-placement`
 A hand-rolled `pub struct Complex64` lives inside
 `forms/integral/discriminant.rs` — general-purpose float-complex machinery
 embedded in (and re-exported from) a Weil-representation module, sharing its
@@ -246,7 +246,7 @@ line either way). Dependency-free is the right call; the placement isn't —
 it's substrate, and the crate has a substrate floor (`linalg/`, or a sibling
 util) where it would stop looking like part of the discriminant-form theory.
 
-### `mv-context-asymmetry` — ↑·e_c
+### ↑·e_c: `mv-context-asymmetry`
 The graded-tensor embedding API is asymmetric in a way that pushes
 bookkeeping onto the caller: `embed_first(&self, v)` ignores `self` entirely
 (it's a clone), while `embed_second(&self, v, shift)` takes the *first
@@ -255,7 +255,7 @@ factor's dimension* as a raw `usize` the caller must remember
 a small product type that remembers the split and owns both embeddings, or at
 minimum take the left algebra by reference instead of a bare integer.
 
-### `surreal-eq-cost` — ↑·e_s
+### ↑·e_s: `surreal-eq-cost`
 `PartialEq for Surreal` routes through `self.sub(other).sign()` — a full
 subtraction (clone + canonicalize + recursive exponent comparison) per `==`,
 although the representation is already canonical by construction (every
@@ -270,7 +270,7 @@ either way: right now the value-eq impl silently implies the representation
 
 ## the Python-facing side — broader strokes
 
-### `py-dunder-pyramid` — 2·e_y
+### 2·e_y: `py-dunder-pyramid`
 The binding layer is the largest code in the repo (`scalars.rs` 5823 lines,
 `forms.rs` 5458, `games.rs` 2531) and it's *better* organized than its size
 suggests — `catalog.rs` as the single manifest is genuinely good architecture.
@@ -285,7 +285,7 @@ would delete on the order of a thousand lines and make "add a method to every
 scalar" a one-site edit. Same move then splits `scalars.rs` by family into a
 `py/scalars/` directory, which the engine/ pattern already licenses.
 
-### `experiments-as-essays` — *1·e_y
+### *1·e_y: `experiments-as-essays`
 The honest read of `experiments/` + `demo.py`: **much better than advertised.**
 The module docstrings are publication-grade (the `misere_kernel.py` header is a
 small literature review with theorem citations and an honest caveat), the

@@ -35,7 +35,7 @@ with outcome **CONFIRM** — see `roadmap/DONE.md`; its successor move is the
 
 ## numbers — forms & Witt (the classifier spine)
 
-### `echo-family-sweep` — 1·(e_g∧e_f)
+### 1·(e_g∧e_f): `echo-family-sweep`
 **The remaining pre-registered family axes** (`writeups/goldarf.tex` §§8–9, ranked
 move 2), on the shipped harness `experiments/echo_solver.py`: ko-memory window
 `w ∈ {1,2,3}`, pass semantics (clears-ko / forbidden / loses), single-coin plus pair
@@ -49,7 +49,7 @@ level — the Bad census — and the fifo+dummy mechanism is identified
 pass/pair axes remain unswept, and the general-n linking *proof* is loopy-valued in
 `OPEN.md` tis (§1), not a number here.)
 
-### `bw-rational` — 2·e_f
+### 2·e_f: `bw-rational`
 **The graded rational Brauer–Wall class** — the lift Bridge F deliberately stopped
 short of ("do not conflate `Brauer2Class` with the graded `BrauerWallClass` *until a
 rational Brauer–Wall story is separately modeled*"). Model `BW(ℚ)` by Wall's exact
@@ -58,14 +58,14 @@ cocycle multiplication (Wall 1964; Lam GSM 67). Oracles: `BW(ℝ) ≅ ℤ/8` rec
 Bott index `bw_class_real`; the graded class of `Cl(q)` over ℚ projects to Bridge F's
 `c(q)` and to disc/dimension data.
 
-### `tame-symbols` — 2·e_f
+### 2·e_f: `tame-symbols`
 **Tamely ramified cyclic symbols for Bridge K.** K's local invariant is scoped
 unramified-at-`v` (`inv = v(a)/n`). For tame ramification (`n | q−1`) the norm-residue
 symbol is explicit (the tame symbol `(a,b)_v = (−1)^{v(a)v(b)} a^{v(b)}/b^{v(a)} mod 𝔪`
 in `μ_n`); shipping it widens `BrauerClass` to ramified cyclic classes at tame places
 on the `Qq`/`F_q(t)` legs. The **wild** symbol stays out — that is star `*4` below.
 
-### `nikulin-existence` — 1·(e_i∧e_f)
+### 1·(e_i∧e_f): `nikulin-existence`
 **Nikulin's even-lattice existence theorem on top of `FqmWittClass`.** The
 `fqm-witt` pass shipped the finite-quadratic-module normal form and native
 constructor; it did **not** implement Nikulin 1.10.1 (which `(signature, FQM)` pairs
@@ -75,7 +75,7 @@ existence, not enumerate lattices.
 
 ## numbers — the integral wing
 
-### `niemeier` — 3·e_i
+### 3·e_i: `niemeier`
 **The Niemeier zoo and the non-degenerate Siegel–Weil.** Bridge E's Siegel–Weil check
 is degenerate at `n = 16` (both classes share `θ = E₄²`). Build the 24 Niemeier
 lattices (root systems + glue codes, Conway–Sloane Ch. 16/18 — curated tables per
@@ -86,7 +86,7 @@ congruence prime **691** appearing in the codebase, and the first Siegel–Weil 
 where the classes genuinely differ. Free cross-checks: `Σ 1/|Aut| = mass_even_unimodular(24)`,
 rootless-class uniqueness (Leech), and 24 new Nikulin/N.3 test points.
 
-### `padic-symbols` — 3·e_i
+### 3·e_i: `padic-symbols`
 **Conway–Sloane `p`-adic genus symbols** (Ch. 15, incl. the canonical 2-adic symbol
 with trains/compartments/oddity fusion). Gives exact genus equality without the
 budgeted `is_isomorphic` search — un-capping `ISO_GROUP_CAP` for genus decisions and
@@ -94,7 +94,7 @@ turning N.3 from "budgeted cross-check" into "exact symbol comparison". Oracle: 
 agreement with the shipped `are_in_same_genus` + `DiscriminantForm::is_isomorphic`
 route across the ADE zoo and the Milnor pair.
 
-### `odd-lattices` — 2·e_i
+### 2·e_i: `odd-lattices`
 **Type I (odd) lattices for the discriminant chain.** `DiscriminantForm::from_lattice`,
 Milgram, Brown, and `theta_series` are all even-only. Ship the odd-lattice discriminant
 form (`q_L` valued in `ℚ/ℤ` rather than `ℚ/2ℤ`), the oddity-corrected Milgram statement
@@ -102,13 +102,13 @@ form (`q_L` valued in `ℚ/ℤ` rather than `ℚ/2ℤ`), the oddity-corrected Mi
 (`ℤⁿ` from the `[n,1]` repetition code's complement, `ℤ ⊕ E₈`, …). Document the theta
 boundary honestly (odd `θ` lives at level 4).
 
-### `constructions-bd` — 1·e_i
+### 1·e_i: `constructions-bd`
 **Constructions B and D** (Conway–Sloane Ch. 5/8), extending Bridge H's code↔lattice
 seam: B from doubly-even subcode data (oracle: `B(golay)` has the right det/min), D
 from nested code towers. Keeps the same `Option`-on-non-integral-Gram boundary as
 `construction_a`.
 
-### `eichler` — ½·(e_i∧e_c)
+### ½·(e_i∧e_c): `eichler`
 **Eichler's theorem as a documented predicate** — the one cheap honest piece of star
 `*1`: *indefinite, rank ≥ 3 ⇒ spinor genus = isometry class*, letting `Genus` upgrade
 to a class statement in exactly that regime. No adelic machinery; just the predicate,
@@ -117,7 +117,7 @@ computation stays `*1`.
 
 ## numbers — scalar worlds
 
-### `hyperfield` — ½·e_s
+### ½·e_s: `hyperfield`
 **Viro's tropical hyperfield**, making Bridge J's lax tropicalization strict (Remark
 J.2 names this exact repair): a small multivalued-addition type
 (`x ⊞ y = {min}` off the vanishing locus, the interval/set on it) with the hyperfield
@@ -126,14 +126,14 @@ laws as tests and `tropicalize` factoring through it. A leaf, but it converts th
 
 ## numbers — games
 
-### `lexicode-game` — 1·e_g
+### 1·e_g: `lexicode-game`
 **The turning-game realization of lexicodes** — Bridge O cites the Conway–Sloane
 game construction "for transcription in a formalization pass". Build the actual
 turning-game move structure whose Grundy-0 positions are `L(n,d)`, so greedy = mex is
 a `Game`-level theorem witnessed in code, not a comment. Subordinate to `OPEN.md` §1
 (the solved degree-1 shadow), exactly as Bridge O says.
 
-### `guy-smith` — 1·e_g
+### 1·e_g: `guy-smith`
 **Octal periodicity certificates.** Implement the Guy–Smith periodicity theorem (if
 the Grundy sequence of an octal game repeats with period `p` over a window long enough
 relative to the largest take, it is periodic forever — Winning Ways; Siegel CGT) as a
@@ -143,7 +143,7 @@ ultimately periodic is famous, external, and not ours to claim — the checker i
 
 ## numbers — engine & bindings
 
-### `spinor-gauge` — 2·e_c
+### 2·e_c: `spinor-gauge`
 **Spinor reps and reversal through the antisymmetric gauge.** `spinor_rep` and
 `reverse()` reject general-bilinear (`a ≠ 0`) metrics; in char ≠ 2 the general engine
 is gauge-equivalent to the orthogonal one (the antisymmetric part is a "gauge", the
@@ -156,7 +156,7 @@ boundary.
 
 ## switches (a9's move first)
 
-### `surreal-completion` — ±2·e_s
+### ±2·e_s: `surreal-completion`
 **The ω-place completion of No** — a capped Hahn-window backend (`PrecisionScalar`
 discipline, finite window of CNF terms) that finally represents `1/(ω+1)`, `√2`-as-
 series, and divisible-Γ Newton polygons, completing the (exact global, capped local)
@@ -165,14 +165,14 @@ Surreal is currently the *exact* char-0 home, and the precedent (`Rational` as a
 engine-validation scalar) cuts both ways. Divisible-Γ polygons are the research-edged
 corner (CODA J: "definable but not claimed or scheduled").
 
-### `theta-level` — ±3·e_i
+### ±3·e_i: `theta-level`
 **Level-`N` theta identification** — `θ_L ∈ M_{n/2}(Γ₀(N), χ)` for non-unimodular
 even lattices. The decision: how much modular-forms machinery this crate wants to own
 (dimension formulas, level-`N` Eisenstein bases, Sturm bounds) versus keeping the
 full-level `SL₂(ℤ)` story as the deliberate boundary tied to `level()`. Worth a
 design conversation before any code.
 
-### `mass-32` — ±1·e_i
+### ±1·e_i: `mass-32`
 **Mass past rank 24.** `mass_even_unimodular` caps at 24 because the `i128` rational
 model overflows. Serre's "more than 80 million classes" at rank 32 is one
 factored-rational representation away — but the repo's fixed-width-carrier policy is
@@ -183,18 +183,18 @@ keep the cap as the honest model boundary.
 
 ## ups (infinitesimal, strictly positive)
 
-### `ps-regularity` — ↑
+### ↑: `ps-regularity`
 Verify the regularity hypothesis of Plambeck–Siegel Thm 6.4 against the published
 JCTA 2008 paper — load-bearing for goldarf Theorem C, flagged there as the cheap gate
 (ranked move 5a). Literature work, no code.
 
-### `octal-hunt-reframe` — ↑
+### ↑: `octal-hunt-reframe`
 `examples/octal_hunt.rs` hunts `(ℤ/2)^k` misère quotients with `k ≥ 2` — a target
 goldarf Theorem C proves **empty** (group misère quotients have order ≤ 2). Retarget
 the probe at non-group monoids / kernels where the quadric framing can still apply,
 and have `p_set_as_f2` check its labeling is a monoid homomorphism.
 
-### `docs-experiments` — ↑
+### ↑: `docs-experiments`
 Root `AGENTS.md` and `README.md` don't mention the `experiments/{gold,excess,audit}`
 subdirectories (the rescued 2026-06-10 research-run probes backing `goldarf.tex`,
 `excess.tex`, and `AUDIT.md`) or their not-CI-tested status. One layout-table line
@@ -204,7 +204,7 @@ plus a sentence each.
 
 ## stars (deferred — the not-yet-numbers, confused with zero)
 
-## `*1` — spinor genus (was Bridge G)
+### *1: `spinor genus` (was Bridge G)
 
 Refine `genus → spinor genus → isometry class` via the spinor norm (Eichler;
 Cassels–Hall). `clifford/spinor_norm.rs` is the right primitive in spirit, but the full
@@ -218,7 +218,7 @@ to a class statement in exactly that regime (now filed as the buildable `eichler
 The full definite-lattice computation is the larger build; it sits adjacent to the
 roadmap, not inside it.
 
-## `*2` — the char-`p` Drinfeld/Carlitz mirror of the integral pillar (large)
+### *2: `the char-p Drinfeld/Carlitz mirror of the integral pillar` (large)
 
 The entire `integral/` wing — even-unimodular `ℤ`-lattices, `θ`-series,
 `M_*(SL₂ℤ) = ℂ[E₄, E₆]`, Construction-A codes, Leech — is char 0. The project already
@@ -239,7 +239,7 @@ Carlitz exponential, rank-`r` reduction theory): weeks of specialized work, wort
 only as a *second headline pillar* rather than a task. References: Goss, *Basic Structures
 of Function Field Arithmetic*; Gekeler, Drinfeld modular forms; Goppa / AG codes.
 
-## `*4` — the wild local symbol (full local class field theory)
+### *4: `the wild local symbol` (full local class field theory)
 
 Bridge K's invariant is unramified-only; `tame-symbols` (above) would add the tame
 slice. The remainder — norm-residue symbols for **wildly ramified** cyclic extensions

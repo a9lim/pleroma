@@ -21,7 +21,10 @@ problems stay in [`OPEN.md`](../OPEN.md), loopy-valued: `tis`/`tisn`, `on`/`off`
 When a new piece of cross-pillar work lands, add a short entry here:
 
 ```
-## <name> — <one-line what-it-connects>   (<date>)
+## completed items
+
+### <date>: `<name>`
+**Summary:** <one-line what-it-connects>
 **Pillars:** … ↔ …    **Claim level:** standard math / implemented-and-tested / …
 - surface: the functions/types that shipped
 - oracles: the tests that pin it
@@ -31,7 +34,10 @@ When a new piece of cross-pillar work lands, add a short entry here:
 Promote anything proof-heavy or too long for working notes into `roadmap/CODA.md`, and
 fold the one-line structural fact into the relevant `AGENTS.md`.
 
-## `taste-sweep` — the taste-audit ledger, played   (2026-06-11)
+## completed items
+
+### 2026-06-11: `taste-sweep`
+**Summary:** the taste-audit ledger, played
 **Pillars:** scalar ↔ clifford ↔ forms ↔ integral ↔ games (+py touchpoints)
 **Claim level:** engineering — behavior-preserving refactor, adversarially reviewed
 
@@ -70,7 +76,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   vs main), never by re-reading agent summaries. Verify, don't claim — it
   applies to fleets too.
 
-## `fqm-witt` — finite-quadratic-module Witt normal forms   (2026-06-11)
+### 2026-06-11: `fqm-witt`
+**Summary:** finite-quadratic-module Witt normal forms
 **Pillars:** forms ↔ integral    **Claim level:** standard math made computational + implemented and tested
 - surface: `FiniteQuadraticModule::{new,cyclic,direct_sum,witt_class}` adds a native
   cyclic-product presentation for nonsingular finite quadratic modules;
@@ -88,7 +95,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   1.10.1 for arbitrary `(signature, FQM)` pairs; that successor is now tracked as
   `nikulin-existence` in `roadmap/TODO.md`.
 
-## `fqm-gauss-phase` — p-primary finite-quadratic-module phase projection   (2026-06-11)
+### 2026-06-11: `fqm-gauss-phase`
+**Summary:** p-primary finite-quadratic-module phase projection
 **Pillars:** forms ↔ integral    **Claim level:** standard math made computational + implemented and tested
 - surface: `DiscriminantForm::fqm_gauss_phase` returns `FqmGaussPhase` with
   p-primary `FqmPrimaryPhase { prime, order, exponent, phase_mod8 }` factors and the
@@ -105,7 +113,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   between the two square-root branches; the FQM normal-form successor is the
   `fqm-witt` entry above.
 
-## `game-clifford-checked` — quotient-compatible integer Clifford data on game generators   (2026-06-11)
+### 2026-06-11: `game-clifford-checked`
+**Summary:** quotient-compatible integer Clifford data on game generators
 **Pillars:** clifford ↔ games ↔ Python    **Claim level:** implemented and tested
 - surface: `GameClifford::{new,free,with_relation_search,with_quadratic_data}` wraps
   the integer Clifford engine on a chosen game-generator tuple; explicit or discovered
@@ -122,7 +131,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   algebra over arbitrary games and not a proof that the quadratic data is game-native.
   The natural-source and torsion-target questions remain in `OPEN.md` §2.
 
-## `loopy-partizan` — finite Left/Right loopy outcome engine   (2026-06-11)
+### 2026-06-11: `loopy-partizan`
+**Summary:** finite Left/Right loopy outcome engine
 **Pillars:** games ↔ Python    **Claim level:** implemented and tested
 - surface: `LoopyPartizanGraph`, `LoopyPartizanOutcome`, `LoopyWinner`;
   `LoopyValue::{PlusMinus,Tis,Tisn,OnsideOffside}` plus exact starter-pair
@@ -139,7 +149,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   of being forced into `P/N/L/R/Draw`; sums outside the represented catalogue
   return `None`.
 
-## `py-waves` — Python parity for waves J/K/M/N/O (2026-06-11)
+### 2026-06-11: `py-waves`
+**Summary:** Python parity for waves J/K/M/N/O
 **Pillars:** scalar/forms/games ↔ Python    **Claim level:** implemented and tested
 - surface: Python now exposes `lexicode`/`lexicode_naive`/`lexicode_bounded`,
   `NimLexicode`, Brown invariants (`BrownResult`, `brown_f2`, `double_f2`,
@@ -156,7 +167,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   char-2 transfer story still belongs to the Artin-Schreier layer, not
   `transfer_diagonal`.
 
-## `fpn-gen` — generated finite-field reduction polynomials (2026-06-11)
+### 2026-06-11: `fpn-gen`
+**Summary:** generated finite-field reduction polynomials
 **Pillars:** scalar    **Claim level:** standard math made computational + implemented and tested
 - surface: `Fpn<P,N>` now supports every prime `P` and positive `N` whose field order
   `P^N` fits in `u128`; every extension field uses a cached deterministic search for
@@ -171,7 +183,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   and the `u128` payload model still rejects fields whose order overflows `u128`
   (for example `Fpn<2,128>`).
 
-## `ordinal-principled` — Kummer carries from `m_u` only (2026-06-11)
+### 2026-06-11: `ordinal-principled`
+**Summary:** Kummer carries from `m_u` only
 **Pillars:** scalar    **Claim level:** standard math made computational + implemented and tested
 - surface: `scalar/big/ordinal/tower.rs::alpha_ordinal` now reconstructs each shipped
   Kummer carry by computing `f(u)=ord_u(2)`, recursively computing DiMuro's `Q(f(u))`,
@@ -185,7 +198,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   still returns `None`; computing or certifying new finite excess integers remains the
   open/research step.
 
-## `nim-lexicodes` — lexicodes over nim alphabets (2026-06-11)
+### 2026-06-11: `nim-lexicodes`
+**Summary:** lexicodes over nim alphabets
 **Pillars:** games ↔ integral    **Claim level:** standard math made computational + implemented and tested
 - surface: `games::nim_lexicode_naive` / `nim_lexicode_naive_bounded` build literal
   greedy lexicodes over the alphabet `{0, ..., 2^k-1}` and return a `NimLexicode`
@@ -200,7 +214,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   Conway-Sloane turning-game realization, which remains the separate `lexicode-game`
   TODO.
 
-## `subfield-detect` — finite ordinal-nimber subfield detection (2026-06-11)
+### 2026-06-11: `subfield-detect`
+**Summary:** finite ordinal-nimber subfield detection
 **Pillars:** scalar ↔ forms    **Claim level:** standard math made computational + implemented and tested
 - surface: `Ordinal::finite_subfield_degree`, `scalar::ordinal_finite_subfield_degree`,
   and `scalar::ordinal_common_finite_subfield_degree` detect the minimal represented
@@ -217,7 +232,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   ordinal-nimber metrics still return `None` for finite Arf/Witt/Brauer-Wall
   classification.
 
-## `brown-reduce` — Brown invariant by reduction, not enumeration (2026-06-11)
+### 2026-06-11: `brown-reduce`
+**Summary:** Brown invariant by reduction, not enumeration
 **Pillars:** forms    **Claim level:** standard math made computational + implemented and tested
 - surface: `forms/char2/brown.rs::brown_f2` now splits off the polar radical and
   reduces the nonsingular `ℤ/4`-quadratic core into odd lines and even symplectic
@@ -231,7 +247,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   `n ≤ 128`; Brown's symmetric polar category remains distinct from the Clifford
   char-2 alternating polar, with `double_f2` still the explicit bridge.
 
-## `cyclic-trace-form` — cyclic algebra `Trd(z²)` trace form (2026-06-11)
+### 2026-06-11: `cyclic-trace-form`
+**Summary:** cyclic algebra `Trd(z²)` trace form
 **Pillars:** forms ↔ scalar    **Claim level:** standard math made computational + implemented and tested
 - surface: `forms/trace_form.rs::cyclic_algebra_trace_form::<E>(&a)` builds the
   literal cyclic-algebra quadratic trace form `T_A(z)=Trd_A(z²)` for
@@ -246,7 +263,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
 - boundaries: this is not the reduced norm for general `n` (nor equal to it for
   quaternions); it is the quadratic trace companion named in CODA K §6(c).
 
-## `milnor-d2` — dyadic cell of Milnor's exact sequence (2026-06-11)
+### 2026-06-11: `milnor-d2`
+**Summary:** dyadic cell of Milnor's exact sequence
 **Pillars:** forms    **Claim level:** standard math made computational + implemented and tested
 - surface: `forms/witt/milnor.rs::global_residues` now includes the `p=2` component
   of Milnor's residue map. The dyadic residue uses Milnor's hand convention, not the
@@ -259,7 +277,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
 - boundaries: this is only the dyadic `W(ℚ)` cell; the equal-characteristic
   `F_q(t)` twin shipped separately as `milnor-ff`.
 
-## `milnor-ff` — split Milnor residues over `F_q(t)` (2026-06-11)
+### 2026-06-11: `milnor-ff`
+**Summary:** split Milnor residues over `F_q(t)`
 **Pillars:** forms    **Claim level:** standard math made computational + implemented and tested
 - surface: `forms/witt/milnor.rs::global_residues_ff` implements the split
   equal-characteristic Milnor map for odd constant fields:
@@ -277,7 +296,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   does not claim tame or wild norm-residue symbols beyond the second-residue Witt
   map.
 
-## `echo-solver` — the echo-fifo+dummy adversarial review: CONFIRM (2026-06-10)
+### 2026-06-10: `echo-solver`
+**Summary:** the echo-fifo+dummy adversarial review: CONFIRM
 **Pillars:** games ↔ forms    **Claim level:** implemented and tested
 - surface: `experiments/echo_solver.py` (stdlib-only, maintained) — direct full-state
   σ-explicit solvers for the echo family (`fifo_value`, `ko_value`), the parameterized
@@ -300,7 +320,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   memory is unbounded); goldarf §8.3's old prose rule description was corrected in
   the same pass.
 
-## `linking-reduction` — the echo-fifo+dummy mechanism, reduced and screened (2026-06-10)
+### 2026-06-10: `linking-reduction`
+**Summary:** the echo-fifo+dummy mechanism, reduced and screened
 **Pillars:** games ↔ forms    **Claim level:** standard math (reductions) + implemented and tested (screens) + open (general n)
 - surface: `experiments/linking_game.py` (stdlib-only, maintained) — the abstract
   odd-close parity game, validated against `echo_solver.fifo_value` through the

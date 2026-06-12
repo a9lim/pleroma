@@ -124,18 +124,6 @@ J.2 names this exact repair): a small multivalued-addition type
 laws as tests and `tropicalize` factoring through it. A leaf, but it converts the one
 "lax" asterisk in the J appendix into a theorem about a shipped type.
 
-## numbers — ogham
-
-### 1·(e_s∧e_y): `ogham-v1.1`
-**The function-shaped worlds** — `spec/ogham.md` §16, the sketch promoted to
-contract: the `poly*`/`polyint`/`ratfunc*` menu rows, the `t` atom, the §7.6
-activations (`@` eval/compose, `%`, exact `/`), the `deg`/`gcd` stdlib pair,
-and the corpus blocks that make it all contractual (pole errors, monic-divisor
-errors, `t`-literal round-trips). Two §16 pending decisions to settle at
-play time: final world names and `deg` of the zero polynomial. The py poly
-classes (`Fp*Poly`/`Fp*RationalFunction`) already exist; `polyint` needs a
-`Poly<Integer>` binding. Plays after the shipped `ogham-v1` core.
-
 ## numbers — games
 
 ### 1·e_g: `lexicode-game`

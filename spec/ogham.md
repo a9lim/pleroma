@@ -1,13 +1,14 @@
 # ogham — the ogdoad expression language
 
-Status: **v1 implemented / v1.1 draft** (2026-06-12). This document is the implementation contract: every
+Status: **v1 + v1.1 implemented** (2026-06-12). This document is the implementation contract: every
 decision below either cashes out as a vector in [`spec/conformance.txt`](conformance.txt)
 or it is not really decided. Implementing agents work until the corpus is green;
 judgment calls not covered here go back to the spec, not into the code.
 
-ogham is a small calculator language over the ogdoad core: one world (scalar
-backend + Clifford metric) per session, expressions over that world's algebra,
-bindings, and nothing else. No control flow, no user functions, no floats.
+ogham is a small calculator language over the ogdoad core: one world per
+session, either a scalar backend + Clifford metric or a function-shaped
+polynomial/rational-function world, bindings, and nothing else. No control
+flow, no user functions, no floats.
 File extension `.og`. The name: og(doad) + the ancient stroke-script — fitting
 a language whose operators are strokes and ticks (`*`, `↑`, `∧`, `⋅`, `/`).
 
@@ -57,9 +58,9 @@ a language whose operators are strokes and ticks (`*`, `↑`, `∧`, `⋅`, `/`)
 | comment | `#` | — | — | to end of line |
 
 Reserved, must lex but reject with `E_Reserved`: `↑↑`, `{` `}` (game forms
-`{L|R}`, contractions), `O(` (precision tails), `t` (poly/ratfunc variable,
-§6.8), and the v2.0 set (§17) — `↦` (U+21A6, sugar `~→↦`), `?`, bare `:`
-(`:=` still lexes), and `;`.
+`{L|R}`, contractions), `O(` (precision tails), `t` outside the
+poly/ratfunc worlds (§6.8), and the v2.0 set (§17) — `↦` (U+21A6, sugar
+`~→↦`), `?`, bare `:` (`:=` still lexes), and `;`.
 
 **Unary-fill principle**: a unary form of a binary operator fills the left
 operand with the operator's identity. `-a = 0 - a`, `/a = 1/a`. Only the two
@@ -75,7 +76,7 @@ Index operands, §7.6, not a unary form of any binary operator.)
   exception is a tight signed exponent immediately after `↑` (§5).
 - `IDENT`: `[a-z][a-z0-9_]*`, excluding reserved words. Reserved everywhere:
   `w`, `true`, `false`, stdlib function names (§8). Reserved per-world: `x` in
-  `f4…f27` worlds (the field generator), `t` in future poly/ratfunc worlds.
+  `f4…f27` worlds (the field generator), `t` in shipped poly/ratfunc worlds.
 - `e` followed immediately by digits lexes as a BLADE token (`e0`, `e12`).
   `e` alone is an error (not an identifier).
 - `*` followed by anything lexes as the STAR prefix token; `*` is never an
@@ -156,16 +157,18 @@ precedence above is ogham's, full stop; host code uses parens.
 
 ## 6. Worlds
 
-A session holds exactly one world: a scalar backend monomorphised into a
-`CliffordAlgebra<S>` plus environment. Declared by colon-command (REPL) or a
-leading directive line (`.og` files use the same syntax without the colon
-prompt):
+A session holds exactly one world plus environment. The Clifford-capable worlds
+monomorphise a scalar backend into a `CliffordAlgebra<S>`. The function-shaped
+v1.1 worlds are scalar polynomial/rational-function evaluators with no Clifford
+metric. Worlds are declared by colon-command (REPL) or a leading directive line
+(`.og` files use the same syntax without the colon prompt):
 
 ```text
 :world ‹name› ‹dim› q=[s0,…,s(n-1)] [b=[(i,j):s, …]] [a=[(i,j):s, …]]
 :world ‹name› ‹dim› grassmann
 :world nimber gold(m,a)            # dim = m, metric = forms::trace_form::gold_form(m,a)
 :world ‹name› 0                    # pure scalar work, no metric
+:world ‹poly/ratfunc name›          # function-shaped v1.1 world
 ```
 
 `q`/`b`/`a` mirror `Metric::diagonal` / `::new` / `::general`
@@ -182,7 +185,7 @@ grades, blade indices, stdlib integer args; Index expressions allow
 `+ - ⋅ ↑` and parens, nothing else. Position determines sort; there are no
 coercions between sorts.
 
-### 6.1 v1 world menu (fixed dispatch table)
+### 6.1 v1/v1.1 world menu (fixed dispatch table)
 
 Const-generic backends require a compiled-in menu; v1 ships:
 
@@ -197,13 +200,15 @@ Const-generic backends require a compiled-in menu; v1 ships:
 | `f4 f8 f16` | `Fpn<2,2|3|4>` | yes | char-2 extension fields |
 | `f9 f27` | `Fpn<3,2|3>` | yes | |
 | `f25` | `Fpn<5,2>` | yes | |
+| `poly2 poly3 poly5 poly7` | `Poly<Fp<2|3|5|7>>` | no | `F_p[t]`, function-shaped, no metric |
+| `polyint` | `Poly<Integer>` | no | `ℤ[t]`, monic division boundary |
+| `ratfunc2 ratfunc3 ratfunc5 ratfunc7` | `RationalFunction<Fp<2|3|5|7>>` | yes | `F_p(t)`, function-shaped, no metric |
 
 (The six `f*` names match the Python binding classes `F4…F27`,
 src/py/scalars.rs. Extending the menu = adding one arm to the dispatch enum.)
 
-Deferred to v1.1: the function-shaped worlds — see §16. Further out:
-precision worlds (`Qp/Qq/Laurent/Ramified/Gauss/Adele` — `O(p^k)` literal
-design is its own iteration); games mode (`{L|R}`).
+Further out: precision worlds (`Qp/Qq/Laurent/Ramified/Gauss/Adele` —
+`O(p^k)` literal design is its own iteration); games mode (`{L|R}`).
 
 ### 6.2 Integer literals per world (the `from_int` trap)
 
@@ -216,6 +221,8 @@ in nim-worlds:
 | `nimber`, `ordinal` | **error `E_BareInt`**, hint: `did you mean *3?` |
 | `surreal`, `omnific`, `integer` | exact integer (`from_int`, overridden exactly there) |
 | `fp*`, `f*` | residue (`from_u128`-style reduction; `f*` worlds: degree-0 constant) |
+| `poly*`, `polyint` | constant polynomial over the coefficient world |
+| `ratfunc*` | constant rational function over the coefficient world |
 
 Bare `INT` at Index position is always a meta-integer, in every world.
 
@@ -240,9 +247,8 @@ Bare `INT` at Index position is always a meta-integer, in every world.
 - `f*` worlds: the generator is the reserved identifier `x`
   (`Fpn::generator()`); elements are reached arithmetically (`x↑2 + x + 1`).
 - `e‹digits›` blades: `alg.e(i)`, `E_BladeIndex` if `i ≥ dim`.
-- Future `poly`/`ratfunc`: reserved `t`; fractions print as `(num)/(den)` —
-  the current `[num] / [den]` display collides with vector syntax and is fixed
-  by Display v2 (§9).
+- `poly*`/`polyint`/`ratfunc*`: reserved `t` is the indeterminate. Fractions
+  print as `(num)/(den)`; `[…]` remains vector syntax.
 
 ## 7. Semantics (desugaring to the engine)
 
@@ -298,16 +304,18 @@ notion of integral cofactor, keeping the canonical representative.
 |---|---|
 | `integer` | Euclidean remainder, `0 ≤ r < \|b\|` (`rem_euclid`: `-7 % 3 = 2`); `b = 0` → `E_DivisionByZero` |
 | `surreal`, `omnific` | `b` must be a **monic ω-power** `ω↑e` — a single CNF term with coefficient `1`, any exponent, so `1 = ω↑0` and `ω↑(1/2)` qualify — else `E_Modulus`. Result: the CNF tail strictly below `e`: `(3⋅ω↑2 - ω + 5) % ω↑2 = -ω + 5`; `x % ω` drops the ω-and-above part; `x % 1` is the infinitesimal part. This reduces mod `ω↑e ⋅ R` (`R` = the exponent-≥0 subring), the Hahn mirror of dropping high digits mod `10↑k`. Non-monic moduli are rejected *deliberately*: every nonzero constant is a unit of No, so `7 % 3` would honestly be `0` — a footgun beside the integer world's `1`. Hint: integer remainders live in the `integer` world. |
-| `poly(p)`, `polyint` (v1.1) | polynomial remainder via `Poly::divrem` (poly.rs:222), `deg r < deg b`; `polyint` divisors must be monic (`divrem` inverts the leading coefficient); `b = 0` → `E_DivisionByZero` |
-| `nimber`, `ordinal`, `fp*`, `f*`, `ratfunc` — any field world | `E_WrongWorld` — a field divides exactly, so the remainder is identically zero; returning that `0` silently would mislead more than help |
+| `poly2`/`poly3`/`poly5`/`poly7`, `polyint` | polynomial remainder via `Poly::divrem` (poly.rs:222), `deg r < deg b`; `polyint` divisors must be monic (`divrem` inverts the leading coefficient); `b = 0` → `E_DivisionByZero` |
+| `nimber`, `ordinal`, `fp*`, `f*`, `ratfunc*` — any field world | `E_WrongWorld` — a field divides exactly, so the remainder is identically zero; returning that `0` silently would mislead more than help |
 
 **Exact division.** At grade 0 in non-field worlds, `a / b` means **exact
 division** — the unique `x` with `x ⋅ b = a` — so `6 / 3 = 2` while `7 / 3`
-is `E_NotInvertible`, with the remainder named in the message. Wherever
-`inv(b)` exists this agrees with §7's `a ⋅ inv(b)`, and it makes the
-Euclidean identity expressible: `(a - a%b)/b ⋅ b + a%b = a`. Exact division
-does not loosen the surreal/omnific monomial-inverse boundary — general CNF
-long division has no termination story (`1/(ω+1)` all over again).
+is `E_NotInvertible`, with the remainder named in the message. Polynomial
+worlds use the same exact-division rule through `divrem`; `polyint` keeps the
+monic-divisor boundary. Wherever `inv(b)` exists this agrees with §7's
+`a ⋅ inv(b)`, and it makes the Euclidean identity expressible:
+`(a - a%b)/b ⋅ b + a%b = a`. Exact division does not loosen the
+surreal/omnific monomial-inverse boundary — general CNF long division has no
+termination story (`1/(ω+1)` all over again).
 
 **`f @ v` — evaluation (substitution).** `f@v` substitutes `t := v` through
 the substitution homomorphism: `(5⋅t + 1)@7 = 36` in `polyint`. The
@@ -320,10 +328,9 @@ over `Poly` arithmetic) for the general substitution. `ratfunc` evaluates
 pole is the honest error). `@` binds tightest of all operators
 (`f@7↑2 = (f@7)↑2`) and both operands are atoms: `f@(x + 1)` takes parens,
 and there is no tight signed form (`f@(-3)` — the `↑-1` exception exists
-for Display, which never emits `@`). Every v1 world rejects `@` with
+for Display, which never emits `@`). Non-function worlds reject `@` with
 `E_WrongWorld` ("evaluation lives in the function-shaped worlds —
-poly/ratfunc, v1.1"); the grammar is world-independent, so the v1.1 worlds
-activate it without a parser change.
+poly/ratfunc, v1.1"); the grammar is world-independent.
 
 **`!n` — factorial.** Prefix, operand an **Index** (meta-integer): `!5`,
 `!(2⋅3)`. One rule: `!n` computes the factorial at the Index level and
@@ -364,9 +371,9 @@ on `:world`). An unbound bare identifier on the left of a top-level `=`
 earns the `E_Unbound` hint `did you mean name := …?` (§11) — the
 muscle-memory catch for the `=`/`:=` split, alongside the `==→=` sugar (§3).
 
-## 8. Stdlib v1
+## 8. Stdlib v1/v1.1
 
-Six functions, all thin wrappers; signatures are sorted (E = Element,
+Eight functions, all thin wrappers; signatures are sorted (E = Element,
 I = Index):
 
 | call | engine | notes |
@@ -377,10 +384,12 @@ I = Index):
 | `dual(E)` | `alg.dual` (versor.rs:183) | `None → E_NotInvertible` (pseudoscalar) |
 | `tr(E, I)` | `nim_trace(x, m)` (artin_schreier.rs:11) | nimber world, grade-0 arg; m a power of 2 ≤ 128; `f*` worlds: `FieldExtension::trace` (extension.rs:60), 1-arg form `tr(E)` |
 | `frob(E)` | `FiniteField::frobenius` (finite_field/mod.rs:48) | finite-field worlds, grade-0 arg |
+| `deg(E)` | `Poly::degree` | polynomial worlds only; returns an Index, so it does not reduce mod p; `deg(0)` → `E_Domain` |
+| `gcd(E,E)` | `Poly::gcd` / primitive integer polynomial gcd | polynomial worlds only; finite-field results are monic, `polyint` returns the positive-leading primitive integer factor |
 
 Everything else (versors, sandwiches, contractions, meet, spinor norms) is
-deliberately out of v1 — reach those from Rust/Python. The Gold chain works
-day one: `tr(x ⋅ x↑(2↑a), m)`.
+deliberately out of v1/v1.1 — reach those from Rust/Python. The Gold chain
+works day one: `tr(x ⋅ x↑(2↑a), m)`.
 
 ## 9. Display v2 (canonical form)
 
@@ -510,7 +519,8 @@ syntax, sorts, and errors.
 
 WP1 (Display v2, §9), WP7 (host operators, §13), the backend helper
 surface (§7.6/§7.7), and WP2–WP6 are shipped — ledger:
-`roadmap/DONE.md` → `ogham-foundations`, `ogham-backend`, and `ogham-v1`.
+`roadmap/DONE.md` → `ogham-foundations`, `ogham-backend`, `ogham-v1`, and
+`ogham-v1.1`.
 The table below is the historical build decomposition and the maintenance map.
 Acceptance for the language is the committed conformance corpus plus the normal
 Rust/Python validation stack.
@@ -523,31 +533,28 @@ Rust/Python validation stack.
 | **WP5 Conformance harness** | `tests/ogham_conformance.rs` + corpus format parser over the committed hand vectors (§14). | sonnet |
 | **WP6 Python eval** | `ogham_eval(world: &str, src: &str)` pyfunction + the v1 operator alignment that keeps multivector `&` as wedge and makes `^` raise the Ogham `E_ExpSort` hint (§13). | sonnet |
 
-## 16. v1.1 — the function-shaped worlds (sketch)
+## 16. v1.1 — the function-shaped worlds
 
-**Sketch, not contract.** Nothing below is decided until it cashes out as
-§14 vectors; this section pins the agreed shape so v1.1 starts from a plan
-(ledger: `roadmap/TODO.md` → `ogham-v1.1`, after `ogham-v1`).
+**Implemented and tested** (ledger: `roadmap/DONE.md` → `ogham-v1.1`).
 
 - **Worlds** (fixed dispatch, §6.1 discipline): `poly2 poly3 poly5 poly7` =
   `Poly<Fp<p>>` (F_p[t]); `polyint` = `Poly<Integer>` (ℤ[t]); `ratfunc2
-  ratfunc3 ratfunc5 ratfunc7` = `RationalFunction<Fp<p>>` (F_p(t)). The menu
-  extent mirrors `fp*`; final names are a pending decision.
-- **The `t` atom**: the reserved `t` becomes the variable (the mirror of `x`
-  in `f*` worlds); elements are reached arithmetically (`3⋅t↑2 + 1`); bare
+  ratfunc3 ratfunc5 ratfunc7` = `RationalFunction<Fp<p>>` (F_p(t)).
+- **The `t` atom**: the reserved `t` is the variable (the mirror of `x` in
+  `f*` worlds); elements are reached arithmetically (`3⋅t↑2 + 1`); bare
   `INT` is the constant per the coefficient world's §6.2 row; `(num)/(den)`
   round-trips in ratfunc worlds through ordinary `/`.
-- **Activations** (specced in §7.6, dormant in v1): `@` — eval at constants,
-  compose at non-constants; `%` and exact `/` via `divrem` (`polyint`
-  divisors monic); the v1 `E_WrongWorld` rows flip to live semantics.
+- **Activations** (§7.6): `@` evaluates at constants and composes at
+  non-constants; `%` and exact `/` use `divrem`; `polyint` divisors must be
+  monic; ratfunc evaluation at a pole is `E_DivisionByZero`.
 - **Relations** (§7.7): none of these worlds carries a canonical order —
   `< > |` stay `E_WrongWorld`; `=` is exact (ratfunc: cross-multiplied).
-- **Stdlib additions**: `deg(E) → I` (the zero polynomial's degree is a
-  pending decision — `E_Domain` vs a sentinel) and `gcd(E, E) → E`
-  (monic-normalized, `Poly::gcd`).
-- **Corpus**: new `@world` blocks pinning `t`-literals, `@`/`%`/`/`
-  round-trips, ratfunc pole errors (`E_DivisionByZero`), and `polyint`
-  monic-divisor errors.
+- **Stdlib additions** (§8): `deg(E) → I`, with `deg(0) → E_Domain`;
+  `gcd(E,E) → E` in polynomial worlds. Finite-field polynomial gcds are
+  monic; `polyint` returns the positive-leading primitive integer factor.
+- **Python parity** (§13): `IntegerPoly` is bound alongside the existing
+  `Fp*Poly`/`Fp*RationalFunction` rows; `%` maps to polynomial remainder and
+  `@` maps to eval/compose on the v1.1 Python classes.
 - **Still out**: precision worlds (`O(p^k)` literals are their own
   iteration); games mode (`{L|R}`); invariant colon-commands (§12).
 

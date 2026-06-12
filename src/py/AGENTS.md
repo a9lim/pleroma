@@ -29,7 +29,8 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
   `F9`/`F25`/`F27`); the fixed p-adic slices (`Zp*_4`/`Qp*_4` for p∈{2,3,5,7,11,13});
   the fixed unramified slices (`WittVec*_4_*`/`Qq*_4_*`); the fixed functor slices
   (`Laurent*_6`, `RamifiedQp*_4_E{2,3}`, `GaussQp*_4`); the function-field rows
-  (`NimberPoly`/`NimberRationalFunction`, `Fp*Poly`/`Fp*RationalFunction`);
+  (`NimberPoly`/`NimberRationalFunction`, `Fp*Poly`/`Fp*RationalFunction`,
+  `IntegerPoly`);
   `Rational`, `Surreal`, `Surcomplex`, `Integer`, `Omnific`, `Ordinal`,
   `SignExpansion`; the runtime cells `LocalQp`/`Adele`; and the tropical endpoints
   `MaxPlusTropical`/`MinPlusTropical`. Threads the `parse_*`/`wrap_*` hooks the
@@ -37,7 +38,8 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
   surface (`zero`/`one`/`characteristic` where applicable, `is_zero`, partial
   inverses/division, owned operators), plus per-world extras: Surreal's simplicity
   bridge + sign-expansion round-trips + lazy analytic helpers + monic-omega-power
-  `rem`; Integer's Euclidean `divrem`/`rem`/`div_exact`; Omnific's matching
+  `rem`; Integer's Euclidean `divrem`/`rem`/`div_exact`; `IntegerPoly`'s
+  monic `divrem`/`rem`, primitive `gcd`, and eval/compose `@`; Omnific's matching
   monic-omega-power `rem`; Nimber's `pow`/`frobenius`/`sqrt` + the `nim_*`
   Galois toolkit + `fuzzy`; the fixed Poly classes' `compose`; the Qp/Qq local-field package
   (`uniformizer`/`residue`/`residue_unit`/`teichmuller`, `is_integral`/`to_integer`)
@@ -147,8 +149,9 @@ runtime type is bound. What stays Rust-only is structural, not a backlog:
 - **Python operators:** `*` geometric, `&` wedge (ogham `∧`; `^` raises the
   Ogham `E_ExpSort` hint), `<<`/`>>` left/right
   contraction, `~` reverse, `/` divide (scalar or versor; `Integer` uses exact
-  Euclidean division), `**` power, `+`/`-`, `==`, and `Integer.__mod__` for
-  Euclidean remainder.
+  Euclidean division), `**` power, `+`/`-`, `==`, `Integer.__mod__` for
+  Euclidean remainder, `%` on the v1.1 polynomial classes, and `@` on the
+  v1.1 polynomial/ratfunc classes for eval/compose.
   Scalar power: `x ^ k` (integer RHS) on total-product backends; Ordinal: `nim_pow`
   method. **Rust `&` binds looser than `+`/`*` in both Python and Rust — parenthesize.**
 - The smoke test is `demo.py` (rebuild via `maturin develop` first); add a section

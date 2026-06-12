@@ -237,7 +237,8 @@ breakdown:
   Hackenbush, the exterior algebra of the game group, and the checked integer
   Clifford deformation surface on game generators.
 - `src/ogham/` — the Ogham expression-language core: lexer/parser/AST/unparser,
-  fixed-world evaluator, error taxonomy, and conformance runner support.
+  fixed-world evaluator (Clifford worlds plus polynomial/ratfunc function worlds),
+  error taxonomy, and conformance runner support.
 - `src/py/` — the optional PyO3 bindings behind the `python` feature.
 - `src/linalg/` — crate-private shared linear algebra (exact integer HNF/Smith,
   F₂/nim-field rank, generic field solves), consumed by the pillars above.

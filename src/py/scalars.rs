@@ -6,8 +6,8 @@
 //! parse/wrap hooks.
 
 use crate::scalar::{
-    is_prime_u128, Adele, AdelePlace, CyclicGaloisExtension, ExactRoots, FieldExtension,
-    FiniteField, Fp, Fpn, Gauss, HasFractionField, HasRingOfIntegers, Integer,
+    is_prime_u128, Adele, AdelePlace, CyclicGaloisExtension, ExactFieldScalar, ExactRoots,
+    FieldExtension, FiniteField, Fp, Fpn, Gauss, HasFractionField, HasRingOfIntegers, Integer,
     IntegerDivExactError, Laurent, LocalQp, MaxPlus, MinPlus, NewtonPolygon, Nimber, Omnific,
     Ordinal, Poly, Qp, Qq, Ramified, Rational, RationalFunction, ReductionPolynomialKind,
     ResidueField, Scalar, SignExpansion, Surcomplex, Surreal, Tropical, Valued, WittVec, Zp,
@@ -74,6 +74,31 @@ fn qq_base_to_qp<const P: u128, const N: usize, const K: u128>(x: Qq<P, N, 1>) -
             Qp::<P, K>::from_int(unit).mul(&Qp::<P, K>::from_p_power(v))
         }
     }
+}
+
+fn eval_poly_at_rational_function<S: ExactFieldScalar>(
+    poly: &Poly<S>,
+    x: &RationalFunction<S>,
+) -> RationalFunction<S> {
+    let mut acc = RationalFunction::zero();
+    for c in poly.coeffs().iter().rev() {
+        acc = acc.mul(x).add(&RationalFunction::from_base(c.clone()));
+    }
+    acc
+}
+
+fn substitute_rational_function<S: ExactFieldScalar>(
+    f: &RationalFunction<S>,
+    arg: &RationalFunction<S>,
+) -> PyResult<RationalFunction<S>> {
+    let num = eval_poly_at_rational_function(f.num(), arg);
+    let den = eval_poly_at_rational_function(f.den(), arg);
+    if den.is_zero() {
+        return Err(PyValueError::new_err(
+            "rational-function evaluation hit a pole",
+        ));
+    }
+    Ok(num.mul(&den.inv().expect("checked nonzero rational function")))
 }
 
 // ---------------------------------------------------------------------------
@@ -1298,6 +1323,19 @@ macro_rules! function_field_pyclasses {
                 }
                 Ok($wrap_poly(self.inner.rem(&divisor.inner)))
             }
+            fn __mod__(&self, divisor: &Bound<'_, PyAny>) -> PyResult<$poly_py> {
+                let divisor = $parse_poly(divisor)?;
+                if divisor.is_zero() {
+                    return Err(PyValueError::new_err("polynomial remainder by zero"));
+                }
+                Ok($wrap_poly(self.inner.rem(&divisor)))
+            }
+            fn __rmod__(&self, dividend: &Bound<'_, PyAny>) -> PyResult<$poly_py> {
+                if self.inner.is_zero() {
+                    return Err(PyValueError::new_err("polynomial remainder by zero"));
+                }
+                Ok($wrap_poly($parse_poly(dividend)?.rem(&self.inner)))
+            }
             fn divides(&self, multiple: &$poly_py) -> bool {
                 self.inner.divides(&multiple.inner)
             }
@@ -1348,6 +1386,12 @@ macro_rules! function_field_pyclasses {
             }
             fn __rmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<$poly_py> {
                 Ok($wrap_poly(self.inner.mul(&$parse_poly(other)?)))
+            }
+            fn __matmul__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+                if let Ok(s) = $base_parse(other) {
+                    return $base_wrap(self.inner.eval(&s)).into_py_any(py);
+                }
+                $wrap_poly(self.inner.compose(&$parse_poly(other)?)).into_py_any(py)
             }
             fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<$poly_py> {
                 let o = $parse_poly(other)?;
@@ -1481,6 +1525,19 @@ macro_rules! function_field_pyclasses {
                     .map($wrap_rf)
                     .ok_or_else(|| PyValueError::new_err(concat!("0 has no inverse in ", $rf_name)))
             }
+            fn __matmul__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+                if let Ok(s) = $base_parse(other) {
+                    let den = self.inner.den().eval(&s);
+                    if den.is_zero() {
+                        return Err(PyValueError::new_err("rational-function evaluation hit a pole"));
+                    }
+                    let num = self.inner.num().eval(&s);
+                    return $base_wrap(num.mul(&den.inv().expect("checked nonzero field element")))
+                        .into_py_any(py);
+                }
+                $wrap_rf(substitute_rational_function(&self.inner, &$parse_rf(other)?)?)
+                    .into_py_any(py)
+            }
             fn __add__(&self, other: &Bound<'_, PyAny>) -> PyResult<$rf_py> {
                 Ok($wrap_rf(self.inner.add(&$parse_rf(other)?)))
             }
@@ -1613,6 +1670,279 @@ function_field_pyclasses!(
     parse_fp13,
     wrap_fp13
 );
+
+#[pyclass(name = "IntegerPoly", module = "ogdoad", from_py_object)]
+#[derive(Clone)]
+pub(crate) struct PyIntegerPoly {
+    inner: Poly<Integer>,
+}
+
+pub(crate) fn parse_integer_poly(obj: &Bound<'_, PyAny>) -> PyResult<Poly<Integer>> {
+    if let Ok(p) = obj.cast::<PyIntegerPoly>() {
+        return Ok(p.borrow().inner.clone());
+    }
+    if let Ok(s) = parse_integer(obj) {
+        return Ok(Poly::constant(s));
+    }
+    if let Ok(items) = obj.extract::<Vec<Bound<'_, PyAny>>>() {
+        return items
+            .iter()
+            .map(parse_integer)
+            .collect::<PyResult<Vec<_>>>()
+            .map(Poly::new);
+    }
+    Err(PyTypeError::new_err(
+        "expected IntegerPoly, Integer, int, or coefficient list",
+    ))
+}
+
+pub(crate) fn wrap_integer_poly(inner: Poly<Integer>) -> PyIntegerPoly {
+    PyIntegerPoly { inner }
+}
+
+fn integer_poly_divrem_py(
+    lhs: &Poly<Integer>,
+    divisor: &Poly<Integer>,
+) -> PyResult<(Poly<Integer>, Poly<Integer>)> {
+    if divisor.is_zero() {
+        return Err(PyValueError::new_err("polynomial division by zero"));
+    }
+    if !matches!(divisor.leading(), Some(c) if *c == Integer::one()) {
+        return Err(PyValueError::new_err("IntegerPoly divisors must be monic"));
+    }
+    Ok(lhs.divrem(divisor))
+}
+
+fn integer_poly_gcd_py(lhs: &Poly<Integer>, rhs: &Poly<Integer>) -> PyResult<Poly<Integer>> {
+    let lhs = Poly::new(
+        lhs.coeffs()
+            .iter()
+            .map(|c| Rational::from_int(c.0))
+            .collect(),
+    );
+    let rhs = Poly::new(
+        rhs.coeffs()
+            .iter()
+            .map(|c| Rational::from_int(c.0))
+            .collect(),
+    );
+    primitive_integer_poly_from_rational_py(&lhs.gcd(&rhs))
+}
+
+fn primitive_integer_poly_from_rational_py(p: &Poly<Rational>) -> PyResult<Poly<Integer>> {
+    if p.is_zero() {
+        return Ok(Poly::zero());
+    }
+    let mut scale = 1i128;
+    for c in p.coeffs() {
+        scale = lcm_positive_i128_py(scale, c.denom())?;
+    }
+    let mut coeffs = Vec::with_capacity(p.coeffs().len());
+    for c in p.coeffs() {
+        let factor = scale / c.denom();
+        coeffs.push(
+            c.numer().checked_mul(factor).ok_or_else(|| {
+                PyValueError::new_err("IntegerPoly gcd coefficient overflowed i128")
+            })?,
+        );
+    }
+    let content = gcd_i128_slice_py(&coeffs)?;
+    if content > 1 {
+        for c in &mut coeffs {
+            *c /= content;
+        }
+    }
+    if coeffs.last().is_some_and(|c| *c < 0) {
+        for c in &mut coeffs {
+            *c = c.checked_neg().ok_or_else(|| {
+                PyValueError::new_err("IntegerPoly gcd sign normalization overflowed i128")
+            })?;
+        }
+    }
+    Ok(Poly::new(coeffs.into_iter().map(Integer).collect()))
+}
+
+fn gcd_i128_slice_py(values: &[i128]) -> PyResult<i128> {
+    let mut g = 0u128;
+    for value in values {
+        g = gcd_u128_py(g, value.unsigned_abs());
+    }
+    i128::try_from(g).map_err(|_| PyValueError::new_err("IntegerPoly gcd content exceeds i128"))
+}
+
+fn lcm_positive_i128_py(lhs: i128, rhs: i128) -> PyResult<i128> {
+    debug_assert!(lhs > 0 && rhs > 0);
+    let gcd = i128::try_from(gcd_u128_py(lhs as u128, rhs as u128))
+        .map_err(|_| PyValueError::new_err("IntegerPoly denominator gcd exceeds i128"))?;
+    lhs.checked_div(gcd)
+        .and_then(|x| x.checked_mul(rhs))
+        .ok_or_else(|| PyValueError::new_err("IntegerPoly denominator lcm overflowed i128"))
+}
+
+fn gcd_u128_py(mut lhs: u128, mut rhs: u128) -> u128 {
+    while rhs != 0 {
+        let next = lhs % rhs;
+        lhs = rhs;
+        rhs = next;
+    }
+    lhs
+}
+
+#[pymethods]
+impl PyIntegerPoly {
+    #[new]
+    fn new(coeffs: Vec<Bound<'_, PyAny>>) -> PyResult<Self> {
+        coeffs
+            .iter()
+            .map(parse_integer)
+            .collect::<PyResult<Vec<_>>>()
+            .map(Poly::new)
+            .map(wrap_integer_poly)
+    }
+    #[staticmethod]
+    fn zero() -> Self {
+        wrap_integer_poly(Poly::zero())
+    }
+    #[staticmethod]
+    fn one() -> Self {
+        wrap_integer_poly(Poly::one())
+    }
+    #[staticmethod]
+    fn characteristic() -> u128 {
+        <Poly<Integer> as Scalar>::characteristic()
+    }
+    #[staticmethod]
+    fn x() -> Self {
+        wrap_integer_poly(Poly::x())
+    }
+    #[staticmethod]
+    fn constant(s: &Bound<'_, PyAny>) -> PyResult<Self> {
+        Ok(wrap_integer_poly(Poly::constant(parse_integer(s)?)))
+    }
+    #[staticmethod]
+    fn monomial(deg: usize, coeff: &Bound<'_, PyAny>) -> PyResult<Self> {
+        Ok(wrap_integer_poly(Poly::monomial(
+            deg,
+            parse_integer(coeff)?,
+        )))
+    }
+    #[getter]
+    fn coeffs(&self) -> Vec<PyInteger> {
+        self.inner
+            .coeffs()
+            .iter()
+            .cloned()
+            .map(wrap_integer)
+            .collect()
+    }
+    #[getter]
+    fn degree(&self) -> Option<usize> {
+        self.inner.degree()
+    }
+    fn leading(&self) -> Option<PyInteger> {
+        self.inner.leading().cloned().map(wrap_integer)
+    }
+    fn coeff(&self, i: usize) -> PyInteger {
+        wrap_integer(self.inner.coeff(i))
+    }
+    fn is_zero(&self) -> bool {
+        self.inner.is_zero()
+    }
+    fn eval(&self, x: &Bound<'_, PyAny>) -> PyResult<PyInteger> {
+        Ok(wrap_integer(self.inner.eval(&parse_integer(x)?)))
+    }
+    fn compose(&self, inner: &PyIntegerPoly) -> PyIntegerPoly {
+        wrap_integer_poly(self.inner.compose(&inner.inner))
+    }
+    fn scale(&self, s: &Bound<'_, PyAny>) -> PyResult<Self> {
+        Ok(wrap_integer_poly(self.inner.scale(&parse_integer(s)?)))
+    }
+    fn divrem(&self, divisor: &PyIntegerPoly) -> PyResult<(PyIntegerPoly, PyIntegerPoly)> {
+        let (q, r) = integer_poly_divrem_py(&self.inner, &divisor.inner)?;
+        Ok((wrap_integer_poly(q), wrap_integer_poly(r)))
+    }
+    fn rem(&self, divisor: &PyIntegerPoly) -> PyResult<PyIntegerPoly> {
+        let (_, r) = integer_poly_divrem_py(&self.inner, &divisor.inner)?;
+        Ok(wrap_integer_poly(r))
+    }
+    fn gcd(&self, other: &PyIntegerPoly) -> PyResult<PyIntegerPoly> {
+        integer_poly_gcd_py(&self.inner, &other.inner).map(wrap_integer_poly)
+    }
+    fn inv(&self) -> PyResult<PyIntegerPoly> {
+        self.inner
+            .inv()
+            .map(wrap_integer_poly)
+            .ok_or_else(|| PyValueError::new_err("only ±1 constant polynomials invert"))
+    }
+    fn __add__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyIntegerPoly> {
+        Ok(wrap_integer_poly(
+            self.inner.add(&parse_integer_poly(other)?),
+        ))
+    }
+    fn __radd__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyIntegerPoly> {
+        self.__add__(other)
+    }
+    fn __sub__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyIntegerPoly> {
+        Ok(wrap_integer_poly(
+            self.inner.sub(&parse_integer_poly(other)?),
+        ))
+    }
+    fn __rsub__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyIntegerPoly> {
+        Ok(wrap_integer_poly(
+            parse_integer_poly(other)?.sub(&self.inner),
+        ))
+    }
+    fn __neg__(&self) -> PyIntegerPoly {
+        wrap_integer_poly(self.inner.neg())
+    }
+    fn __mul__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        match parse_integer_poly(other) {
+            Ok(o) => wrap_integer_poly(self.inner.mul(&o)).into_py_any(py),
+            Err(_) => Ok(py.NotImplemented()),
+        }
+    }
+    fn __rmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyIntegerPoly> {
+        Ok(wrap_integer_poly(
+            self.inner.mul(&parse_integer_poly(other)?),
+        ))
+    }
+    fn __mod__(&self, divisor: &Bound<'_, PyAny>) -> PyResult<PyIntegerPoly> {
+        let divisor = parse_integer_poly(divisor)?;
+        let (_, r) = integer_poly_divrem_py(&self.inner, &divisor)?;
+        Ok(wrap_integer_poly(r))
+    }
+    fn __rmod__(&self, dividend: &Bound<'_, PyAny>) -> PyResult<PyIntegerPoly> {
+        let dividend = parse_integer_poly(dividend)?;
+        let (_, r) = integer_poly_divrem_py(&dividend, &self.inner)?;
+        Ok(wrap_integer_poly(r))
+    }
+    fn __matmul__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        if let Ok(s) = parse_integer(other) {
+            return wrap_integer(self.inner.eval(&s)).into_py_any(py);
+        }
+        wrap_integer_poly(self.inner.compose(&parse_integer_poly(other)?)).into_py_any(py)
+    }
+    fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyIntegerPoly> {
+        let o = parse_integer_poly(other)?;
+        let oi = o
+            .inv()
+            .ok_or_else(|| PyValueError::new_err("polynomial divisor is not a unit"))?;
+        Ok(wrap_integer_poly(self.inner.mul(&oi)))
+    }
+    fn __rtruediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyIntegerPoly> {
+        let si = self
+            .inner
+            .inv()
+            .ok_or_else(|| PyValueError::new_err("polynomial divisor is not a unit"))?;
+        Ok(wrap_integer_poly(parse_integer_poly(other)?.mul(&si)))
+    }
+    fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
+        matches!(parse_integer_poly(other), Ok(p) if p == self.inner)
+    }
+    fn __repr__(&self) -> String {
+        format!("{}", self.inner)
+    }
+}
 
 macro_rules! zp_pyclass {
     ($py:ident, $name:literal, $parse:ident, $wrap:ident, $p:literal, $k:literal) => {
@@ -5791,6 +6121,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyFp11RationalFunction>()?;
     m.add_class::<PyFp13Poly>()?;
     m.add_class::<PyFp13RationalFunction>()?;
+    m.add_class::<PyIntegerPoly>()?;
     m.add_class::<PyZp2_4>()?;
     m.add_class::<PyZp3_4>()?;
     m.add_class::<PyZp5_4>()?;

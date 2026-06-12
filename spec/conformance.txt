@@ -1,4 +1,4 @@
-# ogham conformance corpus — v0.4 (hand-verified, 2026-06-11)
+# ogham conformance corpus — v1.1 (hand-verified, 2026-06-12)
 # Format: spec/ogham.md §14.
 #   @world ‹args as after ":world"›   resets bindings
 #   > input        ~ canonical echo (optional)        = value display
@@ -409,3 +409,88 @@
 
 > e0 | e1
 ! E_Grade0:
+
+# ------------------------------------- poly5, function-shaped world (§16)
+@world poly5
+
+> t
+= 1⋅t
+
+> t ^ 2 + 3.t + 1
+~ t↑2 + 3⋅t + 1
+= 1 + 3⋅t + 1⋅t↑2
+
+> (t↑2 + 1)@(t + 1)
+= 2 + 2⋅t + 1⋅t↑2
+
+> (t↑2 - 1) % (t - 1)
+~ (t↑2 - 1)%(t - 1)
+= 0
+
+> (t↑2 - 1) / (t - 1)
+~ (t↑2 - 1)/(t - 1)
+= 1 + 1⋅t
+
+> deg(t↑2 + 1)
+= 2
+
+> t↑deg(t↑2 + 1)
+= 1⋅t↑2
+
+> deg(t) = 1
+= true
+
+> gcd(t↑2 - 1, t - 1)
+= 4 + 1⋅t
+
+> t % 0
+! E_DivisionByZero:
+
+> t < t
+! E_WrongWorld: order
+
+# ------------------------------------ polyint, monic division boundary (§16)
+@world polyint
+
+> (5⋅t + 1)@7
+= 36
+
+> (t↑2 - 1) / (t - 1)
+~ (t↑2 - 1)/(t - 1)
+= 1 + 1⋅t
+
+> (t↑2 - 1) % (2⋅t + 2)
+! E_Modulus: monic
+
+> gcd(2⋅t + 2, 4⋅t + 4)
+= 1 + 1⋅t
+
+> deg(0)
+! E_Domain: zero polynomial
+
+> t := 3
+! E_Reserved: reserved
+
+# ------------------------------------------ ratfunc5, poles and composition (§16)
+@world ratfunc5
+
+> t
+= 1⋅t
+
+> 1/t
+= (1)/(1⋅t)
+
+> (1/t)@2
+= 3
+
+> (1/(t + 1))@4
+! E_DivisionByZero: pole
+
+> (t + 1)/(t + 1)
+= 1
+
+> t % 1
+! E_WrongWorld: fields
+
+> deg(t)
+! E_WrongWorld: ratfunc

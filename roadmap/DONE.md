@@ -36,6 +36,29 @@ fold the one-line structural fact into the relevant `AGENTS.md`.
 
 ## completed items
 
+### 2026-06-12: `ogham-v1.1`
+**Summary:** Ogham function-shaped polynomial and rational-function worlds
+**Pillars:** scalar ↔ Ogham ↔ Python    **Claim level:** engineering — implemented and tested calculator surface
+- surface: `src/ogham/eval.rs` now dispatches `poly2`/`poly3`/`poly5`/`poly7`,
+  `polyint`, and `ratfunc2`/`ratfunc3`/`ratfunc5`/`ratfunc7` as function-shaped
+  worlds with reserved `t`, bare constants, bindings, exact equality, live `@`
+  substitution/compose, polynomial `%`, exact polynomial `/`, `deg`, and `gcd`.
+  The two pending §16 choices are settled: the final names are the literal
+  `poly*`/`polyint`/`ratfunc*` rows, and `deg(0)` is `E_Domain`.
+- surface: `src/py/scalars.rs` binds `IntegerPoly`, adds `%` to the v1.1
+  polynomial classes, and adds `@` eval/compose to the fixed `Fp*Poly` and
+  `Fp*RationalFunction` classes; `src/py/catalog.rs` exposes `Poly<Integer>` as
+  an engine/divided-power backend.
+- oracles: `spec/conformance.txt` carries the new `@world` blocks for `t`
+  round-trips, polynomial eval/compose, exact division/remainder, `deg` as an
+  Index, primitive `polyint` gcd, monic-divisor errors, ratfunc poles, and
+  ratfunc field-boundary errors; `tests/ogham_conformance.rs` passes over the
+  expanded corpus.
+- boundaries: these are still first-order calculator worlds, not user-defined
+  functions. `deg`/`gcd` are polynomial-world functions; ratfunc worlds expose
+  equality and substitution but no `%`, order, `deg`, or `gcd`. Precision worlds,
+  games mode, and invariant colon-commands remain out.
+
 ### 2026-06-12: `ogham-v1`
 **Summary:** the v1 Ogham expression language
 **Pillars:** scalar ↔ clifford ↔ Python    **Claim level:** engineering — implemented and tested calculator surface
@@ -55,11 +78,11 @@ fold the one-line structural fact into the relevant `AGENTS.md`.
   integer division, and relation cells. The Python engine dunder alignment now
   makes multivector `^` raise the Ogham `E_ExpSort` hint instead of delegating
   to wedge.
-- boundaries: v1 is a calculator over the fixed world menu; function-shaped
-  `poly*`/`ratfunc*` worlds, `t`, live `@`, polynomial `%`, `deg`/`gcd`, and
-  user functions remain `ogham-v1.1` / `ogham 2.0` work. The Rust corpus harness
-  checks the committed hand vectors; corpus expansion/blessing is still an
-  operator workflow rather than a rich generated-vector system.
+- boundaries: v1 is a calculator over the original Clifford/scalar world menu;
+  the function-shaped `poly*`/`polyint`/`ratfunc*` rows are recorded separately
+  in `ogham-v1.1`, while user functions remain `ogham 2.0` work. The Rust
+  corpus harness checks the committed hand vectors; corpus expansion/blessing is
+  still an operator workflow rather than a rich generated-vector system.
 
 ### 2026-06-12: `ogham-backend`
 **Summary:** evaluator helper surface for ogham `%`, exact `/`, `@`, `!`, and relations

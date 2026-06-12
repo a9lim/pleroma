@@ -21,6 +21,8 @@ def raises_value_error(fn):
 section("ogham — the expression language over fixed worlds")
 print(pl.ogham_eval("nimber 2 q=[*1,*1]", "e0 & e0\n[*1,*2] & [*1,*3]\ne0 . e0"))
 print("  bare int rejected in nimber world:", raises_value_error(lambda: pl.ogham_eval("nimber 0", "3")))
+print(pl.ogham_eval("polyint", "(5.t + 1)@7\ndeg(t^2 + 1)\ngcd(2.t + 2, 4.t + 4)"))
+print("  ratfunc pole rejected:", raises_value_error(lambda: pl.ogham_eval("ratfunc5", "(1/(t + 1))@4")))
 
 section("nimbers On₂ — char 2, the non-commutative Clifford case")
 # b[(0,1)] = *1  ⇒  e0 e1 + e1 e0 = *1 ≠ 0  ⇒  non-commutative.
@@ -921,6 +923,14 @@ print("  Cl_F5(t) and Γ_F5(t)         :",
       FF5.gen(0) * FF5.gen(0), FF5DP.scalar(fp5_func_t) * FF5DP.gen(0))
 print("  F₅[t]/F₅(t) operator checks   :",
       fp5_poly_t + 1, fp5_func_t * fp5_func_t)
+int_poly_t = pl.IntegerPoly.x()
+print("  Z[t] eval/rem/gcd             :",
+      (5 * int_poly_t + 1) @ 7,
+      (int_poly_t * int_poly_t - 1) % (int_poly_t - 1),
+      pl.IntegerPoly([2, 2]).gcd(pl.IntegerPoly([4, 4])))
+print("  F₅[t]/F₅(t) @ checks          :",
+      (fp5_poly_t * fp5_poly_t + 1) @ (fp5_poly_t + 1),
+      (1 / fp5_func_t) @ 2)
 t = ([0, 1], [1])          # t in F_5(t)
 two = ([2], [1])           # nonsquare constant 2 in F_5
 norm_form = [([1], [1]), ([0, 4], [1]), ([3], [1]), ([0, 2], [1])]

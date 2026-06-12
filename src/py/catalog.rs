@@ -1002,6 +1002,18 @@ macro_rules! py_engine_backends {
             PyInteger,
             wrap_integer
         );
+        $macro!(
+            IntegerPolyAlgebra,
+            "IntegerPolyAlgebra",
+            IntegerPolyMV,
+            "IntegerPolyMV",
+            IntegerPolyLinearMap,
+            "IntegerPolyLinearMap",
+            Poly<Integer>,
+            parse_integer_poly,
+            PyIntegerPoly,
+            wrap_integer_poly
+        );
         // Omnific-integer backend: the surreal mirror of ℤ — exterior algebra over a
         // transfinite ring (ω-scale coefficients).
         $macro!(
@@ -1864,6 +1876,16 @@ macro_rules! py_divided_power_backends {
             parse_integer,
             PyInteger,
             wrap_integer
+        );
+        $macro!(
+            IntegerPolyDividedPowerAlgebra,
+            "IntegerPolyDividedPowerAlgebra",
+            IntegerPolyDpVector,
+            "IntegerPolyDpVector",
+            Poly<Integer>,
+            parse_integer_poly,
+            PyIntegerPoly,
+            wrap_integer_poly
         );
         $macro!(
             OmnificDividedPowerAlgebra,

@@ -4,8 +4,9 @@ use super::parse::parse_statement;
 use super::unparse::unparse_statement;
 use crate::clifford::{CliffordAlgebra, Metric, Multivector};
 use crate::scalar::{
-    checked_factorial_i128, factorial_in_scalar, nim_trace, FiniteField, Fp, Fpn, Integer,
-    IntegerDivExactError, Nimber, Omnific, Ordinal, Scalar, Surreal,
+    checked_factorial_i128, factorial_in_scalar, nim_trace, ExactFieldScalar, FiniteField, Fp, Fpn,
+    Integer, IntegerDivExactError, Nimber, Omnific, Ordinal, Poly, Rational, RationalFunction,
+    Scalar, Surreal,
 };
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -85,6 +86,15 @@ enum World {
     F9(Runtime<Fpn<3, 2>>),
     F27(Runtime<Fpn<3, 3>>),
     F25(Runtime<Fpn<5, 2>>),
+    PolyInt(PolyRuntime<Integer>),
+    Poly2(PolyRuntime<Fp<2>>),
+    Poly3(PolyRuntime<Fp<3>>),
+    Poly5(PolyRuntime<Fp<5>>),
+    Poly7(PolyRuntime<Fp<7>>),
+    RatFunc2(RatFuncRuntime<Fp<2>>),
+    RatFunc3(RatFuncRuntime<Fp<3>>),
+    RatFunc5(RatFuncRuntime<Fp<5>>),
+    RatFunc7(RatFuncRuntime<Fp<7>>),
 }
 
 impl World {
@@ -94,8 +104,34 @@ impl World {
         let name = parts
             .next()
             .ok_or_else(|| parse_error("missing world name"))?;
-        let second = parts
-            .next()
+        let tail: Vec<&str> = parts.collect();
+        macro_rules! build_poly {
+            ($variant:ident, $ty:ty, $label:expr) => {{
+                ensure_function_world_decl(name, &tail)?;
+                return Ok(World::$variant(PolyRuntime::<$ty>::new($label)));
+            }};
+        }
+        macro_rules! build_ratfunc {
+            ($variant:ident, $ty:ty, $label:expr) => {{
+                ensure_function_world_decl(name, &tail)?;
+                return Ok(World::$variant(RatFuncRuntime::<$ty>::new($label)));
+            }};
+        }
+        match name {
+            "polyint" => build_poly!(PolyInt, Integer, "polyint"),
+            "poly2" => build_poly!(Poly2, Fp<2>, "poly2"),
+            "poly3" => build_poly!(Poly3, Fp<3>, "poly3"),
+            "poly5" => build_poly!(Poly5, Fp<5>, "poly5"),
+            "poly7" => build_poly!(Poly7, Fp<7>, "poly7"),
+            "ratfunc2" => build_ratfunc!(RatFunc2, Fp<2>, "ratfunc2"),
+            "ratfunc3" => build_ratfunc!(RatFunc3, Fp<3>, "ratfunc3"),
+            "ratfunc5" => build_ratfunc!(RatFunc5, Fp<5>, "ratfunc5"),
+            "ratfunc7" => build_ratfunc!(RatFunc7, Fp<7>, "ratfunc7"),
+            _ => {}
+        }
+        let second = tail
+            .first()
+            .copied()
             .ok_or_else(|| parse_error("missing world dimension or constructor"))?;
         if name == "nimber" && second.starts_with("gold(") {
             let metric = parse_gold_metric(second)?;
@@ -156,6 +192,15 @@ impl World {
             World::F9(rt) => dispatch!(rt),
             World::F27(rt) => dispatch!(rt),
             World::F25(rt) => dispatch!(rt),
+            World::PolyInt(rt) => dispatch!(rt),
+            World::Poly2(rt) => dispatch!(rt),
+            World::Poly3(rt) => dispatch!(rt),
+            World::Poly5(rt) => dispatch!(rt),
+            World::Poly7(rt) => dispatch!(rt),
+            World::RatFunc2(rt) => dispatch!(rt),
+            World::RatFunc3(rt) => dispatch!(rt),
+            World::RatFunc5(rt) => dispatch!(rt),
+            World::RatFunc7(rt) => dispatch!(rt),
         }
     }
 
@@ -181,6 +226,15 @@ impl World {
             World::F9(rt) => dispatch!(rt),
             World::F27(rt) => dispatch!(rt),
             World::F25(rt) => dispatch!(rt),
+            World::PolyInt(rt) => dispatch!(rt),
+            World::Poly2(rt) => dispatch!(rt),
+            World::Poly3(rt) => dispatch!(rt),
+            World::Poly5(rt) => dispatch!(rt),
+            World::Poly7(rt) => dispatch!(rt),
+            World::RatFunc2(rt) => dispatch!(rt),
+            World::RatFunc3(rt) => dispatch!(rt),
+            World::RatFunc5(rt) => dispatch!(rt),
+            World::RatFunc7(rt) => dispatch!(rt),
         }
     }
 
@@ -206,7 +260,469 @@ impl World {
             World::F9(rt) => dispatch!(rt),
             World::F27(rt) => dispatch!(rt),
             World::F25(rt) => dispatch!(rt),
+            World::PolyInt(rt) => dispatch!(rt),
+            World::Poly2(rt) => dispatch!(rt),
+            World::Poly3(rt) => dispatch!(rt),
+            World::Poly5(rt) => dispatch!(rt),
+            World::Poly7(rt) => dispatch!(rt),
+            World::RatFunc2(rt) => dispatch!(rt),
+            World::RatFunc3(rt) => dispatch!(rt),
+            World::RatFunc5(rt) => dispatch!(rt),
+            World::RatFunc7(rt) => dispatch!(rt),
         }
+    }
+}
+
+fn ensure_function_world_decl(name: &str, tail: &[&str]) -> OghamResult<()> {
+    if tail.is_empty() || tail == ["0"] {
+        Ok(())
+    } else {
+        Err(parse_error(format!(
+            "`{name}` is a function-shaped scalar world; it takes no metric declaration"
+        )))
+    }
+}
+
+struct PolyRuntime<S: PolyWorldCoeff> {
+    name: &'static str,
+    env: BTreeMap<String, Poly<S>>,
+}
+
+impl<S: PolyWorldCoeff> PolyRuntime<S> {
+    fn new(name: &'static str) -> Self {
+        PolyRuntime {
+            name,
+            env: BTreeMap::new(),
+        }
+    }
+
+    fn eval_statement(&mut self, stmt: &Statement) -> OghamResult<Option<String>> {
+        match stmt {
+            Statement::Binding { name, expr } => {
+                if name == "t" {
+                    return Err(OghamError::new(
+                        OghamErrorKind::Reserved,
+                        Span::point(0),
+                        format!("`t` is reserved in the `{}` world", self.name),
+                    ));
+                }
+                let value = self.eval_element(expr)?;
+                self.env.insert(name.clone(), value);
+                Ok(None)
+            }
+            Statement::Expr(expr) => match expr {
+                Expr::Relation { op, lhs, rhs } => {
+                    let value = self.eval_relation(*op, lhs, rhs)?;
+                    Ok(Some(value.to_string()))
+                }
+                _ if expression_is_index(expr) => Ok(Some(self.eval_index(expr)?.to_string())),
+                _ => Ok(Some(self.eval_element(expr)?.to_string())),
+            },
+        }
+    }
+
+    fn summary(&self) -> String {
+        self.name.to_string()
+    }
+
+    fn env_summary(&self) -> Vec<String> {
+        self.env
+            .iter()
+            .map(|(name, value)| format!("{name} := {value}"))
+            .collect()
+    }
+
+    fn eval_relation(&mut self, op: RelOp, lhs: &Expr, rhs: &Expr) -> OghamResult<bool> {
+        if expression_is_index(lhs) || expression_is_index(rhs) {
+            let lhs = self.eval_index(lhs)?;
+            let rhs = self.eval_index(rhs)?;
+            return ordered_relation(op, lhs.cmp(&rhs));
+        }
+        let lhs = self.eval_element(lhs)?;
+        let rhs = self.eval_element(rhs)?;
+        if op == RelOp::Eq {
+            Ok(lhs == rhs)
+        } else {
+            Err(no_order_error())
+        }
+    }
+
+    fn eval_element(&mut self, expr: &Expr) -> OghamResult<Poly<S>> {
+        match expr {
+            Expr::Int(n) => Ok(Poly::constant(S::bare_int(*n, Span::point(0))?)),
+            Expr::Star(star) => Ok(Poly::constant(S::star(star, Span::point(0))?)),
+            Expr::Omega => Ok(Poly::constant(S::omega(Span::point(0))?)),
+            Expr::Blade(_) | Expr::Vector(_) => Err(OghamError::new(
+                OghamErrorKind::WrongWorld,
+                Span::point(0),
+                "function-shaped worlds do not have Clifford blades or vectors",
+            )),
+            Expr::Ident(name) => {
+                if name == "t" {
+                    Ok(Poly::x())
+                } else if let Some(value) = self.env.get(name) {
+                    Ok(value.clone())
+                } else {
+                    Err(OghamError::new(
+                        OghamErrorKind::Unbound,
+                        Span::point(0),
+                        format!("unbound identifier `{name}`"),
+                    )
+                    .with_hint(format!("did you mean `{name} := ...`?")))
+                }
+            }
+            Expr::Call { name, args } => self.eval_call(name, args),
+            Expr::Factorial(expr) => {
+                let n = self.eval_index(expr)?;
+                Ok(Poly::constant(S::factorial(n, Span::point(0))?))
+            }
+            Expr::Unary { op, expr } => {
+                let value = self.eval_element(expr)?;
+                match op {
+                    UnaryOp::Neg => Ok(value.neg()),
+                    UnaryOp::Inv => self.inverse_element(&value),
+                }
+            }
+            Expr::Binary { op, lhs, rhs } => self.eval_binary(*op, lhs, rhs),
+            Expr::Relation { .. } => Err(OghamError::new(
+                OghamErrorKind::Parse,
+                Span::point(0),
+                "relations only appear as top-level statements",
+            )),
+        }
+    }
+
+    fn eval_binary(&mut self, op: BinaryOp, lhs: &Expr, rhs: &Expr) -> OghamResult<Poly<S>> {
+        if op == BinaryOp::Pow {
+            return self.eval_power(lhs, rhs);
+        }
+        let lhs_v = self.eval_element(lhs)?;
+        let rhs_v = self.eval_element(rhs)?;
+        match op {
+            BinaryOp::Add => Ok(lhs_v.add(&rhs_v)),
+            BinaryOp::Sub => Ok(lhs_v.sub(&rhs_v)),
+            BinaryOp::Mul => Ok(lhs_v.mul(&rhs_v)),
+            BinaryOp::Div => poly_exact_div::<S>(&lhs_v, &rhs_v, Span::point(0)),
+            BinaryOp::Rem => poly_rem::<S>(&lhs_v, &rhs_v, Span::point(0)),
+            BinaryOp::At => Ok(lhs_v.compose(&rhs_v)),
+            BinaryOp::Wedge => Err(OghamError::new(
+                OghamErrorKind::WrongWorld,
+                Span::point(0),
+                "wedge product belongs to Clifford worlds",
+            )),
+            BinaryOp::Pow => unreachable!(),
+        }
+    }
+
+    fn eval_power(&mut self, lhs: &Expr, rhs: &Expr) -> OghamResult<Poly<S>> {
+        let base = self.eval_element(lhs)?;
+        let exp = self.eval_index(rhs).map_err(|err| {
+            if err.kind == OghamErrorKind::IndexSort {
+                exp_sort_error()
+            } else {
+                err
+            }
+        })?;
+        if exp < 0 {
+            let inv = self.inverse_element(&base)?;
+            let k = exp
+                .checked_neg()
+                .and_then(|v| u128::try_from(v).ok())
+                .ok_or_else(|| overflow("negative exponent magnitude exceeds u128"))?;
+            Ok(pow_poly(&inv, k))
+        } else {
+            let k = u128::try_from(exp).map_err(|_| overflow("exponent exceeds u128"))?;
+            Ok(pow_poly(&base, k))
+        }
+    }
+
+    fn eval_call(&mut self, name: &str, args: &[Expr]) -> OghamResult<Poly<S>> {
+        match name {
+            "deg" => Err(index_sort_error().with_hint("`deg` returns an Index")),
+            "gcd" => {
+                expect_arity(name, args, 2)?;
+                let lhs = self.eval_element(&args[0])?;
+                let rhs = self.eval_element(&args[1])?;
+                S::gcd_poly(&lhs, &rhs, Span::point(0))
+            }
+            _ => Err(OghamError::new(
+                OghamErrorKind::UnknownFn,
+                Span::point(0),
+                format!("unknown function `{name}`"),
+            )),
+        }
+    }
+
+    fn eval_index(&mut self, expr: &Expr) -> OghamResult<i128> {
+        match expr {
+            Expr::Int(n) => u128_to_i128(*n),
+            Expr::Call { name, args } if name == "deg" => {
+                expect_arity(name, args, 1)?;
+                let value = self.eval_element(&args[0])?;
+                let degree = value.degree().ok_or_else(|| {
+                    OghamError::new(
+                        OghamErrorKind::Domain,
+                        Span::point(0),
+                        "degree of the zero polynomial is undefined",
+                    )
+                })?;
+                i128::try_from(degree).map_err(|_| overflow("polynomial degree exceeds i128"))
+            }
+            Expr::Unary {
+                op: UnaryOp::Neg,
+                expr,
+            } => self
+                .eval_index(expr)?
+                .checked_neg()
+                .ok_or_else(|| overflow("index negation overflowed i128")),
+            Expr::Binary { op, lhs, rhs } => {
+                let lhs = self.eval_index(lhs)?;
+                let rhs = self.eval_index(rhs)?;
+                eval_index_binary(*op, lhs, rhs)
+            }
+            _ => Err(index_sort_error()),
+        }
+    }
+
+    fn inverse_element(&self, value: &Poly<S>) -> OghamResult<Poly<S>> {
+        if value.is_zero() {
+            return Err(OghamError::new(
+                OghamErrorKind::DivisionByZero,
+                Span::point(0),
+                "division by zero",
+            ));
+        }
+        value.inv().ok_or_else(|| {
+            OghamError::new(
+                OghamErrorKind::NotInvertible,
+                Span::point(0),
+                "polynomial is not a unit",
+            )
+        })
+    }
+}
+
+struct RatFuncRuntime<S: OghamScalar + ExactFieldScalar> {
+    name: &'static str,
+    env: BTreeMap<String, RationalFunction<S>>,
+}
+
+impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
+    fn new(name: &'static str) -> Self {
+        RatFuncRuntime {
+            name,
+            env: BTreeMap::new(),
+        }
+    }
+
+    fn eval_statement(&mut self, stmt: &Statement) -> OghamResult<Option<String>> {
+        match stmt {
+            Statement::Binding { name, expr } => {
+                if name == "t" {
+                    return Err(OghamError::new(
+                        OghamErrorKind::Reserved,
+                        Span::point(0),
+                        format!("`t` is reserved in the `{}` world", self.name),
+                    ));
+                }
+                let value = self.eval_element(expr)?;
+                self.env.insert(name.clone(), value);
+                Ok(None)
+            }
+            Statement::Expr(expr) => match expr {
+                Expr::Relation { op, lhs, rhs } => {
+                    let value = self.eval_relation(*op, lhs, rhs)?;
+                    Ok(Some(value.to_string()))
+                }
+                _ if expression_is_index(expr) => Ok(Some(self.eval_index(expr)?.to_string())),
+                _ => Ok(Some(self.eval_element(expr)?.to_string())),
+            },
+        }
+    }
+
+    fn summary(&self) -> String {
+        self.name.to_string()
+    }
+
+    fn env_summary(&self) -> Vec<String> {
+        self.env
+            .iter()
+            .map(|(name, value)| format!("{name} := {value}"))
+            .collect()
+    }
+
+    fn eval_relation(&mut self, op: RelOp, lhs: &Expr, rhs: &Expr) -> OghamResult<bool> {
+        let lhs = self.eval_element(lhs)?;
+        let rhs = self.eval_element(rhs)?;
+        if op == RelOp::Eq {
+            Ok(lhs == rhs)
+        } else {
+            Err(no_order_error())
+        }
+    }
+
+    fn eval_element(&mut self, expr: &Expr) -> OghamResult<RationalFunction<S>> {
+        match expr {
+            Expr::Int(n) => Ok(RationalFunction::from_base(S::bare_int(
+                *n,
+                Span::point(0),
+            )?)),
+            Expr::Star(star) => Ok(RationalFunction::from_base(S::star(star, Span::point(0))?)),
+            Expr::Omega => Ok(RationalFunction::from_base(S::omega(Span::point(0))?)),
+            Expr::Blade(_) | Expr::Vector(_) => Err(OghamError::new(
+                OghamErrorKind::WrongWorld,
+                Span::point(0),
+                "function-shaped worlds do not have Clifford blades or vectors",
+            )),
+            Expr::Ident(name) => {
+                if name == "t" {
+                    Ok(RationalFunction::t())
+                } else if let Some(value) = self.env.get(name) {
+                    Ok(value.clone())
+                } else {
+                    Err(OghamError::new(
+                        OghamErrorKind::Unbound,
+                        Span::point(0),
+                        format!("unbound identifier `{name}`"),
+                    )
+                    .with_hint(format!("did you mean `{name} := ...`?")))
+                }
+            }
+            Expr::Call { name, args } => self.eval_call(name, args),
+            Expr::Factorial(expr) => {
+                let n = self.eval_index(expr)?;
+                Ok(RationalFunction::from_base(S::factorial(
+                    n,
+                    Span::point(0),
+                )?))
+            }
+            Expr::Unary { op, expr } => {
+                let value = self.eval_element(expr)?;
+                match op {
+                    UnaryOp::Neg => Ok(value.neg()),
+                    UnaryOp::Inv => self.inverse_element(&value),
+                }
+            }
+            Expr::Binary { op, lhs, rhs } => self.eval_binary(*op, lhs, rhs),
+            Expr::Relation { .. } => Err(OghamError::new(
+                OghamErrorKind::Parse,
+                Span::point(0),
+                "relations only appear as top-level statements",
+            )),
+        }
+    }
+
+    fn eval_binary(
+        &mut self,
+        op: BinaryOp,
+        lhs: &Expr,
+        rhs: &Expr,
+    ) -> OghamResult<RationalFunction<S>> {
+        if op == BinaryOp::Pow {
+            return self.eval_power(lhs, rhs);
+        }
+        let lhs_v = self.eval_element(lhs)?;
+        let rhs_v = self.eval_element(rhs)?;
+        match op {
+            BinaryOp::Add => Ok(lhs_v.add(&rhs_v)),
+            BinaryOp::Sub => Ok(lhs_v.sub(&rhs_v)),
+            BinaryOp::Mul => Ok(lhs_v.mul(&rhs_v)),
+            BinaryOp::Div => {
+                if rhs_v.is_zero() {
+                    Err(OghamError::new(
+                        OghamErrorKind::DivisionByZero,
+                        Span::point(0),
+                        "division by zero",
+                    ))
+                } else {
+                    Ok(lhs_v.mul(&rhs_v.inv().expect("checked nonzero rational function")))
+                }
+            }
+            BinaryOp::Rem => Err(OghamError::new(
+                OghamErrorKind::WrongWorld,
+                Span::point(0),
+                "function-field worlds are fields; `%` is only active in polynomial worlds",
+            )),
+            BinaryOp::At => substitute_rational_function(&lhs_v, &rhs_v, Span::point(0)),
+            BinaryOp::Wedge => Err(OghamError::new(
+                OghamErrorKind::WrongWorld,
+                Span::point(0),
+                "wedge product belongs to Clifford worlds",
+            )),
+            BinaryOp::Pow => unreachable!(),
+        }
+    }
+
+    fn eval_power(&mut self, lhs: &Expr, rhs: &Expr) -> OghamResult<RationalFunction<S>> {
+        let base = self.eval_element(lhs)?;
+        let exp = self.eval_index(rhs).map_err(|err| {
+            if err.kind == OghamErrorKind::IndexSort {
+                exp_sort_error()
+            } else {
+                err
+            }
+        })?;
+        if exp < 0 {
+            let inv = self.inverse_element(&base)?;
+            let k = exp
+                .checked_neg()
+                .and_then(|v| u128::try_from(v).ok())
+                .ok_or_else(|| overflow("negative exponent magnitude exceeds u128"))?;
+            Ok(pow_rational_function(&inv, k))
+        } else {
+            let k = u128::try_from(exp).map_err(|_| overflow("exponent exceeds u128"))?;
+            Ok(pow_rational_function(&base, k))
+        }
+    }
+
+    fn eval_call(&mut self, name: &str, _args: &[Expr]) -> OghamResult<RationalFunction<S>> {
+        match name {
+            "deg" | "gcd" => Err(OghamError::new(
+                OghamErrorKind::WrongWorld,
+                Span::point(0),
+                format!("`{name}` is a polynomial-world function, not a ratfunc function"),
+            )),
+            _ => Err(OghamError::new(
+                OghamErrorKind::UnknownFn,
+                Span::point(0),
+                format!("unknown function `{name}`"),
+            )),
+        }
+    }
+
+    fn eval_index(&mut self, expr: &Expr) -> OghamResult<i128> {
+        match expr {
+            Expr::Int(n) => u128_to_i128(*n),
+            Expr::Call { name, .. } if name == "deg" => Err(OghamError::new(
+                OghamErrorKind::WrongWorld,
+                Span::point(0),
+                "`deg` is a polynomial-world function, not a ratfunc function",
+            )),
+            Expr::Unary {
+                op: UnaryOp::Neg,
+                expr,
+            } => self
+                .eval_index(expr)?
+                .checked_neg()
+                .ok_or_else(|| overflow("index negation overflowed i128")),
+            Expr::Binary { op, lhs, rhs } => {
+                let lhs = self.eval_index(lhs)?;
+                let rhs = self.eval_index(rhs)?;
+                eval_index_binary(*op, lhs, rhs)
+            }
+            _ => Err(index_sort_error()),
+        }
+    }
+
+    fn inverse_element(&self, value: &RationalFunction<S>) -> OghamResult<RationalFunction<S>> {
+        if value.is_zero() {
+            return Err(OghamError::new(
+                OghamErrorKind::DivisionByZero,
+                Span::point(0),
+                "division by zero",
+            ));
+        }
+        Ok(value.inv().expect("checked nonzero rational function"))
     }
 }
 
@@ -592,6 +1108,314 @@ impl<S: OghamScalar> Runtime<S> {
         }
         S::mv_pow(&self.alg, value, k, Span::point(0))
     }
+}
+
+trait PolyWorldCoeff: OghamScalar {
+    fn divrem_poly(
+        lhs: &Poly<Self>,
+        divisor: &Poly<Self>,
+        span: Span,
+    ) -> OghamResult<(Poly<Self>, Poly<Self>)>;
+    fn gcd_poly(lhs: &Poly<Self>, rhs: &Poly<Self>, span: Span) -> OghamResult<Poly<Self>>;
+}
+
+impl<const P: u128> PolyWorldCoeff for Fp<P>
+where
+    Fp<P>: OghamScalar,
+{
+    fn divrem_poly(
+        lhs: &Poly<Self>,
+        divisor: &Poly<Self>,
+        span: Span,
+    ) -> OghamResult<(Poly<Self>, Poly<Self>)> {
+        if divisor.is_zero() {
+            return Err(OghamError::new(
+                OghamErrorKind::DivisionByZero,
+                span,
+                "polynomial division by zero",
+            ));
+        }
+        Ok(lhs.divrem(divisor))
+    }
+
+    fn gcd_poly(lhs: &Poly<Self>, rhs: &Poly<Self>, _span: Span) -> OghamResult<Poly<Self>> {
+        Ok(lhs.gcd(rhs))
+    }
+}
+
+impl PolyWorldCoeff for Integer {
+    fn divrem_poly(
+        lhs: &Poly<Self>,
+        divisor: &Poly<Self>,
+        span: Span,
+    ) -> OghamResult<(Poly<Self>, Poly<Self>)> {
+        if divisor.is_zero() {
+            return Err(OghamError::new(
+                OghamErrorKind::DivisionByZero,
+                span,
+                "polynomial division by zero",
+            ));
+        }
+        if !matches!(divisor.leading(), Some(c) if *c == Integer::one()) {
+            return Err(OghamError::new(
+                OghamErrorKind::Modulus,
+                span,
+                "polyint divisors must be monic",
+            ));
+        }
+        Ok(lhs.divrem(divisor))
+    }
+
+    fn gcd_poly(lhs: &Poly<Self>, rhs: &Poly<Self>, span: Span) -> OghamResult<Poly<Self>> {
+        integer_poly_gcd(lhs, rhs, span)
+    }
+}
+
+fn poly_rem<S: PolyWorldCoeff>(lhs: &Poly<S>, rhs: &Poly<S>, span: Span) -> OghamResult<Poly<S>> {
+    let (_, r) = S::divrem_poly(lhs, rhs, span)?;
+    Ok(r)
+}
+
+fn poly_exact_div<S: PolyWorldCoeff>(
+    lhs: &Poly<S>,
+    rhs: &Poly<S>,
+    span: Span,
+) -> OghamResult<Poly<S>> {
+    let (q, r) = S::divrem_poly(lhs, rhs, span)?;
+    if r.is_zero() {
+        Ok(q)
+    } else {
+        Err(OghamError::new(
+            OghamErrorKind::NotInvertible,
+            span,
+            format!("polynomial exact division failed with remainder {r}"),
+        ))
+    }
+}
+
+fn pow_poly<S: Scalar>(base: &Poly<S>, mut k: u128) -> Poly<S> {
+    if k == 0 {
+        return Poly::one();
+    }
+    let mut acc = Poly::one();
+    let mut x = base.clone();
+    loop {
+        if k & 1 == 1 {
+            acc = acc.mul(&x);
+        }
+        k >>= 1;
+        if k == 0 {
+            break;
+        }
+        x = x.mul(&x);
+    }
+    acc
+}
+
+fn pow_rational_function<S: ExactFieldScalar>(
+    base: &RationalFunction<S>,
+    mut k: u128,
+) -> RationalFunction<S> {
+    if k == 0 {
+        return RationalFunction::one();
+    }
+    let mut acc = RationalFunction::one();
+    let mut x = base.clone();
+    loop {
+        if k & 1 == 1 {
+            acc = acc.mul(&x);
+        }
+        k >>= 1;
+        if k == 0 {
+            break;
+        }
+        x = x.mul(&x);
+    }
+    acc
+}
+
+fn substitute_rational_function<S: OghamScalar + ExactFieldScalar>(
+    f: &RationalFunction<S>,
+    arg: &RationalFunction<S>,
+    span: Span,
+) -> OghamResult<RationalFunction<S>> {
+    let num = eval_poly_at_rational_function(f.num(), arg);
+    let den = eval_poly_at_rational_function(f.den(), arg);
+    if den.is_zero() {
+        return Err(OghamError::new(
+            OghamErrorKind::DivisionByZero,
+            span,
+            "rational-function evaluation hit a pole",
+        ));
+    }
+    Ok(num.mul(&den.inv().expect("checked nonzero rational function")))
+}
+
+fn eval_poly_at_rational_function<S: ExactFieldScalar>(
+    poly: &Poly<S>,
+    x: &RationalFunction<S>,
+) -> RationalFunction<S> {
+    let mut acc = RationalFunction::zero();
+    for c in poly.coeffs().iter().rev() {
+        acc = acc.mul(x).add(&RationalFunction::from_base(c.clone()));
+    }
+    acc
+}
+
+fn expression_is_index(expr: &Expr) -> bool {
+    match expr {
+        Expr::Call { name, .. } if name == "deg" => true,
+        Expr::Unary { expr, .. } => expression_is_index(expr),
+        Expr::Binary {
+            op: BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul,
+            lhs,
+            rhs,
+        } => expression_is_index(lhs) || expression_is_index(rhs),
+        Expr::Binary {
+            op: BinaryOp::Pow,
+            lhs,
+            rhs,
+        } => expression_is_index(lhs) || (plain_index_expr(lhs) && expression_is_index(rhs)),
+        _ => false,
+    }
+}
+
+fn plain_index_expr(expr: &Expr) -> bool {
+    match expr {
+        Expr::Int(_) => true,
+        Expr::Call { name, .. } if name == "deg" => true,
+        Expr::Unary {
+            op: UnaryOp::Neg,
+            expr,
+        } => plain_index_expr(expr),
+        Expr::Binary {
+            op: BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Pow,
+            lhs,
+            rhs,
+        } => plain_index_expr(lhs) && plain_index_expr(rhs),
+        _ => false,
+    }
+}
+
+fn eval_index_binary(op: BinaryOp, lhs: i128, rhs: i128) -> OghamResult<i128> {
+    match op {
+        BinaryOp::Add => lhs
+            .checked_add(rhs)
+            .ok_or_else(|| overflow("index addition overflowed i128")),
+        BinaryOp::Sub => lhs
+            .checked_sub(rhs)
+            .ok_or_else(|| overflow("index subtraction overflowed i128")),
+        BinaryOp::Mul => lhs
+            .checked_mul(rhs)
+            .ok_or_else(|| overflow("index multiplication overflowed i128")),
+        BinaryOp::Pow => {
+            if rhs < 0 {
+                return Err(OghamError::new(
+                    OghamErrorKind::Domain,
+                    Span::point(0),
+                    "index exponent must be non-negative",
+                ));
+            }
+            checked_i128_pow(lhs, rhs as u128)
+        }
+        _ => Err(index_sort_error()),
+    }
+}
+
+fn no_order_error() -> OghamError {
+    OghamError::new(
+        OghamErrorKind::WrongWorld,
+        Span::point(0),
+        "this world has no canonical order",
+    )
+}
+
+fn integer_poly_gcd(
+    lhs: &Poly<Integer>,
+    rhs: &Poly<Integer>,
+    span: Span,
+) -> OghamResult<Poly<Integer>> {
+    let lhs = integer_poly_to_rational(lhs);
+    let rhs = integer_poly_to_rational(rhs);
+    primitive_integer_poly_from_rational(&lhs.gcd(&rhs), span)
+}
+
+fn integer_poly_to_rational(p: &Poly<Integer>) -> Poly<Rational> {
+    Poly::new(p.coeffs().iter().map(|c| Rational::from_int(c.0)).collect())
+}
+
+fn primitive_integer_poly_from_rational(
+    p: &Poly<Rational>,
+    span: Span,
+) -> OghamResult<Poly<Integer>> {
+    if p.is_zero() {
+        return Ok(Poly::zero());
+    }
+    let mut scale = 1i128;
+    for c in p.coeffs() {
+        scale = lcm_positive_i128(scale, c.denom(), span)?;
+    }
+    let mut coeffs = Vec::with_capacity(p.coeffs().len());
+    for c in p.coeffs() {
+        let factor = scale / c.denom();
+        coeffs.push(
+            c.numer()
+                .checked_mul(factor)
+                .ok_or_else(|| overflow("integer polynomial gcd coefficient overflowed i128"))?,
+        );
+    }
+    let content = gcd_i128_slice(&coeffs, span)?;
+    if content > 1 {
+        for c in &mut coeffs {
+            *c /= content;
+        }
+    }
+    if coeffs.last().is_some_and(|c| *c < 0) {
+        for c in &mut coeffs {
+            *c = c.checked_neg().ok_or_else(|| {
+                overflow("integer polynomial gcd sign normalization overflowed i128")
+            })?;
+        }
+    }
+    Ok(Poly::new(coeffs.into_iter().map(Integer).collect()))
+}
+
+fn gcd_i128_slice(values: &[i128], span: Span) -> OghamResult<i128> {
+    let mut g = 0u128;
+    for value in values {
+        g = gcd_u128_local(g, value.unsigned_abs());
+    }
+    i128::try_from(g).map_err(|_| {
+        OghamError::new(
+            OghamErrorKind::Overflow,
+            span,
+            "integer polynomial gcd content exceeds i128",
+        )
+    })
+}
+
+fn lcm_positive_i128(lhs: i128, rhs: i128, span: Span) -> OghamResult<i128> {
+    debug_assert!(lhs > 0 && rhs > 0);
+    let gcd = gcd_u128_local(lhs as u128, rhs as u128);
+    let gcd = i128::try_from(gcd).map_err(|_| {
+        OghamError::new(
+            OghamErrorKind::Overflow,
+            span,
+            "integer polynomial denominator gcd exceeds i128",
+        )
+    })?;
+    lhs.checked_div(gcd)
+        .and_then(|x| x.checked_mul(rhs))
+        .ok_or_else(|| overflow("integer polynomial denominator lcm overflowed i128"))
+}
+
+fn gcd_u128_local(mut lhs: u128, mut rhs: u128) -> u128 {
+    while rhs != 0 {
+        let next = lhs % rhs;
+        lhs = rhs;
+        rhs = next;
+    }
+    lhs
 }
 
 trait OghamScalar: Scalar + Sized + Display + 'static {

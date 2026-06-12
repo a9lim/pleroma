@@ -44,7 +44,7 @@ pub enum TokenKind {
 }
 
 pub fn lex(src: &str) -> OghamResult<Vec<Token>> {
-    let src = src.split_once('#').map_or(src, |(head, _)| head);
+    let src = strip_line_comments(src);
     let chars: Vec<(usize, char)> = src.char_indices().collect();
     let mut out = Vec::new();
     let mut i = 0usize;
@@ -225,6 +225,38 @@ pub fn lex(src: &str) -> OghamResult<Vec<Token>> {
         i += 1;
     }
     Ok(out)
+}
+
+pub fn needs_continuation(src: &str) -> OghamResult<bool> {
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    for token in lex(src)? {
+        match token.kind {
+            TokenKind::LParen => paren_depth += 1,
+            TokenKind::RParen => {
+                let Some(depth) = paren_depth.checked_sub(1) else {
+                    return Ok(false);
+                };
+                paren_depth = depth;
+            }
+            TokenKind::LBracket => bracket_depth += 1,
+            TokenKind::RBracket => {
+                let Some(depth) = bracket_depth.checked_sub(1) else {
+                    return Ok(false);
+                };
+                bracket_depth = depth;
+            }
+            _ => {}
+        }
+    }
+    Ok(paren_depth > 0 || bracket_depth > 0)
+}
+
+fn strip_line_comments(src: &str) -> String {
+    src.split('\n')
+        .map(|line| line.split_once('#').map_or(line, |(head, _)| head))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn reserved(span: Span) -> OghamError {

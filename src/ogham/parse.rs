@@ -5,16 +5,6 @@ use crate::scalar::Ordinal;
 
 pub fn parse_statement(src: &str) -> OghamResult<Statement> {
     let tokens = lex(src)?;
-    if tokens
-        .iter()
-        .any(|tok| matches!(tok.kind, TokenKind::Semicolon))
-    {
-        return Err(OghamError::new(
-            OghamErrorKind::SeqValue,
-            Span::point(0),
-            "sequencing is reserved for value-discarding program statements",
-        ));
-    }
     let mut parser = Parser { tokens, pos: 0 };
     if parser.tokens.is_empty() {
         return Err(OghamError::new(
@@ -23,26 +13,88 @@ pub fn parse_statement(src: &str) -> OghamResult<Statement> {
             "empty statement",
         ));
     }
-    if parser.is_reserved_word_binding() {
-        return Err(OghamError::new(
-            OghamErrorKind::Reserved,
-            parser.span(),
-            "reserved word cannot be rebound",
-        ));
-    }
-    let stmt = if let (Some(TokenKind::Ident(name)), Some(TokenKind::Assign)) =
-        (parser.peek_kind(), parser.peek_kind_at(1))
-    {
-        let name = name.clone();
-        parser.bump();
-        parser.bump();
-        let expr = parser.parse_lambda_or_expression()?;
-        Statement::Binding { name, expr }
-    } else {
-        Statement::Expr(parser.parse_lambda_or_expression()?)
-    };
+    let stmt = parser.parse_statement_seq()?;
     parser.expect_end()?;
     Ok(stmt)
+}
+
+fn seq_value_error() -> OghamError {
+    OghamError::new(
+        OghamErrorKind::SeqValue,
+        Span::point(0),
+        "intermediate program statements must be bindings",
+    )
+}
+
+fn block_tail_error() -> OghamError {
+    OghamError::new(
+        OghamErrorKind::SeqValue,
+        Span::point(0),
+        "a parenthesized body sequence must end in an expression",
+    )
+}
+
+fn statement_to_block_expr(stmt: Statement) -> OghamResult<Expr> {
+    match stmt {
+        Statement::Expr(expr) => Ok(expr),
+        Statement::Binding { .. } => Err(block_tail_error()),
+        Statement::Seq { bindings, tail } => match *tail {
+            Statement::Expr(body) => Ok(Expr::Block {
+                bindings,
+                body: Box::new(body),
+            }),
+            Statement::Binding { .. } | Statement::Seq { .. } => Err(block_tail_error()),
+        },
+    }
+}
+
+fn seq_from_parts(bindings: Vec<(String, Expr)>, tail: Statement) -> Statement {
+    if bindings.is_empty() {
+        tail
+    } else {
+        Statement::Seq {
+            bindings,
+            tail: Box::new(tail),
+        }
+    }
+}
+
+impl Parser {
+    fn parse_statement_seq(&mut self) -> OghamResult<Statement> {
+        let mut bindings = Vec::new();
+        loop {
+            let stmt = self.parse_single_statement()?;
+            if !matches!(self.peek_kind(), Some(TokenKind::Semicolon)) {
+                return Ok(seq_from_parts(bindings, stmt));
+            }
+            self.bump();
+            match stmt {
+                Statement::Binding { name, expr } => bindings.push((name, expr)),
+                Statement::Expr(_) | Statement::Seq { .. } => return Err(seq_value_error()),
+            }
+        }
+    }
+
+    fn parse_single_statement(&mut self) -> OghamResult<Statement> {
+        if self.is_reserved_word_binding() {
+            return Err(OghamError::new(
+                OghamErrorKind::Reserved,
+                self.span(),
+                "reserved word cannot be rebound",
+            ));
+        }
+        if let (Some(TokenKind::Ident(name)), Some(TokenKind::Assign)) =
+            (self.peek_kind(), self.peek_kind_at(1))
+        {
+            let name = name.clone();
+            self.bump();
+            self.bump();
+            let expr = self.parse_lambda_or_expression()?;
+            Ok(Statement::Binding { name, expr })
+        } else {
+            Ok(Statement::Expr(self.parse_lambda_or_expression()?))
+        }
+    }
 }
 
 struct Parser {
@@ -402,7 +454,7 @@ impl Parser {
             return self.parse_atom();
         }
         self.bump();
-        let first = self.parse_lambda_or_expression()?;
+        let first = statement_to_block_expr(self.parse_statement_seq()?)?;
         if !matches!(self.peek_kind(), Some(TokenKind::Comma)) {
             self.expect(|k| matches!(k, TokenKind::RParen), "`)`")?;
             return Ok(first);
@@ -410,7 +462,7 @@ impl Parser {
         let mut items = vec![first];
         while matches!(self.peek_kind(), Some(TokenKind::Comma)) {
             self.bump();
-            items.push(self.parse_lambda_or_expression()?);
+            items.push(statement_to_block_expr(self.parse_statement_seq()?)?);
         }
         self.expect(|k| matches!(k, TokenKind::RParen), "`)`")?;
         Ok(Expr::Tuple(items))
@@ -458,7 +510,7 @@ impl Parser {
                 Ok(Expr::Factorial(Box::new(expr)))
             }
             TokenKind::LParen => {
-                let expr = self.parse_lambda_or_expression()?;
+                let expr = statement_to_block_expr(self.parse_statement_seq()?)?;
                 self.expect(|k| matches!(k, TokenKind::RParen), "`)`")?;
                 Ok(expr)
             }
@@ -466,7 +518,7 @@ impl Parser {
                 let mut items = Vec::new();
                 if !matches!(self.peek_kind(), Some(TokenKind::RBracket)) {
                     loop {
-                        items.push(self.parse_lambda_or_expression()?);
+                        items.push(statement_to_block_expr(self.parse_statement_seq()?)?);
                         if !matches!(self.peek_kind(), Some(TokenKind::Comma)) {
                             break;
                         }

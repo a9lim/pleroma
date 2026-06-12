@@ -12,5 +12,6 @@ pub mod unparse;
 
 pub use error::{OghamError, OghamErrorKind, OghamResult, Span};
 pub use eval::{eval_to_string, EvalLine, OghamSession};
+pub use lex::needs_continuation;
 pub use parse::parse_statement;
 pub use unparse::{unparse_expr, unparse_statement};

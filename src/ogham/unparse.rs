@@ -4,6 +4,14 @@ pub fn unparse_statement(stmt: &Statement) -> String {
     match stmt {
         Statement::Binding { name, expr } => format!("{name} := {}", unparse_expr(expr)),
         Statement::Expr(expr) => unparse_expr(expr),
+        Statement::Seq { bindings, tail } => {
+            let mut parts = bindings
+                .iter()
+                .map(|(name, expr)| format!("{name} := {}", unparse_expr(expr)))
+                .collect::<Vec<_>>();
+            parts.push(unparse_statement(tail));
+            parts.join("; ")
+        }
     }
 }
 
@@ -44,6 +52,14 @@ fn unparse_prec(expr: &Expr, parent: u8, rhs: bool) -> String {
                 format!("({})", binders.join(", "))
             };
             format!("{binders} ↦ {}", unparse_prec(body, prec, false))
+        }
+        Expr::Block { bindings, body } => {
+            let mut parts = bindings
+                .iter()
+                .map(|(name, expr)| format!("{name} := {}", unparse_expr(expr)))
+                .collect::<Vec<_>>();
+            parts.push(unparse_expr(body));
+            format!("({})", parts.join("; "))
         }
         Expr::Call { name, args } => format!(
             "{name}({})",
@@ -180,6 +196,7 @@ fn is_blade_chain(expr: &Expr) -> bool {
 fn precedence(expr: &Expr) -> u8 {
     match expr {
         Expr::Lambda { .. } => 0,
+        Expr::Block { .. } => 12,
         Expr::Ternary { .. } => 1,
         Expr::Binary {
             op: BinaryOp::Or, ..

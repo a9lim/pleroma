@@ -11,9 +11,13 @@ fn ogham_conformance_corpus() {
     let corpus = include_str!("../spec/conformance.txt");
     let mut session: Option<OghamSession> = None;
     let mut pending: Option<(usize, String, Outcome)> = None;
-    for (idx, raw) in corpus.lines().enumerate() {
+    let lines = corpus.lines().collect::<Vec<_>>();
+    let mut idx = 0usize;
+    while idx < lines.len() {
+        let raw = lines[idx];
         let line_no = idx + 1;
         let line = raw.trim();
+        idx += 1;
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
@@ -27,15 +31,29 @@ fn ogham_conformance_corpus() {
         }
         if let Some(input) = line.strip_prefix("> ") {
             finish_pending(&mut pending);
+            let mut input = input.to_string();
+            while idx < lines.len() {
+                let cont = lines[idx].trim();
+                if let Some(rest) = cont.strip_prefix(">> ") {
+                    input.push('\n');
+                    input.push_str(rest);
+                    idx += 1;
+                } else {
+                    break;
+                }
+            }
             let sess = session
                 .as_mut()
                 .unwrap_or_else(|| panic!("line {line_no}: statement before @world"));
-            let outcome = match sess.eval_line(input) {
+            let outcome = match sess.eval_line(&input) {
                 Ok(line) => Outcome::Ok(line),
                 Err(err) => Outcome::Err(err),
             };
-            pending = Some((line_no, input.to_string(), outcome));
+            pending = Some((line_no, input, outcome));
             continue;
+        }
+        if line.starts_with(">> ") {
+            panic!("line {line_no}: continuation without input");
         }
         if let Some(expected) = line.strip_prefix("~ ") {
             let Some((input_line, input, outcome)) = pending.as_ref() else {

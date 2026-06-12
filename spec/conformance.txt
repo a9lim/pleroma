@@ -1,5 +1,6 @@
-# ogham conformance corpus — v2.0 (hand-verified, 2026-06-12)
-# Format: spec/ogham.md §14.
+# ogham conformance corpus — v2.1 (hand-verified, 2026-06-12)
+# Format: spec/ogham.md §14, plus `>>` continuation lines for joined
+# open-paren/open-bracket inputs.
 #   @world ‹args as after ":world"›   resets bindings
 #   > input        ~ canonical echo (optional)        = value display
 #   ! E_Kind: message-substring
@@ -840,3 +841,76 @@
 
 > and := 5
 ! E_Reserved:
+
+# ====================================================== v2.1 — sequences
+@world integer 0
+
+> a := 5; a + 1
+= 6
+
+> a
+= 5
+
+> z := 4; z.z
+~ z := 4; z⋅z
+= 16
+
+> x9 := 1; y9 := 2
+
+> x9 + y9
+= 3
+
+# intermediate statements must bind — a discarded value is dead code
+> 1 + 1; 2
+! E_SeqValue:
+
+# ------------------------------------------------------- v2.1 — let-bodies
+> f1 := u ↦ (d := u + 1; d⋅d)
+
+> f1@2
+= 9
+
+> f1
+= u ↦ (d := u + 1; d⋅d)
+
+# locals are invisible outside
+> d
+! E_Unbound:
+
+# locals shadow; the outer binding is untouched
+> d0 := 100
+
+> f2 := u ↦ (d0 := u; d0 + 1)
+
+> f2@5
+= 6
+
+> d0
+= 100
+
+# body programs may bind local first-order helpers
+> f_local := u ↦ (inc := v ↦ v + 1; inc@u)
+
+> f_local@9
+= 10
+
+> f_local
+= u ↦ (inc := v ↦ v + 1; inc@u)
+
+# a body sequence must end in an expression
+> f3 := u ↦ (d := u)
+! E_SeqValue:
+
+# ------------------------------------------------- v2.1 — line continuation
+> norm1 := (u, v) ↦ (
+>>   s := u + v;
+>>   d := u - v;
+>>   s⋅s + d⋅d
+>> )
+
+> norm1@(2, 1)
+= 10
+
+# canonical display is single-line regardless of input layout
+> norm1
+= (u, v) ↦ (s := u + v; d := u - v; s⋅s + d⋅d)

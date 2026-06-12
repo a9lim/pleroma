@@ -136,14 +136,6 @@ ultimately periodic is famous, external, and not ours to claim — the checker i
 
 ## numbers — ogham (the language)
 
-### 2·e_o: `ogham-2.1`
-**Programs** — the §18 sketch: `;` sequencing everywhere (top level included;
-bindings-then-expression, `E_SeqValue` for dead intermediate values),
-let-bodies (`:=` *is* the let), open-paren line continuation. Totality and
-the closed-AST Function model survive intact. **Vectors blessed 2026-06-12**
-(same staging file, incl. the `>>` continuation-line format extension).
-Plays after shipped `ogham-2.0`.
-
 ### 2·e_o: `ogham-reflect`
 **The consolidation pass before release** (a9, 2026-06-12: "consolidate it
 into the best version of itself before release") — plays after `ogham 3.0`
@@ -273,9 +265,10 @@ of the other two stars.
 
 ### *8: `ogham 3.0 — recursion + games`
 
-The `spec/ogham.md` §19 stub (2026-06-12; the predecessor `*8` — ogham 2.0
-functions — was converted to the numbered `ogham-2.0`/`ogham-2.1` above when
-its sketch landed). The semantic break and the telos: **totality traded for
+The `spec/ogham.md` §19 stub (2026-06-12; the predecessor `*8` — ogham 2.x
+functions/programs — was converted to the numbered `ogham-2.0`/`ogham-2.1`
+entries now recorded in `DONE.md` when their sketches landed). The semantic
+break and the telos: **totality traded for
 attributable partiality** (fuel + `E_Depth`, `:depth`), `=:` fixpoint
 bindings (μ — `:=` captures the past, `=:` is an equation the name
 satisfies; a9's notation), local `=:` in bodies, and the `game` world —
@@ -288,6 +281,6 @@ coinductive definitions — `dud =: {dud | dud}` — with outcomes from
 `games/loopy/`; the construct and the math object coincide again). Owed to
 the real sketch: mutual-recursion groups, fuel default, up/down naming (the
 `↑` glyph collision), the loopy stopper/sum envelope, game-form display, and
-the sequence-sort/HOF gate. Held as a star until 2.1 ships and §19 grows
-into a sketch. Nimbered `*8`: every smaller name is a nim-sum of the shipped
+the sequence-sort/HOF gate. Held as a star until §19 grows into a real sketch.
+Nimbered `*8`: every smaller name is a nim-sum of the shipped
 stars (`*3 = *1 + *2`, …, `*7 = *1 + *2 + *4`).

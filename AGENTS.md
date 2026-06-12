@@ -42,9 +42,9 @@ lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems),
 ledger of buildable items plus the deferred stars `*1`/`*2`/`*4`; DONE.md — the
 go-forward ledger for new work),
 `spec/` (ogham.md — the expression-language spec, the shipped Display-v2 +
-host-operator contract, backend-helper surface, v1 parser/evaluator contract, and
+host-operator contract, backend-helper surface, v1 parser/evaluator contract,
 v1.1 polynomial/ratfunc function-world contract, the shipped v2.0 abstraction
-layer, plus the pre-contract v2.1 sketch and v3.0 stub, §§17–19;
+layer, the shipped v2.1 program layer, and the pre-contract v3.0 stub, §§17–19;
 conformance.txt — the hand-verified corpus the language must pass),
 `TABLES.md` (the inventory of curated hardcoded tables), and `writeups/`
 (`goldarf.tex` — the consolidated draft note on the Gold/Arf game thread,

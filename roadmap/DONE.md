@@ -70,6 +70,27 @@ A380496-type rows; no new shippable `alpha_u` carries — the Rust boundary at
   re-verified locally by product/primality audit; the P78 and the 43-digit
   `k = 7` prime are PRP-local (factordb marks them proven).
 
+### 2026-06-12: `ogham-2.1`
+**Summary:** Ogham program sequencing, scoped let-bodies, and continuation input
+**Pillars:** scalar ↔ Clifford ↔ Ogham    **Claim level:** engineering — implemented and tested language surface
+- surface: `src/ogham/{ast,lex,parse,unparse,eval}.rs` now makes `;` real
+  program syntax: top-level `{ binding; } statement` sequences persist session
+  bindings, discarded intermediate values raise `E_SeqValue`, and parenthesized
+  body sequences are expression-level scoped lets whose locals shadow without
+  leaking outside. Function capture/substitution preserves let structure while
+  keeping the closed-AST model from `ogham-2.0`.
+- surface: `examples/ogham_repl.rs`, `eval_to_string`, and
+  `tests/ogham_conformance.rs` understand continuation inputs while `(`/`[` are
+  unbalanced; the corpus format accepts `>>` continuation lines and canonical
+  display collapses multi-line programs back to one line.
+- oracles: the blessed v2.1 sequence block from `spec/conformance_v2.txt` is
+  merged into `spec/conformance.txt`; `cargo test ogham_conformance -- --nocapture`
+  passes over top-level persistence, local invisibility/shadowing, final-binding
+  rejection in body sequences, and line continuation.
+- boundaries: no recursion, game forms, precision literals, sequence-sort values,
+  or higher-order values. `:=` is the only let form; `=:` remains the v3.0
+  recursion stub.
+
 ### 2026-06-12: `ogham-2.0`
 **Summary:** Ogham first-order abstraction: functions, booleans, ternary, and sorted binders
 **Pillars:** scalar ↔ Clifford ↔ Ogham    **Claim level:** engineering — implemented and tested language surface

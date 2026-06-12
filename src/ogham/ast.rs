@@ -2,8 +2,15 @@ use crate::scalar::Ordinal;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
-    Binding { name: String, expr: Expr },
+    Binding {
+        name: String,
+        expr: Expr,
+    },
     Expr(Expr),
+    Seq {
+        bindings: Vec<(String, Expr)>,
+        tail: Box<Statement>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -18,6 +25,10 @@ pub enum Expr {
     Ident(String),
     Lambda {
         binders: Vec<String>,
+        body: Box<Expr>,
+    },
+    Block {
+        bindings: Vec<(String, Expr)>,
         body: Box<Expr>,
     },
     Call {

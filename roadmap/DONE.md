@@ -36,6 +36,40 @@ fold the one-line structural fact into the relevant `AGENTS.md`.
 
 ## completed items
 
+### 2026-06-12: `exception-column-m4`
+**Summary:** the Lenstra excess on the `f(p) = 2*3^k` column is `m_p = 4` exactly at
+every prime current factor tables reach
+**Pillars:** scalar (ordinal tower) ↔ excess analysis (`OPEN.md` §3 / `on`)
+**Claim level:** proved norm identity + certified computation (analysis-level
+A380496-type rows; no new shippable `alpha_u` carries — the Rust boundary at
+`alpha_53` is untouched)
+- surface: `experiments/exception_column_m4.py` (committed, stdlib-only, ~2 min).
+  The key fact is a *corrected* compositum norm: `sigma(4) = 5` (the
+  Artin–Schreier conjugate over `F_4`; `writeups/excess.tex` §4.3 had
+  `(kappa+4)(kappa+6)`, a Frobenius slip — erratum recorded in the note), so
+  `Norm(kappa+4) = (kappa+4)(kappa+5) = kappa^2 + kappa + omega`, collapsing the
+  `m = 4` root test into the same trinomial field as the `C_k` certification:
+  `m_p = 4 <=> p | ord(M_k)` with `M_k = Nbar/N`, `N = zeta^2 + zeta + zeta^h`.
+- results: `m_p = 4` **universally** for `k = 2..6` (fully factored levels; 14
+  rows, 11 new — among them `87211`, `135433`, `272010961`, `139483`, two
+  ~20-digit primes, four larger, and a P78); **consistent** at `k = 7, 8` (all
+  11 known primes). New conjecture `D_k` (prime-to-3 part of `ord(M_k)` full) =
+  the column analogue of `C_k`; proved twisted-norm lemma
+  `Norm(N_k) = eta^2 + omega^2*eta + 1 != N_{k-1}` (no `gamma`-style
+  propagation); observed 3-part parity `v_3(ord M_k) = k+1` (odd `k`) / `k-1`
+  (even `k`), unexplained.
+- oracles: in-script audits (product reconstruction, primality det-MR/MR-64,
+  per-prime order + squarefreeness/Wieferich checks, LTE, sieve re-derivation of
+  small `k = 7, 8` factors); anchors `m_19 = m_163 = m_1459 = 4` reproduced
+  never assumed; independent term-algebra re-derivation (`p = 19` full `m`
+  pattern, `p = 87211`); explicit AS-compositum model cross-checks
+  (`sigma(4) = 5`, the norm identity, direct power test per level `k <= 6`).
+- boundaries: `k = 7, 8` are per-known-prime only (factordb CF cofactors); an
+  `m_p >= 5` example, if any, hides inside those cofactors. Factorization
+  provenance: factordb FF entries (fetched 2026-06-12) for `k = 5, 6`,
+  re-verified locally by product/primality audit; the P78 and the 43-digit
+  `k = 7` prime are PRP-local (factordb marks them proven).
+
 ### 2026-06-12: `ogham-2.0`
 **Summary:** Ogham first-order abstraction: functions, booleans, ternary, and sorted binders
 **Pillars:** scalar ↔ Clifford ↔ Ogham    **Claim level:** engineering — implemented and tested language surface

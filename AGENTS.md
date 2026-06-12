@@ -229,6 +229,7 @@ VIRTUAL_ENV=.venv .venv/bin/maturin develop   # build + install the abi3 extensi
 .venv/bin/python experiments/misere_kernel.py
 python3 experiments/echo_solver.py selftest   # echo adversarial-review harness (stdlib, no venv)
 python3 experiments/linking_game.py all 5     # linking-reduction harness (stdlib, no venv; `all 7` ≈ 75 s)
+python3 experiments/exception_column_m4.py    # 2·3^k excess column m=4 certification (stdlib, no venv; ≈ 2 min)
 ```
 
 `maturin develop` needs `VIRTUAL_ENV` set (or a `.venv` in cwd) and `cargo` on PATH

@@ -402,11 +402,22 @@ Since the 2026-06 research pass (`writeups/excess.tex`, `experiments/excess/`,
   certified for `k <= 6` and consistent-but-uncertified for `k = 7, 8`, blocked
   only by the unfactored cofactors of `Phi_{3^7}(2)` and `Phi_{3^8}(2)` (FactorDB
   CF). Whether ECM/GNFS reaches those on a realistic budget is open.
-- The `f(p) = 2*3^k` exception column is proved unconditionally to have
-  `m_p >= 4` (including the new example `p = 87211`); whether `m_p = 4` *exactly*
-  is open — the `kappa + 4` translate lives in the degree-`4*3^k` compositum, one
-  level above the half-angle toolkit, and a failure of the splitting there is
-  where any `m >= 5` counterexample would hide.
+- The `f(p) = 2*3^k` exception column is settled at every prime current factor
+  tables reach (2026-06-12, `experiments/exception_column_m4.py`): `m_p = 4`
+  *exactly*, universally for `k <= 6` (fully factored levels — 14 rows, 11 of
+  them new, anchors `19`/`163`/`1459` reproduced never assumed) and at every
+  known prime of `k = 7, 8`. The enabling fact is a corrected compositum norm:
+  `sigma(4) = 5` (the F_4-Artin-Schreier conjugate; the earlier draft's
+  `(kappa+4)(kappa+6)` was a Frobenius slip), so
+  `Norm(kappa+4) = (kappa+4)(kappa+5) = kappa^2 + kappa + 2`, which collapses
+  the `m = 4` test into the same trinomial field as the `C_k` chain:
+  `m_p = 4  <=>  p | ord(M_k)`, `M_k = Nbar/N`, `N = zeta^2 + zeta + zeta^h`.
+  The per-level conjecture `D_k` (the prime-to-3 part of `ord(M_k)` is full) is
+  the new column analogue of `C_k`; the norm tower is *twisted*
+  (`Norm(N_k) = eta^2 + omega^2*eta + 1 != N_{k-1}`), so no `gamma`-style
+  propagation exists and each level stands alone. An `m_p >= 5` example, if one
+  exists, now hides strictly inside the unfactored cofactors of
+  `Phi_{2*3^7}(2)` and beyond.
 - Wieferich caveat: the order criterion `m_p = min m : p | ord(kappa_{f(p)} + m)`
   is valid only when `v_p(2^(f(p)) - 1) = 1`. The two known base-2 Wieferich
   primes `1093` and `3511` sit inside the extended range and need the full power
@@ -435,7 +446,8 @@ Why this is research:
 - The candidate `0/1/4` rule above would imply a global bound `m_p <= 4`. Lenstra
   explicitly left absolute boundedness open after proving lower-bound rules such
   as singleton-odd `Q(f(p))` forcing positive excess and `f(p)=2*3^k` forcing
-  excess at least `4`.
+  excess at least `4` (the matching upper bound `m_p = 4` is now certified at
+  every visible prime of that column; see above).
 - The order formulation explains the first weak-formula failures without appealing
   to the production table. In the independent probe, `ord(kappa_9 + 1) =
   3^3*(2^9 - 1)`, so `73 | ord(kappa_9 + 1)` but `19` does not divide it; adding
@@ -448,7 +460,10 @@ Why this is research:
 Concrete progress targets:
 - Decide whether to import more known OEIS/calculator values through `p <= 709` as
   cited data, or keep requiring a local finite-field oracle for each shipped row.
-- Derive or certify finite excess terms beyond the published table.
+- Derive or certify finite excess terms beyond the published table. (Done for
+  the `2*3^k` column at every visible prime — 11 new `m_p = 4` rows, 2026-06-12;
+  the `3`-power column's `m_r = 1` rows were certified in the earlier pass.
+  Other columns remain.)
 - Prove or find a counterexample to the candidate `0/1/4` rule. The smallest
   pressure point is `p = 719`, where the rule predicts `m_719 = 1` but the direct
   calculator path is too large for ordinary local verification.
@@ -462,6 +477,8 @@ Concrete progress targets:
 Relevant surfaces:
 - `writeups/excess.tex`
 - `experiments/ordinal_excess_probe.py`
+- `experiments/cyclotomic_3k_family.py`
+- `experiments/exception_column_m4.py`
 - `src/scalar/big/ordinal/tower.rs`
 - `src/scalar/big/ordinal/mod.rs`
 - `src/scalar/AGENTS.md`

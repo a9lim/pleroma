@@ -50,9 +50,14 @@ criterion and its structural norm reduction; a complete analysis of the
 $3$-power column via a half-angle splitting in the cyclotomic component
 fields, certifying $m_r=1$ for all primes $r$ with
 $f(r)\in\{3,9,\dots,3^6\}$ and forcing $m_p\geq4$ unconditionally on the
-$f(p)=2\cdot3^k$ column; the empirically exact $0/1/4$ candidate rule and
-the proof that the Lenstra component set alone cannot decide the excess;
-and the reduction of Lenstra's open boundedness question to that candidate.
+$f(p)=2\cdot3^k$ column --- now sharpened to $m_p=4$ \emph{exactly} at
+every prime current factor tables reach (universally for $k\leq6$), via
+a corrected compositum norm
+$(\kappa+4)(\kappa+5)=\kappa^2+\kappa+\omega$ that collapses the $m=4$
+test into the same trinomial field; the empirically exact $0/1/4$
+candidate rule and the proof that the Lenstra component set alone cannot
+decide the excess; and the reduction of Lenstra's open boundedness
+question to that candidate.
 Feasibility of the first open row, $p=719$, is assessed: a
 Frobenius-orbit norm recurrence reduces it to arithmetic in
 $\F_{2^{359}}$, with the cost concentrated in tower-aware Frobenius
@@ -409,24 +414,162 @@ $m_p\geq4$ for all $p$ with $f(p)=2\cdot3^k$
 \CONJECTURED{} The matching upper bound $m_p\leq4$ on that column;
 equivalent to $C_k$ for the primes in the exception column.
 
-\subsection{The $m=4$ upper bound: the unexplored gap}
+\subsection{The $m=4$ upper bound: settled at every visible prime}
+\label{sec:m4}
 
-\OPEN{} Whether $m_p=4$ exactly (not merely $\geq4$) for all primes with
-$f(p)=2\cdot3^k$. The $m=4$ translate $\kappa_{3^k}+4$ involves the
-nimber $4\in\F_{16}$, which does not lie in $\F_2(\zeta)$ (as
-$4\nmid2\cdot3^k$); the translate lives in the degree-$4\cdot3^k$
-compositum, where
+The $m=4$ translate $\kappa_{3^k}+4$ involves the nimber $4\in\F_{16}$,
+which does not lie in $\F_2(\zeta)$ (as $4\nmid2\cdot3^k$); the
+translate lives in the degree-$4\cdot3^k$ compositum $\F_{2^{4h}}$,
+$h=3^k$. (June 2026 pass; probe
+\path{experiments/exception_column_m4.py}.)
+
+\begin{proposition}[the corrected norm]\label{prop:m4norm}
+\PROVED{} Let $\sigma=\Frob^{2h}$ generate
+$\mathrm{Gal}(\F_{2^{4h}}/\F_{2^{2h}})$. Then $\sigma(4)=5$, and with
+$\omega:=\zeta^{h}=\kappa_2$,
 \[
-  \Norm_{\F_{4\cdot3^k}/\F_{2\cdot3^k}}(\kappa_{3^k}+4)
-  =(\kappa+4)(\kappa+\Frob^2(4))
-  =(\kappa+4)(\kappa+6),
+  N:=\Norm_{\F_{2^{4h}}/\F_{2^{2h}}}(\kappa_{3^k}+4)
+   =(\kappa+4)(\kappa+5)
+   =\kappa^2+\kappa+\omega .
 \]
-and the same unit-circle/subfield toolkit applies one level up. A proof
-that this norm has order divisible by every $p$ with $f(p)=2\cdot3^k$
-would make $m\leq4$ rigorous on all $3$-adic columns (modulo
-$\gamma$-primitivity). A failure of the analogous splitting is the
-precise location where an $m\geq5$ counterexample mechanism would
-appear.
+\end{proposition}
+
+\begin{proof}
+$\F_{16}\cap\F_{2^{2h}}=\F_4$ because $\gcd(4,2\cdot3^k)=2$, so
+$\sigma|_{\F_{16}}$ is the nontrivial element of
+$\mathrm{Gal}(\F_{16}/\F_4)$, which swaps the two roots $4,5$ of the
+Artin--Schreier minimal polynomial $y^2+y+\omega$ of $4$ over $\F_4$.
+(Equivalently: $2h\equiv2\pmod4$ and the Frobenius orbit of $4$ is
+$4\to6\to5\to7$, so $\sigma(4)=4^{2^2}=5$.) Then
+$(\kappa+4)(\kappa+5)=\kappa^2+\kappa+(4\nimmul5)$ and
+$4\nimmul5=4^2+4=\omega$ by the same Artin--Schreier relation.
+\end{proof}
+
+\begin{remark}[erratum]\label{rem:erratum}
+The 2026-06-10 draft of this note stated the norm as
+$(\kappa+4)(\kappa+\Frob^2(4))=(\kappa+4)(\kappa+6)$. The conjugate
+$6=4^2$ is $\Frob^1(4)$, one squaring short of $\Frob^2(4)=5$. The slip
+is visible without computation: $4\nimmul6=14\notin\F_4$, so
+$(\kappa+4)(\kappa+6)\notin\F_{2^{2h}}$ and cannot be a norm.
+\end{remark}
+
+The corrected norm collapses the $m=4$ test into the \emph{same} sparse
+trinomial model $\F_2[x]/(x^{2h}+x^h+1)$ as the rest of the $3$-power
+analysis: no compositum arithmetic is needed.
+
+\begin{corollary}[in-field criterion]\label{cor:m4crit}
+\PROVED{} For a prime $p$ with $f(p)=2\cdot3^k$ and $v_p(2^{2h}-1)=1$,
+write $\overline{N}=N^{2^h}$ and $M_k:=\overline{N}/N=N^{2^h-1}\in U$.
+Then
+\[
+  m_p=4
+  \iff
+  p\mid\ord(M_k)
+  \iff
+  M_k^{(2^h+1)/p}\neq1 .
+\]
+\end{corollary}
+
+\begin{proof}
+$m_p\geq4$ is Proposition~\ref{prop:exception}, so $m_p=4$ iff
+$\kappa+4$ has no $p$-th root. By Propositions~\ref{prop:power}
+and~\ref{prop:norm} with $E=4h$, $f=2h$ (and
+$v_p(2^{4h}-1)=v_p(2^{2h}-1)=1$ by lifting the exponent, since
+$p\nmid2$), that holds iff $N^{(2^{2h}-1)/p}\neq1$. Since
+$\F_{2^{2h}}^{\times}=L^{\times}\times U$ with coprime orders,
+$p\mid2^h+1$, and $(2^{2h}-1)/p=(2^h-1)\cdot\bigl((2^h+1)/p\bigr)$, the
+test equals $M_k^{(2^h+1)/p}\neq1$.
+\end{proof}
+
+\begin{conjecture}[$D_k$: the column analogue of $C_k$]\label{conj:dk}
+The prime-to-$3$ part of $\ord(M_k)$ is full:
+$\bigl((2^h+1)/3^{k+1}\bigr)\mid\ord(M_k)$. Equivalently (given the
+per-prime squarefreeness audits): $m_p=4$ for \emph{every} prime $p$
+with $f(p)=2\cdot3^k$.
+\end{conjecture}
+
+\CERTIFIED{k\leq6} $D_k$ holds for $k=2,\dots,6$: every prime factor of
+the fully factored $\Phi_{2\cdot3^k}(2)$ divides $\ord(M_k)$. Hence
+$m_p=4$ exactly --- not merely $\geq4$ --- for every prime $p$ with
+$f(p)\in\{18,54,162,486,1458\}$:
+\begin{center}
+\begin{tabular}{rl}
+\toprule
+$f$ & primes $p$ with $m_p=4$ \\
+\midrule
+$18$   & $19$ \\
+$54$   & $87211$ \\
+$162$  & $163,\ 135433,\ 272010961$ \\
+$486$  & $1459,\ 139483,\ 10429407431911334611,$ \\
+       & $918125051602568899753$ \\
+$1458$ & $227862073,\ 3110690934667,\ 216892513252489863991753,$ \\
+       & $1102099161075964924744009,\ \mathrm{P}78$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+($\mathrm{P}78$ is the certified $78$-digit prime of
+$\Phi_{2\cdot3^6}(2)$; PRP-local here, factordb marks it proven.) The
+anchor rows $m_{19}=m_{163}=m_{1459}=4$ (DiMuro / calculator) are
+reproduced, never assumed; the remaining eleven rows are new.
+Independent cross-checks: the term algebra of
+\path{experiments/ordinal_excess_probe.py} re-derives the $p=19$ root
+pattern ($m=0,\dots,3$ root, $m=4$ no root) and $m_{87211}=4$; an
+explicit Artin--Schreier compositum model $\F[y]/(y^2+y+\omega)$
+verifies $\sigma(4)=5$, the norm identity, and the full direct power
+test $(\kappa+4)^{(2^{4h}-1)/p}\neq1$ on the smallest prime of each
+level $k\leq6$.
+
+\CONSISTENT{} $k=7,8$: every \emph{known} prime factor of
+$\Phi_{2\cdot3^7}(2)$ and $\Phi_{2\cdot3^8}(2)$ --- seven and five
+primes respectively; factordb CF entries verified locally by
+divisibility, primality, and order tests, the small ones re-derived by
+sieve, and the list cross-audited against the raw factordb API after an
+adversarial review caught a dropped $43$-digit $k=7$ prime --- also has
+$m_p=4$. An $m_p\geq5$ example, if one exists, now hides strictly
+inside the unfactored cofactors.
+
+\begin{proposition}[twisted norm tower]\label{prop:twisted}
+\PROVED{} With $\eta=\zeta^3=\kappa_{3^{k-1}}$,
+\[
+  \Norm_{\F_{2^{2\cdot3^k}}/\F_{2^{2\cdot3^{k-1}}}}(N_k)
+  =\eta^2+\omega^2\eta+1 ,
+\]
+which is neither $N_{k-1}=\eta^2+\eta+\omega$, nor one of its Frobenius
+conjugates (their exponent pattern is $(2^{j+1},2^j)$), nor a scaling
+$N_{k-1}(\lambda\eta)$ with $\lambda\in\mu_3$.
+\end{proposition}
+
+\begin{proof}
+The generator $\tau$ of the degree-$3$ step sends $\zeta\mapsto
+\zeta^{c}$ with $c=2^{2\cdot3^{k-1}}$ a primitive cube root of unity
+modulo $3^{k+1}$; the cube roots are $1+a3^k$, so
+$\tau(\zeta)=\omega^{a}\zeta$ ($a\neq0$) while $\tau(\omega)=\omega$.
+Hence the norm is $\prod_{r^3=\eta}(r^2+r+\omega)$ over the three cube
+roots $r$ of $\eta$. Writing $\alpha,\beta$ for the two roots of
+$T^2+T+\omega$ (so $\alpha+\beta=1$, $\alpha\beta=\omega$), each factor
+is $(r+\alpha)(r+\beta)$, and the product collapses by the resolvent
+\[
+  \prod_{r^3=\eta}(r^2+r+\omega)
+  =(\alpha^3+\eta)(\beta^3+\eta)
+  =\eta^2+(\alpha^3+\beta^3)\eta+(\alpha\beta)^3
+  =\eta^2+\omega^2\eta+1,
+\]
+since $\alpha^3+\beta^3=(\alpha+\beta)^3+\alpha\beta(\alpha+\beta)
+=1+\omega=\omega^2$ and $(\alpha\beta)^3=\omega^3=1$. Machine-checked at
+$k=2,3,4$.
+\end{proof}
+
+So, unlike the $\gamma$ tower of Proposition~\ref{prop:tower},
+old-prime full-order parts do \emph{not} propagate up the column, and
+$D_k$ is genuinely per-level: the certification at each $k$ stands on
+its own.
+
+\begin{remark}[the $3$-part]\label{rem:threepart}
+\CONSISTENT{} The $3$-part of $\ord(M_k)$ carries no column information
+but is strikingly regular in range: $v_3(\ord M_k)=k+1$ (full) for odd
+$k$ and $k-1$ (deficiency exactly $3^2$) for even $k$, for
+$2\leq k\leq6$. No explanation is on record.
+\end{remark}
 
 \section{Boundedness}\label{sec:bounded}
 
@@ -446,6 +589,13 @@ $m_r\geq4$.
 $j\leq k$: $C_k$ implies $m_r=1$. With $C_k$ certified for $k\leq6$, all
 primes in the $3$-power column with $f(r)\leq6561$ have $m_r=1$
 unconditionally.
+
+\CERTIFIED{k\leq6} (June 2026 pass) On the $2\cdot3^k$ exception column
+the matching upper bound is now certified at every visible prime:
+$m_p=4$ exactly for every prime with $f(p)=2\cdot3^k$, $k\leq6$, and for
+every known prime at $k=7,8$ (Section~\ref{sec:m4}). Boundedness on the
+exception column therefore holds unconditionally through $f=1458$ and is
+equivalent to $D_k$ (Conjecture~\ref{conj:dk}) beyond.
 
 \OPEN{} Boundedness outside the $3$-power and $2\cdot3^k$ columns. The
 non-cyclotomic singleton chains (e.g.\ the $11$-chain and the $23$, $29$,
@@ -477,12 +627,17 @@ to feasible size, run to certify or falsify $m_{719}=1$. Factor out the
 shared \texttt{relative\_norm\_over\_frobenius\_orbit} abstraction
 (Remark~\ref{rem:bridgek}). \emph{Blocked on move 1 for the cost
 model.}
-\item \emph{Prove or falsify $m_p=4$ exactly on the $2\cdot3^k$ column.}
-Apply the half-angle toolkit at the compositum level to
-$(\kappa+4)(\kappa+6)$ (Section~\ref{sec:rule}); a splitting failure here
-is where any $m\geq5$ example would hide. \emph{Feasible with the
-existing GF(2) toolkit; extends}
-\path{experiments/cyclotomic_3k_family.py}.
+\item \emph{[Done, 2026-06-12.] $m_p=4$ exactly on the $2\cdot3^k$
+column.} Settled at every prime current factor tables reach
+(Section~\ref{sec:m4}, \path{experiments/exception_column_m4.py}): the
+corrected norm $(\kappa+4)(\kappa+5)=\kappa^2+\kappa+\omega$ collapses
+the test in-field; certified universally for $k\leq6$, consistent at
+$k=7,8$. Successor moves: prove $D_k$ (Conjecture~\ref{conj:dk}) ---
+the twisted norm tower (Proposition~\ref{prop:twisted}) shows why
+$\gamma$-style propagation is unavailable; factor the
+$\Phi_{2\cdot3^7}(2)$ and $\Phi_{2\cdot3^8}(2)$ cofactors (joins the
+ECM/GNFS batch of the next move); explain the $3$-part parity
+(Remark~\ref{rem:threepart}).
 \item \emph{Convert $C_7$, $C_8$ from \textsc{consistent} to
 \textsc{certified}.} ECM/GNFS jobs on the cofactors of $\Phi_{3^7}(2)$
 and $\Phi_{3^8}(2)$; full factorization also emits a batch of new
@@ -549,12 +704,16 @@ gate ran clean: \texttt{cargo fmt --check}, \texttt{cargo test},
 \subsection{Supporting probes}
 
 The $3^k$-family certification chain is
-\path{experiments/cyclotomic_3k_family.py} (committed, maintained) with
-the research-run probes under \path{experiments/excess/} (machine-
-generated, rescued from ephemeral storage; triage before citing). The
-analysis in Sections~\ref{sec:norm}--\ref{sec:bounded} synthesizes the
-2026-06-10 parallel research run; each claim above carries its own tag,
-and no claim depends on an unverified solver.
+\path{experiments/cyclotomic_3k_family.py} (committed, maintained),
+joined 2026-06-12 by \path{experiments/exception_column_m4.py} (the
+$2\cdot3^k$ exception column, Section~\ref{sec:m4}; committed,
+maintained, stdlib-only, $\sim$2 minutes), with the research-run probes
+under \path{experiments/excess/} (machine-generated, rescued from
+ephemeral storage; triage before citing). The analysis in
+Sections~\ref{sec:norm}--\ref{sec:bounded} synthesizes the 2026-06-10
+parallel research run plus the 2026-06-12 exception-column pass; each
+claim above carries its own tag, and no claim depends on an unverified
+solver.
 
 \section*{Acknowledgements}
 The \texttt{ogdoad} library, the experiments, and this draft were

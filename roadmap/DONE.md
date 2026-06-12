@@ -36,6 +36,34 @@ fold the one-line structural fact into the relevant `AGENTS.md`.
 
 ## completed items
 
+### 2026-06-12: `ogham-2.0`
+**Summary:** Ogham first-order abstraction: functions, booleans, ternary, and sorted binders
+**Pillars:** scalar ↔ Clifford ↔ Ogham    **Claim level:** engineering — implemented and tested language surface
+- surface: `src/ogham/{ast,lex,parse,unparse,error,eval}.rs` now carries the
+  v2.0 abstraction layer: `↦`/`~` lambdas as closed AST Function values,
+  capture-by-substitution and definition-time beta, tuple application and
+  function composition through `@`, per-binder Element/Index/Bool inference
+  (including the Gold `a : Index, u : Element` family), Bool literals and
+  lazy `and`/`or`/`not`, lazy ternary, Index relations, and ordinary `t`
+  bindings outside poly/ratfunc worlds. The live evaluator stores Element,
+  Index, Bool, and Function bindings while keeping the pure Rust core free of
+  PyO3.
+- surface: poly/ratfunc worlds retain the v1.1 element substitution contract
+  and add the v2.0 coherence edge: Element ∘ Function yields a Function, and
+  Function @ Element evaluates through the same sorted-argument machinery.
+  The `;` token now reaches the staged `E_SeqValue` boundary, but sequencing
+  remains `ogham-2.1`.
+- oracles: the v2.0 slice from `spec/conformance_v2.txt` is merged into
+  `spec/conformance.txt`, replacing the four superseded v1.1 reserved-syntax
+  vectors. `cargo test ogham_conformance -- --nocapture` passes over the
+  expanded corpus, covering capture visibility, self-reference rejection,
+  sort errors, Gold traces over `f4`, poly composition, nim-world four-way
+  honesty, multivector-valued binders, and definition-time world checks.
+- boundaries: no sequencing, let-bodies, continuation lines, recursion,
+  game forms, precision literals, or higher-order values. Function equality is
+  still `E_FnSort`; Functions may only appear as binding RHS, `@` operands,
+  or whole statements.
+
 ### 2026-06-12: `nikulin-existence`
 **Summary:** Nikulin's even-lattice existence theorem for `(signature, FQM)` pairs
 **Pillars:** forms ↔ integral    **Claim level:** standard math made computational + implemented and tested

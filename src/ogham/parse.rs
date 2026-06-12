@@ -5,6 +5,16 @@ use crate::scalar::Ordinal;
 
 pub fn parse_statement(src: &str) -> OghamResult<Statement> {
     let tokens = lex(src)?;
+    if tokens
+        .iter()
+        .any(|tok| matches!(tok.kind, TokenKind::Semicolon))
+    {
+        return Err(OghamError::new(
+            OghamErrorKind::SeqValue,
+            Span::point(0),
+            "sequencing is reserved for value-discarding program statements",
+        ));
+    }
     let mut parser = Parser { tokens, pos: 0 };
     if parser.tokens.is_empty() {
         return Err(OghamError::new(
@@ -13,16 +23,23 @@ pub fn parse_statement(src: &str) -> OghamResult<Statement> {
             "empty statement",
         ));
     }
+    if parser.is_reserved_word_binding() {
+        return Err(OghamError::new(
+            OghamErrorKind::Reserved,
+            parser.span(),
+            "reserved word cannot be rebound",
+        ));
+    }
     let stmt = if let (Some(TokenKind::Ident(name)), Some(TokenKind::Assign)) =
         (parser.peek_kind(), parser.peek_kind_at(1))
     {
         let name = name.clone();
         parser.bump();
         parser.bump();
-        let expr = parser.parse_additive()?;
+        let expr = parser.parse_lambda_or_expression()?;
         Statement::Binding { name, expr }
     } else {
-        Statement::Expr(parser.parse_expression()?)
+        Statement::Expr(parser.parse_lambda_or_expression()?)
     };
     parser.expect_end()?;
     Ok(stmt)
@@ -88,7 +105,137 @@ impl Parser {
         })
     }
 
+    fn is_reserved_word_binding(&self) -> bool {
+        matches!(
+            self.peek_kind(),
+            Some(
+                TokenKind::And
+                    | TokenKind::Or
+                    | TokenKind::Not
+                    | TokenKind::True
+                    | TokenKind::False
+            )
+        ) && matches!(self.peek_kind_at(1), Some(TokenKind::Assign))
+    }
+
+    fn parse_lambda_or_expression(&mut self) -> OghamResult<Expr> {
+        if let Some(binders) = self.try_parse_binders()? {
+            self.expect(|k| matches!(k, TokenKind::Arrow), "`↦`")?;
+            let body = self.parse_lambda_or_expression()?;
+            return Ok(Expr::Lambda {
+                binders,
+                body: Box::new(body),
+            });
+        }
+        self.parse_expression()
+    }
+
+    fn try_parse_binders(&mut self) -> OghamResult<Option<Vec<String>>> {
+        let save = self.pos;
+        let out = match self.peek_kind() {
+            Some(TokenKind::Ident(name))
+                if matches!(self.peek_kind_at(1), Some(TokenKind::Arrow)) =>
+            {
+                let name = name.clone();
+                self.bump();
+                Some(vec![name])
+            }
+            Some(TokenKind::LParen) => {
+                self.bump();
+                let mut binders = Vec::new();
+                loop {
+                    match self.bump() {
+                        Some(Token {
+                            kind: TokenKind::Ident(name),
+                            ..
+                        }) => binders.push(name),
+                        _ => {
+                            self.pos = save;
+                            return Ok(None);
+                        }
+                    }
+                    if !matches!(self.peek_kind(), Some(TokenKind::Comma)) {
+                        break;
+                    }
+                    self.bump();
+                }
+                if !matches!(self.peek_kind(), Some(TokenKind::RParen)) {
+                    self.pos = save;
+                    return Ok(None);
+                }
+                self.bump();
+                if matches!(self.peek_kind(), Some(TokenKind::Arrow)) {
+                    Some(binders)
+                } else {
+                    self.pos = save;
+                    return Ok(None);
+                }
+            }
+            _ => None,
+        };
+        if out.is_none() {
+            self.pos = save;
+        }
+        Ok(out)
+    }
+
     fn parse_expression(&mut self) -> OghamResult<Expr> {
+        let expr = self.parse_or()?;
+        if !matches!(self.peek_kind(), Some(TokenKind::Question)) {
+            return Ok(expr);
+        }
+        self.bump();
+        let then_expr = self.parse_additive()?;
+        self.expect(|k| matches!(k, TokenKind::Colon), "`:`")?;
+        let else_expr = self.parse_additive()?;
+        Ok(Expr::Ternary {
+            cond: Box::new(expr),
+            then_expr: Box::new(then_expr),
+            else_expr: Box::new(else_expr),
+        })
+    }
+
+    fn parse_or(&mut self) -> OghamResult<Expr> {
+        let mut expr = self.parse_and()?;
+        while matches!(self.peek_kind(), Some(TokenKind::Or)) {
+            self.bump();
+            let rhs = self.parse_and()?;
+            expr = Expr::Binary {
+                op: BinaryOp::Or,
+                lhs: Box::new(expr),
+                rhs: Box::new(rhs),
+            };
+        }
+        Ok(expr)
+    }
+
+    fn parse_and(&mut self) -> OghamResult<Expr> {
+        let mut expr = self.parse_not()?;
+        while matches!(self.peek_kind(), Some(TokenKind::And)) {
+            self.bump();
+            let rhs = self.parse_not()?;
+            expr = Expr::Binary {
+                op: BinaryOp::And,
+                lhs: Box::new(expr),
+                rhs: Box::new(rhs),
+            };
+        }
+        Ok(expr)
+    }
+
+    fn parse_not(&mut self) -> OghamResult<Expr> {
+        if matches!(self.peek_kind(), Some(TokenKind::Not)) {
+            self.bump();
+            let expr = self.parse_not()?;
+            return Ok(Expr::Unary {
+                op: UnaryOp::Not,
+                expr: Box::new(expr),
+            });
+        }
+        self.parse_relation()
+    }
+
+    fn parse_relation(&mut self) -> OghamResult<Expr> {
         let lhs = self.parse_additive()?;
         let Some(op) = self.parse_relop() else {
             return Ok(lhs);
@@ -240,7 +387,7 @@ impl Parser {
         let mut expr = self.parse_atom()?;
         while matches!(self.peek_kind(), Some(TokenKind::At)) {
             self.bump();
-            let rhs = self.parse_atom()?;
+            let rhs = self.parse_appl_arg()?;
             expr = Expr::Binary {
                 op: BinaryOp::At,
                 lhs: Box::new(expr),
@@ -250,12 +397,33 @@ impl Parser {
         Ok(expr)
     }
 
+    fn parse_appl_arg(&mut self) -> OghamResult<Expr> {
+        if !matches!(self.peek_kind(), Some(TokenKind::LParen)) {
+            return self.parse_atom();
+        }
+        self.bump();
+        let first = self.parse_lambda_or_expression()?;
+        if !matches!(self.peek_kind(), Some(TokenKind::Comma)) {
+            self.expect(|k| matches!(k, TokenKind::RParen), "`)`")?;
+            return Ok(first);
+        }
+        let mut items = vec![first];
+        while matches!(self.peek_kind(), Some(TokenKind::Comma)) {
+            self.bump();
+            items.push(self.parse_lambda_or_expression()?);
+        }
+        self.expect(|k| matches!(k, TokenKind::RParen), "`)`")?;
+        Ok(Expr::Tuple(items))
+    }
+
     fn parse_atom(&mut self) -> OghamResult<Expr> {
         let tok = self.bump().ok_or_else(|| {
             OghamError::new(OghamErrorKind::Parse, Span::point(0), "expected atom")
         })?;
         match tok.kind {
             TokenKind::Int(n) => Ok(Expr::Int(n)),
+            TokenKind::True => Ok(Expr::Bool(true)),
+            TokenKind::False => Ok(Expr::Bool(false)),
             TokenKind::Star => self.parse_star(),
             TokenKind::Omega => Ok(Expr::Omega),
             TokenKind::Blade(i) => Ok(Expr::Blade(i)),
@@ -290,7 +458,7 @@ impl Parser {
                 Ok(Expr::Factorial(Box::new(expr)))
             }
             TokenKind::LParen => {
-                let expr = self.parse_expression()?;
+                let expr = self.parse_lambda_or_expression()?;
                 self.expect(|k| matches!(k, TokenKind::RParen), "`)`")?;
                 Ok(expr)
             }
@@ -298,7 +466,7 @@ impl Parser {
                 let mut items = Vec::new();
                 if !matches!(self.peek_kind(), Some(TokenKind::RBracket)) {
                     loop {
-                        items.push(self.parse_expression()?);
+                        items.push(self.parse_lambda_or_expression()?);
                         if !matches!(self.peek_kind(), Some(TokenKind::Comma)) {
                             break;
                         }

@@ -136,25 +136,13 @@ ultimately periodic is famous, external, and not ours to claim — the checker i
 
 ## numbers — ogham (the language)
 
-### 4·e_o: `ogham-2.0`
-**Abstraction** — the `spec/ogham.md` §17 sketch (2026-06-12, switches called
-by a9): `↦` lambdas with capture-by-substitution and definition-time beta
-(Function values are closed ASTs; `parse ∘ display = id` extends), tuple
-application + composition via `@`, per-binder sort inference (Element/Index/
-Bool — the Gold family in one definition), booleans as the fourth sort
-(`and or not`, lazy, words because the glyphs are spent), the ternary,
-relations extended to Index pairs, `t` released outside poly/ratfunc.
-**Vectors blessed 2026-06-12** → `spec/conformance_v2.txt` (staging; inert
-until the build merges it — its header lists the four superseded v1.1
-reserved-syntax vectors). Build = merge, then work until green.
-
 ### 2·e_o: `ogham-2.1`
 **Programs** — the §18 sketch: `;` sequencing everywhere (top level included;
 bindings-then-expression, `E_SeqValue` for dead intermediate values),
 let-bodies (`:=` *is* the let), open-paren line continuation. Totality and
 the closed-AST Function model survive intact. **Vectors blessed 2026-06-12**
 (same staging file, incl. the `>>` continuation-line format extension).
-Plays after `ogham-2.0`.
+Plays after shipped `ogham-2.0`.
 
 ### 2·e_o: `ogham-reflect`
 **The consolidation pass before release** (a9, 2026-06-12: "consolidate it

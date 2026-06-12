@@ -15,6 +15,7 @@ fn unparse_prec(expr: &Expr, parent: u8, rhs: bool) -> String {
     let prec = precedence(expr);
     let mut out = match expr {
         Expr::Int(n) => n.to_string(),
+        Expr::Bool(value) => value.to_string(),
         Expr::Star(StarLiteral::Finite(n)) => format!("*{n}"),
         Expr::Star(StarLiteral::Cnf(cnf)) => cnf.to_string(),
         Expr::Omega => "ω".to_string(),
@@ -27,7 +28,23 @@ fn unparse_prec(expr: &Expr, parent: u8, rhs: bool) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
+        Expr::Tuple(items) => format!(
+            "({})",
+            items
+                .iter()
+                .map(unparse_expr)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
         Expr::Ident(name) => name.clone(),
+        Expr::Lambda { binders, body } => {
+            let binders = if binders.len() == 1 {
+                binders[0].clone()
+            } else {
+                format!("({})", binders.join(", "))
+            };
+            format!("{binders} ↦ {}", unparse_prec(body, prec, false))
+        }
         Expr::Call { name, args } => format!(
             "{name}({})",
             args.iter().map(unparse_expr).collect::<Vec<_>>().join(", ")
@@ -43,8 +60,10 @@ fn unparse_prec(expr: &Expr, parent: u8, rhs: bool) -> String {
             let sigil = match op {
                 UnaryOp::Neg => "-",
                 UnaryOp::Inv => "/",
+                UnaryOp::Not => "not ",
             };
-            format!("{sigil}{}", unparse_prec(expr, 6, false))
+            let parent = if matches!(op, UnaryOp::Not) { prec } else { 9 };
+            format!("{sigil}{}", unparse_prec(expr, parent, false))
         }
         Expr::Binary { op, lhs, rhs } => match op {
             BinaryOp::Add => format!(
@@ -85,7 +104,7 @@ fn unparse_prec(expr: &Expr, parent: u8, rhs: bool) -> String {
             BinaryOp::Pow => {
                 let lhs = unparse_prec(lhs, prec, false);
                 let rhs = match &**rhs {
-                    Expr::Int(_) => unparse_prec(rhs, prec, true),
+                    Expr::Int(_) | Expr::Ident(_) => unparse_prec(rhs, prec, true),
                     Expr::Unary {
                         op: UnaryOp::Neg,
                         expr,
@@ -101,7 +120,29 @@ fn unparse_prec(expr: &Expr, parent: u8, rhs: bool) -> String {
                 unparse_prec(lhs, prec, false),
                 unparse_prec(rhs, prec, true)
             ),
+            BinaryOp::And => format!(
+                "{} and {}",
+                unparse_prec(lhs, prec, false),
+                unparse_prec(rhs, prec, true)
+            ),
+            BinaryOp::Or => format!(
+                "{} or {}",
+                unparse_prec(lhs, prec, false),
+                unparse_prec(rhs, prec, true)
+            ),
         },
+        Expr::Ternary {
+            cond,
+            then_expr,
+            else_expr,
+        } => {
+            format!(
+                "{} ? {} : {}",
+                unparse_prec(cond, prec, false),
+                unparse_prec(then_expr, prec, false),
+                unparse_prec(else_expr, prec, true)
+            )
+        }
         Expr::Relation { op, lhs, rhs } => {
             let sigil = match op {
                 RelOp::Eq => "=",
@@ -111,12 +152,14 @@ fn unparse_prec(expr: &Expr, parent: u8, rhs: bool) -> String {
             };
             format!(
                 "{} {sigil} {}",
-                unparse_prec(lhs, 1, false),
-                unparse_prec(rhs, 1, true)
+                unparse_prec(lhs, prec, false),
+                unparse_prec(rhs, prec, true)
             )
         }
     };
-    if prec < parent || (rhs && prec == parent && matches!(expr, Expr::Binary { .. })) {
+    if prec < parent
+        || (rhs && prec == parent && matches!(expr, Expr::Binary { .. } | Expr::Ternary { .. }))
+    {
         out = format!("({out})");
     }
     out
@@ -136,26 +179,37 @@ fn is_blade_chain(expr: &Expr) -> bool {
 
 fn precedence(expr: &Expr) -> u8 {
     match expr {
-        Expr::Relation { .. } => 1,
+        Expr::Lambda { .. } => 0,
+        Expr::Ternary { .. } => 1,
+        Expr::Binary {
+            op: BinaryOp::Or, ..
+        } => 2,
+        Expr::Binary {
+            op: BinaryOp::And, ..
+        } => 3,
+        Expr::Unary {
+            op: UnaryOp::Not, ..
+        } => 4,
+        Expr::Relation { .. } => 5,
         Expr::Binary {
             op: BinaryOp::Add | BinaryOp::Sub,
             ..
-        } => 2,
+        } => 6,
         Expr::Binary {
             op: BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem,
             ..
-        } => 3,
+        } => 7,
         Expr::Binary {
             op: BinaryOp::Wedge,
             ..
-        } => 4,
-        Expr::Unary { .. } => 5,
+        } => 8,
+        Expr::Unary { .. } => 9,
         Expr::Binary {
             op: BinaryOp::Pow, ..
-        } => 6,
+        } => 10,
         Expr::Binary {
             op: BinaryOp::At, ..
-        } => 7,
-        _ => 8,
+        } => 11,
+        _ => 12,
     }
 }

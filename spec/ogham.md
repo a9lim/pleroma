@@ -1,7 +1,7 @@
 # ogham — the ogdoad expression language
 
-Status: **v1 + v1.1 implemented** (2026-06-12); **v2.0/v2.1 sketched, v3.0
-stubbed** (§§17–19, same date — sketches are pre-contract). For the shipped
+Status: **v1 + v1.1 + v2.0 implemented** (2026-06-12); **v2.1 sketched,
+v3.0 stubbed** (§§18–19, same date — sketches are pre-contract). For the shipped
 language this document is the implementation contract: every decision below
 either cashes out as a vector in [`spec/conformance.txt`](conformance.txt)
 or it is not really decided. Implementing agents work until the corpus is green;
@@ -9,12 +9,11 @@ judgment calls not covered here go back to the spec, not into the code.
 
 ogham is a small calculator language over the ogdoad core: one world per
 session, either a scalar backend + Clifford metric or a function-shaped
-polynomial/rational-function world, bindings, and nothing else. No control
-flow, no user functions, no floats. (That sentence describes the shipped
-v1.1 surface. §§17–19 stage its deliberate growth — functions, booleans,
-programs, recursion, game forms — into a **lisp-for-games**; what never
-changes: no floats, no juxtaposition, no coercions, errors as mathematical
-content.)
+polynomial/rational-function world, bindings, closed first-order functions,
+booleans, and the lazy ternary/boolean trio. No sequencing, recursion, game
+forms, or floats yet. (§§18–19 stage the remaining growth — programs,
+recursion, game forms — into a **lisp-for-games**; what never changes: no
+floats, no juxtaposition, no coercions, errors as mathematical content.)
 File extension `.og`. The name: og(doad) + the ancient stroke-script — fitting
 a language whose operators are strokes and ticks (`*`, `↑`, `∧`, `⋅`, `/`).
 
@@ -56,17 +55,21 @@ a language whose operators are strokes and ticks (`*`, `↑`, `∧`, `⋅`, `/`)
 | remainder | `%` | — | — | Euclidean / CNF-truncation remainder (§7.6) |
 | evaluate | `@` | — | — | substitution `t := v`, binds tightest (§7.6; v1.1 worlds) |
 | factorial | `!` | — | — | prefix, Index operand (§7.6) |
-| equality | `=` | — | `==` | relation, top-level only (§7.7) |
-| less / greater | `<` `>` | — | — | strict order relations (§7.7) |
+| equality | `=` | — | `==` | Bool-valued relation (§7.7, §17) |
+| less / greater | `<` `>` | — | — | Bool-valued strict order relations (§7.7, §17) |
 | fuzzy | `\|` | — | — | incomparable, CGT ∥ (§7.7); structural separator inside future `{L\|R}` forms, like `+ ⋅ ↑` inside star-literals |
 | binding | `:=` | — | — | `name := expr` |
+| lambda | `↦` | U+21A6 | `~` | first-order Function value (§17) |
+| ternary | `? :` | — | — | lazy condition, branches sort-homogeneous (§17) |
+| bool words | `and or not` | — | — | lazy word operators; reserved as identifiers (§17) |
 | vector | `[a,b,c]` | — | — | `Σ aᵢ⋅eᵢ`; length must equal world dim |
 | comment | `#` | — | — | to end of line |
 
 Reserved, must lex but reject with `E_Reserved`: `↑↑`, `{` `}` (game forms
-`{L|R}`, contractions), `O(` (precision tails), `t` outside the
-poly/ratfunc worlds (§6.8), and the v2.0 set (§17) — `↦` (U+21A6, sugar
-`~→↦`), `?`, bare `:` (`:=` still lexes), and `;`.
+`{L|R}`, contractions), `O(` (precision tails), and `;` except for its
+staged `E_SeqValue` program-boundary error (§18). The name `t` is reserved
+only inside poly/ratfunc worlds, where it is the indeterminate; outside them
+it is an ordinary identifier whose unbound hint points back to those worlds.
 
 **Unary-fill principle**: a unary form of a binary operator fills the left
 operand with the operator's identity. `-a = 0 - a`, `/a = 1/a`. Only the two
@@ -81,8 +84,9 @@ Index operands, §7.6, not a unary form of any binary operator.)
 - `INT`: `[0-9]+`, value must fit `u128`. No sign (sign is unary `-`); the one
   exception is a tight signed exponent immediately after `↑` (§5).
 - `IDENT`: `[a-z][a-z0-9_]*`, excluding reserved words. Reserved everywhere:
-  `w`, `true`, `false`, stdlib function names (§8). Reserved per-world: `x` in
-  `f4…f27` worlds (the field generator), `t` in shipped poly/ratfunc worlds.
+  `w`, `and`, `or`, `not`, and stdlib function names (§8); `true`/`false`
+  lex as Bool literals. Reserved per-world: `x` in `f4…f27` worlds (the
+  field generator), `t` in shipped poly/ratfunc worlds.
 - `e` followed immediately by digits lexes as a BLADE token (`e0`, `e12`).
   `e` alone is an error (not an identifier).
 - `*` followed by anything lexes as the STAR prefix token; `*` is never an
@@ -522,17 +526,17 @@ workflow: the engine can suggest values, but the spec stays the oracle for
 syntax, sorts, and errors.
 
 Pre-build staging: vectors for spec'd-but-unbuilt versions are blessed into
-sibling staging files the harness does not read —
-[`conformance_v2.txt`](conformance_v2.txt) for v2.0/v2.1 (blessed
-2026-06-12) — and the version's build merges them in, retiring any
-superseded vectors per the staging file's header, as its first move.
+sibling staging files the harness does not read. The v2.0 slice of
+[`conformance_v2.txt`](conformance_v2.txt) was merged into
+[`conformance.txt`](conformance.txt) on 2026-06-12; its v2.1 sequence vectors
+remain staged until `ogham-2.1`.
 
 ## 15. Work packages
 
 WP1 (Display v2, §9), WP7 (host operators, §13), the backend helper
-surface (§7.6/§7.7), and WP2–WP6 are shipped — ledger:
+surface (§7.6/§7.7), WP2–WP6, and the v2.0 abstraction layer (§17) are shipped — ledger:
 `roadmap/DONE.md` → `ogham-foundations`, `ogham-backend`, `ogham-v1`, and
-`ogham-v1.1`.
+`ogham-v1.1`, `ogham-2.0`.
 The table below is the historical build decomposition and the maintenance map.
 Acceptance for the language is the committed conformance corpus plus the normal
 Rust/Python validation stack.
@@ -570,19 +574,15 @@ Rust/Python validation stack.
 - **Still out**: precision worlds (`O(p^k)` literals are their own
   iteration); games mode (`{L|R}`); invariant colon-commands (§12).
 
-## 17. v2.0 — abstraction (sketch)
+## 17. v2.0 — abstraction
 
-**Contract — vectors blessed, build pending** (2026-06-12; the design
-switches are called: Index binders **in**, composition **in**, `t` released
-**in**, booleans as a fourth sort **in**). The conformance vectors are
-blessed in [`spec/conformance_v2.txt`](conformance_v2.txt) — a staging file
-the harness does not yet read (§14). The build merges it into
-`conformance.txt` (replacing the four superseded v1.1 reserved-syntax
-vectors listed in its header) and works until green; judgment calls go back
-to this section and the corpus, not into the code. Ledger:
-`roadmap/TODO.md` → `ogham-2.0`. The 2.0/2.1/3.0 staging is deliberate:
-each version is independently shippable and leaves a language worth stopping
-at.
+**Implemented and tested** (ledger: `roadmap/DONE.md` → `ogham-2.0`). The
+v2.0 conformance vectors are merged into
+[`spec/conformance.txt`](conformance.txt), replacing the four superseded
+v1.1 reserved-syntax vectors listed in the staging header. Judgment calls go
+back to this section and the corpus, not into the code. The 2.0/2.1/3.0
+staging remains deliberate: each version is independently shippable and
+leaves a language worth stopping at.
 
 ### 17.1 Sorts
 
@@ -712,7 +712,8 @@ composition chains blow up the display; accepted.
 
 ### 17.6 Errors
 
-New kinds: `E_FnSort`, `E_BoolSort`, `E_Shadow`. Reused: `E_Arity` (tuple
+New kinds: `E_FnSort`, `E_BoolSort`, `E_Shadow`; `E_SeqValue` is reserved
+for real `;` syntax but sequencing itself is still §18. Reused: `E_Arity` (tuple
 arity), `E_IndexSort` (binder sort conflicts), `E_Unbound`
 (definition-time, including self-reference), `E_WrongWorld` (world-illegal
 operators inside bodies, caught at definition).

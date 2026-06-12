@@ -1,10 +1,8 @@
-# ogham conformance corpus — v2.0/v2.1 STAGING (hand-verified, blessed 2026-06-12)
+# ogham conformance corpus — v2 staging archive (hand-verified, blessed 2026-06-12)
 #
-# Operator-blessed by a9 for `ogham-2.0` and `ogham-2.1` (roadmap/TODO.md); spec
-# contract: spec/ogham.md §17–§18. This file is INERT until the build:
-# tests/ogham_conformance.rs include_str!'s conformance.txt only, so cargo test
-# stays green on the v1.1 contract until the build session merges this file in
-# (or adds a second include). Do not merge before the build.
+# Operator-blessed by a9 for `ogham-2.0` and `ogham-2.1`; spec contract:
+# spec/ogham.md §17–§18. The v2.0 slice has been merged into conformance.txt
+# for `ogham-2.0`; the v2.1 sequence block remains inert until `ogham-2.1`.
 #
 # Verification provenance: every `=` value that is v1.1-expressible was checked
 # against the shipped engine via the ogham REPL in the blessing session (nim
@@ -18,9 +16,9 @@
 #               lines with newlines before lexing (legal only while ( or [ is
 #               unbalanced, per §18).
 #
-# SUPERSEDED v1.1 VECTORS — the build must replace these in conformance.txt
-# (their tokens become real syntax; replacements are in the "reserved syntax,
-# revisited" block below):
+# SUPERSEDED v1.1 VECTORS — replaced in conformance.txt by the `ogham-2.0`
+# build (their tokens became real syntax; replacements are in the "reserved
+# syntax, revisited" block below):
 #   > *2 ~ *3   ! E_Reserved:     →  ! E_Parse:      (↦ real; binder must be IDENT)
 #   > ?         ! E_Reserved:     →  ! E_Parse:      (? real, ternary-only)
 #   > *3 : *5   ! E_Reserved:     →  ! E_Parse:      (: real, ternary-only)

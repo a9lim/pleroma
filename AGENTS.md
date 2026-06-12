@@ -43,8 +43,8 @@ ledger of buildable items plus the deferred stars `*1`/`*2`/`*4`; DONE.md — th
 go-forward ledger for new work),
 `spec/` (ogham.md — the expression-language spec, the shipped Display-v2 +
 host-operator contract, backend-helper surface, v1 parser/evaluator contract, and
-v1.1 polynomial/ratfunc function-world contract, plus the pre-contract v2.0/v2.1
-sketches and v3.0 stub, §§17–19;
+v1.1 polynomial/ratfunc function-world contract, the shipped v2.0 abstraction
+layer, plus the pre-contract v2.1 sketch and v3.0 stub, §§17–19;
 conformance.txt — the hand-verified corpus the language must pass),
 `TABLES.md` (the inventory of curated hardcoded tables), and `writeups/`
 (`goldarf.tex` — the consolidated draft note on the Gold/Arf game thread,

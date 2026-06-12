@@ -1,4 +1,4 @@
-use super::ast::{BinaryOp, Expr, RelOp, StarLiteral, Statement, UnaryOp};
+use super::ast::{BinaryOp, Expr, RelOp, Sort, StarLiteral, Statement, UnaryOp};
 use super::error::{OghamError, OghamErrorKind, OghamResult, Span};
 use super::parse::parse_statement;
 use super::unparse::unparse_statement;
@@ -9,7 +9,7 @@ use crate::scalar::{
     Scalar, Surreal,
 };
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Display;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
@@ -17,6 +17,52 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 pub struct EvalLine {
     pub canonical: String,
     pub value: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum Value<E> {
+    Element(E),
+    Index(i128),
+    Bool(bool),
+    Function(FunctionValue),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct FunctionValue {
+    binders: Vec<Binder>,
+    body: Expr,
+    ret: Sort,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Binder {
+    name: String,
+    sort: Sort,
+}
+
+impl FunctionValue {
+    fn binder_names(&self) -> Vec<String> {
+        self.binders
+            .iter()
+            .map(|binder| binder.name.clone())
+            .collect()
+    }
+
+    fn to_expr(&self) -> Expr {
+        Expr::Lambda {
+            binders: self.binder_names(),
+            body: Box::new(self.body.clone()),
+        }
+    }
+}
+
+fn display_value<E: Display>(value: &Value<E>) -> String {
+    match value {
+        Value::Element(value) => value.to_string(),
+        Value::Index(value) => value.to_string(),
+        Value::Bool(value) => value.to_string(),
+        Value::Function(function) => super::unparse::unparse_expr(&function.to_expr()),
+    }
 }
 
 pub fn eval_to_string(world: &str, src: &str) -> OghamResult<String> {
@@ -285,7 +331,7 @@ fn ensure_function_world_decl(name: &str, tail: &[&str]) -> OghamResult<()> {
 
 struct PolyRuntime<S: PolyWorldCoeff> {
     name: &'static str,
-    env: BTreeMap<String, Poly<S>>,
+    env: BTreeMap<String, Value<Poly<S>>>,
 }
 
 impl<S: PolyWorldCoeff> PolyRuntime<S> {
@@ -306,18 +352,11 @@ impl<S: PolyWorldCoeff> PolyRuntime<S> {
                         format!("`t` is reserved in the `{}` world", self.name),
                     ));
                 }
-                let value = self.eval_element(expr)?;
+                let value = self.eval_value(expr)?;
                 self.env.insert(name.clone(), value);
                 Ok(None)
             }
-            Statement::Expr(expr) => match expr {
-                Expr::Relation { op, lhs, rhs } => {
-                    let value = self.eval_relation(*op, lhs, rhs)?;
-                    Ok(Some(value.to_string()))
-                }
-                _ if expression_is_index(expr) => Ok(Some(self.eval_index(expr)?.to_string())),
-                _ => Ok(Some(self.eval_element(expr)?.to_string())),
-            },
+            Statement::Expr(expr) => Ok(Some(display_value(&self.eval_value(expr)?))),
         }
     }
 
@@ -328,27 +367,338 @@ impl<S: PolyWorldCoeff> PolyRuntime<S> {
     fn env_summary(&self) -> Vec<String> {
         self.env
             .iter()
-            .map(|(name, value)| format!("{name} := {value}"))
+            .map(|(name, value)| format!("{name} := {}", display_value(value)))
             .collect()
     }
 
+    fn eval_value(&mut self, expr: &Expr) -> OghamResult<Value<Poly<S>>> {
+        match expr {
+            Expr::Bool(value) => Ok(Value::Bool(*value)),
+            Expr::Tuple(_) => Err(fn_sort_error()),
+            Expr::Lambda { binders, body } => self
+                .close_function(binders.clone(), body.as_ref().clone())
+                .map(Value::Function),
+            Expr::Ident(name) => {
+                if name == "t" {
+                    Ok(Value::Element(Poly::x()))
+                } else if let Some(value) = self.env.get(name) {
+                    Ok(value.clone())
+                } else {
+                    Err(unbound_error(name))
+                }
+            }
+            Expr::Relation { op, lhs, rhs } => Ok(Value::Bool(self.eval_relation(*op, lhs, rhs)?)),
+            Expr::Unary {
+                op: UnaryOp::Not,
+                expr,
+            } => Ok(Value::Bool(!self.eval_bool(expr)?)),
+            Expr::Binary {
+                op: BinaryOp::And,
+                lhs,
+                rhs,
+            } => {
+                let lhs = self.eval_bool(lhs)?;
+                if self.static_sort(rhs)? != Sort::Bool {
+                    return Err(bool_sort_error());
+                }
+                if !lhs {
+                    return Ok(Value::Bool(false));
+                }
+                Ok(Value::Bool(self.eval_bool(rhs)?))
+            }
+            Expr::Binary {
+                op: BinaryOp::Or,
+                lhs,
+                rhs,
+            } => {
+                let lhs = self.eval_bool(lhs)?;
+                if self.static_sort(rhs)? != Sort::Bool {
+                    return Err(bool_sort_error());
+                }
+                if lhs {
+                    return Ok(Value::Bool(true));
+                }
+                Ok(Value::Bool(self.eval_bool(rhs)?))
+            }
+            Expr::Ternary {
+                cond,
+                then_expr,
+                else_expr,
+            } => {
+                let then_sort = self.static_sort(then_expr)?;
+                let else_sort = self.static_sort(else_expr)?;
+                if then_sort != else_sort {
+                    return Err(sort_mismatch(then_sort, else_sort));
+                }
+                if self.eval_bool(cond)? {
+                    self.eval_value(then_expr)
+                } else {
+                    self.eval_value(else_expr)
+                }
+            }
+            Expr::Binary {
+                op: BinaryOp::At,
+                lhs,
+                rhs,
+            } => self.eval_at(lhs, rhs),
+            _ if expression_is_index(expr) => Ok(Value::Index(self.eval_index(expr)?)),
+            _ => match self.eval_element(expr) {
+                Ok(value) => Ok(Value::Element(value)),
+                Err(err) if err.kind == OghamErrorKind::IndexSort => {
+                    Ok(Value::Index(self.eval_index(expr)?))
+                }
+                Err(err) => Err(err),
+            },
+        }
+    }
+
+    fn eval_bool(&mut self, expr: &Expr) -> OghamResult<bool> {
+        match self.eval_value(expr)? {
+            Value::Bool(value) => Ok(value),
+            Value::Element(_) | Value::Index(_) => Err(bool_sort_error()),
+            Value::Function(_) => Err(fn_sort_error()),
+        }
+    }
+
+    fn eval_at(&mut self, lhs: &Expr, rhs: &Expr) -> OghamResult<Value<Poly<S>>> {
+        let lhs_v = self.eval_value(lhs)?;
+        match lhs_v {
+            Value::Function(function) => {
+                if let Expr::Tuple(items) = rhs {
+                    return self.apply_function_exprs(&function, items);
+                }
+                match self.eval_value(rhs)? {
+                    Value::Function(rhs_fn) => self
+                        .compose_functions(&function, &rhs_fn)
+                        .map(Value::Function),
+                    _ => self.apply_function_exprs(&function, std::slice::from_ref(rhs)),
+                }
+            }
+            Value::Element(lhs_e) => match self.eval_value(rhs)? {
+                Value::Element(rhs_e) => Ok(Value::Element(lhs_e.compose(&rhs_e))),
+                Value::Function(rhs_fn) => self
+                    .compose_element_with_function(lhs, &rhs_fn)
+                    .map(Value::Function),
+                Value::Index(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+            },
+            Value::Index(_) => Err(index_sort_error()),
+            Value::Bool(_) => Err(bool_sort_error()),
+        }
+    }
+
+    fn compose_element_with_function(
+        &mut self,
+        lhs: &Expr,
+        rhs: &FunctionValue,
+    ) -> OghamResult<FunctionValue> {
+        let mut replacements = BTreeMap::new();
+        replacements.insert("t".to_string(), rhs.body.clone());
+        let body = beta_normalize(substitute_names(lhs, &replacements))?;
+        let function = FunctionValue {
+            binders: rhs.binders.clone(),
+            body,
+            ret: Sort::Element,
+        };
+        self.validate_function_body(&function)?;
+        Ok(function)
+    }
+
+    fn apply_function(
+        &mut self,
+        function: &FunctionValue,
+        args: Vec<Value<Poly<S>>>,
+    ) -> OghamResult<Value<Poly<S>>> {
+        if args.len() != function.binders.len() {
+            return Err(OghamError::new(
+                OghamErrorKind::Arity,
+                Span::point(0),
+                format!(
+                    "function expects {} argument(s), got {}",
+                    function.binders.len(),
+                    args.len()
+                ),
+            ));
+        }
+        let mut replacements = BTreeMap::new();
+        for (binder, arg) in function.binders.iter().zip(args.iter()) {
+            ensure_value_sort(arg, binder.sort)?;
+            replacements.insert(binder.name.clone(), value_to_expr(arg)?);
+        }
+        let body = substitute_names(&function.body, &replacements);
+        self.eval_value(&body)
+    }
+
+    fn apply_function_exprs(
+        &mut self,
+        function: &FunctionValue,
+        args: &[Expr],
+    ) -> OghamResult<Value<Poly<S>>> {
+        if args.len() != function.binders.len() {
+            return Err(OghamError::new(
+                OghamErrorKind::Arity,
+                Span::point(0),
+                format!(
+                    "function expects {} argument(s), got {}",
+                    function.binders.len(),
+                    args.len()
+                ),
+            ));
+        }
+        let values = function
+            .binders
+            .iter()
+            .zip(args)
+            .map(|(binder, arg)| self.eval_arg_for_sort(arg, binder.sort))
+            .collect::<OghamResult<Vec<_>>>()?;
+        self.apply_function(function, values)
+    }
+
+    fn eval_arg_for_sort(&mut self, expr: &Expr, sort: Sort) -> OghamResult<Value<Poly<S>>> {
+        match sort {
+            Sort::Element => self.eval_element(expr).map(Value::Element),
+            Sort::Index => self.eval_index(expr).map(Value::Index),
+            Sort::Bool => self.eval_bool(expr).map(Value::Bool),
+        }
+    }
+
+    fn compose_functions(
+        &mut self,
+        lhs: &FunctionValue,
+        rhs: &FunctionValue,
+    ) -> OghamResult<FunctionValue> {
+        if lhs.binders.len() != 1 {
+            return Err(OghamError::new(
+                OghamErrorKind::Arity,
+                Span::point(0),
+                "function composition needs a unary head",
+            ));
+        }
+        if lhs.binders[0].sort != rhs.ret {
+            return Err(sort_mismatch(lhs.binders[0].sort, rhs.ret));
+        }
+        let mut replacements = BTreeMap::new();
+        replacements.insert(lhs.binders[0].name.clone(), rhs.body.clone());
+        let body = beta_normalize(substitute_names(&lhs.body, &replacements))?;
+        let function = FunctionValue {
+            binders: rhs.binders.clone(),
+            body,
+            ret: lhs.ret,
+        };
+        self.validate_function_body(&function)?;
+        Ok(function)
+    }
+
+    fn close_function(&mut self, binders: Vec<String>, body: Expr) -> OghamResult<FunctionValue> {
+        check_binders(&binders, |name| {
+            name == "t" || reserved_function_binder(name)
+        })
+        .map_err(|err| {
+            if err.kind == OghamErrorKind::Shadow && err.message.contains("`t`") {
+                err.with_hint("`t` is the indeterminate here; `5⋅t + 1` is already a function")
+            } else {
+                err
+            }
+        })?;
+        let bound: BTreeSet<String> = binders.iter().cloned().collect();
+        let substituted = substitute_env(&body, &bound, &self.env)?;
+        let body = beta_normalize(substituted)?;
+        let (binder_sorts, ret) = infer_function_signature(&body, &binders)?;
+        let function = FunctionValue {
+            binders: binders
+                .into_iter()
+                .zip(binder_sorts)
+                .map(|(name, sort)| Binder { name, sort })
+                .collect(),
+            body,
+            ret,
+        };
+        self.validate_function_body(&function)?;
+        Ok(function)
+    }
+
+    fn validate_function_body(&mut self, function: &FunctionValue) -> OghamResult<()> {
+        let mut replacements = BTreeMap::new();
+        for binder in &function.binders {
+            replacements.insert(binder.name.clone(), self.sample_expr(binder.sort)?);
+        }
+        let sampled = substitute_names(&function.body, &replacements);
+        self.validate_all(&sampled)
+    }
+
+    fn validate_all(&mut self, expr: &Expr) -> OghamResult<()> {
+        match expr {
+            Expr::Lambda { .. } => return Err(fn_sort_error()),
+            Expr::Ternary {
+                cond,
+                then_expr,
+                else_expr,
+            } => {
+                self.validate_all(cond)?;
+                self.validate_all(then_expr)?;
+                self.validate_all(else_expr)?;
+            }
+            Expr::Binary {
+                op: BinaryOp::And | BinaryOp::Or,
+                lhs,
+                rhs,
+            } => {
+                self.validate_all(lhs)?;
+                self.validate_all(rhs)?;
+            }
+            _ => {}
+        }
+        ignore_static_partiality(self.eval_value(expr))
+    }
+
+    fn sample_expr(&self, sort: Sort) -> OghamResult<Expr> {
+        match sort {
+            Sort::Element => parse_display_expr(&Poly::<S>::one().to_string()),
+            Sort::Index => Ok(Expr::Int(1)),
+            Sort::Bool => Ok(Expr::Bool(true)),
+        }
+    }
+
+    fn static_sort(&self, expr: &Expr) -> OghamResult<Sort> {
+        static_sort(expr, &self.env, true)
+    }
+
     fn eval_relation(&mut self, op: RelOp, lhs: &Expr, rhs: &Expr) -> OghamResult<bool> {
-        if expression_is_index(lhs) || expression_is_index(rhs) {
+        if !bool_shaped(lhs)
+            && !bool_shaped(rhs)
+            && (expression_is_index(lhs) || expression_is_index(rhs))
+        {
             let lhs = self.eval_index(lhs)?;
             let rhs = self.eval_index(rhs)?;
             return ordered_relation(op, lhs.cmp(&rhs));
         }
-        let lhs = self.eval_element(lhs)?;
-        let rhs = self.eval_element(rhs)?;
-        if op == RelOp::Eq {
-            Ok(lhs == rhs)
-        } else {
-            Err(no_order_error())
+        let lhs_v = self.eval_value(lhs)?;
+        let rhs_v = self.eval_value(rhs)?;
+        match (lhs_v, rhs_v) {
+            (Value::Function(_), _) | (_, Value::Function(_)) => Err(fn_sort_error()),
+            (Value::Bool(lhs), Value::Bool(rhs)) => {
+                if op == RelOp::Eq {
+                    Ok(lhs == rhs)
+                } else {
+                    Err(bool_sort_error())
+                }
+            }
+            (Value::Bool(_), _) | (_, Value::Bool(_)) => Err(bool_sort_error()),
+            (Value::Index(lhs), Value::Index(rhs)) => ordered_relation(op, lhs.cmp(&rhs)),
+            (Value::Index(_), _) | (_, Value::Index(_)) => Err(index_sort_error()),
+            (Value::Element(lhs), Value::Element(rhs)) => {
+                if op == RelOp::Eq {
+                    Ok(lhs == rhs)
+                } else {
+                    Err(no_order_error())
+                }
+            }
         }
     }
 
     fn eval_element(&mut self, expr: &Expr) -> OghamResult<Poly<S>> {
         match expr {
+            Expr::Bool(_) => Err(bool_sort_error()),
             Expr::Int(n) => Ok(Poly::constant(S::bare_int(*n, Span::point(0))?)),
             Expr::Star(star) => Ok(Poly::constant(S::star(star, Span::point(0))?)),
             Expr::Omega => Ok(Poly::constant(S::omega(Span::point(0))?)),
@@ -361,16 +711,17 @@ impl<S: PolyWorldCoeff> PolyRuntime<S> {
                 if name == "t" {
                     Ok(Poly::x())
                 } else if let Some(value) = self.env.get(name) {
-                    Ok(value.clone())
+                    match value {
+                        Value::Element(value) => Ok(value.clone()),
+                        Value::Index(_) => Err(index_sort_error()),
+                        Value::Bool(_) => Err(bool_sort_error()),
+                        Value::Function(_) => Err(fn_sort_error()),
+                    }
                 } else {
-                    Err(OghamError::new(
-                        OghamErrorKind::Unbound,
-                        Span::point(0),
-                        format!("unbound identifier `{name}`"),
-                    )
-                    .with_hint(format!("did you mean `{name} := ...`?")))
+                    Err(unbound_error(name))
                 }
             }
+            Expr::Tuple(_) | Expr::Lambda { .. } => Err(fn_sort_error()),
             Expr::Call { name, args } => self.eval_call(name, args),
             Expr::Factorial(expr) => {
                 let n = self.eval_index(expr)?;
@@ -381,13 +732,28 @@ impl<S: PolyWorldCoeff> PolyRuntime<S> {
                 match op {
                     UnaryOp::Neg => Ok(value.neg()),
                     UnaryOp::Inv => self.inverse_element(&value),
+                    UnaryOp::Not => Err(bool_sort_error()),
                 }
             }
+            Expr::Binary {
+                op: BinaryOp::At, ..
+            } => match self.eval_value(expr)? {
+                Value::Element(value) => Ok(value),
+                Value::Index(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+                Value::Function(_) => Err(fn_sort_error()),
+            },
             Expr::Binary { op, lhs, rhs } => self.eval_binary(*op, lhs, rhs),
+            Expr::Ternary { .. } => match self.eval_value(expr)? {
+                Value::Element(value) => Ok(value),
+                Value::Index(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+                Value::Function(_) => Err(fn_sort_error()),
+            },
             Expr::Relation { .. } => Err(OghamError::new(
-                OghamErrorKind::Parse,
+                OghamErrorKind::BoolSort,
                 Span::point(0),
-                "relations only appear as top-level statements",
+                "relation result is Bool, not Element",
             )),
         }
     }
@@ -395,6 +761,9 @@ impl<S: PolyWorldCoeff> PolyRuntime<S> {
     fn eval_binary(&mut self, op: BinaryOp, lhs: &Expr, rhs: &Expr) -> OghamResult<Poly<S>> {
         if op == BinaryOp::Pow {
             return self.eval_power(lhs, rhs);
+        }
+        if matches!(op, BinaryOp::And | BinaryOp::Or) {
+            return Err(bool_sort_error());
         }
         let lhs_v = self.eval_element(lhs)?;
         let rhs_v = self.eval_element(rhs)?;
@@ -410,7 +779,7 @@ impl<S: PolyWorldCoeff> PolyRuntime<S> {
                 Span::point(0),
                 "wedge product belongs to Clifford worlds",
             )),
-            BinaryOp::Pow => unreachable!(),
+            BinaryOp::Pow | BinaryOp::And | BinaryOp::Or => unreachable!(),
         }
     }
 
@@ -456,6 +825,15 @@ impl<S: PolyWorldCoeff> PolyRuntime<S> {
     fn eval_index(&mut self, expr: &Expr) -> OghamResult<i128> {
         match expr {
             Expr::Int(n) => u128_to_i128(*n),
+            Expr::Bool(_) => Err(bool_sort_error()),
+            Expr::Tuple(_) | Expr::Lambda { .. } => Err(fn_sort_error()),
+            Expr::Ident(name) => match self.env.get(name) {
+                Some(Value::Index(value)) => Ok(*value),
+                Some(Value::Element(_)) => Err(index_sort_error()),
+                Some(Value::Bool(_)) => Err(bool_sort_error()),
+                Some(Value::Function(_)) => Err(fn_sort_error()),
+                None => Err(unbound_error(name)),
+            },
             Expr::Call { name, args } if name == "deg" => {
                 expect_arity(name, args, 1)?;
                 let value = self.eval_element(&args[0])?;
@@ -475,12 +853,30 @@ impl<S: PolyWorldCoeff> PolyRuntime<S> {
                 .eval_index(expr)?
                 .checked_neg()
                 .ok_or_else(|| overflow("index negation overflowed i128")),
+            Expr::Unary {
+                op: UnaryOp::Inv, ..
+            } => Err(index_sort_error()),
+            Expr::Unary {
+                op: UnaryOp::Not, ..
+            } => Err(bool_sort_error()),
             Expr::Binary { op, lhs, rhs } => {
                 let lhs = self.eval_index(lhs)?;
                 let rhs = self.eval_index(rhs)?;
                 eval_index_binary(*op, lhs, rhs)
             }
-            _ => Err(index_sort_error()),
+            Expr::Ternary { .. } => match self.eval_value(expr)? {
+                Value::Index(value) => Ok(value),
+                Value::Element(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+                Value::Function(_) => Err(fn_sort_error()),
+            },
+            Expr::Relation { .. } => Err(bool_sort_error()),
+            Expr::Star(_)
+            | Expr::Omega
+            | Expr::Blade(_)
+            | Expr::Vector(_)
+            | Expr::Call { .. }
+            | Expr::Factorial(_) => Err(index_sort_error()),
         }
     }
 
@@ -504,7 +900,7 @@ impl<S: PolyWorldCoeff> PolyRuntime<S> {
 
 struct RatFuncRuntime<S: OghamScalar + ExactFieldScalar> {
     name: &'static str,
-    env: BTreeMap<String, RationalFunction<S>>,
+    env: BTreeMap<String, Value<RationalFunction<S>>>,
 }
 
 impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
@@ -525,18 +921,11 @@ impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
                         format!("`t` is reserved in the `{}` world", self.name),
                     ));
                 }
-                let value = self.eval_element(expr)?;
+                let value = self.eval_value(expr)?;
                 self.env.insert(name.clone(), value);
                 Ok(None)
             }
-            Statement::Expr(expr) => match expr {
-                Expr::Relation { op, lhs, rhs } => {
-                    let value = self.eval_relation(*op, lhs, rhs)?;
-                    Ok(Some(value.to_string()))
-                }
-                _ if expression_is_index(expr) => Ok(Some(self.eval_index(expr)?.to_string())),
-                _ => Ok(Some(self.eval_element(expr)?.to_string())),
-            },
+            Statement::Expr(expr) => Ok(Some(display_value(&self.eval_value(expr)?))),
         }
     }
 
@@ -547,22 +936,335 @@ impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
     fn env_summary(&self) -> Vec<String> {
         self.env
             .iter()
-            .map(|(name, value)| format!("{name} := {value}"))
+            .map(|(name, value)| format!("{name} := {}", display_value(value)))
             .collect()
     }
 
+    fn eval_value(&mut self, expr: &Expr) -> OghamResult<Value<RationalFunction<S>>> {
+        match expr {
+            Expr::Bool(value) => Ok(Value::Bool(*value)),
+            Expr::Tuple(_) => Err(fn_sort_error()),
+            Expr::Lambda { binders, body } => self
+                .close_function(binders.clone(), body.as_ref().clone())
+                .map(Value::Function),
+            Expr::Ident(name) => {
+                if name == "t" {
+                    Ok(Value::Element(RationalFunction::t()))
+                } else if let Some(value) = self.env.get(name) {
+                    Ok(value.clone())
+                } else {
+                    Err(unbound_error(name))
+                }
+            }
+            Expr::Relation { op, lhs, rhs } => Ok(Value::Bool(self.eval_relation(*op, lhs, rhs)?)),
+            Expr::Unary {
+                op: UnaryOp::Not,
+                expr,
+            } => Ok(Value::Bool(!self.eval_bool(expr)?)),
+            Expr::Binary {
+                op: BinaryOp::And,
+                lhs,
+                rhs,
+            } => {
+                let lhs = self.eval_bool(lhs)?;
+                if self.static_sort(rhs)? != Sort::Bool {
+                    return Err(bool_sort_error());
+                }
+                if !lhs {
+                    return Ok(Value::Bool(false));
+                }
+                Ok(Value::Bool(self.eval_bool(rhs)?))
+            }
+            Expr::Binary {
+                op: BinaryOp::Or,
+                lhs,
+                rhs,
+            } => {
+                let lhs = self.eval_bool(lhs)?;
+                if self.static_sort(rhs)? != Sort::Bool {
+                    return Err(bool_sort_error());
+                }
+                if lhs {
+                    return Ok(Value::Bool(true));
+                }
+                Ok(Value::Bool(self.eval_bool(rhs)?))
+            }
+            Expr::Ternary {
+                cond,
+                then_expr,
+                else_expr,
+            } => {
+                let then_sort = self.static_sort(then_expr)?;
+                let else_sort = self.static_sort(else_expr)?;
+                if then_sort != else_sort {
+                    return Err(sort_mismatch(then_sort, else_sort));
+                }
+                if self.eval_bool(cond)? {
+                    self.eval_value(then_expr)
+                } else {
+                    self.eval_value(else_expr)
+                }
+            }
+            Expr::Binary {
+                op: BinaryOp::At,
+                lhs,
+                rhs,
+            } => self.eval_at(lhs, rhs),
+            _ => match self.eval_element(expr) {
+                Ok(value) => Ok(Value::Element(value)),
+                Err(err) if err.kind == OghamErrorKind::IndexSort => {
+                    Ok(Value::Index(self.eval_index(expr)?))
+                }
+                Err(err) => Err(err),
+            },
+        }
+    }
+
+    fn eval_bool(&mut self, expr: &Expr) -> OghamResult<bool> {
+        match self.eval_value(expr)? {
+            Value::Bool(value) => Ok(value),
+            Value::Element(_) | Value::Index(_) => Err(bool_sort_error()),
+            Value::Function(_) => Err(fn_sort_error()),
+        }
+    }
+
+    fn eval_at(&mut self, lhs: &Expr, rhs: &Expr) -> OghamResult<Value<RationalFunction<S>>> {
+        let lhs_v = self.eval_value(lhs)?;
+        match lhs_v {
+            Value::Function(function) => {
+                if let Expr::Tuple(items) = rhs {
+                    return self.apply_function_exprs(&function, items);
+                }
+                match self.eval_value(rhs)? {
+                    Value::Function(rhs_fn) => self
+                        .compose_functions(&function, &rhs_fn)
+                        .map(Value::Function),
+                    _ => self.apply_function_exprs(&function, std::slice::from_ref(rhs)),
+                }
+            }
+            Value::Element(lhs_e) => match self.eval_value(rhs)? {
+                Value::Element(rhs_e) => {
+                    substitute_rational_function(&lhs_e, &rhs_e, Span::point(0)).map(Value::Element)
+                }
+                Value::Function(rhs_fn) => self
+                    .compose_element_with_function(lhs, &rhs_fn)
+                    .map(Value::Function),
+                Value::Index(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+            },
+            Value::Index(_) => Err(index_sort_error()),
+            Value::Bool(_) => Err(bool_sort_error()),
+        }
+    }
+
+    fn compose_element_with_function(
+        &mut self,
+        lhs: &Expr,
+        rhs: &FunctionValue,
+    ) -> OghamResult<FunctionValue> {
+        let mut replacements = BTreeMap::new();
+        replacements.insert("t".to_string(), rhs.body.clone());
+        let body = beta_normalize(substitute_names(lhs, &replacements))?;
+        let function = FunctionValue {
+            binders: rhs.binders.clone(),
+            body,
+            ret: Sort::Element,
+        };
+        self.validate_function_body(&function)?;
+        Ok(function)
+    }
+
+    fn apply_function(
+        &mut self,
+        function: &FunctionValue,
+        args: Vec<Value<RationalFunction<S>>>,
+    ) -> OghamResult<Value<RationalFunction<S>>> {
+        if args.len() != function.binders.len() {
+            return Err(OghamError::new(
+                OghamErrorKind::Arity,
+                Span::point(0),
+                format!(
+                    "function expects {} argument(s), got {}",
+                    function.binders.len(),
+                    args.len()
+                ),
+            ));
+        }
+        let mut replacements = BTreeMap::new();
+        for (binder, arg) in function.binders.iter().zip(args.iter()) {
+            ensure_value_sort(arg, binder.sort)?;
+            replacements.insert(binder.name.clone(), value_to_expr(arg)?);
+        }
+        let body = substitute_names(&function.body, &replacements);
+        self.eval_value(&body)
+    }
+
+    fn apply_function_exprs(
+        &mut self,
+        function: &FunctionValue,
+        args: &[Expr],
+    ) -> OghamResult<Value<RationalFunction<S>>> {
+        if args.len() != function.binders.len() {
+            return Err(OghamError::new(
+                OghamErrorKind::Arity,
+                Span::point(0),
+                format!(
+                    "function expects {} argument(s), got {}",
+                    function.binders.len(),
+                    args.len()
+                ),
+            ));
+        }
+        let values = function
+            .binders
+            .iter()
+            .zip(args)
+            .map(|(binder, arg)| self.eval_arg_for_sort(arg, binder.sort))
+            .collect::<OghamResult<Vec<_>>>()?;
+        self.apply_function(function, values)
+    }
+
+    fn eval_arg_for_sort(
+        &mut self,
+        expr: &Expr,
+        sort: Sort,
+    ) -> OghamResult<Value<RationalFunction<S>>> {
+        match sort {
+            Sort::Element => self.eval_element(expr).map(Value::Element),
+            Sort::Index => self.eval_index(expr).map(Value::Index),
+            Sort::Bool => self.eval_bool(expr).map(Value::Bool),
+        }
+    }
+
+    fn compose_functions(
+        &mut self,
+        lhs: &FunctionValue,
+        rhs: &FunctionValue,
+    ) -> OghamResult<FunctionValue> {
+        if lhs.binders.len() != 1 {
+            return Err(OghamError::new(
+                OghamErrorKind::Arity,
+                Span::point(0),
+                "function composition needs a unary head",
+            ));
+        }
+        if lhs.binders[0].sort != rhs.ret {
+            return Err(sort_mismatch(lhs.binders[0].sort, rhs.ret));
+        }
+        let mut replacements = BTreeMap::new();
+        replacements.insert(lhs.binders[0].name.clone(), rhs.body.clone());
+        let body = beta_normalize(substitute_names(&lhs.body, &replacements))?;
+        let function = FunctionValue {
+            binders: rhs.binders.clone(),
+            body,
+            ret: lhs.ret,
+        };
+        self.validate_function_body(&function)?;
+        Ok(function)
+    }
+
+    fn close_function(&mut self, binders: Vec<String>, body: Expr) -> OghamResult<FunctionValue> {
+        check_binders(&binders, |name| {
+            name == "t" || reserved_function_binder(name)
+        })
+        .map_err(|err| {
+            if err.kind == OghamErrorKind::Shadow && err.message.contains("`t`") {
+                err.with_hint("`t` is the indeterminate here; `5⋅t + 1` is already a function")
+            } else {
+                err
+            }
+        })?;
+        let bound: BTreeSet<String> = binders.iter().cloned().collect();
+        let substituted = substitute_env(&body, &bound, &self.env)?;
+        let body = beta_normalize(substituted)?;
+        let (binder_sorts, ret) = infer_function_signature(&body, &binders)?;
+        let function = FunctionValue {
+            binders: binders
+                .into_iter()
+                .zip(binder_sorts)
+                .map(|(name, sort)| Binder { name, sort })
+                .collect(),
+            body,
+            ret,
+        };
+        self.validate_function_body(&function)?;
+        Ok(function)
+    }
+
+    fn validate_function_body(&mut self, function: &FunctionValue) -> OghamResult<()> {
+        let mut replacements = BTreeMap::new();
+        for binder in &function.binders {
+            replacements.insert(binder.name.clone(), self.sample_expr(binder.sort)?);
+        }
+        let sampled = substitute_names(&function.body, &replacements);
+        self.validate_all(&sampled)
+    }
+
+    fn validate_all(&mut self, expr: &Expr) -> OghamResult<()> {
+        match expr {
+            Expr::Lambda { .. } => return Err(fn_sort_error()),
+            Expr::Ternary {
+                cond,
+                then_expr,
+                else_expr,
+            } => {
+                self.validate_all(cond)?;
+                self.validate_all(then_expr)?;
+                self.validate_all(else_expr)?;
+            }
+            Expr::Binary {
+                op: BinaryOp::And | BinaryOp::Or,
+                lhs,
+                rhs,
+            } => {
+                self.validate_all(lhs)?;
+                self.validate_all(rhs)?;
+            }
+            _ => {}
+        }
+        ignore_static_partiality(self.eval_value(expr))
+    }
+
+    fn sample_expr(&self, sort: Sort) -> OghamResult<Expr> {
+        match sort {
+            Sort::Element => parse_display_expr(&RationalFunction::<S>::one().to_string()),
+            Sort::Index => Ok(Expr::Int(1)),
+            Sort::Bool => Ok(Expr::Bool(true)),
+        }
+    }
+
+    fn static_sort(&self, expr: &Expr) -> OghamResult<Sort> {
+        static_sort(expr, &self.env, false)
+    }
+
     fn eval_relation(&mut self, op: RelOp, lhs: &Expr, rhs: &Expr) -> OghamResult<bool> {
-        let lhs = self.eval_element(lhs)?;
-        let rhs = self.eval_element(rhs)?;
-        if op == RelOp::Eq {
-            Ok(lhs == rhs)
-        } else {
-            Err(no_order_error())
+        let lhs_v = self.eval_value(lhs)?;
+        let rhs_v = self.eval_value(rhs)?;
+        match (lhs_v, rhs_v) {
+            (Value::Function(_), _) | (_, Value::Function(_)) => Err(fn_sort_error()),
+            (Value::Bool(lhs), Value::Bool(rhs)) => {
+                if op == RelOp::Eq {
+                    Ok(lhs == rhs)
+                } else {
+                    Err(bool_sort_error())
+                }
+            }
+            (Value::Bool(_), _) | (_, Value::Bool(_)) => Err(bool_sort_error()),
+            (Value::Index(lhs), Value::Index(rhs)) => ordered_relation(op, lhs.cmp(&rhs)),
+            (Value::Index(_), _) | (_, Value::Index(_)) => Err(index_sort_error()),
+            (Value::Element(lhs), Value::Element(rhs)) => {
+                if op == RelOp::Eq {
+                    Ok(lhs == rhs)
+                } else {
+                    Err(no_order_error())
+                }
+            }
         }
     }
 
     fn eval_element(&mut self, expr: &Expr) -> OghamResult<RationalFunction<S>> {
         match expr {
+            Expr::Bool(_) => Err(bool_sort_error()),
             Expr::Int(n) => Ok(RationalFunction::from_base(S::bare_int(
                 *n,
                 Span::point(0),
@@ -578,16 +1280,17 @@ impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
                 if name == "t" {
                     Ok(RationalFunction::t())
                 } else if let Some(value) = self.env.get(name) {
-                    Ok(value.clone())
+                    match value {
+                        Value::Element(value) => Ok(value.clone()),
+                        Value::Index(_) => Err(index_sort_error()),
+                        Value::Bool(_) => Err(bool_sort_error()),
+                        Value::Function(_) => Err(fn_sort_error()),
+                    }
                 } else {
-                    Err(OghamError::new(
-                        OghamErrorKind::Unbound,
-                        Span::point(0),
-                        format!("unbound identifier `{name}`"),
-                    )
-                    .with_hint(format!("did you mean `{name} := ...`?")))
+                    Err(unbound_error(name))
                 }
             }
+            Expr::Tuple(_) | Expr::Lambda { .. } => Err(fn_sort_error()),
             Expr::Call { name, args } => self.eval_call(name, args),
             Expr::Factorial(expr) => {
                 let n = self.eval_index(expr)?;
@@ -601,13 +1304,28 @@ impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
                 match op {
                     UnaryOp::Neg => Ok(value.neg()),
                     UnaryOp::Inv => self.inverse_element(&value),
+                    UnaryOp::Not => Err(bool_sort_error()),
                 }
             }
+            Expr::Binary {
+                op: BinaryOp::At, ..
+            } => match self.eval_value(expr)? {
+                Value::Element(value) => Ok(value),
+                Value::Index(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+                Value::Function(_) => Err(fn_sort_error()),
+            },
             Expr::Binary { op, lhs, rhs } => self.eval_binary(*op, lhs, rhs),
+            Expr::Ternary { .. } => match self.eval_value(expr)? {
+                Value::Element(value) => Ok(value),
+                Value::Index(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+                Value::Function(_) => Err(fn_sort_error()),
+            },
             Expr::Relation { .. } => Err(OghamError::new(
-                OghamErrorKind::Parse,
+                OghamErrorKind::BoolSort,
                 Span::point(0),
-                "relations only appear as top-level statements",
+                "relation result is Bool, not Element",
             )),
         }
     }
@@ -620,6 +1338,9 @@ impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
     ) -> OghamResult<RationalFunction<S>> {
         if op == BinaryOp::Pow {
             return self.eval_power(lhs, rhs);
+        }
+        if matches!(op, BinaryOp::And | BinaryOp::Or) {
+            return Err(bool_sort_error());
         }
         let lhs_v = self.eval_element(lhs)?;
         let rhs_v = self.eval_element(rhs)?;
@@ -649,7 +1370,7 @@ impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
                 Span::point(0),
                 "wedge product belongs to Clifford worlds",
             )),
-            BinaryOp::Pow => unreachable!(),
+            BinaryOp::Pow | BinaryOp::And | BinaryOp::Or => unreachable!(),
         }
     }
 
@@ -693,6 +1414,15 @@ impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
     fn eval_index(&mut self, expr: &Expr) -> OghamResult<i128> {
         match expr {
             Expr::Int(n) => u128_to_i128(*n),
+            Expr::Bool(_) => Err(bool_sort_error()),
+            Expr::Tuple(_) | Expr::Lambda { .. } => Err(fn_sort_error()),
+            Expr::Ident(name) => match self.env.get(name) {
+                Some(Value::Index(value)) => Ok(*value),
+                Some(Value::Element(_)) => Err(index_sort_error()),
+                Some(Value::Bool(_)) => Err(bool_sort_error()),
+                Some(Value::Function(_)) => Err(fn_sort_error()),
+                None => Err(unbound_error(name)),
+            },
             Expr::Call { name, .. } if name == "deg" => Err(OghamError::new(
                 OghamErrorKind::WrongWorld,
                 Span::point(0),
@@ -705,12 +1435,30 @@ impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
                 .eval_index(expr)?
                 .checked_neg()
                 .ok_or_else(|| overflow("index negation overflowed i128")),
+            Expr::Unary {
+                op: UnaryOp::Inv, ..
+            } => Err(index_sort_error()),
+            Expr::Unary {
+                op: UnaryOp::Not, ..
+            } => Err(bool_sort_error()),
             Expr::Binary { op, lhs, rhs } => {
                 let lhs = self.eval_index(lhs)?;
                 let rhs = self.eval_index(rhs)?;
                 eval_index_binary(*op, lhs, rhs)
             }
-            _ => Err(index_sort_error()),
+            Expr::Ternary { .. } => match self.eval_value(expr)? {
+                Value::Index(value) => Ok(value),
+                Value::Element(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+                Value::Function(_) => Err(fn_sort_error()),
+            },
+            Expr::Relation { .. } => Err(bool_sort_error()),
+            Expr::Star(_)
+            | Expr::Omega
+            | Expr::Blade(_)
+            | Expr::Vector(_)
+            | Expr::Call { .. }
+            | Expr::Factorial(_) => Err(index_sort_error()),
         }
     }
 
@@ -729,7 +1477,7 @@ impl<S: OghamScalar + ExactFieldScalar> RatFuncRuntime<S> {
 struct Runtime<S: OghamScalar> {
     name: &'static str,
     alg: CliffordAlgebra<S>,
-    env: BTreeMap<String, Multivector<S>>,
+    env: BTreeMap<String, Value<Multivector<S>>>,
 }
 
 impl<S: OghamScalar> Runtime<S> {
@@ -751,17 +1499,11 @@ impl<S: OghamScalar> Runtime<S> {
                         format!("`{name}` is reserved in the `{}` world", self.name),
                     ));
                 }
-                let value = self.eval_expr(expr)?;
+                let value = self.eval_value(expr)?;
                 self.env.insert(name.clone(), value);
                 Ok(None)
             }
-            Statement::Expr(expr) => match expr {
-                Expr::Relation { op, lhs, rhs } => {
-                    let value = self.eval_relation(*op, lhs, rhs)?;
-                    Ok(Some(value.to_string()))
-                }
-                _ => Ok(Some(self.eval_expr(expr)?.to_string())),
-            },
+            Statement::Expr(expr) => Ok(Some(display_value(&self.eval_value(expr)?))),
         }
     }
 
@@ -772,27 +1514,306 @@ impl<S: OghamScalar> Runtime<S> {
     fn env_summary(&self) -> Vec<String> {
         self.env
             .iter()
-            .map(|(name, value)| format!("{name} := {value}"))
+            .map(|(name, value)| format!("{name} := {}", display_value(value)))
             .collect()
     }
 
-    fn eval_relation(&mut self, op: RelOp, lhs: &Expr, rhs: &Expr) -> OghamResult<bool> {
-        let lhs = self.eval_expr(lhs)?;
-        let rhs = self.eval_expr(rhs)?;
-        if op == RelOp::Eq {
-            return Ok(lhs == rhs);
+    fn eval_value(&mut self, expr: &Expr) -> OghamResult<Value<Multivector<S>>> {
+        match expr {
+            Expr::Bool(value) => Ok(Value::Bool(*value)),
+            Expr::Tuple(_) => Err(fn_sort_error()),
+            Expr::Lambda { binders, body } => self
+                .close_function(binders.clone(), body.as_ref().clone())
+                .map(Value::Function),
+            Expr::Ident(name) => {
+                if let Some(value) = self.env.get(name) {
+                    Ok(value.clone())
+                } else if let Some(x) = S::named_element(name, Span::point(0))? {
+                    Ok(Value::Element(self.alg.scalar(x)))
+                } else {
+                    Err(unbound_error(name))
+                }
+            }
+            Expr::Relation { op, lhs, rhs } => Ok(Value::Bool(self.eval_relation(*op, lhs, rhs)?)),
+            Expr::Unary {
+                op: UnaryOp::Not,
+                expr,
+            } => Ok(Value::Bool(!self.eval_bool(expr)?)),
+            Expr::Binary {
+                op: BinaryOp::And,
+                lhs,
+                rhs,
+            } => {
+                let lhs = self.eval_bool(lhs)?;
+                if self.static_sort(rhs)? != Sort::Bool {
+                    return Err(bool_sort_error());
+                }
+                if !lhs {
+                    return Ok(Value::Bool(false));
+                }
+                Ok(Value::Bool(self.eval_bool(rhs)?))
+            }
+            Expr::Binary {
+                op: BinaryOp::Or,
+                lhs,
+                rhs,
+            } => {
+                let lhs = self.eval_bool(lhs)?;
+                if self.static_sort(rhs)? != Sort::Bool {
+                    return Err(bool_sort_error());
+                }
+                if lhs {
+                    return Ok(Value::Bool(true));
+                }
+                Ok(Value::Bool(self.eval_bool(rhs)?))
+            }
+            Expr::Ternary {
+                cond,
+                then_expr,
+                else_expr,
+            } => {
+                let then_sort = self.static_sort(then_expr)?;
+                let else_sort = self.static_sort(else_expr)?;
+                if then_sort != else_sort {
+                    return Err(match (then_sort, else_sort) {
+                        (Sort::Bool, _) | (_, Sort::Bool) => bool_sort_error(),
+                        _ => index_sort_error(),
+                    });
+                }
+                if self.eval_bool(cond)? {
+                    self.eval_value(then_expr)
+                } else {
+                    self.eval_value(else_expr)
+                }
+            }
+            Expr::Binary {
+                op: BinaryOp::At,
+                lhs,
+                rhs,
+            } => self.eval_at(lhs, rhs),
+            _ => match self.eval_expr(expr) {
+                Ok(value) => Ok(Value::Element(value)),
+                Err(err) if err.kind == OghamErrorKind::IndexSort => {
+                    Ok(Value::Index(self.eval_index(expr)?))
+                }
+                Err(err) => Err(err),
+            },
         }
-        let Some(lhs) = scalar_part(&lhs) else {
-            return Err(grade0_error(Span::point(0)));
+    }
+
+    fn eval_bool(&mut self, expr: &Expr) -> OghamResult<bool> {
+        match self.eval_value(expr)? {
+            Value::Bool(value) => Ok(value),
+            Value::Element(_) | Value::Index(_) => Err(bool_sort_error()),
+            Value::Function(_) => Err(fn_sort_error()),
+        }
+    }
+
+    fn eval_at(&mut self, lhs: &Expr, rhs: &Expr) -> OghamResult<Value<Multivector<S>>> {
+        let lhs_v = self.eval_value(lhs)?;
+        let Value::Function(function) = lhs_v else {
+            return Err(OghamError::new(
+                OghamErrorKind::WrongWorld,
+                Span::point(0),
+                "only Function values apply with `@` in this world; element evaluation lives in function-shaped worlds",
+            ));
         };
-        let Some(rhs) = scalar_part(&rhs) else {
-            return Err(grade0_error(Span::point(0)));
+        if let Expr::Tuple(items) = rhs {
+            return self.apply_function_exprs(&function, items);
+        }
+        match self.eval_value(rhs)? {
+            Value::Function(rhs_fn) => self
+                .compose_functions(&function, &rhs_fn)
+                .map(Value::Function),
+            _ => self.apply_function_exprs(&function, std::slice::from_ref(rhs)),
+        }
+    }
+
+    fn apply_function(
+        &mut self,
+        function: &FunctionValue,
+        args: Vec<Value<Multivector<S>>>,
+    ) -> OghamResult<Value<Multivector<S>>> {
+        if args.len() != function.binders.len() {
+            return Err(OghamError::new(
+                OghamErrorKind::Arity,
+                Span::point(0),
+                format!(
+                    "function expects {} argument(s), got {}",
+                    function.binders.len(),
+                    args.len()
+                ),
+            ));
+        }
+        let mut replacements = BTreeMap::new();
+        for (binder, arg) in function.binders.iter().zip(args.iter()) {
+            ensure_value_sort(arg, binder.sort)?;
+            replacements.insert(binder.name.clone(), value_to_expr(arg)?);
+        }
+        let body = substitute_names(&function.body, &replacements);
+        self.eval_value(&body)
+    }
+
+    fn apply_function_exprs(
+        &mut self,
+        function: &FunctionValue,
+        args: &[Expr],
+    ) -> OghamResult<Value<Multivector<S>>> {
+        if args.len() != function.binders.len() {
+            return Err(OghamError::new(
+                OghamErrorKind::Arity,
+                Span::point(0),
+                format!(
+                    "function expects {} argument(s), got {}",
+                    function.binders.len(),
+                    args.len()
+                ),
+            ));
+        }
+        let values = function
+            .binders
+            .iter()
+            .zip(args)
+            .map(|(binder, arg)| self.eval_arg_for_sort(arg, binder.sort))
+            .collect::<OghamResult<Vec<_>>>()?;
+        self.apply_function(function, values)
+    }
+
+    fn eval_arg_for_sort(&mut self, expr: &Expr, sort: Sort) -> OghamResult<Value<Multivector<S>>> {
+        match sort {
+            Sort::Element => self.eval_expr(expr).map(Value::Element),
+            Sort::Index => self.eval_index(expr).map(Value::Index),
+            Sort::Bool => self.eval_bool(expr).map(Value::Bool),
+        }
+    }
+
+    fn compose_functions(
+        &mut self,
+        lhs: &FunctionValue,
+        rhs: &FunctionValue,
+    ) -> OghamResult<FunctionValue> {
+        if lhs.binders.len() != 1 {
+            return Err(OghamError::new(
+                OghamErrorKind::Arity,
+                Span::point(0),
+                "function composition needs a unary head",
+            ));
+        }
+        if lhs.binders[0].sort != rhs.ret {
+            return Err(sort_mismatch(lhs.binders[0].sort, rhs.ret));
+        }
+        let mut replacements = BTreeMap::new();
+        replacements.insert(lhs.binders[0].name.clone(), rhs.body.clone());
+        let body = beta_normalize(substitute_names(&lhs.body, &replacements))?;
+        let function = FunctionValue {
+            binders: rhs.binders.clone(),
+            body,
+            ret: lhs.ret,
         };
-        S::relation(op, &lhs, &rhs, Span::point(0))
+        self.validate_function_body(&function)?;
+        Ok(function)
+    }
+
+    fn close_function(&mut self, binders: Vec<String>, body: Expr) -> OghamResult<FunctionValue> {
+        check_binders(&binders, |name| {
+            S::reserved_ident(name) || reserved_function_binder(name)
+        })?;
+        let bound: BTreeSet<String> = binders.iter().cloned().collect();
+        let substituted = substitute_env(&body, &bound, &self.env)?;
+        let body = beta_normalize(substituted)?;
+        let (binder_sorts, ret) = infer_function_signature(&body, &binders)?;
+        let function = FunctionValue {
+            binders: binders
+                .into_iter()
+                .zip(binder_sorts)
+                .map(|(name, sort)| Binder { name, sort })
+                .collect(),
+            body,
+            ret,
+        };
+        self.validate_function_body(&function)?;
+        Ok(function)
+    }
+
+    fn validate_function_body(&mut self, function: &FunctionValue) -> OghamResult<()> {
+        let mut replacements = BTreeMap::new();
+        for binder in &function.binders {
+            replacements.insert(binder.name.clone(), self.sample_expr(binder.sort)?);
+        }
+        let sampled = substitute_names(&function.body, &replacements);
+        self.validate_all(&sampled)
+    }
+
+    fn validate_all(&mut self, expr: &Expr) -> OghamResult<()> {
+        match expr {
+            Expr::Lambda { .. } => return Err(fn_sort_error()),
+            Expr::Ternary {
+                cond,
+                then_expr,
+                else_expr,
+            } => {
+                self.validate_all(cond)?;
+                self.validate_all(then_expr)?;
+                self.validate_all(else_expr)?;
+            }
+            Expr::Binary {
+                op: BinaryOp::And | BinaryOp::Or,
+                lhs,
+                rhs,
+            } => {
+                self.validate_all(lhs)?;
+                self.validate_all(rhs)?;
+            }
+            _ => {}
+        }
+        ignore_static_partiality(self.eval_value(expr))
+    }
+
+    fn sample_expr(&self, sort: Sort) -> OghamResult<Expr> {
+        match sort {
+            Sort::Element => parse_display_expr(&self.alg.scalar(S::one()).to_string()),
+            Sort::Index => Ok(Expr::Int(1)),
+            Sort::Bool => Ok(Expr::Bool(true)),
+        }
+    }
+
+    fn static_sort(&self, expr: &Expr) -> OghamResult<Sort> {
+        static_sort(expr, &self.env, false)
+    }
+
+    fn eval_relation(&mut self, op: RelOp, lhs: &Expr, rhs: &Expr) -> OghamResult<bool> {
+        let lhs_v = self.eval_value(lhs)?;
+        let rhs_v = self.eval_value(rhs)?;
+        match (lhs_v, rhs_v) {
+            (Value::Function(_), _) | (_, Value::Function(_)) => Err(fn_sort_error()),
+            (Value::Bool(lhs), Value::Bool(rhs)) => {
+                if op == RelOp::Eq {
+                    Ok(lhs == rhs)
+                } else {
+                    Err(bool_sort_error())
+                }
+            }
+            (Value::Bool(_), _) | (_, Value::Bool(_)) => Err(bool_sort_error()),
+            (Value::Index(lhs), Value::Index(rhs)) => ordered_relation(op, lhs.cmp(&rhs)),
+            (Value::Index(_), _) | (_, Value::Index(_)) => Err(index_sort_error()),
+            (Value::Element(lhs), Value::Element(rhs)) => {
+                if op == RelOp::Eq {
+                    return Ok(lhs == rhs);
+                }
+                let Some(lhs) = scalar_part(&lhs) else {
+                    return Err(grade0_error(Span::point(0)));
+                };
+                let Some(rhs) = scalar_part(&rhs) else {
+                    return Err(grade0_error(Span::point(0)));
+                };
+                S::relation(op, &lhs, &rhs, Span::point(0))
+            }
+        }
     }
 
     fn eval_expr(&mut self, expr: &Expr) -> OghamResult<Multivector<S>> {
         match expr {
+            Expr::Bool(_) => Err(bool_sort_error()),
             Expr::Int(n) => Ok(self.alg.scalar(S::bare_int(*n, Span::point(0))?)),
             Expr::Star(star) => Ok(self.alg.scalar(S::star(star, Span::point(0))?)),
             Expr::Omega => Ok(self.alg.scalar(S::omega(Span::point(0))?)),
@@ -808,18 +1829,19 @@ impl<S: OghamScalar> Runtime<S> {
                 }
             }
             Expr::Vector(items) => self.eval_vector(items),
+            Expr::Tuple(_) | Expr::Lambda { .. } => Err(fn_sort_error()),
             Expr::Ident(name) => {
                 if let Some(value) = self.env.get(name) {
-                    Ok(value.clone())
+                    match value {
+                        Value::Element(value) => Ok(value.clone()),
+                        Value::Index(_) => Err(index_sort_error()),
+                        Value::Bool(_) => Err(bool_sort_error()),
+                        Value::Function(_) => Err(fn_sort_error()),
+                    }
                 } else if let Some(x) = S::named_element(name, Span::point(0))? {
                     Ok(self.alg.scalar(x))
                 } else {
-                    Err(OghamError::new(
-                        OghamErrorKind::Unbound,
-                        Span::point(0),
-                        format!("unbound identifier `{name}`"),
-                    )
-                    .with_hint(format!("did you mean `{name} := ...`?")))
+                    Err(unbound_error(name))
                 }
             }
             Expr::Call { name, args } => self.eval_call(name, args),
@@ -832,13 +1854,28 @@ impl<S: OghamScalar> Runtime<S> {
                 match op {
                     UnaryOp::Neg => Ok(-value),
                     UnaryOp::Inv => self.inverse_mv(&value),
+                    UnaryOp::Not => Err(bool_sort_error()),
                 }
             }
+            Expr::Binary {
+                op: BinaryOp::At, ..
+            } => match self.eval_value(expr)? {
+                Value::Element(value) => Ok(value),
+                Value::Index(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+                Value::Function(_) => Err(fn_sort_error()),
+            },
             Expr::Binary { op, lhs, rhs } => self.eval_binary(*op, lhs, rhs),
+            Expr::Ternary { .. } => match self.eval_value(expr)? {
+                Value::Element(value) => Ok(value),
+                Value::Index(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+                Value::Function(_) => Err(fn_sort_error()),
+            },
             Expr::Relation { .. } => Err(OghamError::new(
-                OghamErrorKind::Parse,
+                OghamErrorKind::BoolSort,
                 Span::point(0),
-                "relations only appear as top-level statements",
+                "relation result is Bool, not Element",
             )),
         }
     }
@@ -851,8 +1888,11 @@ impl<S: OghamScalar> Runtime<S> {
             return Err(OghamError::new(
                 OghamErrorKind::WrongWorld,
                 Span::point(0),
-                "evaluation lives in the function-shaped worlds — poly/ratfunc, v1.1",
+                "element composition lives in the function-shaped worlds — poly/ratfunc",
             ));
+        }
+        if matches!(op, BinaryOp::And | BinaryOp::Or) {
+            return Err(bool_sort_error());
         }
         let lhs_v = self.eval_expr(lhs)?;
         let rhs_v = self.eval_expr(rhs)?;
@@ -871,7 +1911,7 @@ impl<S: OghamScalar> Runtime<S> {
                 Ok(self.alg.scalar(S::rem(&lhs_s, &rhs_s, Span::point(0))?))
             }
             BinaryOp::Wedge => Ok(self.alg.wedge(&lhs_v, &rhs_v)),
-            BinaryOp::Pow | BinaryOp::At => unreachable!(),
+            BinaryOp::Pow | BinaryOp::At | BinaryOp::And | BinaryOp::Or => unreachable!(),
         }
     }
 
@@ -1021,6 +2061,15 @@ impl<S: OghamScalar> Runtime<S> {
     fn eval_index(&mut self, expr: &Expr) -> OghamResult<i128> {
         match expr {
             Expr::Int(n) => u128_to_i128(*n),
+            Expr::Bool(_) => Err(bool_sort_error()),
+            Expr::Tuple(_) | Expr::Lambda { .. } => Err(fn_sort_error()),
+            Expr::Ident(name) => match self.env.get(name) {
+                Some(Value::Index(value)) => Ok(*value),
+                Some(Value::Element(_)) => Err(index_sort_error()),
+                Some(Value::Bool(_)) => Err(bool_sort_error()),
+                Some(Value::Function(_)) => Err(fn_sort_error()),
+                None => Err(unbound_error(name)),
+            },
             Expr::Unary {
                 op: UnaryOp::Neg,
                 expr,
@@ -1028,6 +2077,12 @@ impl<S: OghamScalar> Runtime<S> {
                 .eval_index(expr)?
                 .checked_neg()
                 .ok_or_else(|| overflow("index negation overflowed i128")),
+            Expr::Unary {
+                op: UnaryOp::Inv, ..
+            } => Err(index_sort_error()),
+            Expr::Unary {
+                op: UnaryOp::Not, ..
+            } => Err(bool_sort_error()),
             Expr::Binary { op, lhs, rhs } => {
                 let lhs = self.eval_index(lhs)?;
                 let rhs = self.eval_index(rhs)?;
@@ -1051,10 +2106,27 @@ impl<S: OghamScalar> Runtime<S> {
                         }
                         checked_i128_pow(lhs, rhs as u128)
                     }
-                    _ => Err(index_sort_error()),
+                    BinaryOp::Div
+                    | BinaryOp::Rem
+                    | BinaryOp::Wedge
+                    | BinaryOp::At
+                    | BinaryOp::And
+                    | BinaryOp::Or => Err(index_sort_error()),
                 }
             }
-            _ => Err(index_sort_error()),
+            Expr::Ternary { .. } => match self.eval_value(expr)? {
+                Value::Index(value) => Ok(value),
+                Value::Element(_) => Err(index_sort_error()),
+                Value::Bool(_) => Err(bool_sort_error()),
+                Value::Function(_) => Err(fn_sort_error()),
+            },
+            Expr::Relation { .. } => Err(bool_sort_error()),
+            Expr::Star(_)
+            | Expr::Omega
+            | Expr::Blade(_)
+            | Expr::Vector(_)
+            | Expr::Call { .. }
+            | Expr::Factorial(_) => Err(index_sort_error()),
         }
     }
 
@@ -1260,6 +2332,645 @@ fn eval_poly_at_rational_function<S: ExactFieldScalar>(
         acc = acc.mul(x).add(&RationalFunction::from_base(c.clone()));
     }
     acc
+}
+
+#[derive(Clone, Copy)]
+enum ExpectedSort {
+    Any,
+    Known(Sort),
+}
+
+fn value_to_expr<E: Display>(value: &Value<E>) -> OghamResult<Expr> {
+    match value {
+        Value::Element(value) => parse_display_expr(&value.to_string()),
+        Value::Index(value) => Ok(index_literal_expr(*value)?),
+        Value::Bool(value) => Ok(Expr::Bool(*value)),
+        Value::Function(function) => Ok(function.to_expr()),
+    }
+}
+
+fn parse_display_expr(src: &str) -> OghamResult<Expr> {
+    match parse_statement(src)? {
+        Statement::Expr(expr) => Ok(expr),
+        Statement::Binding { .. } => Err(parse_error("display did not round-trip as expression")),
+    }
+}
+
+fn index_literal_expr(value: i128) -> OghamResult<Expr> {
+    if value >= 0 {
+        Ok(Expr::Int(value as u128))
+    } else {
+        Ok(Expr::Unary {
+            op: UnaryOp::Neg,
+            expr: Box::new(Expr::Int(value.unsigned_abs())),
+        })
+    }
+}
+
+fn value_sort<E>(value: &Value<E>) -> Sort {
+    match value {
+        Value::Element(_) => Sort::Element,
+        Value::Index(_) => Sort::Index,
+        Value::Bool(_) => Sort::Bool,
+        Value::Function(_) => unreachable!("Function values are not first-order binder sorts"),
+    }
+}
+
+fn ensure_value_sort<E>(value: &Value<E>, expected: Sort) -> OghamResult<()> {
+    match value {
+        Value::Function(_) => Err(fn_sort_error()),
+        _ if value_sort(value) == expected => Ok(()),
+        Value::Bool(_) => Err(bool_sort_error()),
+        _ if expected == Sort::Bool => Err(bool_sort_error()),
+        _ => Err(index_sort_error()),
+    }
+}
+
+fn substitute_env<E: Display>(
+    expr: &Expr,
+    bound: &BTreeSet<String>,
+    env: &BTreeMap<String, Value<E>>,
+) -> OghamResult<Expr> {
+    match expr {
+        Expr::Ident(name) if !bound.contains(name) => {
+            if let Some(value) = env.get(name) {
+                value_to_expr(value)
+            } else {
+                Ok(expr.clone())
+            }
+        }
+        Expr::Lambda { binders, body } => {
+            let mut nested_bound = bound.clone();
+            nested_bound.extend(binders.iter().cloned());
+            Ok(Expr::Lambda {
+                binders: binders.clone(),
+                body: Box::new(substitute_env(body, &nested_bound, env)?),
+            })
+        }
+        Expr::Vector(items) => Ok(Expr::Vector(
+            items
+                .iter()
+                .map(|item| substitute_env(item, bound, env))
+                .collect::<OghamResult<Vec<_>>>()?,
+        )),
+        Expr::Tuple(items) => Ok(Expr::Tuple(
+            items
+                .iter()
+                .map(|item| substitute_env(item, bound, env))
+                .collect::<OghamResult<Vec<_>>>()?,
+        )),
+        Expr::Call { name, args } => Ok(Expr::Call {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| substitute_env(arg, bound, env))
+                .collect::<OghamResult<Vec<_>>>()?,
+        }),
+        Expr::Factorial(inner) => Ok(Expr::Factorial(Box::new(substitute_env(
+            inner, bound, env,
+        )?))),
+        Expr::Unary { op, expr } => Ok(Expr::Unary {
+            op: *op,
+            expr: Box::new(substitute_env(expr, bound, env)?),
+        }),
+        Expr::Binary { op, lhs, rhs } => Ok(Expr::Binary {
+            op: *op,
+            lhs: Box::new(substitute_env(lhs, bound, env)?),
+            rhs: Box::new(substitute_env(rhs, bound, env)?),
+        }),
+        Expr::Ternary {
+            cond,
+            then_expr,
+            else_expr,
+        } => Ok(Expr::Ternary {
+            cond: Box::new(substitute_env(cond, bound, env)?),
+            then_expr: Box::new(substitute_env(then_expr, bound, env)?),
+            else_expr: Box::new(substitute_env(else_expr, bound, env)?),
+        }),
+        Expr::Relation { op, lhs, rhs } => Ok(Expr::Relation {
+            op: *op,
+            lhs: Box::new(substitute_env(lhs, bound, env)?),
+            rhs: Box::new(substitute_env(rhs, bound, env)?),
+        }),
+        _ => Ok(expr.clone()),
+    }
+}
+
+fn substitute_names(expr: &Expr, replacements: &BTreeMap<String, Expr>) -> Expr {
+    match expr {
+        Expr::Ident(name) => replacements
+            .get(name)
+            .cloned()
+            .unwrap_or_else(|| expr.clone()),
+        Expr::Lambda { binders, body } => {
+            let mut nested = replacements.clone();
+            for binder in binders {
+                nested.remove(binder);
+            }
+            Expr::Lambda {
+                binders: binders.clone(),
+                body: Box::new(substitute_names(body, &nested)),
+            }
+        }
+        Expr::Vector(items) => Expr::Vector(
+            items
+                .iter()
+                .map(|item| substitute_names(item, replacements))
+                .collect(),
+        ),
+        Expr::Tuple(items) => Expr::Tuple(
+            items
+                .iter()
+                .map(|item| substitute_names(item, replacements))
+                .collect(),
+        ),
+        Expr::Call { name, args } => Expr::Call {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| substitute_names(arg, replacements))
+                .collect(),
+        },
+        Expr::Factorial(inner) => Expr::Factorial(Box::new(substitute_names(inner, replacements))),
+        Expr::Unary { op, expr } => Expr::Unary {
+            op: *op,
+            expr: Box::new(substitute_names(expr, replacements)),
+        },
+        Expr::Binary { op, lhs, rhs } => Expr::Binary {
+            op: *op,
+            lhs: Box::new(substitute_names(lhs, replacements)),
+            rhs: Box::new(substitute_names(rhs, replacements)),
+        },
+        Expr::Ternary {
+            cond,
+            then_expr,
+            else_expr,
+        } => Expr::Ternary {
+            cond: Box::new(substitute_names(cond, replacements)),
+            then_expr: Box::new(substitute_names(then_expr, replacements)),
+            else_expr: Box::new(substitute_names(else_expr, replacements)),
+        },
+        Expr::Relation { op, lhs, rhs } => Expr::Relation {
+            op: *op,
+            lhs: Box::new(substitute_names(lhs, replacements)),
+            rhs: Box::new(substitute_names(rhs, replacements)),
+        },
+        _ => expr.clone(),
+    }
+}
+
+fn beta_normalize(expr: Expr) -> OghamResult<Expr> {
+    match expr {
+        Expr::Vector(items) => Ok(Expr::Vector(
+            items
+                .into_iter()
+                .map(beta_normalize)
+                .collect::<OghamResult<Vec<_>>>()?,
+        )),
+        Expr::Tuple(items) => Ok(Expr::Tuple(
+            items
+                .into_iter()
+                .map(beta_normalize)
+                .collect::<OghamResult<Vec<_>>>()?,
+        )),
+        Expr::Lambda { binders, body } => Ok(Expr::Lambda {
+            binders,
+            body: Box::new(beta_normalize(*body)?),
+        }),
+        Expr::Call { name, args } => Ok(Expr::Call {
+            name,
+            args: args
+                .into_iter()
+                .map(beta_normalize)
+                .collect::<OghamResult<Vec<_>>>()?,
+        }),
+        Expr::Factorial(inner) => Ok(Expr::Factorial(Box::new(beta_normalize(*inner)?))),
+        Expr::Unary { op, expr } => Ok(Expr::Unary {
+            op,
+            expr: Box::new(beta_normalize(*expr)?),
+        }),
+        Expr::Binary {
+            op: BinaryOp::At,
+            lhs,
+            rhs,
+        } => {
+            let lhs = beta_normalize(*lhs)?;
+            let rhs = beta_normalize(*rhs)?;
+            if let Expr::Lambda {
+                binders,
+                body: lhs_body,
+            } = lhs
+            {
+                if let Expr::Lambda {
+                    binders: rhs_binders,
+                    body: rhs_body,
+                } = rhs
+                {
+                    if binders.len() != 1 {
+                        return Err(OghamError::new(
+                            OghamErrorKind::Arity,
+                            Span::point(0),
+                            "function composition needs a unary head",
+                        ));
+                    }
+                    let mut replacements = BTreeMap::new();
+                    replacements.insert(binders[0].clone(), *rhs_body);
+                    return Ok(Expr::Lambda {
+                        binders: rhs_binders,
+                        body: Box::new(beta_normalize(substitute_names(&lhs_body, &replacements))?),
+                    });
+                }
+                let args = match rhs {
+                    Expr::Tuple(items) => items,
+                    value => vec![value],
+                };
+                if args.len() != binders.len() {
+                    return Err(OghamError::new(
+                        OghamErrorKind::Arity,
+                        Span::point(0),
+                        format!(
+                            "function expects {} argument(s), got {}",
+                            binders.len(),
+                            args.len()
+                        ),
+                    ));
+                }
+                let replacements = binders.into_iter().zip(args).collect();
+                return beta_normalize(substitute_names(&lhs_body, &replacements));
+            }
+            Ok(Expr::Binary {
+                op: BinaryOp::At,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+            })
+        }
+        Expr::Binary { op, lhs, rhs } => Ok(Expr::Binary {
+            op,
+            lhs: Box::new(beta_normalize(*lhs)?),
+            rhs: Box::new(beta_normalize(*rhs)?),
+        }),
+        Expr::Ternary {
+            cond,
+            then_expr,
+            else_expr,
+        } => Ok(Expr::Ternary {
+            cond: Box::new(beta_normalize(*cond)?),
+            then_expr: Box::new(beta_normalize(*then_expr)?),
+            else_expr: Box::new(beta_normalize(*else_expr)?),
+        }),
+        Expr::Relation { op, lhs, rhs } => Ok(Expr::Relation {
+            op,
+            lhs: Box::new(beta_normalize(*lhs)?),
+            rhs: Box::new(beta_normalize(*rhs)?),
+        }),
+        _ => Ok(expr),
+    }
+}
+
+fn check_binders(binders: &[String], is_world_shadow: impl Fn(&str) -> bool) -> OghamResult<()> {
+    let mut seen = BTreeSet::new();
+    for binder in binders {
+        if !seen.insert(binder.clone()) {
+            return Err(OghamError::new(
+                OghamErrorKind::Shadow,
+                Span::point(0),
+                format!("duplicate binder `{binder}`"),
+            ));
+        }
+        if is_world_shadow(binder) {
+            return Err(OghamError::new(
+                OghamErrorKind::Shadow,
+                Span::point(0),
+                format!("binder `{binder}` shadows a reserved name"),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn infer_function_signature(body: &Expr, binders: &[String]) -> OghamResult<(Vec<Sort>, Sort)> {
+    let mut slots = binders
+        .iter()
+        .map(|name| (name.clone(), None))
+        .collect::<BTreeMap<String, Option<Sort>>>();
+    let ret = infer_expr_sort(body, ExpectedSort::Any, &mut slots)?;
+    let sorts = binders
+        .iter()
+        .map(|name| {
+            slots
+                .get(name)
+                .and_then(|sort| *sort)
+                .unwrap_or(Sort::Element)
+        })
+        .collect();
+    Ok((sorts, ret))
+}
+
+fn infer_expr_sort(
+    expr: &Expr,
+    expected: ExpectedSort,
+    binders: &mut BTreeMap<String, Option<Sort>>,
+) -> OghamResult<Sort> {
+    match expr {
+        Expr::Bool(_) => expect_sort(Sort::Bool, expected),
+        Expr::Int(_) | Expr::Star(_) | Expr::Omega | Expr::Blade(_) => {
+            expect_sort(default_sort(expected), expected)
+        }
+        Expr::Vector(items) => {
+            for item in items {
+                infer_expr_sort(item, ExpectedSort::Known(Sort::Element), binders)?;
+            }
+            expect_sort(Sort::Element, expected)
+        }
+        Expr::Tuple(_) | Expr::Lambda { .. } => Err(fn_sort_error()),
+        Expr::Ident(name) => {
+            if binders.contains_key(name) {
+                let sort = default_sort(expected);
+                mark_binder_sort(binders, name, sort)?;
+                Ok(sort)
+            } else {
+                expect_sort(default_sort(expected), expected)
+            }
+        }
+        Expr::Call { name, args } => match name.as_str() {
+            "deg" => {
+                expect_arity(name, args, 1)?;
+                infer_expr_sort(&args[0], ExpectedSort::Known(Sort::Element), binders)?;
+                expect_sort(Sort::Index, expected)
+            }
+            "grade" => {
+                expect_arity(name, args, 2)?;
+                infer_expr_sort(&args[0], ExpectedSort::Known(Sort::Element), binders)?;
+                infer_expr_sort(&args[1], ExpectedSort::Known(Sort::Index), binders)?;
+                expect_sort(Sort::Element, expected)
+            }
+            "rev" | "even" | "dual" | "frob" => {
+                expect_arity(name, args, 1)?;
+                infer_expr_sort(&args[0], ExpectedSort::Known(Sort::Element), binders)?;
+                expect_sort(Sort::Element, expected)
+            }
+            "tr" => {
+                if args.is_empty() || args.len() > 2 {
+                    return Err(OghamError::new(
+                        OghamErrorKind::Arity,
+                        Span::point(0),
+                        "`tr` expects one or two arguments",
+                    ));
+                }
+                infer_expr_sort(&args[0], ExpectedSort::Known(Sort::Element), binders)?;
+                if args.len() == 2 {
+                    infer_expr_sort(&args[1], ExpectedSort::Known(Sort::Index), binders)?;
+                }
+                expect_sort(Sort::Element, expected)
+            }
+            "gcd" => {
+                expect_arity(name, args, 2)?;
+                infer_expr_sort(&args[0], ExpectedSort::Known(Sort::Element), binders)?;
+                infer_expr_sort(&args[1], ExpectedSort::Known(Sort::Element), binders)?;
+                expect_sort(Sort::Element, expected)
+            }
+            _ => Err(OghamError::new(
+                OghamErrorKind::UnknownFn,
+                Span::point(0),
+                format!("unknown function `{name}`"),
+            )),
+        },
+        Expr::Factorial(inner) => {
+            infer_expr_sort(inner, ExpectedSort::Known(Sort::Index), binders)?;
+            expect_sort(Sort::Element, expected)
+        }
+        Expr::Unary { op, expr } => match op {
+            UnaryOp::Not => {
+                infer_expr_sort(expr, ExpectedSort::Known(Sort::Bool), binders)?;
+                expect_sort(Sort::Bool, expected)
+            }
+            UnaryOp::Neg => {
+                let sort = default_sort(expected);
+                infer_expr_sort(expr, ExpectedSort::Known(sort), binders)?;
+                expect_sort(sort, expected)
+            }
+            UnaryOp::Inv => {
+                infer_expr_sort(expr, ExpectedSort::Known(Sort::Element), binders)?;
+                expect_sort(Sort::Element, expected)
+            }
+        },
+        Expr::Binary { op, lhs, rhs } => match op {
+            BinaryOp::And | BinaryOp::Or => {
+                infer_expr_sort(lhs, ExpectedSort::Known(Sort::Bool), binders)?;
+                infer_expr_sort(rhs, ExpectedSort::Known(Sort::Bool), binders)?;
+                expect_sort(Sort::Bool, expected)
+            }
+            BinaryOp::Pow => {
+                let sort = match expected {
+                    ExpectedSort::Known(Sort::Index) => Sort::Index,
+                    _ => Sort::Element,
+                };
+                infer_expr_sort(lhs, ExpectedSort::Known(sort), binders)?;
+                infer_expr_sort(rhs, ExpectedSort::Known(Sort::Index), binders)?;
+                expect_sort(sort, expected)
+            }
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul => {
+                let sort = default_sort(expected);
+                infer_expr_sort(lhs, ExpectedSort::Known(sort), binders)?;
+                infer_expr_sort(rhs, ExpectedSort::Known(sort), binders)?;
+                expect_sort(sort, expected)
+            }
+            BinaryOp::Div | BinaryOp::Rem | BinaryOp::Wedge => {
+                infer_expr_sort(lhs, ExpectedSort::Known(Sort::Element), binders)?;
+                infer_expr_sort(rhs, ExpectedSort::Known(Sort::Element), binders)?;
+                expect_sort(Sort::Element, expected)
+            }
+            BinaryOp::At => expect_sort(Sort::Element, expected),
+        },
+        Expr::Ternary {
+            cond,
+            then_expr,
+            else_expr,
+        } => {
+            infer_expr_sort(cond, ExpectedSort::Known(Sort::Bool), binders)?;
+            let branch_expected = expected;
+            let then_sort = infer_expr_sort(then_expr, branch_expected, binders)?;
+            let else_sort = infer_expr_sort(else_expr, ExpectedSort::Known(then_sort), binders)?;
+            if then_sort != else_sort {
+                return Err(sort_mismatch(then_sort, else_sort));
+            }
+            expect_sort(then_sort, expected)
+        }
+        Expr::Relation { op, lhs, rhs } => {
+            let sort = relation_operand_sort(*op, lhs, rhs);
+            infer_expr_sort(lhs, ExpectedSort::Known(sort), binders)?;
+            infer_expr_sort(rhs, ExpectedSort::Known(sort), binders)?;
+            expect_sort(Sort::Bool, expected)
+        }
+    }
+}
+
+fn relation_operand_sort(op: RelOp, lhs: &Expr, rhs: &Expr) -> Sort {
+    if op == RelOp::Fuzzy {
+        Sort::Element
+    } else if op == RelOp::Eq && (bool_shaped(lhs) || bool_shaped(rhs)) {
+        Sort::Bool
+    } else if index_shaped(lhs) || index_shaped(rhs) {
+        Sort::Index
+    } else {
+        Sort::Element
+    }
+}
+
+fn default_sort(expected: ExpectedSort) -> Sort {
+    match expected {
+        ExpectedSort::Known(sort) => sort,
+        ExpectedSort::Any => Sort::Element,
+    }
+}
+
+fn expect_sort(actual: Sort, expected: ExpectedSort) -> OghamResult<Sort> {
+    match expected {
+        ExpectedSort::Any => Ok(actual),
+        ExpectedSort::Known(expected) if expected == actual => Ok(actual),
+        ExpectedSort::Known(expected) => Err(sort_mismatch(expected, actual)),
+    }
+}
+
+fn mark_binder_sort(
+    binders: &mut BTreeMap<String, Option<Sort>>,
+    name: &str,
+    sort: Sort,
+) -> OghamResult<()> {
+    let slot = binders
+        .get_mut(name)
+        .expect("binder existence checked before mark");
+    match slot {
+        Some(existing) if *existing != sort => Err(sort_mismatch(*existing, sort)),
+        Some(_) => Ok(()),
+        None => {
+            *slot = Some(sort);
+            Ok(())
+        }
+    }
+}
+
+fn index_shaped(expr: &Expr) -> bool {
+    match expr {
+        Expr::Call { name, .. } if name == "deg" => true,
+        Expr::Unary {
+            op: UnaryOp::Neg,
+            expr,
+        } => index_shaped(expr),
+        Expr::Binary {
+            op: BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Pow,
+            lhs,
+            rhs,
+        } => index_shaped(lhs) || index_shaped(rhs),
+        _ => false,
+    }
+}
+
+fn bool_shaped(expr: &Expr) -> bool {
+    matches!(
+        expr,
+        Expr::Bool(_)
+            | Expr::Relation { .. }
+            | Expr::Unary {
+                op: UnaryOp::Not,
+                ..
+            }
+            | Expr::Binary {
+                op: BinaryOp::And | BinaryOp::Or,
+                ..
+            }
+    )
+}
+
+fn static_sort<E>(
+    expr: &Expr,
+    env: &BTreeMap<String, Value<E>>,
+    deg_is_index: bool,
+) -> OghamResult<Sort> {
+    match expr {
+        Expr::Bool(_) | Expr::Relation { .. } => Ok(Sort::Bool),
+        Expr::Lambda { .. } | Expr::Tuple(_) => Err(fn_sort_error()),
+        Expr::Ident(name) => match env.get(name) {
+            Some(Value::Element(_)) => Ok(Sort::Element),
+            Some(Value::Index(_)) => Ok(Sort::Index),
+            Some(Value::Bool(_)) => Ok(Sort::Bool),
+            Some(Value::Function(_)) => Err(fn_sort_error()),
+            None => Ok(Sort::Element),
+        },
+        Expr::Call { name, .. } if deg_is_index && name == "deg" => Ok(Sort::Index),
+        Expr::Unary {
+            op: UnaryOp::Not, ..
+        } => Ok(Sort::Bool),
+        Expr::Unary { expr, .. } => static_sort(expr, env, deg_is_index),
+        Expr::Binary {
+            op: BinaryOp::And | BinaryOp::Or,
+            ..
+        } => Ok(Sort::Bool),
+        Expr::Binary {
+            op: BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Pow,
+            lhs,
+            rhs,
+        } => {
+            let lhs = static_sort(lhs, env, deg_is_index).unwrap_or(Sort::Element);
+            let rhs = static_sort(rhs, env, deg_is_index).unwrap_or(Sort::Element);
+            if lhs == Sort::Bool || rhs == Sort::Bool {
+                Ok(Sort::Bool)
+            } else if lhs == Sort::Index || rhs == Sort::Index {
+                Ok(Sort::Index)
+            } else {
+                Ok(Sort::Element)
+            }
+        }
+        Expr::Ternary {
+            then_expr,
+            else_expr,
+            ..
+        } => {
+            let then_sort = static_sort(then_expr, env, deg_is_index)?;
+            let else_sort = static_sort(else_expr, env, deg_is_index)?;
+            if then_sort == else_sort {
+                Ok(then_sort)
+            } else {
+                Err(sort_mismatch(then_sort, else_sort))
+            }
+        }
+        _ => Ok(Sort::Element),
+    }
+}
+
+fn reserved_function_binder(name: &str) -> bool {
+    matches!(
+        name,
+        "rev" | "grade" | "even" | "dual" | "frob" | "tr" | "deg" | "gcd"
+    )
+}
+
+fn sort_mismatch(expected: Sort, actual: Sort) -> OghamError {
+    if expected == Sort::Bool || actual == Sort::Bool {
+        bool_sort_error()
+    } else {
+        index_sort_error()
+    }
+}
+
+fn ignore_static_partiality<E>(result: OghamResult<Value<E>>) -> OghamResult<()> {
+    match result {
+        Ok(_) => Ok(()),
+        Err(err) if is_runtime_partiality(err.kind) => Ok(()),
+        Err(err) => Err(err),
+    }
+}
+
+fn is_runtime_partiality(kind: OghamErrorKind) -> bool {
+    matches!(
+        kind,
+        OghamErrorKind::DivisionByZero
+            | OghamErrorKind::NotInvertible
+            | OghamErrorKind::Domain
+            | OghamErrorKind::Overflow
+            | OghamErrorKind::KummerEscape
+            | OghamErrorKind::Modulus
+    )
 }
 
 fn expression_is_index(expr: &Expr) -> bool {
@@ -1513,6 +3224,9 @@ trait OghamScalar: Scalar + Sized + Display + 'static {
 
 impl OghamScalar for Nimber {
     fn bare_int(n: u128, span: Span) -> OghamResult<Self> {
+        if n == 0 {
+            return Ok(Nimber::zero());
+        }
         Err(OghamError::new(
             OghamErrorKind::BareInt,
             span,
@@ -1581,6 +3295,9 @@ impl OghamScalar for Nimber {
 
 impl OghamScalar for Ordinal {
     fn bare_int(n: u128, span: Span) -> OghamResult<Self> {
+        if n == 0 {
+            return Ok(Ordinal::from_u128(0));
+        }
         Err(OghamError::new(
             OghamErrorKind::BareInt,
             span,
@@ -2175,6 +3892,22 @@ fn index_sort_error() -> OghamError {
     )
 }
 
+fn bool_sort_error() -> OghamError {
+    OghamError::new(
+        OghamErrorKind::BoolSort,
+        Span::point(0),
+        "expected a Bool expression",
+    )
+}
+
+fn fn_sort_error() -> OghamError {
+    OghamError::new(
+        OghamErrorKind::FnSort,
+        Span::point(0),
+        "Function values are first-order and cannot appear here",
+    )
+}
+
 fn exp_sort_error() -> OghamError {
     OghamError::new(
         OghamErrorKind::ExpSort,
@@ -2182,6 +3915,19 @@ fn exp_sort_error() -> OghamError {
         "exponent must be an Index",
     )
     .with_hint("`↑`/`^` is power; the wedge product is `∧`/`&`")
+}
+
+fn unbound_error(name: &str) -> OghamError {
+    let err = OghamError::new(
+        OghamErrorKind::Unbound,
+        Span::point(0),
+        format!("unbound identifier `{name}`"),
+    );
+    if name == "t" {
+        err.with_hint("`t` is the indeterminate in poly/ratfunc worlds")
+    } else {
+        err.with_hint(format!("did you mean `{name} := ...`?"))
+    }
 }
 
 fn grade0_error(span: Span) -> OghamError {

@@ -20,6 +20,15 @@ pub enum TokenKind {
     Percent,
     At,
     Bang,
+    Question,
+    Colon,
+    Arrow,
+    And,
+    Or,
+    Not,
+    True,
+    False,
+    Semicolon,
     Eq,
     Less,
     Greater,
@@ -122,13 +131,16 @@ pub fn lex(src: &str) -> OghamResult<Vec<Token>> {
             }
             let kind = if s == "w" {
                 TokenKind::Omega
-            } else if s == "true" || s == "false" {
-                return Err(OghamError::new(
-                    OghamErrorKind::Reserved,
-                    Span::new(start, end),
-                    "reserved word",
-                )
-                .with_hint("reserved for verdict output, not input values"));
+            } else if s == "and" {
+                TokenKind::And
+            } else if s == "or" {
+                TokenKind::Or
+            } else if s == "not" {
+                TokenKind::Not
+            } else if s == "true" {
+                TokenKind::True
+            } else if s == "false" {
+                TokenKind::False
             } else if s == "e" {
                 return Err(OghamError::new(
                     OghamErrorKind::Parse,
@@ -163,6 +175,7 @@ pub fn lex(src: &str) -> OghamResult<Vec<Token>> {
             '%' => TokenKind::Percent,
             '@' => TokenKind::At,
             '!' => TokenKind::Bang,
+            '?' => TokenKind::Question,
             '=' => {
                 if i + 1 < chars.len() && chars[i + 1].1 == '=' {
                     i += 1;
@@ -188,16 +201,18 @@ pub fn lex(src: &str) -> OghamResult<Vec<Token>> {
                     i += 1;
                     continue;
                 }
-                return Err(reserved(span));
+                TokenKind::Colon
             }
             '+' => TokenKind::Plus,
             '-' => TokenKind::Minus,
+            ';' => TokenKind::Semicolon,
             '(' => TokenKind::LParen,
             ')' => TokenKind::RParen,
             '[' => TokenKind::LBracket,
             ']' => TokenKind::RBracket,
             ',' => TokenKind::Comma,
-            '{' | '}' | '?' | ';' | '↦' | '~' => return Err(reserved(span)),
+            '↦' | '~' => TokenKind::Arrow,
+            '{' | '}' => return Err(reserved(span)),
             _ => {
                 return Err(OghamError::new(
                     OghamErrorKind::Parse,

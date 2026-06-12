@@ -33,6 +33,13 @@ use crate::scalar::Scalar;
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Nimber(pub u128);
 
+impl Nimber {
+    /// The nimber/game-value fuzzy relation: distinct nimbers are incomparable.
+    pub fn fuzzy(&self, other: &Self) -> bool {
+        self != other
+    }
+}
+
 impl std::fmt::Display for Nimber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "*{}", self.0)

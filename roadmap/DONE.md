@@ -36,6 +36,33 @@ fold the one-line structural fact into the relevant `AGENTS.md`.
 
 ## completed items
 
+### 2026-06-12: `ogham-backend`
+**Summary:** evaluator helper surface for ogham `%`, exact `/`, `@`, `!`, and relations
+**Pillars:** scalar (+py bindings)    **Claim level:** engineering — implemented and tested support surface
+- surface: `Integer::{divrem,rem,div_exact}` with Euclidean remainders and
+  `IntegerDivExactError`; `Surreal::rem` / `Omnific::rem` as the monic-`ω↑e`
+  CNF-tail filter; `Poly::compose`; `checked_factorial_i128` plus
+  `factorial_in_scalar`; `Ord`/`PartialOrd` for the totally ordered scalar
+  worlds (`Integer`, `Rational`, `Surreal`, `Omnific`); `fuzzy()` on `Nimber`
+  and `Ordinal`. Python mirrors the new scalar methods where runtime-friendly:
+  integer `divrem`/`rem`/`div_exact`/exact `/`/`%`, surreal/omnific `rem`,
+  poly `compose`, rich comparisons for `Integer`/`Omnific`, and `fuzzy()` on
+  the nim classes.
+- oracles: unit tests pin Euclidean signs (`-7 % 3 = 2`), exact-division
+  remainder reporting, monic-omega-power rejection/filtering, polynomial
+  composition, the `!33`/`!34` i128 boundary, Wilson's `!6 = -1` in `F_7`,
+  total-order trait delegation, and nim fuzzy-as-distinctness. Validation:
+  `cargo fmt --check`; `git diff --check`; `cargo test`; both clippy passes
+  with `-D warnings`; `cargo check --features python`; cold rustdoc with
+  `RUSTDOCFLAGS="-D warnings"`; `maturin develop`; `demo.py`; focused Python
+  probe over the new methods.
+- boundaries: the language remains unbuilt (`ogham-v1` still owns parser,
+  world dispatch, evaluator errors, REPL, conformance harness, and Python
+  `ogham_eval`). Surreal/omnific `%` deliberately rejects non-monic and
+  non-omega-power moduli; exact division is not generalized to surreal/omnific
+  long division; nim worlds remain unordered (no `PartialOrd`, no `BitOr`
+  shorthand).
+
 ### 2026-06-11: `ogham-foundations`
 **Summary:** the expression-language spec, canonical-ogham Display v2, and host operator alignment
 **Pillars:** scalar ↔ clifford (+py and games touchpoints)    **Claim level:** engineering — design contract + behavior-preserving display/operator refactor

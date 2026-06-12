@@ -7,10 +7,10 @@
 
 use crate::scalar::{
     is_prime_u128, Adele, AdelePlace, CyclicGaloisExtension, ExactRoots, FieldExtension,
-    FiniteField, Fp, Fpn, Gauss, HasFractionField, HasRingOfIntegers, Integer, Laurent, LocalQp,
-    MaxPlus, MinPlus, NewtonPolygon, Nimber, Omnific, Ordinal, Poly, Qp, Qq, Ramified, Rational,
-    RationalFunction, ReductionPolynomialKind, ResidueField, Scalar, SignExpansion, Surcomplex,
-    Surreal, Tropical, Valued, WittVec, Zp,
+    FiniteField, Fp, Fpn, Gauss, HasFractionField, HasRingOfIntegers, Integer,
+    IntegerDivExactError, Laurent, LocalQp, MaxPlus, MinPlus, NewtonPolygon, Nimber, Omnific,
+    Ordinal, Poly, Qp, Qq, Ramified, Rational, RationalFunction, ReductionPolynomialKind,
+    ResidueField, Scalar, SignExpansion, Surcomplex, Surreal, Tropical, Valued, WittVec, Zp,
 };
 use pyo3::basic::CompareOp;
 use pyo3::exceptions::{PyTypeError, PyValueError};
@@ -24,6 +24,15 @@ fn ordering_to_i8(ordering: Ordering) -> i8 {
         Ordering::Equal => 0,
         Ordering::Greater => 1,
     }
+}
+
+fn integer_div_exact_py(num: &Integer, den: &Integer) -> PyResult<Integer> {
+    num.div_exact(den).map_err(|err| match err {
+        IntegerDivExactError::DivisionByZero => PyValueError::new_err("integer division by zero"),
+        IntegerDivExactError::Remainder(r) => PyValueError::new_err(format!(
+            "integer division is not exact; Euclidean remainder is {r}"
+        )),
+    })
 }
 
 fn validate_relative_degrees<F: FiniteField>(x: &F, m: usize, e: usize) -> PyResult<()> {
@@ -166,6 +175,10 @@ impl PyNimber {
     }
     fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
         matches!(other.cast::<PyNimber>(), Ok(n) if n.borrow().inner == self.inner)
+    }
+    /// The nimber/game-value fuzzy relation: distinct nimbers are incomparable.
+    fn fuzzy(&self, other: &Bound<'_, PyAny>) -> PyResult<bool> {
+        Ok(self.inner.fuzzy(&parse_nimber(other)?))
     }
     fn __hash__(&self) -> usize {
         self.inner.0 as usize
@@ -358,6 +371,9 @@ impl PyNimberPoly {
     }
     fn eval(&self, x: &Bound<'_, PyAny>) -> PyResult<PyNimber> {
         Ok(wrap_nimber(self.inner.eval(&parse_nimber(x)?)))
+    }
+    fn compose(&self, inner: &PyNimberPoly) -> PyNimberPoly {
+        wrap_nimber_poly(self.inner.compose(&inner.inner))
     }
     fn scale(&self, s: &Bound<'_, PyAny>) -> PyResult<Self> {
         Ok(wrap_nimber_poly(self.inner.scale(&parse_nimber(s)?)))
@@ -1256,6 +1272,9 @@ macro_rules! function_field_pyclasses {
             }
             fn eval(&self, x: &Bound<'_, PyAny>) -> PyResult<$base_py> {
                 Ok($base_wrap(self.inner.eval(&$base_parse(x)?)))
+            }
+            fn compose(&self, inner: &$poly_py) -> $poly_py {
+                $wrap_poly(self.inner.compose(&inner.inner))
             }
             fn scale(&self, s: &Bound<'_, PyAny>) -> PyResult<Self> {
                 Ok($wrap_poly(self.inner.scale(&$base_parse(s)?)))
@@ -4020,6 +4039,14 @@ impl PySurreal {
             inner: self.inner.mul(&oi),
         })
     }
+    fn rem(&self, modulus: &Bound<'_, PyAny>) -> PyResult<PySurreal> {
+        self.inner
+            .rem(&parse_surreal(modulus)?)
+            .map(|inner| PySurreal { inner })
+            .ok_or_else(|| {
+                PyValueError::new_err("surreal remainder needs a monic omega-power modulus")
+            })
+    }
     fn __pow__(&self, n: u128, modulo: Option<&Bound<'_, PyAny>>) -> PyResult<PySurreal> {
         if modulo.is_some() {
             return Err(PyValueError::new_err(
@@ -4492,22 +4519,49 @@ impl PyInteger {
             .map(wrap_integer)
             .ok_or_else(|| PyValueError::new_err("Z is a ring: only ±1 are invertible"))
     }
+    fn divrem(&self, divisor: &Bound<'_, PyAny>) -> PyResult<(PyInteger, PyInteger)> {
+        let divisor = parse_integer(divisor)?;
+        self.inner
+            .divrem(&divisor)
+            .map(|(q, r)| (wrap_integer(q), wrap_integer(r)))
+            .ok_or_else(|| PyValueError::new_err("integer division by zero"))
+    }
+    fn rem(&self, divisor: &Bound<'_, PyAny>) -> PyResult<PyInteger> {
+        let divisor = parse_integer(divisor)?;
+        self.inner
+            .rem(&divisor)
+            .map(wrap_integer)
+            .ok_or_else(|| PyValueError::new_err("integer remainder by zero"))
+    }
+    fn div_exact(&self, divisor: &Bound<'_, PyAny>) -> PyResult<PyInteger> {
+        Ok(wrap_integer(integer_div_exact_py(
+            &self.inner,
+            &parse_integer(divisor)?,
+        )?))
+    }
+    fn __mod__(&self, divisor: &Bound<'_, PyAny>) -> PyResult<PyInteger> {
+        self.rem(divisor)
+    }
+    fn __rmod__(&self, dividend: &Bound<'_, PyAny>) -> PyResult<PyInteger> {
+        parse_integer(dividend)?
+            .rem(&self.inner)
+            .map(wrap_integer)
+            .ok_or_else(|| PyValueError::new_err("integer remainder by zero"))
+    }
     fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyInteger> {
-        let rhs = parse_integer(other)?;
-        let rinv = rhs
-            .inv()
-            .ok_or_else(|| PyValueError::new_err("integer divisor is not a unit"))?;
-        Ok(wrap_integer(self.inner.mul(&rinv)))
+        Ok(wrap_integer(integer_div_exact_py(
+            &self.inner,
+            &parse_integer(other)?,
+        )?))
     }
     fn __rtruediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyInteger> {
-        let si = self
-            .inner
-            .inv()
-            .ok_or_else(|| PyValueError::new_err("integer divisor is not a unit"))?;
-        Ok(wrap_integer(parse_integer(other)?.mul(&si)))
+        Ok(wrap_integer(integer_div_exact_py(
+            &parse_integer(other)?,
+            &self.inner,
+        )?))
     }
-    fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
-        matches!(parse_integer(other), Ok(n) if n == self.inner)
+    fn __richcmp__(&self, other: &Bound<'_, PyAny>, op: CompareOp) -> PyResult<bool> {
+        Ok(op.matches(std::cmp::Ord::cmp(&self.inner, &parse_integer(other)?)))
     }
     fn __repr__(&self) -> String {
         format!("{}", self.inner)
@@ -4641,6 +4695,14 @@ impl PyOmnific {
             .map(|o| PyOmnific { inner: o })
             .ok_or_else(|| PyValueError::new_err("Oz is a ring: only ±1 are invertible"))
     }
+    fn rem(&self, modulus: &Bound<'_, PyAny>) -> PyResult<PyOmnific> {
+        self.inner
+            .rem(&parse_omnific(modulus)?)
+            .map(wrap_omnific)
+            .ok_or_else(|| {
+                PyValueError::new_err("omnific remainder needs a monic omega-power modulus")
+            })
+    }
     fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<PyOmnific> {
         let rhs = parse_omnific(other)?;
         let rinv = rhs
@@ -4655,8 +4717,8 @@ impl PyOmnific {
             .ok_or_else(|| PyValueError::new_err("omnific divisor is not a unit"))?;
         Ok(wrap_omnific(parse_omnific(other)?.mul(&si)))
     }
-    fn __eq__(&self, other: &Bound<'_, PyAny>) -> bool {
-        matches!(parse_omnific(other), Ok(o) if o == self.inner)
+    fn __richcmp__(&self, other: &Bound<'_, PyAny>, op: CompareOp) -> PyResult<bool> {
+        Ok(op.matches(std::cmp::Ord::cmp(&self.inner, &parse_omnific(other)?)))
     }
     fn __repr__(&self) -> String {
         format!("{}", self.inner.inner())
@@ -5670,6 +5732,10 @@ impl PyOrdinal {
     }
     fn is_zero(&self) -> bool {
         self.inner.is_zero()
+    }
+    /// The nimber/game-value fuzzy relation: distinct ordinal nimbers are incomparable.
+    fn fuzzy(&self, other: &Bound<'_, PyAny>) -> PyResult<bool> {
+        Ok(self.inner.fuzzy(&parse_ordinal(other)?))
     }
     /// Coefficients `[c₀, c₁, c₂]` if this ordinal is below `ω³`.
     fn as_below_omega3(&self) -> Option<Vec<u128>> {

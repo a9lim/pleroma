@@ -126,40 +126,6 @@ laws as tests and `tropicalize` factoring through it. A leaf, but it converts th
 
 ## numbers — ogham
 
-### 1·e_s: `ogham-backend`
-**The pure-Rust prerequisites for the ogham evaluator** (spec §7.6), playable
-before any parser exists, plus the `rem` harmonization:
-- `Integer::divrem`/`rem` (Euclidean, `0 ≤ r < |b|`) and `Integer::div_exact`
-  (the §7.6 exact-division extension of `/`; the failure carries the
-  remainder);
-- `Surreal::rem`/`Omnific::rem` by a monic ω-power modulus — a CNF filter
-  keeping terms with exponent strictly below the modulus's. NOT the existing
-  `Surreal::truncate(n)`, which cuts to `n` *terms*; this is a new method.
-  Non-ω-power moduli rejected honestly;
-- `Poly::compose` (substitution `t := Poly` — the `eval` Horner loop over
-  `Poly` arithmetic);
-- `factorial`: a checked i128 path (`!33` is the roof, `!34` → `None`) feeding
-  the integer/omnific/surreal landings, plus the generic in-world running
-  product over `from_int` for `fp*`/`f*` (no overflow possible; Wilson's
-  `!6 = -1` in F_7 as the test);
-- **`rem` harmonization**: remainder-returning methods are uniformly
-  `rem`/`divrem` — `Poly` already is, and the new methods above conform from
-  birth (audit: nothing else in `src/` returns a remainder under another
-  name). Two scoped exclusions, a9's call to overturn:
-  `Poly::{mul_mod,pow_mod}` are quotient-ring *context* arithmetic rather
-  than remainder queries (standard naming, and renaming churns the py
-  bindings); `floor`/`frac` stay the standard pair;
-- **order alignment** (spec §7.7/§13): `impl Ord`/`PartialOrd` for the
-  totally ordered scalars (`Integer`, `Rational`, `Surreal`, `Omnific` —
-  delegating to the inherent `cmp`s, the established shadow pattern) and
-  `fuzzy()` on `Nimber`/`Ordinal` (`a ≠ b`, the game-value confusion).
-  Deliberately NO `PartialOrd` on the nim types (`partial_cmp = None` beside
-  `Ordinal`'s total address `cmp` would be incoherent) and NO
-  `BitOr`-as-fuzzy (bitwise expectations — the `Nimber ^ Nimber` footgun
-  class). Py: rich comparisons on the ordered classes where missing,
-  `fuzzy()` on the nim classes; the shipped `Ordinal.__richcmp__` keeps
-  speaking address order (host dialect, documented in spec §13).
-
 ### 3·(e_s∧e_c∧e_y): `ogham-v1`
 **The language itself** — WP2–WP6 per `spec/ogham.md` §15: the
 lexer/parser/AST/unparser (`src/ogham/`), the world-dispatch evaluator (the
@@ -168,8 +134,8 @@ the Python `eval` hook with the §13 dunder alignment. The spec and
 `spec/conformance.txt` are the whole contract — parse ∘ display = id, corpus
 green on both frontends; judgment calls go back to the spec, not into the
 code. WP1/WP7 (Display v2, host operators) shipped as `ogham-foundations`;
-this is the remainder. Plays after `ogham-backend` (WP3 consumes its
-surface).
+`ogham-backend` shipped the evaluator helper surface; this is the remainder.
+WP3 consumes that surface.
 
 ### 1·(e_s∧e_y): `ogham-v1.1`
 **The function-shaped worlds** — `spec/ogham.md` §16, the sketch promoted to

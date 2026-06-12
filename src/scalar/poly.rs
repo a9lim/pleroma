@@ -207,6 +207,15 @@ impl<S: Scalar> Poly<S> {
         acc
     }
 
+    /// Substitute `t := inner` by Horner's rule over polynomial arithmetic.
+    pub fn compose(&self, inner: &Self) -> Self {
+        let mut acc = Poly::zero();
+        for c in self.coeffs.iter().rev() {
+            acc = acc.mul(inner).add(&Poly::constant(c.clone()));
+        }
+        acc
+    }
+
     /// Scale to a monic polynomial (divide through by the leading coefficient).
     /// Panics on the zero polynomial; requires the base to be a field.
     pub fn make_monic(&self) -> Self {
@@ -374,6 +383,15 @@ mod tests {
         // a remainder that is genuinely nonzero
         let (_, r2) = p(&[1, 0, 1]).divrem(&xm1); // x² + 1 at x=1 → 2
         assert_eq!(r2, p(&[2]));
+    }
+
+    #[test]
+    fn compose_substitutes_polynomials_by_horner() {
+        let f = p(&[1, 0, 1]); // 1 + t²
+        let g = p(&[1, 1]); // 1 + t
+        assert_eq!(f.compose(&g), p(&[2, 2, 1])); // 1 + (1+t)²
+        assert_eq!(P5::x().compose(&g), g);
+        assert_eq!(f.compose(&P5::zero()), p(&[1]));
     }
 
     #[test]

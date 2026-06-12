@@ -124,6 +124,35 @@ impl Surreal {
         &self.terms
     }
 
+    /// If this is a monic omega-power `ω^e`, return the exponent `e`.
+    ///
+    /// This is the modulus shape used by ogham's surreal-family remainder:
+    /// nonzero, one CNF term, coefficient exactly `1`.
+    pub fn monic_omega_power_exponent(&self) -> Option<&Surreal> {
+        match self.terms.as_slice() {
+            [(exp, coeff)] if *coeff == Rational::one() => Some(exp),
+            _ => None,
+        }
+    }
+
+    /// Remainder by a monic omega-power modulus.
+    ///
+    /// For a modulus `ω^e`, keep exactly the CNF tail with exponents strictly
+    /// below `e`. Non-monic or non-monomial moduli return `None`; this avoids
+    /// pretending that field division by an arbitrary surreal is an integer-like
+    /// remainder operation.
+    pub fn rem(&self, modulus: &Surreal) -> Option<Surreal> {
+        let cutoff = modulus.monic_omega_power_exponent()?;
+        Some(Surreal {
+            terms: self
+                .terms
+                .iter()
+                .filter(|(exp, _)| exp.cmp(cutoff) == Ordering::Less)
+                .cloned()
+                .collect(),
+        })
+    }
+
     /// Keep the `n` leading (largest-exponent) terms. Terms are stored strictly
     /// descending, so this is the top-`n` of the Hahn series. Used by the
     /// [`analytic`] layer (and its tests) to bound working precision.
@@ -162,6 +191,20 @@ impl PartialEq for Surreal {
             .iter()
             .zip(other.terms.iter())
             .all(|((e1, c1), (e2, c2))| e1 == e2 && c1 == c2)
+    }
+}
+
+impl Eq for Surreal {}
+
+impl PartialOrd for Surreal {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(std::cmp::Ord::cmp(self, other))
+    }
+}
+
+impl Ord for Surreal {
+    fn cmp(&self, other: &Self) -> Ordering {
+        Surreal::cmp(self, other)
     }
 }
 
@@ -319,6 +362,7 @@ mod tests {
     fn omega_is_bigger_than_every_integer() {
         let w = Surreal::omega();
         assert_eq!(w.cmp(&int(1_000_000)), Ordering::Greater);
+        assert!(w > int(1_000_000));
         // ω − 1 is still infinite and still below ω
         let w_minus_1 = w.sub(&int(1));
         assert_eq!(w_minus_1.cmp(&int(1_000_000)), Ordering::Greater);
@@ -374,10 +418,7 @@ mod tests {
     fn display_v2_canonical_ogham() {
         let w = Surreal::omega();
         // 3⋅ω↑2 - ω + 5 : explicit ⋅, ↑, first-term sign, ` - ` join kept.
-        let x = Surreal::omega_pow(int(2))
-            .mul(&int(3))
-            .sub(&w)
-            .add(&int(5));
+        let x = Surreal::omega_pow(int(2)).mul(&int(3)).sub(&w).add(&int(5));
         assert_eq!(format!("{x:?}"), "3⋅ω↑2 - ω + 5");
         // ω↑-1 : a negative *integer* exponent renders bare.
         assert_eq!(format!("{:?}", Surreal::epsilon()), "ω↑-1");
@@ -406,6 +447,32 @@ mod tests {
                                                                 // a genuine sum has no finite-support inverse
         assert!(Surreal::omega().add(&int(1)).inv().is_none());
         assert!(Surreal::zero().inv().is_none());
+    }
+
+    #[test]
+    fn remainder_by_monic_omega_power_filters_cnf_tail() {
+        let x = Surreal::omega_pow(int(2))
+            .mul(&int(3))
+            .sub(&Surreal::omega())
+            .add(&int(5));
+        assert_eq!(
+            x.rem(&Surreal::omega_pow(int(2))).unwrap(),
+            Surreal::omega().neg().add(&int(5))
+        );
+        assert_eq!(x.rem(&Surreal::omega()).unwrap(), int(5));
+        assert_eq!(x.rem(&Surreal::one()).unwrap(), Surreal::zero());
+
+        let sqrt_omega = Surreal::omega_pow(Surreal::from_rational(Rational::new(1, 2)));
+        assert!(sqrt_omega.monic_omega_power_exponent().is_some());
+        assert_eq!(x.rem(&sqrt_omega).unwrap(), int(5));
+    }
+
+    #[test]
+    fn remainder_rejects_non_monic_omega_power_moduli() {
+        let x = Surreal::omega().add(&int(7));
+        assert!(x.rem(&Surreal::zero()).is_none());
+        assert!(x.rem(&Surreal::omega().add(&int(1))).is_none());
+        assert!(x.rem(&Surreal::omega().mul(&int(2))).is_none());
     }
 
     #[test]

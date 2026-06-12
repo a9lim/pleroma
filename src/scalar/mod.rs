@@ -208,6 +208,41 @@ pub(crate) fn is_prime_u128(p: u128) -> bool {
     true
 }
 
+/// Checked factorial in the exact `i128` carrier.
+///
+/// Negative inputs are outside the factorial domain. `33!` is the largest
+/// factorial represented by `i128`; `34!` returns `None`.
+pub fn checked_factorial_i128(n: i128) -> Option<i128> {
+    if n < 0 {
+        return None;
+    }
+    let mut acc = 1i128;
+    for k in 2..=n {
+        acc = acc.checked_mul(k)?;
+    }
+    Some(acc)
+}
+
+/// Factorial computed inside a scalar world via the `Z -> S` ring map.
+///
+/// This is the finite-field-friendly path for ogham `!n`: in positive
+/// characteristic the product is immediately zero once a factor equal to the
+/// characteristic appears, so no host integer overflow is involved.
+pub fn factorial_in_scalar<S: Scalar>(n: i128) -> Option<S> {
+    if n < 0 {
+        return None;
+    }
+    let characteristic = S::characteristic();
+    if characteristic > 0 && n.unsigned_abs() >= characteristic {
+        return Some(S::zero());
+    }
+    let mut acc = S::one();
+    for k in 2..=n {
+        acc = acc.mul(&S::from_int(k));
+    }
+    Some(acc)
+}
+
 /// Generate the owned-value operators `+`, `-` (binary and unary), `*`, and
 /// `^ u128` (power) for a [`Scalar`] backend by forwarding to its trait
 /// methods, so downstream code can write `a + b`, `a * b`, `-a`, `a ^ 3`
@@ -478,10 +513,27 @@ mod ops_tests {
         use crate::scalar::Fp;
         let three: Fp<5> = Fp::from_int(3);
         assert_eq!(three ^ 2u128, Fp::from_int(4)); // 3^2 = 9 ≡ 4 mod 5
-        // consistency with repeated mul
+                                                    // consistency with repeated mul
         let r2 = Rational::from_int(2);
         let r8 = Rational::from_int(8);
         assert_eq!(r2 ^ 3u128, r8);
+    }
+
+    #[test]
+    fn checked_factorial_i128_has_the_ogham_roof() {
+        assert_eq!(checked_factorial_i128(-1), None);
+        assert_eq!(checked_factorial_i128(0), Some(1));
+        assert_eq!(checked_factorial_i128(5), Some(120));
+        assert!(checked_factorial_i128(33).is_some());
+        assert_eq!(checked_factorial_i128(34), None);
+    }
+
+    #[test]
+    fn factorial_in_scalar_uses_the_world_ring_map() {
+        assert_eq!(factorial_in_scalar::<Integer>(5), Some(Integer(120)));
+        assert_eq!(factorial_in_scalar::<Fp<7>>(6), Some(Fp::<7>::from_int(-1)));
+        assert_eq!(factorial_in_scalar::<Fp<7>>(7), Some(Fp::<7>::zero()));
+        assert_eq!(factorial_in_scalar::<Nimber>(4), Some(Nimber::zero()));
     }
 
     #[test]

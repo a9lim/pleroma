@@ -63,7 +63,10 @@ and const-generic sizes that are inherently indices.
   `Ordinal` is the deliberate exception: additive operators only, multiplication behind
   the checked `nim_mul` API (the represented Kummer tower has an honest boundary). `/`
   stays a method (inv is partial). **The operators are NOT a `Scalar` supertrait** —
-  see "things that look like bugs".
+  see "things that look like bugs". Ogham backend helpers live here too:
+  `checked_factorial_i128` (host-carrier roof: `33!`, not `34!`) and
+  `factorial_in_scalar<S>` (in-world product via `from_int`, zeroing at positive
+  characteristic).
 
   **`Scalar::from_int(n: i128) -> Self`** is the ℤ-embedding (unique unital ring
   homomorphism ℤ → R). The default double-and-add over `one()`/`neg()` is correct for
@@ -153,10 +156,14 @@ and const-generic sizes that are inherently indices.
 - **`rational.rs`** — exact ℚ over i128, NOT a game backend: the char-0 scalar that
   validates the geometric product against the known Cl(p,q) classification before the
   exotic backends are trusted. (Overflow is a known limit; the surreal backend is the
-  real char-0 home.)
+  real char-0 home.) Implements the standard total-order traits by delegating to its
+  inherent value `cmp`.
 - **`integer.rs`** — exact ℤ, the coefficient ring for the exterior algebra of the
   game group (`games/game_exterior/`): games are a ℤ-module, not a ring, so Λ over
-  ℤ is the structure that lives on all of game-world. Only ±1 invertible.
+  ℤ is the structure that lives on all of game-world. Only ±1 invertible. Ogham's
+  exact-division support is here: `divrem`/`rem` are Euclidean (`0 <= r < |b|`),
+  and `div_exact` returns `IntegerDivExactError::Remainder(r)` on non-exact
+  division. It also implements the standard total-order traits.
 
 ## `big/` — the transfinite worlds
 
@@ -167,7 +174,9 @@ and const-generic sizes that are inherently indices.
   type would be a false identity.
 - **`surreal/`** — finite-support surreal Hahn/CNF backend (char 0):
   - `mod.rs` — CNF core: `Vec<(exponent: Surreal, coeff: Rational)>`, recursive
-    exponents, Hahn arithmetic `ω^a·ω^b = ω^{a+b}`, Scalar, Debug, `truncate()`.
+    exponents, Hahn arithmetic `ω^a·ω^b = ω^{a+b}`, Scalar, Debug, `truncate()`,
+    standard total-order traits, and `rem` by a monic omega-power modulus
+    (filter terms with exponent strictly below the modulus exponent).
   - `simplicity.rs` — the {L|R}/simplicity bridge (dyadic): `as_rational`/`as_dyadic`/
     `dyadic_birthday` + `simplest_above`/`_below`/`_between`, floor/frac (the Oz
     bridge).
@@ -178,10 +187,13 @@ and const-generic sizes that are inherently indices.
     `inv_to_terms` (Neumann series) + `sqrt_to_terms`/`nth_root_to_terms` (real-closed
     roots to n terms; `Some` iff the leading coeff is a perfect ℚ-power).
 - **`omnific.rs`** — the omnific integers Oz: `Omnific(Surreal)`, a transfinite
-  commutative RING (not field). The surreal mirror of `Integer`.
+  commutative RING (not field). The surreal mirror of `Integer`; inherits the
+  total order and monic-omega-power `rem` from the underlying surreal while
+  revalidating the omnific-integral invariant.
 - **`ordinal/`** — transfinite (ordinal) NIMBERS On₂, the char-2 mirror of surreal:
   - `mod.rs` — CNF core: `Ordinal = Vec<(exponent: Ordinal, coeff: u128)>`, the lex
-    cmp, `as_finite`, `checked_inv`, `Scalar`. The `Scalar::mul` route is
+    cmp, `as_finite`, `checked_inv`, `fuzzy` (`a != b` as the nimber game-value
+    incomparability test), `Scalar`. The `Scalar::mul` route is
     panic-on-escape, matching the Kummer tower boundary; callers needing an explicit
     mathematical boundary use `nim_mul`.
   - `nim.rs` — char-2 NIM arithmetic: `nim_add` (coeff XOR) COMPLETE; `nim_mul`
@@ -240,7 +252,9 @@ the project's central symmetries.
   flat: `mod.rs` (wrapper + Scalar), `arithmetic.rs` (`nim_add`=XOR; `nim_mul` via
   Fermat-power recursion; `nim_square`/`nim_sqrt`/`nim_inv`), `artin_schreier.rs`
   (`nim_trace` + y²+y=c solver), `galois.rs` (impl FiniteField, with Pohlig–Hellman +
-  BSGS overrides for `is_primitive`/`discrete_log`).
+  BSGS overrides for `is_primitive`/`discrete_log`). `Nimber::fuzzy` is the
+  game-value incomparability predicate: exactly `self != other`; do not turn that
+  into `PartialOrd`.
 - **`wittvec.rs`** — `WittVec<const P, const N, const F>`: Witt vectors W_N(F_q) as
   the truncated unramified ring (Z/p^N)[t]/(f̃). The char-p analogue of Z_p; its field
   of fractions is `small/qq.rs`.

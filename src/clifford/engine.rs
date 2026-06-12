@@ -525,10 +525,7 @@ mod tests {
     #[test]
     fn pow_mixed_grade_element_char2() {
         // char-2 (Nimber): v = e0 + e1, verify pow(v,3) == v*v*v.
-        let alg = CliffordAlgebra::new(
-            2,
-            Metric::diagonal(vec![Nimber(1), Nimber(1)]),
-        );
+        let alg = CliffordAlgebra::new(2, Metric::diagonal(vec![Nimber(1), Nimber(1)]));
         let v = alg.add(&alg.e(0), &alg.e(1));
         let v3_direct = alg.mul(&alg.mul(&v, &v), &v);
         assert_eq!(alg.pow(&v, 3), v3_direct);

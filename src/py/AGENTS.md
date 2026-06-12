@@ -36,11 +36,13 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
   `backend!` macro consumes. Bound scalar classes expose the shared runtime `Scalar`
   surface (`zero`/`one`/`characteristic` where applicable, `is_zero`, partial
   inverses/division, owned operators), plus per-world extras: Surreal's simplicity
-  bridge + sign-expansion round-trips + lazy analytic helpers; Nimber's
-  `pow`/`frobenius`/`sqrt` + the `nim_*` Galois toolkit; the Qp/Qq local-field package
+  bridge + sign-expansion round-trips + lazy analytic helpers + monic-omega-power
+  `rem`; Integer's Euclidean `divrem`/`rem`/`div_exact`; Omnific's matching
+  monic-omega-power `rem`; Nimber's `pow`/`frobenius`/`sqrt` + the `nim_*`
+  Galois toolkit + `fuzzy`; the fixed Poly classes' `compose`; the Qp/Qq local-field package
   (`uniformizer`/`residue`/`residue_unit`/`teichmuller`, `is_integral`/`to_integer`)
   and the Qq `FieldExtension`/`CyclicGaloisExtension` surface; Ordinal's CNF terms +
-  staged `nim_mul`/`checked_inv`; the `Fpn` Galois/reduction-poly metadata
+  staged `nim_mul`/`checked_inv` + `fuzzy`; the `Fpn` Galois/reduction-poly metadata
   (`ReductionPolynomialKind`).
 - **`engine.rs`** — the `backend!` macro → `<World>Algebra`/`<World>MV`/`<World>LinearMap`
   triplets (driven by `catalog.rs`), plus conformal GA (`<World>Cga`) over every bound
@@ -144,7 +146,9 @@ runtime type is bound. What stays Rust-only is structural, not a backlog:
   construction — intended; do not add a runtime-tagged "any scalar" path.
 - **Python operators:** `*` geometric, `&` wedge (ogham `∧`; `^` also works during
   a deprecation window — WP6 will align the dunder set), `<<`/`>>` left/right
-  contraction, `~` reverse, `/` divide (scalar or versor), `**` power, `+`/`-`, `==`.
+  contraction, `~` reverse, `/` divide (scalar or versor; `Integer` uses exact
+  Euclidean division), `**` power, `+`/`-`, `==`, and `Integer.__mod__` for
+  Euclidean remainder.
   Scalar power: `x ^ k` (integer RHS) on total-product backends; Ordinal: `nim_pow`
   method. **Rust `&` binds looser than `+`/`*` in both Python and Rust — parenthesize.**
 - The smoke test is `demo.py` (rebuild via `maturin develop` first); add a section

@@ -183,6 +183,20 @@ impl PartialEq for Rational {
     }
 }
 
+impl Eq for Rational {}
+
+impl PartialOrd for Rational {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(std::cmp::Ord::cmp(self, other))
+    }
+}
+
+impl Ord for Rational {
+    fn cmp(&self, other: &Self) -> Ordering {
+        Rational::cmp(self, other)
+    }
+}
+
 impl From<i128> for Rational {
     /// The ℤ-embedding: the unique unital ring homomorphism ℤ → ℚ.
     fn from(n: i128) -> Self {
@@ -281,6 +295,15 @@ mod tests {
         assert_eq!(half.sub(&half), Rational::zero());
         assert_eq!(half.add(&half), Rational::one());
         assert_eq!(Rational::new(2, 4), Rational::new(1, 2)); // reduction
+    }
+
+    #[test]
+    fn standard_order_delegates_to_value_order() {
+        assert!(Rational::new(1, 3) < Rational::new(1, 2));
+        assert_eq!(
+            std::cmp::Ord::cmp(&Rational::new(2, 4), &Rational::new(1, 2)),
+            Ordering::Equal
+        );
     }
 
     #[test]

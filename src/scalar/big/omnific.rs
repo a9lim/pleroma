@@ -23,6 +23,7 @@
 
 use crate::scalar::Scalar;
 use crate::scalar::Surreal;
+use std::cmp::Ordering;
 
 /// An omnific integer: a surreal with no infinitesimal part and an integer
 /// constant term. The inner surreal is private so every value is validated at
@@ -94,11 +95,38 @@ impl Omnific {
         &self.0
     }
 
+    /// Total order inherited from the underlying surreal value.
+    #[allow(clippy::should_implement_trait)]
+    pub fn cmp(&self, other: &Self) -> Ordering {
+        self.0.cmp(&other.0)
+    }
+
+    /// Remainder by a monic omega-power modulus, inherited from the surreal
+    /// CNF-tail filter. Returns `None` if the modulus is not a monic `ω^e`.
+    pub fn rem(&self, modulus: &Self) -> Option<Self> {
+        let r = self.0.rem(&modulus.0)?;
+        Some(Omnific::from_surreal(r).expect("an omnific CNF tail is omnific"))
+    }
+
     /// The **floor** of a surreal as an omnific integer — the greatest omnific
     /// integer `≤ s` (see [`Surreal::floor`]). Always succeeds, since a surreal
     /// floor is by construction an omnific integer.
     pub fn floor(s: &Surreal) -> Omnific {
         Omnific::from_surreal(s.floor()).expect("a surreal floor is always omnific")
+    }
+}
+
+impl Eq for Omnific {}
+
+impl PartialOrd for Omnific {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(std::cmp::Ord::cmp(self, other))
+    }
+}
+
+impl Ord for Omnific {
+    fn cmp(&self, other: &Self) -> Ordering {
+        Omnific::cmp(self, other)
     }
 }
 
@@ -200,12 +228,51 @@ mod tests {
     }
 
     #[test]
+    fn standard_order_is_surreal_value_order() {
+        assert!(Omnific::omega() > Omnific::from_int(1_000_000));
+        assert_eq!(
+            std::cmp::Ord::cmp(&Omnific::from_int(4), &Omnific::from_int(4)),
+            Ordering::Equal
+        );
+    }
+
+    #[test]
     fn only_plus_minus_one_are_units() {
         assert!(Omnific::one().inv().is_some());
         assert!(Omnific::one().neg().inv().is_some());
         assert!(Omnific::from_int(2).inv().is_none());
         assert!(Omnific::omega().inv().is_none()); // ω is not a unit (1/ω = ε ∉ Oz)
         assert!(Omnific::zero().inv().is_none());
+    }
+
+    #[test]
+    fn remainder_by_monic_omega_power_preserves_omnific_integrality() {
+        let x = Omnific::from_surreal(
+            Surreal::omega_pow(surr_int(2))
+                .mul(&surr_int(3))
+                .sub(&Surreal::omega())
+                .add(&surr_int(5)),
+        )
+        .unwrap();
+        let w2 = Omnific::from_surreal(Surreal::omega_pow(surr_int(2))).unwrap();
+        assert_eq!(
+            x.rem(&w2).unwrap(),
+            Omnific::from_surreal(Surreal::omega().neg().add(&surr_int(5))).unwrap()
+        );
+        assert_eq!(x.rem(&Omnific::omega()).unwrap(), Omnific::from_int(5));
+        assert_eq!(x.rem(&Omnific::from_int(1)).unwrap(), Omnific::zero());
+    }
+
+    #[test]
+    fn remainder_rejects_non_monic_omnific_moduli() {
+        let x = Omnific::omega().add(&Omnific::from_int(7));
+        assert!(x.rem(&Omnific::zero()).is_none());
+        assert!(x
+            .rem(&Omnific::omega().add(&Omnific::from_int(1)))
+            .is_none());
+        assert!(x
+            .rem(&Omnific::omega().mul(&Omnific::from_int(2)))
+            .is_none());
     }
 
     #[test]

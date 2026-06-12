@@ -41,8 +41,8 @@ lib), `demo.py` (the Python tour), `OPEN.md` (the genuine research problems),
 ledger of buildable items plus the deferred stars `*1`/`*2`/`*4`; DONE.md — the
 go-forward ledger for new work),
 `spec/` (ogham.md — the expression-language spec, the shipped Display-v2 +
-host-operator contract, and the WP2–6 build plan; conformance.txt — the
-hand-verified corpus the language must pass),
+host-operator contract, the shipped backend-helper surface, and the WP2–6
+build plan; conformance.txt — the hand-verified corpus the language must pass),
 `TABLES.md` (the inventory of curated hardcoded tables), and `writeups/`
 (`goldarf.tex` — the consolidated draft note on the Gold/Arf game thread,
 including the Tier-2 no-go/construction program; `excess.tex` — the

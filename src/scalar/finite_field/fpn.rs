@@ -820,7 +820,10 @@ mod tests {
         let f27 = Fpn::<3, 3>::from_coeffs(&[1, 1, 2]);
         assert_eq!(format!("{f27:?}"), "2⋅x↑2 + x + 1");
         // Coefficient-1 and bare-`x` suppression: `x↑2`, `x`.
-        assert_eq!(format!("{:?}", Fpn::<5, 3>::from_coeffs(&[0, 1, 1])), "x↑2 + x");
+        assert_eq!(
+            format!("{:?}", Fpn::<5, 3>::from_coeffs(&[0, 1, 1])),
+            "x↑2 + x"
+        );
         assert_eq!(format!("{:?}", Fpn::<3, 3>::zero()), "0");
     }
 

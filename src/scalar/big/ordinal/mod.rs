@@ -125,6 +125,12 @@ impl Ordinal {
         &self.terms
     }
 
+    /// The nimber/game-value fuzzy relation: distinct ordinal nimbers are
+    /// incomparable as games, regardless of their CNF address order.
+    pub fn fuzzy(&self, other: &Self) -> bool {
+        self != other
+    }
+
     /// The ordinal order (lexicographic on descending CNF terms).
     // Inherent value-order, deliberately kept off `std::cmp::Ord`: orders and
     // operators are opt-in here, not blanket trait impls (see AGENTS.md). The
@@ -287,8 +293,8 @@ impl fmt::Display for Ordinal {
         }
         // A bare star applies only to a finite value (`*5`) or bare ω (`*ω`);
         // every compound ordinal index takes parens (`*(ω + 1)`, `*(ω↑2)`).
-        let bare = (self.terms.len() == 1 && self.terms[0].0.is_zero())
-            || *self == Ordinal::omega();
+        let bare =
+            (self.terms.len() == 1 && self.terms[0].0.is_zero()) || *self == Ordinal::omega();
         if bare {
             write!(f, "*{}", fmt_cnf(self))
         } else {
@@ -327,6 +333,12 @@ mod tests {
             omega_omega.cmp(&Ordinal::omega_pow(fin(100))),
             Ordering::Greater
         );
+    }
+
+    #[test]
+    fn fuzzy_is_distinctness_not_cnf_order() {
+        assert!(!Ordinal::omega().fuzzy(&Ordinal::omega()));
+        assert!(Ordinal::omega().fuzzy(&fin(7)));
     }
 
     #[test]

@@ -508,11 +508,11 @@ sorts, and errors.
 
 ## 15. Work packages
 
-WP1 (Display v2, §9) and WP7 (host operators, §13) are shipped — ledger:
-`roadmap/DONE.md` → `ogham-foundations`. The rest is one task,
-`roadmap/TODO.md` → `ogham-v1`, with its backend prerequisites split out as
-`ogham-backend`. Sequencing: WP2 → WP3 → (WP4 ∥ WP5 ∥ WP6). Every agent gets
-an explicit `model:` pin. Acceptance for all: `cargo test`, `cargo clippy
+WP1 (Display v2, §9), WP7 (host operators, §13), and the backend helper
+surface (§7.6/§7.7) are shipped — ledger: `roadmap/DONE.md` →
+`ogham-foundations` and `ogham-backend`. The rest is one task,
+`roadmap/TODO.md` → `ogham-v1`. Sequencing: WP2 → WP3 → (WP4 ∥ WP5 ∥ WP6).
+Every agent gets an explicit `model:` pin. Acceptance for all: `cargo test`, `cargo clippy
 --all-targets`, cold `cargo doc --no-deps` warning-clean; WP6 adds
 `cargo check --features python` + `clippy --features python --all-targets`.
 

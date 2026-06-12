@@ -12,6 +12,12 @@ fn add_is_xor_and_self_inverse() {
 }
 
 #[test]
+fn fuzzy_is_distinctness_for_nimber_game_values() {
+    assert!(!Nimber(5).fuzzy(&Nimber(5)));
+    assert!(Nimber(5).fuzzy(&Nimber(6)));
+}
+
+#[test]
 fn known_small_products() {
     // F_4 = {0,1,2,3}: 2 is a generator with 2^2 = 3.
     assert_eq!(nim_mul(2, 2), 3);

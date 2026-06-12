@@ -272,7 +272,7 @@ bridge with both feet on one island is a loop; crossing it counts like any other
 | M | F–I | the Brown `ℤ/8` invariant — the char-2 cell of the mod-8 spine, float-free |
 | N.1 | F–I | Milnor's exact sequence: the Springer residues go global over `ℚ` and `F_q(t)` |
 | N.2 | S–F | the Scharlau transfer, named and tested |
-| N.3 | I–I | Nikulin: genus ⟺ (signature, discriminant form) |
+| N.3 | I–I | Nikulin: genus and existence via signature + discriminant form |
 | N.4 | I–I | one Bernoulli source for the Eisenstein constants and the mass formula |
 | O | G–I | lexicodes: greedy = mex; the `[24,12,8]` lexicode is Golay |
 | `game-clifford-checked` | C–G | checked integer Clifford data on game generators; quotient-compatible, not game-native |

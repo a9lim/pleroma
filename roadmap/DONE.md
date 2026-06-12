@@ -36,6 +36,23 @@ fold the one-line structural fact into the relevant `AGENTS.md`.
 
 ## completed items
 
+### 2026-06-12: `nikulin-existence`
+**Summary:** Nikulin's even-lattice existence theorem for `(signature, FQM)` pairs
+**Pillars:** forms ↔ integral    **Claim level:** standard math made computational + implemented and tested
+- surface: `FiniteQuadraticModule::nikulin_existence_report` /
+  `nikulin_even_lattice_exists` and the matching `DiscriminantForm` methods implement
+  Nikulin theorem 1.10.1 over the bounded finite-table FQM surface. The report type
+  (`NikulinExistenceInvariants`) records the signature phase, primary lengths, equality
+  cases, determinant square-class checks, and the first obstruction when existence
+  fails.
+- oracles: tests pin realized ADE discriminant forms, the odd 2-primary boundary
+  (`A_1`, where the 2-adic determinant side condition does not fire), an odd
+  3-primary equality case, a rank-too-small obstruction, and the even 2-primary
+  borderline `U(2)` case.
+- boundaries: this decides existence only; it does not enumerate lattices. Like
+  `fqm_witt_class`, it is exact up to the finite enumeration budget (`|A| <= 512`) and
+  returns `None` rather than guessing past that surface.
+
 ### 2026-06-12: `ogham-v1.1`
 **Summary:** Ogham function-shaped polynomial and rational-function worlds
 **Pillars:** scalar ↔ Ogham ↔ Python    **Claim level:** engineering — implemented and tested calculator surface
@@ -190,9 +207,8 @@ Option→Result façade conversion, `e(i)`, IntoIterator-only metric ctors.
   compatibility with the older `fqm_gauss_phase` projection.
 - boundaries: this is an exact bounded finite-table normal form (`|A| <= 512`,
   plus an explicit generator-tuple budget); it returns `None` rather than
-  truncating. It does not yet implement Nikulin's lattice-existence theorem
-  1.10.1 for arbitrary `(signature, FQM)` pairs; that successor is now tracked as
-  `nikulin-existence` in `roadmap/TODO.md`.
+  truncating. The lattice-existence successor is shipped separately as
+  `nikulin-existence`.
 
 ### 2026-06-11: `fqm-gauss-phase`
 **Summary:** p-primary finite-quadratic-module phase projection

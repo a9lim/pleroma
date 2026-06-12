@@ -7,6 +7,7 @@
 //! not just the Milgram/Brown phase.
 
 use crate::forms::integral::discriminant::{phase_mod8_from_q_values, DiscriminantForm, IsoTables};
+use crate::forms::padic::try_is_square_qp;
 use crate::scalar::{Rational, Scalar};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
@@ -64,6 +65,81 @@ impl FqmWittClass {
     /// the zero module.
     pub fn is_trivial(&self) -> bool {
         self.primary.iter().all(|p| p.core_order == 1)
+    }
+}
+
+/// A local condition in Nikulin's even-lattice existence criterion.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NikulinPrimaryExistenceInvariants {
+    /// The prime `p`.
+    pub prime: u128,
+    /// The order of the p-primary summand.
+    pub order: u128,
+    /// The minimal number of generators `l(A_p)`.
+    pub length: usize,
+    /// Whether the requested rank is exactly `l(A_p)`, so Nikulin's determinant
+    /// side condition is active at this prime.
+    pub equality_case: bool,
+    /// For `p = 2`, whether the 2-primary quadratic form is even in Nikulin's
+    /// sense, i.e. it has no order-2 cyclic summand with q-value odd/2.
+    pub even_two_primary: bool,
+    /// The p-adic determinant square class `discr K(q_p)` represented by an exact
+    /// rational. Present only in equality cases where a determinant check is
+    /// required.
+    pub p_adic_discriminant: Option<Rational>,
+    /// Result of the equality-case determinant check, when one is required.
+    pub determinant_condition_holds: Option<bool>,
+}
+
+/// The first failed condition in Nikulin's theorem 1.10.1.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NikulinExistenceObstruction {
+    /// `sign(q) != t_+ - t_- (mod 8)`.
+    SignatureCongruence {
+        required_mod8: i128,
+        module_phase_mod8: i128,
+    },
+    /// `rank < l(A_p)` at one prime.
+    RankTooSmall {
+        prime: u128,
+        rank: usize,
+        length: usize,
+    },
+    /// The odd-prime equality case failed:
+    /// `(-1)^{t_-}|A_p| != discr K(q_p)` in `Q_p^*/Q_p^{*2}`.
+    OddPrimeDeterminant {
+        prime: u128,
+        signed_order: i128,
+        p_adic_discriminant: Rational,
+    },
+    /// The 2-adic even equality case failed:
+    /// `|A_2| != +/- discr K(q_2)` in `Q_2^*/Q_2^{*2}`.
+    TwoAdicDeterminant {
+        order: u128,
+        p_adic_discriminant: Rational,
+    },
+}
+
+/// Full bounded report for Nikulin's even-lattice existence criterion.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NikulinExistenceInvariants {
+    /// Requested signature `(t_+, t_-)`.
+    pub signature: (usize, usize),
+    /// Requested rank `t_+ + t_-`.
+    pub rank: usize,
+    /// The finite quadratic module's Gauss/Milgram phase, `sign(q) mod 8`.
+    pub module_phase_mod8: i128,
+    /// Prime-local rank and determinant checks.
+    pub primary: Vec<NikulinPrimaryExistenceInvariants>,
+    /// The first failed condition, or `None` when the lattice exists.
+    pub obstruction: Option<NikulinExistenceObstruction>,
+}
+
+impl NikulinExistenceInvariants {
+    /// Whether Nikulin's theorem decides that an even lattice with the requested
+    /// signature and discriminant form exists.
+    pub fn exists(&self) -> bool {
+        self.obstruction.is_none()
     }
 }
 
@@ -159,6 +235,26 @@ impl FiniteQuadraticModule {
     pub fn witt_class(&self) -> Option<FqmWittClass> {
         FqmTable::from_native(self)?.witt_class()
     }
+
+    /// Nikulin's even-lattice existence criterion for this finite quadratic
+    /// module and the requested signature `(t_+, t_-)`.
+    ///
+    /// This implements Nikulin, *Integral symmetric bilinear forms and some of
+    /// their applications*, Math. USSR Izv. **14** (1980), Theorem 1.10.1, in the
+    /// bounded finite-table model used by [`witt_class`](Self::witt_class).
+    /// `None` means the table/determinant computation exceeded that bounded exact
+    /// surface, not that the theorem failed.
+    pub fn nikulin_existence_report(
+        &self,
+        signature: (usize, usize),
+    ) -> Option<NikulinExistenceInvariants> {
+        FqmTable::from_native(self)?.nikulin_existence_report(signature)
+    }
+
+    /// Boolean convenience wrapper around [`nikulin_existence_report`](Self::nikulin_existence_report).
+    pub fn nikulin_even_lattice_exists(&self, signature: (usize, usize)) -> Option<bool> {
+        Some(self.nikulin_existence_report(signature)?.exists())
+    }
 }
 
 impl DiscriminantForm {
@@ -176,6 +272,27 @@ impl DiscriminantForm {
     /// modules.
     pub fn is_fqm_witt_equivalent(&self, other: &Self) -> Option<bool> {
         Some(self.fqm_witt_class()? == other.fqm_witt_class()?)
+    }
+
+    /// Nikulin's even-lattice existence criterion for this discriminant form and
+    /// the requested signature `(t_+, t_-)`.
+    ///
+    /// This is the existence companion to [`is_isomorphic`](Self::is_isomorphic):
+    /// instead of comparing two already-built lattices, it decides whether the
+    /// pair `(signature, q)` is realized by some even lattice. The implementation
+    /// follows Nikulin theorem 1.10.1 and returns `None` only past the bounded
+    /// finite-table surface (`|A| <= 512` here).
+    pub fn nikulin_existence_report(
+        &self,
+        signature: (usize, usize),
+    ) -> Option<NikulinExistenceInvariants> {
+        FqmTable::from_iso_tables(self.tables_bounded(FQM_WITT_GROUP_CAP)?)
+            .nikulin_existence_report(signature)
+    }
+
+    /// Boolean convenience wrapper around [`nikulin_existence_report`](Self::nikulin_existence_report).
+    pub fn nikulin_even_lattice_exists(&self, signature: (usize, usize)) -> Option<bool> {
+        Some(self.nikulin_existence_report(signature)?.exists())
     }
 }
 
@@ -278,6 +395,98 @@ impl FqmTable {
             order: self.q.len() as u128,
             phase_mod8,
             primary,
+        })
+    }
+
+    fn nikulin_existence_report(
+        &self,
+        signature: (usize, usize),
+    ) -> Option<NikulinExistenceInvariants> {
+        if self.q.len() > FQM_WITT_GROUP_CAP {
+            return None;
+        }
+        let rank = signature.0.checked_add(signature.1)?;
+        let sig_plus = i128::try_from(signature.0).ok()?;
+        let sig_minus = i128::try_from(signature.1).ok()?;
+        let required_mod8 = (sig_plus - sig_minus).rem_euclid(8);
+        let module_phase_mod8 = phase_mod8_from_q_values(self.q.iter(), self.q.len())?;
+        let mut obstruction = (required_mod8 != module_phase_mod8).then_some(
+            NikulinExistenceObstruction::SignatureCongruence {
+                required_mod8,
+                module_phase_mod8,
+            },
+        );
+
+        let mut primes = BTreeSet::new();
+        for &ord in &self.order {
+            for p in prime_factors_u128(ord as u128) {
+                primes.insert(p);
+            }
+        }
+
+        let mut primary = Vec::new();
+        for p in primes {
+            let part = self.primary_subtable(p)?;
+            let length = part.direct_product_generators()?.len();
+            let order = part.q.len() as u128;
+            let equality_case = rank == length;
+            let even_two_primary = p == 2 && !part.has_odd_two_adic_summand();
+            let mut p_adic_discriminant = None;
+            let mut determinant_condition_holds = None;
+
+            if rank < length && obstruction.is_none() {
+                obstruction = Some(NikulinExistenceObstruction::RankTooSmall {
+                    prime: p,
+                    rank,
+                    length,
+                });
+            }
+
+            if equality_case && p != 2 {
+                let discr = part.p_adic_discriminant()?;
+                let signed_order = signed_order_for_odd_prime(order, signature.1)?;
+                let signed_order_q = Rational::from_int(signed_order);
+                let ok = same_square_class_odd(&signed_order_q, &discr, p)?;
+                if !ok && obstruction.is_none() {
+                    obstruction = Some(NikulinExistenceObstruction::OddPrimeDeterminant {
+                        prime: p,
+                        signed_order,
+                        p_adic_discriminant: discr.clone(),
+                    });
+                }
+                p_adic_discriminant = Some(discr);
+                determinant_condition_holds = Some(ok);
+            } else if equality_case && even_two_primary {
+                let discr = part.p_adic_discriminant()?;
+                let order_q = rational_from_u128(order)?;
+                let ok = same_square_class_2_up_to_sign(&order_q, &discr)?;
+                if !ok && obstruction.is_none() {
+                    obstruction = Some(NikulinExistenceObstruction::TwoAdicDeterminant {
+                        order,
+                        p_adic_discriminant: discr.clone(),
+                    });
+                }
+                p_adic_discriminant = Some(discr);
+                determinant_condition_holds = Some(ok);
+            }
+
+            primary.push(NikulinPrimaryExistenceInvariants {
+                prime: p,
+                order,
+                length,
+                equality_case,
+                even_two_primary,
+                p_adic_discriminant,
+                determinant_condition_holds,
+            });
+        }
+
+        Some(NikulinExistenceInvariants {
+            signature,
+            rank,
+            module_phase_mod8,
+            primary,
+            obstruction,
         })
     }
 
@@ -441,6 +650,69 @@ impl FqmTable {
             covered = self.subgroup_generated(&gens);
         }
         gens.len()
+    }
+
+    fn direct_product_generators(&self) -> Option<Vec<usize>> {
+        if self.q.len() == 1 {
+            return Some(Vec::new());
+        }
+        let mut candidates = (0..self.q.len())
+            .filter(|&i| i != self.zero)
+            .collect::<Vec<_>>();
+        candidates.sort_by(|&a, &b| self.order[b].cmp(&self.order[a]).then_with(|| a.cmp(&b)));
+        let mut gens = Vec::new();
+        let covered = self.subgroup_generated(&gens);
+        self.direct_product_generators_rec(&candidates, &mut gens, covered)
+    }
+
+    fn direct_product_generators_rec(
+        &self,
+        candidates: &[usize],
+        gens: &mut Vec<usize>,
+        covered: BTreeSet<usize>,
+    ) -> Option<Vec<usize>> {
+        if covered.len() == self.q.len() {
+            return Some(gens.clone());
+        }
+        for &g in candidates {
+            if covered.contains(&g) || gens.contains(&g) {
+                continue;
+            }
+            let mut trial = gens.clone();
+            trial.push(g);
+            let trial_covered = self.subgroup_generated(&trial);
+            let expected = covered.len().checked_mul(self.order[g])?;
+            if trial_covered.len() != expected {
+                continue;
+            }
+            gens.push(g);
+            if let Some(out) = self.direct_product_generators_rec(candidates, gens, trial_covered) {
+                return Some(out);
+            }
+            gens.pop();
+        }
+        None
+    }
+
+    fn p_adic_discriminant(&self) -> Option<Rational> {
+        let gens = self.direct_product_generators()?;
+        if gens.is_empty() {
+            return Some(Rational::one());
+        }
+        let mut matrix = vec![vec![Rational::zero(); gens.len()]; gens.len()];
+        for (i, &x) in gens.iter().enumerate() {
+            for (j, &y) in gens.iter().enumerate() {
+                matrix[i][j] = self.bilinear_value(x, y);
+            }
+        }
+        let det_pairing = rational_det(matrix)?;
+        det_pairing.inv()
+    }
+
+    fn has_odd_two_adic_summand(&self) -> bool {
+        (0..self.q.len()).any(|i| {
+            self.order[i] == 2 && self.q[i].denom() == 2 && self.q[i].numer().rem_euclid(2) == 1
+        })
     }
 
     fn canonical_label(&self) -> Option<Vec<i128>> {
@@ -675,6 +947,106 @@ fn rational_half_mod1(x: Rational) -> Rational {
     rational_mod_int(Rational::new(x.numer(), den), 1)
 }
 
+fn rational_from_u128(n: u128) -> Option<Rational> {
+    Some(Rational::from_int(i128::try_from(n).ok()?))
+}
+
+fn signed_order_for_odd_prime(order: u128, t_minus: usize) -> Option<i128> {
+    let order = i128::try_from(order).ok()?;
+    Some(if t_minus.is_multiple_of(2) {
+        order
+    } else {
+        order.checked_neg()?
+    })
+}
+
+fn v_p_i128(mut x: i128, p: i128) -> i128 {
+    debug_assert!(x != 0);
+    let mut k = 0i128;
+    while x % p == 0 {
+        x /= p;
+        k += 1;
+    }
+    k
+}
+
+fn unit_part_i128(mut x: i128, p: i128) -> i128 {
+    while x % p == 0 {
+        x /= p;
+    }
+    x
+}
+
+fn rat_val(r: &Rational, p: i128) -> i128 {
+    v_p_i128(r.numer(), p) - v_p_i128(r.denom(), p)
+}
+
+fn odd_unit_residue(r: &Rational, p: i128) -> i128 {
+    let a = unit_part_i128(r.numer(), p).rem_euclid(p);
+    let b = unit_part_i128(r.denom(), p).rem_euclid(p);
+    // For square-class purposes b and b^{-1} have the same Legendre symbol.
+    (a * b).rem_euclid(p)
+}
+
+fn unit_mod8(r: &Rational) -> i128 {
+    let a = unit_part_i128(r.numer(), 2).rem_euclid(8);
+    let b = unit_part_i128(r.denom(), 2).rem_euclid(8);
+    // Odd units are self-inverse modulo 8.
+    (a * b).rem_euclid(8)
+}
+
+fn same_square_class_odd(a: &Rational, b: &Rational, p: u128) -> Option<bool> {
+    if a.is_zero() || b.is_zero() || p == 2 {
+        return None;
+    }
+    let p_i = i128::try_from(p).ok()?;
+    let ratio = a.mul(&b.inv()?);
+    if rat_val(&ratio, p_i) % 2 != 0 {
+        return Some(false);
+    }
+    try_is_square_qp(odd_unit_residue(&ratio, p_i), p)
+}
+
+fn same_square_class_2_up_to_sign(a: &Rational, b: &Rational) -> Option<bool> {
+    if a.is_zero() || b.is_zero() {
+        return None;
+    }
+    let ratio = a.mul(&b.inv()?);
+    if rat_val(&ratio, 2) % 2 != 0 {
+        return Some(false);
+    }
+    Some(matches!(unit_mod8(&ratio), 1 | 7))
+}
+
+fn rational_det(mut a: Vec<Vec<Rational>>) -> Option<Rational> {
+    let n = a.len();
+    if a.iter().any(|row| row.len() != n) {
+        return None;
+    }
+    let mut det = Rational::one();
+    for i in 0..n {
+        let pivot = (i..n).find(|&r| !a[r][i].is_zero())?;
+        if pivot != i {
+            a.swap(i, pivot);
+            det = det.neg();
+        }
+        let pivot_value = a[i][i].clone();
+        det = det.mul(&pivot_value);
+        let pivot_inv = pivot_value.inv()?;
+        for r in (i + 1)..n {
+            if a[r][i].is_zero() {
+                continue;
+            }
+            let factor = a[r][i].mul(&pivot_inv);
+            for c in i..n {
+                let correction = factor.mul(&a[i][c]);
+                a[r][c] = a[r][c].sub(&correction);
+            }
+        }
+    }
+    Some(det)
+}
+
 fn prime_factors_u128(n: u128) -> Vec<u128> {
     let mut m = n;
     let mut out = Vec::new();
@@ -728,7 +1100,7 @@ fn pow_u128(base: u128, exp: u128) -> Option<u128> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::forms::{a_n, e_6, e_7, DiscriminantForm};
+    use crate::forms::{a_n, e_6, e_7, DiscriminantForm, IntegralForm};
 
     #[test]
     fn native_cyclic_module_matches_lattice_a1() {
@@ -785,5 +1157,81 @@ mod tests {
         assert_eq!(class.primary[0].phase_mod8, phase.primary[0].phase_mod8);
         assert_eq!(class.primary[0].core_group, vec![2]);
         assert_eq!(class.primary[0].q_value_counts.len(), 2);
+    }
+
+    #[test]
+    fn nikulin_existence_accepts_realized_lattice_discriminant_forms() {
+        for lattice in [a_n(1), a_n(2), e_6(), e_7()] {
+            let signature = lattice.signature();
+            let q = DiscriminantForm::from_lattice(&lattice).unwrap();
+            let report = q.nikulin_existence_report(signature).unwrap();
+            assert!(
+                report.exists(),
+                "realized lattice should pass Nikulin 1.10.1"
+            );
+            assert_eq!(q.nikulin_even_lattice_exists(signature), Some(true));
+        }
+    }
+
+    #[test]
+    fn nikulin_existence_keeps_odd_two_primary_boundary() {
+        let q = DiscriminantForm::from_lattice(&a_n(1)).unwrap();
+        let report = q.nikulin_existence_report((1, 0)).unwrap();
+        assert!(report.exists());
+        assert_eq!(report.primary.len(), 1);
+        assert_eq!(report.primary[0].prime, 2);
+        assert_eq!(report.primary[0].length, 1);
+        assert!(report.primary[0].equality_case);
+        assert!(!report.primary[0].even_two_primary);
+        assert_eq!(report.primary[0].determinant_condition_holds, None);
+
+        let blocked = q.nikulin_existence_report((0, 1)).unwrap();
+        assert_eq!(
+            blocked.obstruction,
+            Some(NikulinExistenceObstruction::SignatureCongruence {
+                required_mod8: 7,
+                module_phase_mod8: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn nikulin_existence_checks_odd_primary_borderline() {
+        let hyperbolic_three = FiniteQuadraticModule::cyclic(3, Rational::new(2, 3))
+            .unwrap()
+            .direct_sum(&FiniteQuadraticModule::cyclic(3, Rational::new(4, 3)).unwrap())
+            .unwrap();
+
+        let report = hyperbolic_three.nikulin_existence_report((1, 1)).unwrap();
+        assert!(report.exists());
+        assert_eq!(report.primary.len(), 1);
+        assert_eq!(report.primary[0].prime, 3);
+        assert_eq!(report.primary[0].length, 2);
+        assert!(report.primary[0].equality_case);
+        assert_eq!(report.primary[0].determinant_condition_holds, Some(true));
+
+        let too_small = hyperbolic_three.nikulin_existence_report((0, 0)).unwrap();
+        assert_eq!(
+            too_small.obstruction,
+            Some(NikulinExistenceObstruction::RankTooSmall {
+                prime: 3,
+                rank: 0,
+                length: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn nikulin_existence_checks_even_two_primary_borderline() {
+        let u2 = IntegralForm::new(vec![vec![0, 2], vec![2, 0]]).unwrap();
+        let q = DiscriminantForm::from_lattice(&u2).unwrap();
+        let report = q.nikulin_existence_report((1, 1)).unwrap();
+        assert!(report.exists());
+        assert_eq!(report.primary.len(), 1);
+        assert_eq!(report.primary[0].prime, 2);
+        assert_eq!(report.primary[0].length, 2);
+        assert!(report.primary[0].equality_case);
+        assert!(report.primary[0].even_two_primary);
+        assert_eq!(report.primary[0].determinant_condition_holds, Some(true));
     }
 }

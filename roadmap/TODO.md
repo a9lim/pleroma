@@ -65,14 +65,6 @@ symbol is explicit (the tame symbol `(a,b)_v = (−1)^{v(a)v(b)} a^{v(b)}/b^{v(a
 in `μ_n`); shipping it widens `BrauerClass` to ramified cyclic classes at tame places
 on the `Qq`/`F_q(t)` legs. The **wild** symbol stays out — that is star `*4` below.
 
-### 1·(e_i∧e_f): `nikulin-existence`
-**Nikulin's even-lattice existence theorem on top of `FqmWittClass`.** The
-`fqm-witt` pass shipped the finite-quadratic-module normal form and native
-constructor; it did **not** implement Nikulin 1.10.1 (which `(signature, FQM)` pairs
-are realized by even lattices). Build the predicate with the rank/signature
-congruence, local length/parity inequalities, and exact citations; it should decide
-existence, not enumerate lattices.
-
 ## numbers — the integral wing
 
 ### 3·e_i: `niemeier`

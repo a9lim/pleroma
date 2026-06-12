@@ -43,8 +43,9 @@ automorphism counts, node budgets. `usize` is for dimensions and matrix indices.
   `BrauerWallClass`, `Brauer2Class`, `BrauerClass`, `FqmWittClass`); `…Decomp` is
   a decomposition; `…Invariants` is a classifier's report record
   (`ArfInvariants`, `BrownInvariants`, `CliffordInvariants`, `OddCharInvariants`,
-  `FiniteFieldInvariants`, `SymplecticInvariants`); `…Signature` stays for the
-  literal mathematical signature. Façade traits are verb-first (`ClassifyForm`,
+  `FiniteFieldInvariants`, `NikulinExistenceInvariants`, `SymplecticInvariants`);
+  `…Signature` stays for the literal mathematical signature. Façade traits are
+  verb-first (`ClassifyForm`,
   `ClassifyWitt`, `ClassifyIsometry`, `ClassifyBrauerWall`, `DecomposeWitt`).
   New types follow this glossary. Leg dispatch:
   - `Surreal` → `CliffordInvariants`

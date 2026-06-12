@@ -1078,6 +1078,11 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
     p-primary Wall/Nikulin Witt classes, represented by canonical anisotropic cores
     after quotienting isotropic cyclic subgroups.
   - `DiscriminantForm::is_fqm_witt_equivalent` — equality in the FQM Witt group.
+  - `FiniteQuadraticModule::nikulin_existence_report` /
+    `nikulin_even_lattice_exists`, mirrored on `DiscriminantForm` — Nikulin
+    theorem 1.10.1 for `(signature, FQM)` pairs, returning
+    `NikulinExistenceInvariants` with phase, primary lengths, equality-case
+    determinant checks, and the first obstruction.
 
 #### Oracles / implemented tests
 
@@ -1096,6 +1101,10 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
 - `fqm_witt_class` agrees with the native cyclic presentation on `A_1`, separates
   `A_1` from `E_7`, reduces `⟨1/2⟩ ⊕ ⟨3/2⟩` and `A_2 ⊕ E_6` to the trivial Witt class,
   and keeps `fqm_gauss_phase` as its phase projection.
+- `nikulin_existence_report` accepts realized ADE discriminant forms, keeps the
+  odd 2-primary `A_1` boundary from firing the 2-adic determinant side condition,
+  checks the odd 3-primary equality case, reports a rank-too-small obstruction, and
+  verifies the even 2-primary borderline on `U(2)`.
 
 #### Scope / caveats
 
@@ -1106,7 +1115,9 @@ to split planes, making the Witt group of the category cyclic of order 8 generat
 - The Brown lattice tie is **2-elementary discriminant groups only**; higher 2-power and
   odd torsion have the `FqmGaussPhase` Milgram/Brown **phase projection**, and the
   separate `FqmWittClass` surface carries the full finite-quadratic-module Witt class
-  within its explicit finite enumeration budget.
+  within its explicit finite enumeration budget. The Nikulin existence predicate uses
+  that same bounded table discipline (`None`, not a guessed answer, past it) and
+  decides existence only; it does not enumerate lattices.
 - No new theorem: Brown 1972 is the source; the bridge is the wiring to Arf (shipped)
   and Milgram (Bridge A).
 
@@ -1191,14 +1202,25 @@ extension search (minimal generators by maximal order → image assignment prune
 order and `q`-value → BFS extension → `q`-preservation on every element), mirroring
 `automorphism_group_order_bounded`'s `None`-past-budget pattern.
 
+The successor existence theorem is now shipped too: Nikulin theorem 1.10.1 is exposed
+as `nikulin_existence_report` / `nikulin_even_lattice_exists` on both native
+`FiniteQuadraticModule` values and represented `DiscriminantForm`s. It checks
+`sign(q) ≡ t_+ - t_- (mod 8)`, the primary generator-length inequalities, and the
+borderline determinant square-class conditions for odd primes and even 2-primary
+forms.
+
 - **Oracles:** `are_in_same_genus(a,b) == (equal signatures ∧ q_a ≅ q_b)` across the
   zoo (`a_n`, `d_n`, `e_6/7/8`, sums), pinned by the **Milnor pair** (`E₈⊕E₈` vs
   `D₁₆⁺`: same genus, non-isometric, both trivial disc form) and easy separations
   (`A₂`: ℤ/3 vs `A₁⊕A₁`: (ℤ/2)²). `q`-sensitivity is pinned directly: `A₁` and `E₇`
   share the group ℤ/2 but have `q`-values `1/2` vs `3/2` and are **not** isomorphic.
+  The existence companion is pinned by realized ADE forms, `A_1`'s odd 2-primary
+  equality case, a split 3-primary equality case, rank-too-small obstruction, and the
+  even 2-primary `U(2)` borderline.
 - **Boundary:** even lattices only (the `from_lattice` boundary); the brute-force
   budget is honest (`None` past `ISO_GROUP_CAP`/node budget) — a cross-check of two
-  shipped routes, not a p-adic-symbol reimplementation.
+  shipped routes, not a p-adic-symbol reimplementation. The existence theorem shares
+  the FQM finite-table budget and decides existence, not a representative lattice.
 
 #### N.4 — one Bernoulli source for Eisenstein and mass
 

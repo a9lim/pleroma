@@ -77,7 +77,10 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   and `is_fqm_witt_equivalent` reduce p-primary modules by isotropic cyclic quotients
   to canonical anisotropic cores. This is the exact Wall/Nikulin Witt class up to the
   explicit finite table budget (`None`, never truncation, past it); the older
-  `FqmGaussPhase` is now only the phase projection.
+  `FqmGaussPhase` is now only the phase projection. The same bounded table surface
+  also carries Nikulin theorem 1.10.1 via
+  `nikulin_existence_report` / `nikulin_even_lattice_exists`, deciding which
+  `(signature, FQM)` pairs are realized by even lattices without enumerating them.
 - **`genus.rs`** — the **genus** = (signature, det, per-prime Conway–Sloane symbol).
   Engine: the p-adic Jordan decomposition (`jordan_blocks`, exact over `Rational`):
   odd `p` diagonalizes (valuation-ordered Gram–Schmidt); `p=2` peels 1-dim type-I lines

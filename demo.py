@@ -867,7 +867,8 @@ print("  A₂ det/min/kissing/Coxeter   :",
       pl.is_root_lattice(A2))
 print("  E₈ even unimodular aut order :", E8.is_even(), E8.is_unimodular(), E8.automorphism_group_order())
 gen = A2.genus()
-print("  genus(A₂) primes/symbol@3    :", gen.primes(), gen.symbol_at(3))
+print("  genus(A₂) primes/symbols     :",
+      gen.primes(), gen.symbol_at(3), gen.canonical_symbol_at(2))
 print("  mass rank 8 even unimodular  :", pl.mass_even_unimodular(8),
       " Leech |Aut|:", pl.leech_aut_order())
 print("  pinned automorphism constants:", pl.E8_WEYL_GROUP_ORDER, pl.D16_PLUS_AUT_ORDER,

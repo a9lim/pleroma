@@ -364,6 +364,21 @@ impl Genus {
         self.symbols.get(&p).map_or(&[], |v| v)
     }
 
+    /// The symbol at `p` in the canonical form used for genus comparison.
+    ///
+    /// For odd `p` the raw Jordan symbol is already canonical. At `p = 2`, this
+    /// applies the Conway–Sloane/Allcock fine-symbol reduction: determinant
+    /// residues become signs, type-I compartment oddities are fused, and signs
+    /// are walked left along trains.
+    pub fn canonical_symbol_at(&self, p: u128) -> Vec<ScaleSymbol> {
+        let symbol = self.symbol_at(p);
+        if p == 2 {
+            canonical_2adic_symbol(symbol)
+        } else {
+            symbol.to_vec()
+        }
+    }
+
     /// The primes carrying a recorded local symbol.
     pub fn primes(&self) -> Vec<u128> {
         self.symbols.keys().copied().collect()
@@ -668,6 +683,22 @@ mod tests {
         let canon = canonical_2adic_symbol(&c);
         assert_eq!(canon[0].sign, -1); // Sage/CS canonical walking moves signs left
         assert_eq!(canon[1].sign, 1);
+    }
+
+    #[test]
+    fn canonical_symbol_at_exposes_the_compared_two_adic_symbol() {
+        let g = Genus::of(&IntegralForm::diagonal(&[1, 6])).unwrap();
+        let raw = g.symbol_at(2);
+        let canonical = g.canonical_symbol_at(2);
+        assert_ne!(raw, canonical.as_slice());
+        assert_eq!(
+            canonical
+                .iter()
+                .map(|s| (s.scale, s.dim, s.sign, s.type_ii, s.oddity))
+                .collect::<Vec<_>>(),
+            vec![(0, 1, -1, false, 0), (1, 1, 1, false, 0)]
+        );
+        assert_eq!(g.canonical_symbol_at(3), g.symbol_at(3).to_vec());
     }
 
     #[test]

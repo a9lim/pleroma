@@ -82,14 +82,6 @@ congruence prime **691** appearing in the codebase, and the first Siegel–Weil 
 where the classes genuinely differ. Free cross-checks: `Σ 1/|Aut| = mass_even_unimodular(24)`,
 rootless-class uniqueness (Leech), and 24 new Nikulin/N.3 test points.
 
-### 3·e_i: `padic-symbols`
-**Conway–Sloane `p`-adic genus symbols** (Ch. 15, incl. the canonical 2-adic symbol
-with trains/compartments/oddity fusion). Gives exact genus equality without the
-budgeted `is_isomorphic` search — un-capping `ISO_GROUP_CAP` for genus decisions and
-turning N.3 from "budgeted cross-check" into "exact symbol comparison". Oracle: full
-agreement with the shipped `are_in_same_genus` + `DiscriminantForm::is_isomorphic`
-route across the ADE zoo and the Milnor pair.
-
 ### 2·e_i: `odd-lattices`
 **Type I (odd) lattices for the discriminant chain.** `DiscriminantForm::from_lattice`,
 Milgram, Brown, and `theta_series` are all even-only. Ship the odd-lattice discriminant

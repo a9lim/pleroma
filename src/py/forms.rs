@@ -4641,6 +4641,13 @@ impl PyGenus {
             .map(|inner| PyScaleSymbol { inner })
             .collect()
     }
+    fn canonical_symbol_at(&self, p: u128) -> Vec<PyScaleSymbol> {
+        self.inner
+            .canonical_symbol_at(p)
+            .into_iter()
+            .map(|inner| PyScaleSymbol { inner })
+            .collect()
+    }
     fn __repr__(&self) -> String {
         format!(
             "Genus(dim={}, signature={:?}, det={}, primes={:?})",

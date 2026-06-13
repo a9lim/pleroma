@@ -38,5 +38,16 @@ derivation alongside the code or in a `writeups/` note.
 
 ## completed items
 
-Currently empty — reset 2026-06-12 in the docs reorg. New go-forward work lands here;
-the prior completed-items ledger lives in git history.
+### 2026-06-12: `padic-symbols`
+**Summary:** Conway-Sloane `p`-adic genus symbols now give exact integral-lattice
+genus comparison, with the canonical 2-adic train/compartment/oddity reduction
+exposed on the Rust and Python `Genus` surface.
+**Pillars:** integral    **Claim level:** standard math, implemented and tested
+- surface: `Genus::of`, `Genus::symbol_at`, `Genus::canonical_symbol_at`,
+  `are_in_same_genus`, and Python `Genus.canonical_symbol_at`.
+- oracles: odd-prime determinant-square-class symbols, Sage/Allcock-style 2-adic
+  canonical-symbol examples, random unimodular-congruence invariance, `Z^8` vs
+  `E8`, `E8⊕E8` vs `D16+`, and Nikulin/discriminant-form agreement across the
+  ADE zoo and Milnor pair.
+- boundaries: odd-lattice discriminant forms, full spinor-genus computation, and
+  level-`N` theta machinery stay on their separate docket items.

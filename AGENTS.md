@@ -43,8 +43,9 @@ ledger of buildable items completing symmetries/connections already in the code;
 CONTINUATIONS.md — the game-valued ledger of buildable items that are genuinely new
 features (the ogham language work, the char-`p` Drinfeld mirror); the deferred stars
 `*1`/`*2`/`*4`/`*8` split across those two; DONE.md — the go-forward ledger for new
-work; CONSISTENCY.md — the aesthetic/structural ledger; TABLES.md — the inventory of
-curated hardcoded tables),
+work; CONSISTENCY.md — the aesthetic/structural ledger; CORRECTNESS.md — the
+verification-status ledger (machine-verified / source-pinned / asserted); TABLES.md —
+the inventory of curated hardcoded tables),
 `docs/ogham/` (ogham.md — the expression-language spec, the shipped Display-v2 +
 host-operator contract, backend-helper surface, v1 parser/evaluator contract,
 v1.1 polynomial/ratfunc function-world contract, the shipped v2.0 abstraction

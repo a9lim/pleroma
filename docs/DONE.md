@@ -20,12 +20,19 @@ stay in [`OPEN.md`](OPEN.md), loopy-valued: `tis`/`tisn`, `on`/`off`, `over`/`un
 
 ## How to use this ledger
 
+Completed items keep the game-multivector value `g·e_B` they carried as buildable
+items — the legend is canonical in [`COMPLETENESS.md`](COMPLETENESS.md) → "How items
+are valued" (`g` a game value, `e_B` a pillar blade) — recording what each item was
+worth; in disjunctive-sum terms, DONE archives the terms that have been played out
+of the live ledger. The completion date moves to the body.
+
 When a new piece of cross-pillar work lands, add a short entry here:
 
 ```
 ## completed items
 
-### <date>: `<name>`
+### <game value>·<blade>: `<name>`
+**Completed:** <date>
 **Summary:** <one-line what-it-connects>
 **Pillars:** … ↔ …    **Claim level:** standard math / implemented-and-tested / …
 - surface: the functions/types that shipped
@@ -38,7 +45,8 @@ derivation alongside the code or in a `writeups/` note.
 
 ## completed items
 
-### 2026-06-12: `niemeier`
+### 2·e_i: `niemeier`
+**Completed:** 2026-06-12
 **Summary:** the rank-24 even-unimodular genus now has the Niemeier catalogue and the
 non-degenerate Siegel-Weil identity against `E12`.
 **Pillars:** integral    **Claim level:** standard math, implemented and tested
@@ -54,7 +62,8 @@ non-degenerate Siegel-Weil identity against `E12`.
   catalogue and Venkov weight-12 theta formula, not by 23 explicit glued Gram
   constructors; `leech()` remains the explicit rank-24 Gram constructor.
 
-### 2026-06-12: `padic-symbols`
+### 2·e_i: `padic-symbols`
+**Completed:** 2026-06-12
 **Summary:** Conway-Sloane `p`-adic genus symbols now give exact integral-lattice
 genus comparison, with the canonical 2-adic train/compartment/oddity reduction
 exposed on the Rust and Python `Genus` surface.

@@ -9,7 +9,7 @@ use crate::scalar::{Rational, Scalar};
 
 /// The Eisenstein normalizing constant `c_{2k} = −4k / B_{2k}`, derived from the
 /// shared Bernoulli source so `240` and `−504` are one computation with the mass
-/// formula (tasks/TABLES.md discipline: the derived value is pinned equal to the curated
+/// formula (docs/TABLES.md discipline: the derived value is pinned equal to the curated
 /// literal in tests). From `E_{2k} = 1 − (4k/B_{2k}) Σ σ_{2k−1}(n) qⁿ`: `c₄ = −8/B₄
 /// = 240`, `c₆ = −12/B₆ = −504`. Both are integers (`B_{2k}` has the right
 /// denominator), so the division is exact.
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn eisenstein_constants_derive_from_the_shared_bernoulli_source() {
-        // The tasks/TABLES.md discipline: the curated literals 240 / −504 are pinned equal
+        // The docs/TABLES.md discipline: the curated literals 240 / −504 are pinned equal
         // to the values derived from the single Bernoulli source the mass formula uses.
         assert_eq!(eisenstein_constant(2), 240, "c₄ = −8/B₄");
         assert_eq!(eisenstein_constant(3), -504, "c₆ = −12/B₆");

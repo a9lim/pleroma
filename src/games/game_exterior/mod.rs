@@ -18,7 +18,7 @@
 //! Clifford/scalar story cannot go — which is the point: the
 //! [`Game`](crate::games::Game) group is not a ring, but it *is* a `ℤ`-module,
 //! and that is enough for `Λ`. The stronger question of a natural game-native
-//! source for the quadratic data remains open in `tasks/OPEN.md`.
+//! source for the quadratic data remains open in `docs/OPEN.md`.
 
 pub mod clifford;
 pub mod lambda;

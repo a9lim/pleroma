@@ -4,8 +4,9 @@ This file is intentionally narrow. It lists directions from repo audits, roadmap
 splits, and the draft notes that look like genuine new research rather than
 implementation of known formulas, standard algorithms, or already-source-pinned
 theory. Implemented mathematical facts and maintenance context live in
-`README.md` and `AGENTS.md`; buildable work lives in `tasks/TODO.md` (the
-game-valued ledger — items there are referenced by slug from here).
+`README.md` and `AGENTS.md`; buildable work lives in `docs/COMPLETENESS.md` and
+`docs/CONTINUATIONS.md` (the game-valued ledgers — items there are referenced by
+slug from here).
 
 Numbering: an open problem is a loopy game, played without a termination
 guarantee, so every entry wears a value from the loopy-stopper lexicon — the
@@ -245,7 +246,7 @@ above); it does not yet exhibit a game.
 Concrete progress targets (aligned with the goldarf §9 ranked moves):
 - ~~Adversarially verify or refute the `echo`-`fifo`+dummy `m = 8` exactness
   claim~~ — **done, CONFIRM** (2026-06-10; `experiments/echo_solver.py`, record
-  in goldarf §8 and `tasks/DONE.md`). The successor target: **recast the
+  in goldarf §8). The successor target: **recast the
   σ-valued charge readout into normal/misère/loopy outcome semantics**, or
   prove the recasting impossible — the step that converts the verified
   realizer into a Tier-2 witness in the original P-set sense. Alongside it:
@@ -518,7 +519,7 @@ Concrete progress targets:
   source-verified transfinite tower, or the ideal full `On_2` nimber field.
 - ~~Implement and test common finite-subfield detection so Bridge D can honestly
   delegate those metrics to Bridge B.~~ Done 2026-06-11 as `subfield-detect`
-  (`tasks/DONE.md`) — implementation, not research.
+  (git history) — implementation, not research.
 - Decide whether genuinely transfinite metrics should expose no classifier, a
   coefficient-field Arf class, a direct-limit finite-subfield invariant, or some
   other replacement for the finite trace bit.

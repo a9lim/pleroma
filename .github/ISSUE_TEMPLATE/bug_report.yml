@@ -9,7 +9,7 @@ body:
         - `cargo test` is the source of truth. If you can reproduce with a failing
           test (or a short `#[test]`), that's the strongest possible report.
         - A *wrong number* is a bug. An *unimplemented theorem* usually isn't —
-          check `tasks/OPEN.md` and the per-pillar `AGENTS.md` for documented scope
+          check `docs/OPEN.md` and the per-pillar `AGENTS.md` for documented scope
           boundaries first (e.g. `Ordinal` nim-multiplication panics by design
           past the verified Kummer boundary; `Nimber` is `F_{2^128}`, not
           algebraically closed).

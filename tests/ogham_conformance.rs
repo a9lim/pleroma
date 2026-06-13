@@ -8,7 +8,7 @@ enum Outcome {
 
 #[test]
 fn ogham_conformance_corpus() {
-    let corpus = include_str!("../spec/conformance.txt");
+    let corpus = include_str!("../docs/ogham/conformance.txt");
     let mut session: Option<OghamSession> = None;
     let mut pending: Option<(usize, String, Outcome)> = None;
     let lines = corpus.lines().collect::<Vec<_>>();

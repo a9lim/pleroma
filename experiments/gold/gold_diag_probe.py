@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gold-diagonal source probe (ogdoad tasks/OPEN.md #1, [diagonal] angle).
+"""Gold-diagonal source probe (ogdoad docs/OPEN.md #1, [diagonal] angle).
 
 Verifies, standalone (independent nim arithmetic, cross-checked against the
 repo's published tables):

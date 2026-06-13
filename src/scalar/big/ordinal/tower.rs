@@ -54,7 +54,7 @@
 //!
 //! We carry only the finite Lenstra excess integers `m_u` through DiMuro Table 1
 //! (`u ≤ 43`) plus the locally verified `m_47 = 1` from
-//! `experiments/ordinal_excess_probe.py` (see `tasks/OPEN.md`). The ordinal expression is
+//! `experiments/ordinal_excess_probe.py` (see `docs/OPEN.md`). The ordinal expression is
 //! assembled in code: compute `f(u)=ord_u(2)`, compute DiMuro's `Q(f(u))`, form the
 //! `χ`-sum, then nim-add `m_u`. The product of any two ordinals `< ω^(ω^ω)` is
 //! therefore exact whenever every Kummer carry it triggers is at a prime `≤ 47`; a
@@ -95,7 +95,7 @@ pub(super) fn place_prime(m: u128) -> u128 {
 /// reconstructed from `f(u)=ord_u(2)` and DiMuro's recursive `Q(f(u))`. Every `α_u`
 /// is built from generators at strictly-lower places than `χ_u`'s own, which is what
 /// makes the branching reduction descend and terminate. Values through `43`: DiMuro
-/// Table 1; value `47`: local fixed-base finite-field oracle (see `tasks/OPEN.md`).
+/// Table 1; value `47`: local fixed-base finite-field oracle (see `docs/OPEN.md`).
 pub(super) fn alpha_ordinal(u: u128) -> Option<Ordinal> {
     let f = multiplicative_order_two_mod_prime(u)?;
     let mut val = chi_sum(&q_set(f)?)?;

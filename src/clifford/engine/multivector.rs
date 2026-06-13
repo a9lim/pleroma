@@ -34,7 +34,7 @@ use std::ops::{Add, BitAnd, Neg, Sub};
 /// are scalars of the same type (no `BitXor<Self>` impl), preventing the
 /// Nimber XOR confusion.
 ///
-/// **Precedence caveat (§5 `spec/ogham.md`):** Rust's `&` binds looser than
+/// **Precedence caveat (§5 `docs/ogham/ogham.md`):** Rust's `&` binds looser than
 /// `+` (and looser than `*`), unlike ogham's wedge-tighter-than-product table.
 /// Host code that mixes `+`/`*` and `&` must parenthesize explicitly.
 ///
@@ -174,7 +174,7 @@ impl<S: Scalar> BitAnd for Multivector<S> {
     /// XOR = nim-*addition*, which is why `BitXor<Self>` does not exist on any
     /// backend: the type system enforces the disambiguation.
     ///
-    /// **Precedence caveat (§5 `spec/ogham.md`):** Rust's `&` binds looser
+    /// **Precedence caveat (§5 `docs/ogham/ogham.md`):** Rust's `&` binds looser
     /// than `+` and `*`. Parenthesize when mixing: `(a + b) & c`, not
     /// `a + b & c`.
     fn bitand(self, rhs: Multivector<S>) -> Multivector<S> {

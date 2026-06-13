@@ -6,7 +6,7 @@ subclasses, where Conway multiplication is defined). Games under disjunctive sum
 are an abelian GROUP, not a ring; that constraint is *why* the Clifford story
 lives on the scalar backends and not on all games.
 
-> Read `tasks/OPEN.md` before touching `coin_turning.rs`, `kernel.rs`, `misere.rs`, or
+> Read `docs/OPEN.md` before touching `coin_turning.rs`, `kernel.rs`, `misere.rs`, or
 > the example probes — they feed the open play-semantics question.
 
 `mod.rs` re-exports every module below flat.
@@ -49,7 +49,7 @@ indices, and collection lengths.
     only when every game relation is null and polar-radical, so torsion-free targets
     force the documented vanishings (for example, `2⋆=0` kills `Q(⋆)` and all
     pairings with ⋆). This is not a game-native quadratic-data theorem; that remains
-    in `tasks/OPEN.md`.
+    in `docs/OPEN.md`.
   - `game_exterior/mod.rs` — hub; re-exports everything flat so `games::GameExterior`
     etc. remain unchanged.
 
@@ -126,7 +126,7 @@ indices, and collection lengths.
   Also ships `nim_lexicode_naive`/`NimLexicode`, the literal base-`2^k` greedy over
   nim alphabets: closure under coordinatewise nim-addition is verified, and scalar
   closure witnesses the Fermat-base line (base 4/16 pass, base 8 fails).
-  **Claim level:** the degree-1 (solved, linear) side of `tasks/OPEN.md` §1 — explicitly does
+  **Claim level:** the degree-1 (solved, linear) side of `docs/OPEN.md` §1 — explicitly does
   NOT touch the open Gold-quadric question; do not cite as progress on it.
 
 ## The bridge object

@@ -243,9 +243,10 @@ breakdown:
 - `src/linalg/` — crate-private shared linear algebra (exact integer HNF/Smith,
   F₂/nim-field rank, generic field solves), consumed by the pillars above.
 
-See `AGENTS.md` for the working-notes summary, `tasks/OPEN.md` for the genuine research
-problems, `tasks/` (TODO.md for the game-valued ledger of buildable work and the
-deferred stars, DONE.md for the go-forward ledger) for the cross-pillar work, `spec/`
+See `AGENTS.md` for the working-notes summary, `docs/OPEN.md` for the genuine research
+problems, `docs/` (COMPLETENESS.md and CONTINUATIONS.md for the game-valued ledgers of
+buildable work and the deferred stars, DONE.md for the go-forward ledger) for the
+cross-pillar work, `docs/ogham/`
 for the Ogham language contract and hand-verified corpus, and `writeups/goldarf.tex`
 for the draft note on the Gold/Arf game thread.
 
@@ -278,7 +279,8 @@ bridge with both feet on one island is a loop; crossing it counts like any other
 | `game-clifford-checked` | C–G | checked integer Clifford data on game generators; quotient-compatible, not game-native |
 
 (G and L were never built under those letters — they became the deferred stars
-`*1` and `*2` in `tasks/TODO.md`. The alphabet itself still has two pontoons
+`*1` (spinor genus, `docs/COMPLETENESS.md`) and `*2` (the char-`p` Drinfeld mirror,
+`docs/CONTINUATIONS.md`). The alphabet itself still has two pontoons
 missing; `game-clifford-checked` is the later unlettered C–G span.)
 
 **The traveller's question** (Euler, 1736): can you cross every bridge exactly
@@ -304,7 +306,7 @@ solutions to the current round-trip obstruction.
 
 ## Research thread
 
-The narrow mathematical thread in `tasks/OPEN.md` and `writeups/goldarf.tex` is *not* a
+The narrow mathematical thread in `docs/OPEN.md` and `writeups/goldarf.tex` is *not* a
 claim of a new Clifford classification theorem. It is an investigation of
 game-built quadratic forms in the nimber backend:
 

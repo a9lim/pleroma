@@ -5,7 +5,7 @@ the **characteristic trichotomy**: the classification of a quadratic form
 (equivalently, of the Clifford algebra it builds) is *one* theory split three ways
 by `char F`. This axis cuts ACROSS the place table that organizes `scalar/`.
 
-> Read `tasks/OPEN.md` before touching `char2/`, `quadric_fit.rs`, `char0.rs`,
+> Read `docs/OPEN.md` before touching `char2/`, `quadric_fit.rs`, `char0.rs`,
 > `witt/`, or anything feeding the open play-semantics question.
 
 `mod.rs` re-exports the legs + `classify` + diagonalize/equivalence + the `witt/`

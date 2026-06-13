@@ -1,6 +1,6 @@
 //! Misère play: where disjunctive sums stop being linear.
 //!
-//! tasks/OPEN.md's open question needs a game whose P-positions are the *quadric*
+//! docs/OPEN.md's open question needs a game whose P-positions are the *quadric*
 //! `{Q=0}` of a Gold form. Normal-play disjunctive sums can't supply one: their
 //! outcomes are XOR-linear (P ⟺ ⊕ of Grundy values = 0), so the P-set is always
 //! a *subspace*. The two escape routes are interactive games and **misère** play

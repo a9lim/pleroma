@@ -43,7 +43,7 @@ and const-generic sizes that are inherently indices.
   layer (`forms/function_field.rs`) uses its `divrem`/`gcd`/`pow_mod`. As `S[t]` it
   is the **ring of integers** of `S(t)`, so it impls `Scalar` + `HasFractionField`
   (Frac = `RationalFunction<S>`); its units are the nonzero constants, so `inv` is
-  partial. Display is canonical ogham (Display v2, `spec/ogham.md` §9): variable
+  partial. Display is canonical ogham (Display v2, `docs/ogham/ogham.md` §9): variable
   `t`, explicit `⋅`, coefficient parens only when non-atomic — and it owns the
   shared `pub(crate)` `atomic`/`attach_coeff` helpers the `Multivector` display
   also uses (atomic = no spaces and no `⋅ ∧ ↑ / + -` outside balanced parens; a
@@ -208,7 +208,7 @@ and const-generic sizes that are inherently indices.
     branch a carry into a *sum*, recursed in by descending place. Carries are assembled
     from `ord_u(2)`, DiMuro's `Q(f(u))`, and the finite `m_u` rows verified through
     DiMuro Table 1 (`u ≤ 43`) plus the locally certified `m_47=1`; a carry needing
-    `m_53`+ returns `None`, as does anything `≥ ω^(ω^ω)` (see `tasks/OPEN.md`).
+    `m_53`+ returns `None`, as does anything `≥ ω^(ω^ω)` (see `docs/OPEN.md`).
   - `cantor.rs` — ORDINARY (Cantor) `ord_add`/`ord_mul` (ω+ω=ω·2, 1+ω=ω) — the
     surreal birthday's run-length arithmetic. A distinct algebra, sharing only CNF.
 

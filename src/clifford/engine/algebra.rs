@@ -222,7 +222,7 @@ impl<S: Scalar> CliffordAlgebra<S> {
     /// so it CAN live on the scalar type without a metric context. Ogham's `a ↑ k`
     /// desugars to this method for multivectors.
     ///
-    /// **Precedence caveat (§5 `spec/ogham.md`):** Rust's `^` binds looser than `*`.
+    /// **Precedence caveat (§5 `docs/ogham/ogham.md`):** Rust's `^` binds looser than `*`.
     /// When using scalar `x ^ k`, parenthesize if the intended precedence differs
     /// from ogham's power-tighter-than-product table.
     pub fn pow(&self, v: &Multivector<S>, k: u128) -> Multivector<S> {

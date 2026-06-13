@@ -25,7 +25,7 @@
 //! realization (the Grundy-value theorem) is cited, not reconstructed here: it is to
 //! be transcribed from the 1986 paper in the formalization pass.
 //!
-//! **Relation to `tasks/OPEN.md` §1 (interpretation level).** `tasks/OPEN.md` §1 records that
+//! **Relation to `docs/OPEN.md` §1 (interpretation level).** `docs/OPEN.md` §1 records that
 //! normal-play P-sets are *linear* in Grundy coordinates. Lexicodes are the classical
 //! demonstration of the **solved** (degree-1) side of that line: a fixed, natural,
 //! non-tautological greedy rule whose P-set is a rich linear code. This bridge

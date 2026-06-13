@@ -1,21 +1,25 @@
-# Cross-pillar work — TODO (the game-valued ledger)
+# Cross-pillar work — COMPLETENESS (completing what's there)
 
-Every bridge that was *explicitly on the build order* is done, and newly completed
-work goes in the [`tasks/DONE.md`](DONE.md) ledger. This file is the ledger of what is **buildable
-but not built**: standard math made computational, verification harnesses, and elbow
-grease. Nothing here is a genuine research question — those live in
-[`OPEN.md`](OPEN.md) (which carries the loopy-valued entries; open problems give
-no termination guarantee).
+The ledger of buildable items that **complete a symmetry or connection already
+present in the code**: the old bridges' deliberately-deferred lifts, the even↔odd
+and exact↔capped mirrors a leg is still missing, verification harnesses, and elbow
+grease. Genuinely new directions — features that extend ogdoad past what it covers
+today — live in [`CONTINUATIONS.md`](CONTINUATIONS.md) (the ogham language work, the
+char-`p` Drinfeld mirror). Newly completed work goes in the
+[`DONE.md`](DONE.md) ledger. Nothing here is a genuine research question — those
+live in [`OPEN.md`](OPEN.md) (which carries the loopy-valued entries; open problems
+give no termination guarantee).
 
 Claim-level discipline (`AGENTS.md` → "Claim levels and non-claims") applies to every
 item: each is **standard math** or **engineering** when built — not a new theorem.
 
 ## How items are valued
 
-Natural numbers don't do ledger items justice, so the ledger is a **game-valued
-multivector**: each item is a term `g·e_B` — a game value `g` (its size and temper)
-on a pillar blade `e_B` (which pillars it joins; the blade's grade is how
-cross-cutting the item is). Blades: `e_s` scalar, `e_c` clifford, `e_f` forms,
+(Canonical for both buildable ledgers — [`CONTINUATIONS.md`](CONTINUATIONS.md) values
+its items the same way.) Natural numbers don't do ledger items justice, so the ledger
+is a **game-valued multivector**: each item is a term `g·e_B` — a game value `g` (its
+size and temper) on a pillar blade `e_B` (which pillars it joins; the blade's grade is
+how cross-cutting the item is). Blades: `e_s` scalar, `e_c` clifford, `e_f` forms,
 `e_i` integral, `e_g` games, `e_o` ogham, `e_y` py; pure-prose chores are
 scalar-grade (no blade).
 
@@ -28,7 +32,7 @@ scalar-grade (no blade).
 
 Reference items by **slug**. The ledger's total value is the disjunctive sum; play it
 in any order. (`echo-solver`, the formerly hottest cold item, was played 2026-06-10
-with outcome **CONFIRM** — see `tasks/DONE.md`; its successor move is the
+with outcome **CONFIRM** — see `writeups/goldarf.tex` §8; its successor move is the
 σ-recasting target in `OPEN.md` tis (§1), which is loopy-valued, not a number.)
 
 ---
@@ -43,7 +47,7 @@ touches (the tartan-companion axis), and no-dummy controls — mapping which dis
 besides fifo+dummy are exact. No longer decisive for existence (the fifo+dummy verdict
 is in); it bounds the *mechanism* and finally puts the bounded-window blocker
 conjecture on valid data. (Partially advanced by the 2026-06-10 `linking-reduction`
-pass, `tasks/DONE.md`: the no-dummy controls are fully mapped at the abstract-graph
+pass: the no-dummy controls are fully mapped at the abstract-graph
 level — the Bad census — and the fifo+dummy mechanism is identified
 (`experiments/linking_game.py`, goldarf §8 `sec:linking`); the `w ≥ 2` ko-window and
 pass/pair axes remain unswept, and the general-n linking *proof* is loopy-valued in
@@ -133,26 +137,6 @@ checked certificate, turning `octal_hunt`-style sweeps into proofs-of-periodicit
 rather than bounded observations. The *conjecture* that every finite octal game is
 ultimately periodic is famous, external, and not ours to claim — the checker is.
 
-## numbers — ogham (the language)
-
-### 2·e_o: `ogham-reflect`
-**The consolidation pass before release** (a9, 2026-06-12: "consolidate it
-into the best version of itself before release") — plays after `ogham 3.0`
-(star `*8`), before any 4.0 design. Scope: (1) rewrite the spec §1 identity:
-the principles describe a v1 calculator, and by 3.0 the honest description
-is the **lisp-for-games** — the value-rich/computation-thin inversion,
-Conway's ontology as the data model, the construct↔math coincidences on
-record (four-way relations = outcome classes, `=:` = loopy definition, the
-lazy trio = play-one-branch); (2) fold the §17–§19 delta sections into the
-main spec body so the language reads as one contract, and merge/reorganize
-the conformance corpus; (3) a TASTE.md-style audit of `src/ogham/` after
-three builds of growth — naming, error taxonomy, dispatch-enum shape, REPL
-UX; (4) release scoping, **a9's call**: ogham as ogdoad's front door vs an
-`ogham` crate re-exporting the core, README/writeup, the public name. Also
-worth an hour inside this pass: a CGScript/CGSuite comparison read, for
-ideas and for honest differentiation. The refactor is licensed; the
-identity questions are the point.
-
 ## numbers — engine & bindings
 
 ### 2·e_c: `spinor-gauge`
@@ -209,12 +193,16 @@ and have `p_set_as_f2` check its labeling is a monoid homomorphism.
 ### ↑: `docs-experiments`
 Root `AGENTS.md` and `README.md` don't mention the `experiments/{gold,excess,audit}`
 subdirectories (the rescued 2026-06-10 research-run probes backing `goldarf.tex`,
-`excess.tex`, and `AUDIT-ARCHIVE.md`) or their not-CI-tested status. One layout-table line
-plus a sentence each.
+`excess.tex`, and the 2026-06-10 correctness sweep) or their not-CI-tested status. One
+layout-table line plus a sentence each.
 
 ---
 
 ## stars (deferred — the not-yet-numbers, confused with zero)
+
+The star numbers are one shared nim-sum scheme across both buildable ledgers; the
+sibling stars `*2` (Drinfeld) and `*8` (ogham 3.0) live in
+[`CONTINUATIONS.md`](CONTINUATIONS.md).
 
 ### *1: `spinor genus` (was Bridge G)
 
@@ -230,27 +218,6 @@ to a class statement in exactly that regime (now filed as the buildable `eichler
 The full definite-lattice computation is the larger build; it sits adjacent to the
 ledger, not inside it.
 
-### *2: `the char-p Drinfeld/Carlitz mirror of the integral pillar` (large)
-
-The entire `integral/` wing — even-unimodular `ℤ`-lattices, `θ`-series,
-`M_*(SL₂ℤ) = ℂ[E₄, E₆]`, Construction-A codes, Leech — is char 0. The project already
-ships **exact** `F_q[t] ⊂ F_q(t)`, the char-`p` global field, whose arithmetic carries a
-complete mirror:
-
-- the **Carlitz module** `C_t(x) = t·x + x^q` is the char-`p` analogue of `exp` / the
-  lattice exponential; the mirror of `E₄, E₆` are **Drinfeld modular forms** for
-  `GL₂(F_q[t])`, with Goss `ζ`-values mirroring the Eisenstein constants;
-- rank-`r` `F_q[t]`-lattices mirror even-unimodular `ℤ`-lattices and their reduction
-  theory;
-- **Goppa / algebraic-geometry codes** from function fields tie straight back into the
-  existing `codes.rs` Construction-A machinery — the same code↔lattice seam in char `p`.
-
-This is the `No ↔ On₂` / char-0 ↔ char-2 move applied to the richest pillar — the most
-on-thesis possible "new structure." But it is a genuine new wing (Drinfeld modules, the
-Carlitz exponential, rank-`r` reduction theory): weeks of specialized work, worth starting
-only as a *second headline pillar* rather than a task. References: Goss, *Basic Structures
-of Function Field Arithmetic*; Gekeler, Drinfeld modular forms; Goppa / AG codes.
-
 ### *4: `the wild local symbol` (full local class field theory)
 
 Bridge K's invariant is unramified-only; `tame-symbols` (above) would add the tame
@@ -261,25 +228,3 @@ machinery over the capped local models, and the precision-model honesty question
 real (wild symbols read deep unit structure, not just `v(a)`). Deferred, not rejected.
 Nimbered `*4` rather than `*3`, since `*3 = *1 + *2` is already spoken for as the sum
 of the other two stars.
-
-### *8: `ogham 3.0 — recursion + games`
-
-The `spec/ogham.md` §19 stub (2026-06-12; the predecessor `*8` — ogham 2.x
-functions/programs — was converted to the numbered `ogham-2.0`/`ogham-2.1`
-entries now recorded in `DONE.md` when their sketches landed). The semantic
-break and the telos: **totality traded for
-attributable partiality** (fuel + `E_Depth`, `:depth`), `=:` fixpoint
-bindings (μ — `:=` captures the past, `=:` is an equation the name
-satisfies; a9's notation), local `=:` in bodies, and the `game` world —
-`{L|R}` as ogham's cons cell: game forms as the recursive data constructor,
-CGT's full four-way order live, `⋅` rejected (group-not-ring made an
-evaluator fact), Index-based option access, `grundy` via `=:` as the
-acceptance example — and **Element-`=:` as loopy games** (§19.4, folded in
-at a9's call 2026-06-12: guarded fixpoint equations on game forms *are*
-coinductive definitions — `dud =: {dud | dud}` — with outcomes from
-`games/loopy/`; the construct and the math object coincide again). Owed to
-the real sketch: mutual-recursion groups, fuel default, up/down naming (the
-`↑` glyph collision), the loopy stopper/sum envelope, game-form display, and
-the sequence-sort/HOF gate. Held as a star until §19 grows into a real sketch.
-Nimbered `*8`: every smaller name is a nim-sum of the shipped
-stars (`*3 = *1 + *2`, …, `*7 = *1 + *2 + *4`).

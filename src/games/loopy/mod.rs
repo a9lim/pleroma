@@ -4,7 +4,7 @@
 //! route) from the XOR-linear P-sets of normal-play disjunctive sums: a cyclic
 //! rule admits a **Draw** outcome — a position from which neither player can force
 //! a win — and the Draw-set is a genuinely new degree of freedom to test against
-//! the Gold quadric `{Q=0}` (see `tasks/OPEN.md`, the Tier-2 open question).
+//! the Gold quadric `{Q=0}` (see `docs/OPEN.md`, the Tier-2 open question).
 //!
 //! Four layers, re-exported flat so every public path is unchanged:
 //!

@@ -257,7 +257,7 @@ pub fn factorial_in_scalar<S: Scalar>(n: i128) -> Option<S> {
 /// `x ^ x` would silently mean nim-*addition*). The exponent is an unsigned
 /// meta-integer: `x ^ 0 == one()`.
 ///
-/// **Precedence caveat (§5 `spec/ogham.md`):** Rust's `^` binds looser than
+/// **Precedence caveat (§5 `docs/ogham/ogham.md`):** Rust's `^` binds looser than
 /// `*`. `a * b ^ 3` is `a * (b ^ 3)` in ogham but `(a * b) ^ 3` in Rust.
 /// Parenthesize when mixing product and power operators.
 ///

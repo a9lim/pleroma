@@ -9,7 +9,7 @@ on a "looks right" basis.
 `AGENTS.md` is the map: the four pillars (`scalar/`, `clifford/`, `forms/`,
 `games/`) plus the PyO3 bindings, and each pillar has its own `AGENTS.md` with the
 file-by-file breakdown and the layer-specific "things that look like bugs but
-aren't". `tasks/OPEN.md` is the genuine open problems — read it before touching
+aren't". `docs/OPEN.md` is the genuine open problems — read it before touching
 `forms/char2/`, `games/`, the `experiments/`, or the open-question example probes,
 so you don't file a research question as a bug or a solved theorem.
 
@@ -61,7 +61,7 @@ VIRTUAL_ENV=.venv .venv/bin/maturin develop
 When you change prose, comments, examples, or the writeup, label the claim:
 **standard math** (external fact) · **implemented and tested** (backed by this
 checkout) · **interpretation** (a conditional bridge) · **open** (lives in
-`tasks/OPEN.md`). A new "X is true" statement is backed by a test or a citation, not
+`docs/OPEN.md`). A new "X is true" statement is backed by a test or a citation, not
 asserted.
 
 ## Releasing

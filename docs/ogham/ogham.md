@@ -3,7 +3,7 @@
 Status: **v1 + v1.1 + v2.0 + v2.1 implemented** (2026-06-12);
 **v3.0 stubbed** (§19, same date — the stub is pre-contract). For the shipped
 language this document is the implementation contract: every decision below
-either cashes out as a vector in [`spec/conformance.txt`](conformance.txt)
+either cashes out as a vector in [`docs/ogham/conformance.txt`](conformance.txt)
 or it is not really decided. Implementing agents work until the corpus is green;
 judgment calls not covered here go back to the spec, not into the code.
 
@@ -455,7 +455,7 @@ substring):
 | `E_BareOrdinal` | bare `ω` in ordinal world | "values are starred here: `*ω`" |
 | `E_WrongWorld` | literal **or operator** form foreign to the session world (`*3` in surreal; `%` in a field world; `@` outside poly/ratfunc) | "`*3` is a nimber; this is the `surreal` world" |
 | `E_CnfOrder` | star-literal exponents not strictly descending | "CNF indices are structural: write `*(ω + 1)`, not `*(1 + ω)`" |
-| `E_KummerEscape` | ordinal mul/inv past the verified tower | "below ω^(ω^ω), primes ≤ 47 — see tasks/OPEN.md" |
+| `E_KummerEscape` | ordinal mul/inv past the verified tower | "below ω^(ω^ω), primes ≤ 47 — see docs/OPEN.md" |
 | `E_NotInvertible` | failed `inv`/`multivector_inverse`/`dual` | per-world math in message (§7.5) |
 | `E_DivisionByZero` | `/0` | |
 | `E_BladeIndex` | `e‹i›` with i ≥ dim | |
@@ -506,7 +506,7 @@ Two flags, decided here:
 
 ## 14. Conformance corpus
 
-`spec/conformance.txt`, UTF-8, line-based:
+`docs/ogham/conformance.txt`, UTF-8, line-based:
 
 ```text
 @world ‹world-decl args, exactly as after ":world"›   # resets bindings
@@ -536,9 +536,7 @@ kept as provenance for those blessed vectors.
 
 WP1 (Display v2, §9), WP7 (host operators, §13), the backend helper
 surface (§7.6/§7.7), WP2–WP6, the v2.0 abstraction layer (§17), and the v2.1
-program layer (§18) are shipped — ledger:
-`tasks/DONE.md` → `ogham-foundations`, `ogham-backend`, `ogham-v1`, and
-`ogham-v1.1`, `ogham-2.0`, `ogham-2.1`.
+program layer (§18) are shipped.
 The table below is the historical build decomposition and the maintenance map.
 Acceptance for the language is the committed conformance corpus plus the normal
 Rust/Python validation stack.
@@ -553,7 +551,7 @@ Rust/Python validation stack.
 
 ## 16. v1.1 — the function-shaped worlds
 
-**Implemented and tested** (ledger: `tasks/DONE.md` → `ogham-v1.1`).
+**Implemented and tested.**
 
 - **Worlds** (fixed dispatch, §6.1 discipline): `poly2 poly3 poly5 poly7` =
   `Poly<Fp<p>>` (F_p[t]); `polyint` = `Poly<Integer>` (ℤ[t]); `ratfunc2
@@ -578,9 +576,9 @@ Rust/Python validation stack.
 
 ## 17. v2.0 — abstraction
 
-**Implemented and tested** (ledger: `tasks/DONE.md` → `ogham-2.0`). The
+**Implemented and tested.** The
 v2.0 conformance vectors are merged into
-[`spec/conformance.txt`](conformance.txt), replacing the four superseded
+[`docs/ogham/conformance.txt`](conformance.txt), replacing the four superseded
 v1.1 reserved-syntax vectors listed in the staging header. Judgment calls go
 back to this section and the corpus, not into the code. The 2.x/3.0 staging
 remains deliberate: each version is independently shippable and leaves a
@@ -767,10 +765,10 @@ factorial (§13): ogham spelling only.
 
 ## 18. v2.1 — programs
 
-**Implemented and tested** (ledger: `tasks/DONE.md` → `ogham-2.1`). The
+**Implemented and tested.** The
 v2.1 conformance vectors, including the `>>` continuation-line format, are
-merged into [`spec/conformance.txt`](conformance.txt); the original blessed
-staging block remains in [`spec/conformance_v2.txt`](conformance_v2.txt) as
+merged into [`docs/ogham/conformance.txt`](conformance.txt); the original blessed
+staging block remains in [`docs/ogham/conformance_v2.txt`](conformance_v2.txt) as
 provenance. Totality, definition-time completeness, and the closed-AST
 Function model all survive 2.1 untouched — sequences are definitional
 structure, not new semantics.

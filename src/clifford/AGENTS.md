@@ -38,7 +38,7 @@ backends). The associative-algebra core is split by concept under `engine/`:
 - **`multivector.rs`** — `Multivector<S>`: term store, zero/display helpers.
   `terms` field is `pub(crate)`; use the `terms()` accessor for external reads.
   `impl fmt::Display` renders with `{}` — same as `display()` — in canonical
-  ogham (Display v2, `spec/ogham.md` §9): wedge blades `e0∧e1`, coefficient
+  ogham (Display v2, `docs/ogham/ogham.md` §9): wedge blades `e0∧e1`, coefficient
   attachment `coeff⋅label` (parens iff non-atomic, via `scalar::poly::attach_coeff`),
   `1`/`-1` elision, the leading-`-` ` - ` join rule, and the zero rule (empty MV →
   `S::zero()`'s display, `*0` in nim-worlds). Signs still flow through

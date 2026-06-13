@@ -1,7 +1,7 @@
 # ogham conformance corpus — v2 staging archive (hand-verified, blessed 2026-06-12)
 #
 # Operator-blessed by a9 for `ogham-2.0` and `ogham-2.1`; spec contract:
-# spec/ogham.md §17–§18. The v2.0 and v2.1 slices have been merged into
+# docs/ogham/ogham.md §17–§18. The v2.0 and v2.1 slices have been merged into
 # conformance.txt; this file is retained as blessing/provenance, not as an
 # inert pending corpus.
 #
@@ -12,7 +12,7 @@
 # rules; the remaining arithmetic (integer ternary/factorial-free vectors) is
 # hand-checked.
 #
-# Format: spec/ogham.md §14, plus one extension for §18 continuation:
+# Format: docs/ogham/ogham.md §14, plus one extension for §18 continuation:
 #   >> ‹line›   continues the preceding > input; the harness joins > and >>
 #               lines with newlines before lexing (legal only while ( or [ is
 #               unbalanced, per §18).

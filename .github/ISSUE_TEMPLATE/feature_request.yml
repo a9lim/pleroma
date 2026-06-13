@@ -14,7 +14,7 @@ body:
           rings.
         - The genuine open problems (a natural Gold-quadric play rule, a
           game-native quadratic deformation of `GameExterior`, transfinite nim
-          past the verified Kummer boundary) live in `tasks/OPEN.md`. Those are research
+          past the verified Kummer boundary) live in `docs/OPEN.md`. Those are research
           questions, not feature requests — open a discussion instead.
 
         New backends, invariants, cross-pillar bridges, and binding/docs

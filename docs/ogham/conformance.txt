@@ -1,5 +1,5 @@
 # ogham conformance corpus — v2.1 (hand-verified, 2026-06-12)
-# Format: spec/ogham.md §14, plus `>>` continuation lines for joined
+# Format: docs/ogham/ogham.md §14, plus `>>` continuation lines for joined
 # open-paren/open-bracket inputs.
 #   @world ‹args as after ":world"›   resets bindings
 #   > input        ~ canonical echo (optional)        = value display

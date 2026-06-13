@@ -5,15 +5,16 @@ VERDICT (2026-06-10): CONFIRM.  The echo-fifo+dummy m=8 exactness claim is
 re-derived in full -- 391,680/391,680 checks (765 scaled Gold forms x 256
 positions x both stances), zero misses -- by the direct full-state solver
 `fifo_value` below (stage `fifo2-all`), with no decomposition and no
-isomorphism caching.  Record: `tasks/DONE.md`; corrected rule description
-and verification record: `writeups/goldarf.tex` SS8.  NOTE: the EchoGame
+isomorphism caching.  Record and corrected rule description / verification
+record: `writeups/goldarf.tex` SS8.  NOTE: the EchoGame
 class and the `pin-ko`/`fifo-m4`/`fifo-m8` stages implement the OLD SS8.3
 prose readings, kept as the documented negative result (no reading of that
 prose is m=8-exact -- the prose misdescribed the rule); the faithful
 sigma-valued rule lives in `fifo_value`/`ko_value` and the `fifo2-*`/`ko2`
 stages.
 
-This is the decisive-experiment harness of `tasks/TODO.md` (`echo-solver`) and
+This is the decisive-experiment harness for the `echo-solver` task (successor
+`echo-family-sweep` in `docs/COMPLETENESS.md`) and
 `writeups/goldarf.tex` SS8-9, ranked move 1: an independent re-derivation of the
 echo-fifo+dummy m=8 exactness claim (391,680 checks / 765 scaled Gold forms),
 which was produced by a decomposition-plus-isomorphism-caching solver validated

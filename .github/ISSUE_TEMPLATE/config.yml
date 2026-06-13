@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Open research problems
-    url: https://github.com/a9lim/ogdoad/blob/main/tasks/OPEN.md
-    about: The natural Gold-quadric play rule, a game-native quadratic deformation, transfinite nim beyond the verified Kummer boundary, and friends are KNOWN-open — not bugs. See tasks/OPEN.md before filing.
+    url: https://github.com/a9lim/ogdoad/blob/main/docs/OPEN.md
+    about: The natural Gold-quadric play rule, a game-native quadratic deformation, transfinite nim beyond the verified Kummer boundary, and friends are KNOWN-open — not bugs. See docs/OPEN.md before filing.
   - name: Security vulnerability
     url: https://github.com/a9lim/ogdoad/security/policy
     about: Please report security issues privately (see SECURITY.md).

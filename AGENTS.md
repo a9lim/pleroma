@@ -38,12 +38,14 @@ Beyond the library: `examples/` (Rust demos `tour`/`tropical` + the open-questio
 probes `interactive_kernel`, `octal_hunt`, `loopy_quadric`, `misere_quotient`,
 `bent_route`), `experiments/` (Python research probes on top of the shipped
 lib), `demo.py` (the Python tour),
-`tasks/` (OPEN.md — the genuine research problems; TODO.md — the game-valued
-ledger of buildable items plus the deferred stars `*1`/`*2`/`*4`; DONE.md — the
-go-forward ledger for new work; AUDIT-ARCHIVE.md — the archived
-mathematical-correctness audit snapshot; TABLES.md — the inventory of curated
-hardcoded tables),
-`spec/` (ogham.md — the expression-language spec, the shipped Display-v2 +
+`docs/` (OPEN.md — the genuine research problems; COMPLETENESS.md — the game-valued
+ledger of buildable items completing symmetries/connections already in the code;
+CONTINUATIONS.md — the game-valued ledger of buildable items that are genuinely new
+features (the ogham language work, the char-`p` Drinfeld mirror); the deferred stars
+`*1`/`*2`/`*4`/`*8` split across those two; DONE.md — the go-forward ledger for new
+work; CONSISTENCY.md — the aesthetic/structural ledger; TABLES.md — the inventory of
+curated hardcoded tables),
+`docs/ogham/` (ogham.md — the expression-language spec, the shipped Display-v2 +
 host-operator contract, backend-helper surface, v1 parser/evaluator contract,
 v1.1 polynomial/ratfunc function-world contract, the shipped v2.0 abstraction
 layer, the shipped v2.1 program layer, and the pre-contract v3.0 stub, §§17–19;
@@ -67,7 +69,7 @@ Use these labels when changing prose, papers, examples, or comments:
   game whose P-set is the corresponding quadratic zero set.
 - **Open**: the natural Gold-quadric game rule, a genuine game-native quadratic
   deformation of `GameExterior`, and transfinite nim multiplication beyond the
-  source-verified excess table. These live in `tasks/OPEN.md`.
+  source-verified excess table. These live in `docs/OPEN.md`.
 
 Scope boundaries to preserve:
 
@@ -174,7 +176,7 @@ integer `q`/polar data on a chosen game-generator tuple only after verifying eve
 game relation in the quotient is null and polar-radical for that data; over the
 torsion-free target `ℤ`, relations such as `2* = 0` force `Q(*)` and all pairings
 with `*` to vanish. The stronger question of a natural game-native source for such
-quadratic data remains open in `tasks/OPEN.md`.
+quadratic data remains open in `docs/OPEN.md`.
 
 The game-built Gold-form bridge is implemented, but the play rule is not. The
 standard chain is:
@@ -192,10 +194,10 @@ reconstruction on small fields, frame-obstruction experiments, misère-kernel
 obstruction examples, loopy Draw/Loss-set experiments, and bent Gold-component route
 probes. The conditional statement: if a game has P-positions `{Q = 0}`, Arf gives
 the sign and size of the second-player win-bias. The existence of a non-tautological
-natural rule with P-set `{Q = 0}` is open (`tasks/OPEN.md`), but the σ-valued
+natural rule with P-set `{Q = 0}` is open (`docs/OPEN.md`), but the σ-valued
 echo-fifo+dummy realizer is **verified** (2026-06-10, adversarial review:
 `experiments/echo_solver.py`, 391,680/391,680 m=8 checks, zero misses — record in
-`tasks/DONE.md`); the open steps are recasting its forced-charge readout into
+`writeups/goldarf.tex` §8); the open steps are recasting its forced-charge readout into
 normal/misère/loopy outcome semantics and the general-n linking proof. The
 realizer's *mechanism* is reduced (2026-06-10 second pass,
 `experiments/linking_game.py`, goldarf §8 `sec:linking`): the σ-game is the
@@ -269,7 +271,7 @@ python3 experiments/exception_column_m4.py    # 2·3^k excess column m=4 certifi
   `lib.rs`; targeted `#[allow]`s carry a one-line reason). License: AGPL-3.0-or-later.
 - Numeric payload style is deliberate: non-index fixed-width integers are
   `u128`/`i128` throughout the core, docs, examples, and tests.
-- Display is deliberate and canonical (ogham Display v2, `spec/ogham.md` §9):
+- Display is deliberate and canonical (ogham Display v2, `docs/ogham/ogham.md` §9):
   blades render as wedge expressions `e0∧e1` (`∧` = U+2227); coefficients attach
   `coeff⋅label` (`⋅` = U+22C5) with coefficient-`1` elided and `-1` → `-label`
   (compared via `S::one().neg()`, never a literal). A term whose rendering starts
@@ -319,9 +321,9 @@ mark that boundary without becoming `Scalar` supertraits. (serde is intentionall
 shipped — the invariant-carrying types need custom deserialization, not a naive
 derive.)
 
-The narrow Gold/Arf game thread and the genuine open problems live in `tasks/OPEN.md`; the
+The narrow Gold/Arf game thread and the genuine open problems live in `docs/OPEN.md`; the
 draft notes are `writeups/goldarf.tex` (Gold/Arf) and `writeups/excess.tex`
-(transfinite excess). Read `tasks/OPEN.md` before touching `forms/char2/`,
+(transfinite excess). Read `docs/OPEN.md` before touching `forms/char2/`,
 `forms/quadric_fit.rs`, `forms/char0.rs`, `games/coin_turning.rs`, `games/kernel.rs`,
 `games/misere.rs`, `games/loopy/`, `forms/witt/`, `experiments/`, or the
 open-question example probes.

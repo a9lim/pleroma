@@ -44,7 +44,7 @@ carries are Lenstra's \emph{excess} values: for each odd prime $p$, the
 carry is $\alpha_p=\kappa_{f(p)}+m_p$, where the transfinite part
 $\kappa_{f(p)}$ has a known closed shape (Lenstra, DiMuro) but the finite
 correction $m_p$ does not. This note consolidates the state of the excess
-problem (\texttt{tasks/OPEN.md} Problem~3 of \texttt{ogdoad}): the exact
+problem (\texttt{docs/OPEN.md} Problem~3 of \texttt{ogdoad}): the exact
 finite-field reformulation of the root test as a multiplicative-order
 criterion and its structural norm reduction; a complete analysis of the
 $3$-power column via a half-angle splitting in the cyclotomic component
@@ -232,7 +232,7 @@ GPU-friendly).
 The structural primitive needed here --
 $\Norm_{E/K}(\beta)=\prod_i\Frob^{i}(\beta)$ computed by a
 Frobenius-orbit recurrence -- is the same primitive that the cyclic-algebra
-Brauer-invariant bridge (Bridge~K, \path{tasks/TBD.md}) requires for
+Brauer-invariant bridge (Bridge~K, \path{docs/TBD.md}) requires for
 reduced norms over a Frobenius-generated cyclic extension. The existing
 \texttt{FieldExtension::relative\_norm} does not apply to the
 term-algebra/transfinite setting, but the shape is identical; factoring
@@ -693,7 +693,7 @@ $\alpha_{47}$ with the landmark test
 \path{locally_verified_alpha_47_landmark} and moves the refusal
 boundary to $\alpha_{53}$; the documented boundaries in
 \path{nim.rs}, \path{mod.rs}, \path{src/games/nimber_game.rs},
-\texttt{README.md}, and \texttt{tasks/OPEN.md} were updated in step. The full
+\texttt{README.md}, and \texttt{docs/OPEN.md} were updated in step. The full
 gate ran clean: \texttt{cargo fmt --check}, \texttt{cargo test},
 \texttt{cargo check}/\texttt{clippy} with and without the
 \texttt{python} feature (warnings denied), and the probe under

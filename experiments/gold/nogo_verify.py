@@ -1,4 +1,4 @@
-r"""Verification bench for the strengthened no-go (ogdoad tasks/OPEN.md problem 1).
+r"""Verification bench for the strengthened no-go (ogdoad docs/OPEN.md problem 1).
 
 Checks, on concrete game-built Gold instances:
   L1  affine stabilizer of {Q=0} is exactly AO(Q) = affine isometries of Q:

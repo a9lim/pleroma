@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Round-2 CONSTRUCT probe for ogdoad tasks/OPEN.md problem 1 (Gold-quadric game).
+"""Round-2 CONSTRUCT probe for ogdoad docs/OPEN.md problem 1 (Gold-quadric game).
 
 PART 1 — primary construct T2-weierstrass at (8,1) and (16,1):
   Rule: positions = coin strings x in F_2^m <-> field elements of F_{2^m}.
@@ -7,7 +7,7 @@ PART 1 — primary construct T2-weierstrass at (8,1) and (16,1):
         (so x^d < x: terminating coin-turning convention).
   Gate: legal iff B(x,d) ^ Q(d) = 1, where Q(d) is q_i (singles) or
         q_i^q_j^B_ij (pairs) -- at most TWO diagonal bits + the public polar B.
-  Data chain (all game-built, tasks/OPEN.md standard chain):
+  Data chain (all game-built, docs/OPEN.md standard chain):
         B_ij = Tr(e_i e_j^2 + e_j e_i^2)        (Turning-Corners + Frobenius + trace)
         q_i  = Tr(P(w) e_i),  P(z) = z^2 ^ z,   w = XOR of Fermat coins 2^(2^t), t>=1
   Claim (attack-5 blocking lemma + diagonal-skeptic identity): P-set = {Tr(x^3)=0}.

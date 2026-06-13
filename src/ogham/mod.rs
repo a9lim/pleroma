@@ -1,6 +1,6 @@
 //! Ogham, the small expression language over ogdoad scalar worlds.
 //!
-//! The language contract lives in `spec/ogham.md`; this module keeps the pure
+//! The language contract lives in `docs/ogham/ogham.md`; this module keeps the pure
 //! Rust parser/evaluator independent of the optional PyO3 bindings.
 
 pub mod ast;

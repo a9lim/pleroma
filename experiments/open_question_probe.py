@@ -1,6 +1,6 @@
 """Probing the open question: what a P-position game for {Q=0} must look like.
 
-tasks/OPEN.md asks: is there a NATURAL game whose P-positions (second-player wins)
+docs/OPEN.md asks: is there a NATURAL game whose P-positions (second-player wins)
 are exactly the zero set {v : Q_a(v)=0} of a game-built Gold form? Normal-play
 disjunctive sums have XOR-linear outcomes — their P-positions are {XOR of Grundy
 values = 0}, a SUBSPACE — so the question is whether an interactive/misère game

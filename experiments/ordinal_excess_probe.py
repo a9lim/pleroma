@@ -16,11 +16,14 @@ The cases below independently reproduce:
 * the fact that Q alone is not enough: Q={9} gives p=19 -> 4 but p=73 -> 1;
 * a couple of larger singleton witnesses;
 * a fixed-base p=47 test, using only lower verified rows, that certifies
-  alpha_47 = omega^(omega^7)+1 for the Rust tower.
+  alpha_47 = omega^(omega^7)+1 for the Rust tower;
+* a deeper fixed-base dependency rehearsal certifying m_179 = 1 in the
+  E=19580 component field (run with --deep).
 """
 
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 from functools import cache
 
@@ -41,6 +44,12 @@ Q_SET: dict[int, tuple[int, ...]] = {
     47: (23,),
     53: (13,),
     73: (9,),
+    # Dependency chain for the first OEIS-unknown row p=719:
+    # 719 -> 359 -> 179 -> 89 -> 11 -> 5 -> finite.
+    # The p=89 row is fast; p=179 is re-certified by the --deep path below.
+    89: (11,),
+    179: (89,),
+    359: (179,),
 }
 
 EXCESS: dict[int, int] = {
@@ -53,6 +62,8 @@ EXCESS: dict[int, int] = {
     17: 0,
     19: 4,
     23: 1,
+    89: 1,
+    179: 1,
 }
 
 # Factorizations of 2^E - 1 for the small component fields exercised below.
@@ -323,7 +334,24 @@ def has_pth_root_by_power(algebra: TermAlgebra, beta: frozenset[int], p: int) ->
     return algebra.fixed_base_power(beta, group_order // p) == frozenset((0,))
 
 
+def fixed_base_certificate(p: int, excess: int) -> str:
+    algebra, beta = beta_for(p, excess)
+    root = has_pth_root_by_power(algebra, beta, p)
+    return (
+        f"p={p}, m={excess}, Q={Q_SET[p]}, components={algebra.q_components}, "
+        f"E={algebra.term_count}, root? {root}"
+    )
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--deep",
+        action="store_true",
+        help="also run the E=19580 fixed-base certificate for p=179 (about a minute locally)",
+    )
+    args = parser.parse_args()
+
     cases = [
         (7, 0),
         (7, 1),
@@ -332,6 +360,7 @@ def main() -> None:
         (73, 1),
         (23, 1),
         (53, 1),
+        (89, 1),
     ]
     header = (
         f"{'p':>3} {'Q(f(p))':>9} {'m':>2} {'components':>18} {'E':>4} "
@@ -353,11 +382,11 @@ def main() -> None:
     print("In particular, Q={9} has p=19 needing m=4, but p=73 already works at m=1.")
     print()
     print("Targeted fixed-base test beyond the Rust table:")
-    algebra, beta = beta_for(47, 1)
-    print(
-        f"p=47, m=1, components={algebra.q_components}, E={algebra.term_count}, "
-        f"root? {has_pth_root_by_power(algebra, beta, 47)}"
-    )
+    print(fixed_base_certificate(47, 1))
+    if args.deep:
+        print(fixed_base_certificate(179, 1))
+    else:
+        print("p=179 deep certificate skipped; rerun with --deep")
 
 
 if __name__ == "__main__":

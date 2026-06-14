@@ -443,6 +443,12 @@ Since the 2026-06 research pass (`writeups/excess.tex`, `experiments/excess/`,
   `0/1/4` rule unbroken. Still no proof; boundedness outside the 3-power and
   `2*3^k` columns (the 11-chain, the 23/29/47 components) has no structural
   theory, and no `m_p >= 5` example is known.
+- The `p = 719` dependency rehearsal has advanced one rung: the local
+  fixed-base oracle now certifies `m_89 = 1` in the `E = 220` component field
+  and `m_179 = 1` in the `E = 19,580` component field (`python3
+  experiments/ordinal_excess_probe.py --deep`, about one minute locally).
+  `m_359 = 1` is still the remaining large dependency before attacking
+  `m_719` itself.
 - `p = 719` feasibility: the direct test needs ~3.5 million Frobenius steps in
   `F_{2^1258230380}`; tower-aware Frobenius arithmetic (De Feo–Randriam–Rousseau
   standard lattices) is the conjectured 10–100x lever — a cost model, not a
@@ -482,11 +488,13 @@ Concrete progress targets:
   not *coverage*.
 - Derive or certify finite excess terms beyond the published table. (Done for
   the `2*3^k` column at every visible prime — 11 new `m_p = 4` rows, 2026-06-12;
-  the `3`-power column's `m_r = 1` rows were certified in the earlier pass.
+  the `3`-power column's `m_r = 1` rows were certified in the earlier pass;
+  the `p=719` dependency rehearsal now locally certifies `m_89 = m_179 = 1`.
   Other columns remain.)
 - Prove or find a counterexample to the candidate `0/1/4` rule. The smallest
   pressure point is `p = 719`, where the rule predicts `m_719 = 1` but the direct
-  calculator path is too large for ordinary local verification.
+  calculator path is too large for ordinary local verification; the next
+  dependency to certify locally is `m_359 = 1`.
 - Turn the order-divisibility criterion into an actual theorem about the prime
   divisors of `ord(kappa_q + m)`, especially for singleton odd `Q = {q}` and for
   the exceptional tower `q = 3^k`.

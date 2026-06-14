@@ -357,20 +357,28 @@ What is implemented:
 - The algebraic closure of `F_2` is represented by ordinals `< omega^(omega^omega)`
   under nim-arithmetic.
 - The prime-power generator tower is implemented in `src/scalar/big/ordinal/tower.rs`.
-  Products are exact when every Kummer carry uses a verified finite Lenstra excess
-  `m_u` for an odd prime `u <= 47`: DiMuro Table 1 through `43`, plus the local
-  `ordinal_excess_probe.py` verification for `m_47 = 1`. The ordinal carry
-  `alpha_u` is assembled in code from `f(u)=ord_u(2)`, DiMuro's recursive
-  `Q(f(u))`, and the finite `m_u`.
+  Products are exact when every Kummer carry uses a finite Lenstra excess `m_u` for an
+  odd prime `u <= 709`: the finite `m_u` are sourced from OEIS A380496 ("Lenstra excess
+  of the n-th odd prime"), the b-file's 126 known rows (odd primes `3..=709`; the first
+  14 reproduce DiMuro Table 1 + the old `m_47`). The first OEIS-unknown row is `p=719`,
+  so a carry at `u >= 719` returns `None`. The ordinal carry `alpha_u` is assembled in
+  code from `f(u)=ord_u(2)`, DiMuro's recursive `Q(f(u))`, and the finite `m_u`.
 - Stage 1 handles scalar excesses such as `alpha_3 = 2`, `alpha_5 = 4`, and
   `alpha_17 = 16`; Stage 2 handles nonscalar excesses such as `alpha_7 = omega+1`
   by branching the monomial and recursing to lower places.
-- Finite excess rows through `43` are from DiMuro's source table; `47` is from the
-  independent local fixed-base probe. Field-axiom sweeps test engine consistency,
-  not the truth of the finite `m_u` values.
+- The 126 finite excess rows are source-pinned to OEIS A380496 (the values themselves
+  verified upstream by CGSuite's Lenstra-excess calculator); the row table is pinned in
+  `excess_table_matches_oeis_a380496`, and field-axiom sweeps test engine consistency,
+  not the truth of the finite `m_u` values. Caveat: the table extends *reach*, not
+  *feasibility* — for large primes `alpha_u` is in the table but its `Q(f(u))`/finite-
+  subfield reconstruction over the degree-`e_u` component field (`e_u` in the millions
+  for `u` near 709) is too costly to materialize in practice, so only the smaller-`e_u`
+  rows are usable end-to-end today.
 
-The verified rows currently used are shown below for readability; production stores
-only the finite `m_u` entries and reconstructs the displayed `alpha_u` values:
+The first fourteen rows (odd primes `3..=47`) are shown below for readability — the
+historic DiMuro Table 1 + `m_47` landmarks, now also OEIS A380496 `a(1)..a(14)`;
+production stores the finite `m_u` for all 126 rows (`3..=709`) and reconstructs the
+displayed `alpha_u` values:
 
 | u | alpha_u | u | alpha_u | u | alpha_u |
 |---|---|---|---|---|---|
@@ -396,9 +404,11 @@ Current external state:
   has no `p`-th root exactly when `p` divides the multiplicative order of `beta`.
   Thus the excess is the least `m` such that
   `p | ord(kappa_{f(p)} + m)`.
-- The local fixed-base probe uses that criterion to verify `m_47 = 1` from the
-  lower verified rows. Since `f(47) = 23` and `Q(23) = {23}`, this gives the newly
-  shipped carry `alpha_47 = omega^(omega^7)+1`.
+- The local fixed-base probe (`experiments/ordinal_excess_probe.py`) uses that
+  criterion to verify `m_47 = 1` from the lower rows. Since `f(47) = 23` and
+  `Q(23) = {23}`, this gives `alpha_47 = omega^(omega^7)+1` — historically the first
+  row past DiMuro Table 1, now subsumed by the OEIS A380496 import (the shipped table
+  is source-pinned, not per-row locally oracled).
 
 Since the 2026-06 research pass (`writeups/excess.tex`, `experiments/excess/`,
 `experiments/cyclotomic_3k_family.py`):
@@ -464,8 +474,12 @@ Why this is research:
   pleasant API.
 
 Concrete progress targets:
-- Decide whether to import more known OEIS/calculator values through `p <= 709` as
-  cited data, or keep requiring a local finite-field oracle for each shipped row.
+- ~~Decide whether to import more known OEIS/calculator values through `p <= 709` as
+  cited data, or keep requiring a local finite-field oracle for each shipped row.~~
+  **Done (2026-06-13):** the finite `m_u` table is now the full OEIS A380496 b-file
+  (126 rows, odd primes `3..=709`), source-pinned rather than per-row locally oracled.
+  The remaining gap is *feasibility* (materializing `alpha_u` for large-`e_u` rows),
+  not *coverage*.
 - Derive or certify finite excess terms beyond the published table. (Done for
   the `2*3^k` column at every visible prime — 11 new `m_p = 4` rows, 2026-06-12;
   the `3`-power column's `m_r = 1` rows were certified in the earlier pass.
@@ -478,7 +492,11 @@ Concrete progress targets:
   the exceptional tower `q = 3^k`.
 - Build a verified `u`-th-power/root-search oracle for the transfinite field.
 - Prove enough about the search to avoid merely empirical extensions.
-- Decide what evidence is acceptable for shipping `alpha_53` and beyond.
+- ~~Decide what evidence is acceptable for shipping `alpha_53` and beyond.~~ Settled:
+  OEIS A380496 (a maintained sequence, values verified upstream by CGSuite's calculator)
+  is accepted as source-pinned evidence through `p <= 709`. The next question is what
+  evidence justifies rows past `p = 719` (the first OEIS-unknown), which need a fresh
+  computation, not a table lookup.
 
 Relevant surfaces:
 - `writeups/excess.tex`

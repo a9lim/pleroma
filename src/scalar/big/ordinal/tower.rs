@@ -52,15 +52,15 @@
 //!
 //! ## Staging (honest scope)
 //!
-//! We carry only the finite Lenstra excess integers `m_u` through DiMuro Table 1
-//! (`u ≤ 43`) plus the locally verified `m_47 = 1` from
-//! `experiments/ordinal_excess_probe.py` (see `docs/OPEN.md`). The ordinal expression is
+//! We carry the finite Lenstra excess integers `m_u` from **OEIS A380496** ("Lenstra
+//! excess of the n-th odd prime"): the b-file's 126 known rows, the odd primes
+//! `3..=709` (see [`finite_excess`] and `docs/OPEN.md`). The ordinal expression is
 //! assembled in code: compute `f(u)=ord_u(2)`, compute DiMuro's `Q(f(u))`, form the
 //! `χ`-sum, then nim-add `m_u`. The product of any two ordinals `< ω^(ω^ω)` is
-//! therefore exact whenever every Kummer carry it triggers is at a prime `≤ 47`; a
-//! carry needing `m_53` or beyond returns `None` — the honest operational boundary,
-//! moved up from the earlier "any non-scalar `α_u`" cut. (Anything
-//! `≥ ω^(ω^ω)`, an infinite exponent place, is out of range outright.)
+//! therefore exact whenever every Kummer carry it triggers is at a prime `≤ 709`; a
+//! carry needing `m_719` (the first OEIS-unknown row) or beyond returns `None` — the
+//! honest operational boundary. (Anything `≥ ω^(ω^ω)`, an infinite exponent place, is
+//! out of range outright.)
 
 use super::Ordinal;
 use crate::scalar::{is_prime_u128, nim_mul};
@@ -90,12 +90,12 @@ pub(super) fn place_prime(m: u128) -> u128 {
 }
 
 /// The excess `α_u` (`χ_u^u = α_u`, the Kummer relation) as an ordinal, or `None` for
-/// primes beyond the verified table (`u > 47` — the staged boundary). The only
-/// hardcoded row datum is the finite excess integer `m_u`; the ordinal expression is
-/// reconstructed from `f(u)=ord_u(2)` and DiMuro's recursive `Q(f(u))`. Every `α_u`
-/// is built from generators at strictly-lower places than `χ_u`'s own, which is what
-/// makes the branching reduction descend and terminate. Values through `43`: DiMuro
-/// Table 1; value `47`: local fixed-base finite-field oracle (see `docs/OPEN.md`).
+/// primes beyond the verified table (`u > 709` — the staged boundary). The only
+/// hardcoded row datum is the finite excess integer `m_u` (see [`finite_excess`]); the
+/// ordinal expression is reconstructed from `f(u)=ord_u(2)` and DiMuro's recursive
+/// `Q(f(u))`. Every `α_u` is built from generators at strictly-lower places than
+/// `χ_u`'s own (the prime factors of `f(u) | u-1` are all `< u`), which is what makes
+/// the branching reduction descend and terminate.
 pub(super) fn alpha_ordinal(u: u128) -> Option<Ordinal> {
     let f = multiplicative_order_two_mod_prime(u)?;
     let mut val = chi_sum(&q_set(f)?)?;
@@ -103,13 +103,31 @@ pub(super) fn alpha_ordinal(u: u128) -> Option<Ordinal> {
     Some(val)
 }
 
+/// The finite Lenstra excess `m_p` for an odd prime `p`, from **OEIS A380496**
+/// ("Lenstra excess of the n-th odd prime"). The b-file's 126 known rows cover the odd
+/// primes `3..=709`, indexed here by the 0-based odd-prime place (place 0 = prime 3),
+/// so `EXCESS[odd_prime_place(p)] = m_p`. `None` past prime 709 — the staged boundary,
+/// where the first OEIS-unknown row is `p = 719`. The place ↦ prime map is the tower's
+/// own coordinate (`place_prime`, pinned by `place_primes_are_the_odd_primes`); the
+/// values are pinned against the b-file in `excess_table_matches_oeis_a380496`.
+/// (Provenance: `a(1–3)` Conway, `a(4–13)` Lenstra, `a(14–18)` Le Bruyn, `a(19–59)`
+/// Siegel, `a(60–126)` Peeters, via CGSuite's Lenstra-excess calculator. The excess is
+/// `0` or `1` except `m_19 = m_163 = 4`. See `docs/OPEN.md` for the open boundary.)
 fn finite_excess(u: u128) -> Option<u128> {
-    match u {
-        3 | 5 | 13 | 17 | 29 | 37 => Some(0),
-        7 | 11 | 23 | 31 | 41 | 43 | 47 => Some(1),
-        19 => Some(4),
-        _ => None,
-    }
+    // OEIS A380496 b-file column `a(n)`, `n = 1..126`, i.e. the odd primes `3..=709` in
+    // order (`a(n)` at index `n-1` = the (n-1)-th place). Diff against `b380496.txt`.
+    const EXCESS: [u128; 126] = [
+        0, 0, 1, 1, 0, 0, 4, 1, 0, 1, 0, 1, 1, 1, // 3 .. 47   (DiMuro Table 1 + m_47)
+        1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, // 53 .. 109
+        0, 1, 0, 1, 0, 1, 0, 1, 4, 1, 0, 1, 0, 0, // 113 .. 191  (m_163 = 4)
+        0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, // 193 .. 269
+        0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, // 271 .. 353
+        1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, // 359 .. 439
+        0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, // 443 .. 523
+        0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, // 541 .. 617
+        1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, // 619 .. 709
+    ];
+    EXCESS.get(odd_prime_place(u)? as usize).copied()
 }
 
 fn multiplicative_order_two_mod_prime(u: u128) -> Option<u128> {
@@ -337,7 +355,7 @@ fn reduce_keys(a: &GenKey, b: &GenKey) -> Option<(GenKey, BTreeMap<u128, u128>)>
 /// ordinal (a *sum*, once a non-scalar Kummer carry branches it). Adds the generator
 /// powers, reduces, then nim-multiplies in the excess `α` factors the level-0 carries
 /// owe — recursively, since `α_u` is itself a (strictly-lower-place) ordinal. `None` if
-/// some owed `α_u` is past the verified table (`u > 47`).
+/// some owed `α_u` is past the verified table (`u > 709`).
 fn mul_mono(ka: &GenKey, ca: u128, kb: &GenKey, cb: u128) -> Option<Ordinal> {
     let (base_key, overflow) = reduce_keys(ka, kb)?;
     let coeff = nim_mul(ca, cb);
@@ -362,7 +380,7 @@ fn mul_mono(ka: &GenKey, ca: u128, kb: &GenKey, cb: u128) -> Option<Ordinal> {
 }
 
 /// Nim-multiply two ordinals `< ω^(ω^ω)`, or `None` outside that range / when a Kummer
-/// carry needs an excess `α_u` past the verified table (`u > 47`). Distributes over CNF
+/// carry needs an excess `α_u` past the verified table (`u > 709`). Distributes over CNF
 /// (char-2 field addition = nim-add); each monomial pair is handled by [`mul_mono`].
 pub(super) fn mul(a: &Ordinal, b: &Ordinal) -> Option<Ordinal> {
     let mut acc = Ordinal::zero();
@@ -447,8 +465,8 @@ mod tests {
 
     #[test]
     fn dimuro_rows_are_assembled_from_order_qset_and_finite_excess() {
-        // Test-only transcription of DiMuro Table 1 plus the locally verified 47 row.
-        // The production code above hardcodes only `m_u`; these checks pin the
+        // Test-only transcription of DiMuro Table 1 plus the 47 row (= OEIS A380496
+        // a(1)..a(14)). The production code above hardcodes only `m_u`; these checks pin the
         // computed `f(u)`, recursive Q-set, and final χ-sum separately.
         for (u, f, qs, m) in [
             (3, 2, &[2][..], 0),
@@ -640,16 +658,51 @@ mod tests {
     }
 
     #[test]
-    fn boundary_returns_none_past_prime_47() {
-        // Everything through prime 47 is defined: e.g. χ_47 = ω^(ω^13), free powers fine.
-        let chi47 = Ordinal::omega_pow(Ordinal::omega_pow(fin(13)));
-        assert!(mul(&chi47, &chi47).is_some()); // (ω^(ω^13))⊗² — free, no carry
+    fn excess_table_matches_oeis_a380496() {
+        // Pin the 126-row excess table against OEIS A380496 (diff the array against
+        // b380496.txt). The first 14 rows are DiMuro Table 1 + m_47 — a cross-check that
+        // the OEIS import agrees with the old hardcoded values — then higher landmarks.
+        for (u, m) in [
+            (3, 0), (5, 0), (7, 1), (11, 1), (13, 0), (17, 0), (19, 4), (23, 1),
+            (29, 0), (31, 1), (37, 0), (41, 1), (43, 1), (47, 1),
+            (53, 1), (61, 0), (73, 1), (109, 0), (163, 4), (263, 1),
+            (521, 0), (659, 0), (701, 0), (709, 1),
+        ] {
+            assert_eq!(finite_excess(u), Some(m), "m_{u}");
+        }
+        // Every in-range row is 0 or 1 except m_19 = m_163 = 4 (the f(p)=2·3^k column).
+        for place in 0..126u128 {
+            let u = place_prime(place);
+            let m = finite_excess(u).expect("all 126 b-file rows are defined");
+            assert!(
+                m == 0 || m == 1 || ((u == 19 || u == 163) && m == 4),
+                "m_{u} = {m} is outside the A380496 value set"
+            );
+        }
+    }
 
-        // But a Kummer carry at place 14 (prime 53) is past the verified table ⇒ None.
+    #[test]
+    fn boundary_returns_none_past_prime_709() {
+        // The verified table now reaches prime 709 (OEIS A380496, 126 b-file rows). The
+        // old boundary case — a Kummer carry at place 14 (prime 53) — is now defined:
         // ω^(ω^14·50) = χ_53^⊗50; squaring drives the place-14 digit to 100 ≥ 53, owing
-        // the unverified α_53.
-        let big = Ordinal::omega_pow(Ordinal::monomial(fin(14), 50)); // ω^(ω^14·50)
-        assert_eq!(mul(&big, &big), None);
+        // α_53 = κ_{f(53)}+1, which is now in range. End-to-end carry resolution, so this
+        // pins the table extension and not just the lookup. (f(53)=52=4·13 keeps the
+        // reconstruction cheap; large primes like 709 are *in* the table but their
+        // q_set/finite-subfield reconstruction over the huge component field is costly —
+        // we don't pay for that in a unit test, so the boundary side uses table lookups.)
+        let at53 = Ordinal::omega_pow(Ordinal::monomial(fin(14), 50)); // ω^(ω^14·50)
+        assert!(mul(&at53, &at53).is_some());
+
+        // The boundary now sits at place 126 = prime 719, the first OEIS-unknown row.
+        assert_eq!(place_prime(125), 709);
+        assert_eq!(place_prime(126), 719);
+        assert_eq!(finite_excess(709), Some(1)); // last known row (table lookup)
+        assert_eq!(finite_excess(719), None);
+        // A Kummer carry at place 126 (prime 719) owes the unverified α_719 ⇒ None.
+        // ω^(ω^126·360) squared drives the place-126 digit to 720 ≥ 719.
+        let at719 = Ordinal::omega_pow(Ordinal::monomial(fin(126), 360));
+        assert_eq!(mul(&at719, &at719), None);
 
         // And anything ≥ ω^(ω^ω) (an infinite exponent place) is out of range outright.
         let w_ww = Ordinal::omega_pow(ww()); // ω^(ω^ω)

@@ -46,11 +46,11 @@
 //!   `α_11 = ω^ω+1`, `α_13 = ω+4`, …) is a *sum*, so a level-0 Kummer carry **branches**
 //!   the monomial and the reduced monomial is nim-multiplied back by `α_u`. This recurses
 //!   **strictly downward by place** (every `α_{p(m)}` is built from generators at places
-//!   `< m`), bottoming out at `α_3 = 2` in the finite field. We carry the
-//!   DiMuro Table 1 finite excess integers `m_u` through `u ≤ 43` plus the locally
-//!   verified `m_47=1`; `α_u` itself is assembled from `ord_u(2)`, `Q(f(u))`, and
-//!   `m_u`. A product is exact whenever its Kummer carries stay at primes `≤ 47`; a
-//!   carry needing `m_53` or beyond returns `None`, as does anything `≥ ω^(ω^ω)` (an
+//!   `< m`), bottoming out at `α_3 = 2` in the finite field. We carry the finite excess
+//!   integers `m_u` from OEIS A380496 (the b-file's 126 known rows, odd primes `3..=709`);
+//!   `α_u` itself is assembled from `ord_u(2)`, `Q(f(u))`, and `m_u`. A product is exact
+//!   whenever its Kummer carries stay at primes `≤ 709`; a carry needing `m_719` (the
+//!   first OEIS-unknown row) or beyond returns `None`, as does anything `≥ ω^(ω^ω)` (an
 //!   infinite exponent place). (The Artin–Schreier `x²+x+1` relation is the separate
 //!   `u = 2` Fermat-tower
 //!   case — DiMuro Thm 3.1.7 / Cor 3.11 — handled inside the finite nimber field

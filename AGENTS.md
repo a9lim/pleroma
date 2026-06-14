@@ -114,7 +114,7 @@ The scalar landscape is broad, but not all backends have the same exactness clai
 | `Qp`, `Qq`, `Laurent`, `Ramified`, `Gauss` | local-field-style backends/functors, mostly capped-relative precision models |
 | `Adele`, `LocalQp` | runtime-prime adelic precision model over `Q` |
 | `RationalFunction` | exact global function field `F_q(t)` over `Poly = F_q[t]` |
-| `Ordinal` | staged transfinite nimbers; a checked/panic-on-escape `Scalar` for Clifford metrics; nim-addition on represented CNF terms, nim-multiplication through Kummer carries `α_u` assembled from `ord_u(2)`, `Q(f(u))`, and the source-verified finite `m_u` rows (DiMuro `u ≤ 43`, plus certified `m_47=1`) below `ω^(ω^ω)` |
+| `Ordinal` | staged transfinite nimbers; a checked/panic-on-escape `Scalar` for Clifford metrics; nim-addition on represented CNF terms, nim-multiplication through Kummer carries `α_u` assembled from `ord_u(2)`, `Q(f(u))`, and the source-pinned finite `m_u` rows (OEIS A380496 b-file, odd primes `3..=709`) below `ω^(ω^ω)` |
 
 The char-2 Clifford point is load-bearing. In characteristic 2, `q` and `b` are
 independent:
@@ -214,7 +214,7 @@ general-n induction is open.
 
 Appendix-grade shipped layers that should not be mistaken for new Gold/Arf claims:
 tropical thermography (`Semiring` + dual `Tropical<MaxPlus/MinPlus>`), the
-source-verified ordinal nim Kummer tower below `ω^(ω^ω)`, the characteristic-2
+source-pinned (OEIS A380496) ordinal nim Kummer tower below `ω^(ω^ω)`, the characteristic-2
 Artin-Schreier local-global layer over `F_{2^m}(t)` including the Aravire-Jacob wild
 summand, and the integral lattice/genus/mass/Leech/Niemeier/theta/code/Weil chain. These are
 standard-math implementations and useful infrastructure; cite them as such.

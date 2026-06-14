@@ -93,13 +93,20 @@ nimbers is XOR; $\nimmul$ is the nim product.
 
 \subsection{Implemented tower state}
 
-In the Rust tower (\path{src/scalar/big/ordinal/tower.rs}):
+In the Rust tower (\path{src/scalar/big/ordinal/tower.rs}), as of 2026-06-13:
 \begin{itemize}[leftmargin=*,itemsep=0pt]
-\item DiMuro Table~1 rows~\cite{DiMuro} through $\alpha_{43}$;
-\item a locally verified row $\alpha_{47}=\omega^{(\omega^7)}+1$
-(Section~\ref{sec:provenance});
-\item the operational boundary is $\alpha_{53}$: a carry needing
-$\alpha_{53}$ or beyond returns \texttt{None}.
+\item the finite excess rows $m_p$ are now sourced from OEIS
+A380496~\cite{OEIS}, the b-file's $126$ known rows (odd primes
+$3 \le p \le 709$); the first $14$ rows reproduce DiMuro Table~1 + the
+formerly locally verified $\alpha_{47}=\omega^{(\omega^7)}+1$;
+\item the operational boundary is $\alpha_{719}$, the first OEIS-unknown
+row: a carry needing $\alpha_{719}$ or beyond returns \texttt{None};
+\item the table extends \emph{reach}, not \emph{feasibility}: each
+$\alpha_p$ is reconstructed in code from $\ord_p(2)$, $\Qset(f(p))$, and
+$m_p$, but for large $p$ the $\Qset$/finite-subfield reconstruction lives
+in the degree-$e_p$ component field ($e_p$ in the millions; see the
+snapshot below), so only the small-$e_p$ rows are materializable
+end-to-end today.
 \end{itemize}
 
 \subsection{External data snapshot (2026-06-09)}
@@ -688,7 +695,14 @@ implemented in \path{tower.rs}.
 
 \subsection{The $\alpha_{47}$ promotion}
 
-The shipped state: \path{src/scalar/big/ordinal/tower.rs} carries
+\emph{Superseded 2026-06-13:} this pass moved the boundary to
+$\alpha_{53}$ by promoting a single locally verified row; the finite
+excess table is now the full OEIS A380496 b-file ($126$ rows, odd primes
+$3 \le p \le 709$), so the refusal boundary sits at $\alpha_{719}$ and the
+boundary test is \path{boundary_returns_none_past_prime_709}. The original
+pass is recorded below for provenance.
+
+The shipped state at the time: \path{src/scalar/big/ordinal/tower.rs} carries
 $\alpha_{47}$ with the landmark test
 \path{locally_verified_alpha_47_landmark} and moves the refusal
 boundary to $\alpha_{53}$; the documented boundaries in
@@ -697,9 +711,7 @@ boundary to $\alpha_{53}$; the documented boundaries in
 gate ran clean: \texttt{cargo fmt --check}, \texttt{cargo test},
 \texttt{cargo check}/\texttt{clippy} with and without the
 \texttt{python} feature (warnings denied), and the probe under
-\texttt{py\_compile}. Focused tests:
-\path{locally_verified_alpha_47_landmark} and
-\path{boundary_returns_none_past_prime_47}.
+\texttt{py\_compile}.
 
 \subsection{Supporting probes}
 

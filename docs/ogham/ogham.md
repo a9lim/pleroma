@@ -455,7 +455,7 @@ substring):
 | `E_BareOrdinal` | bare `ω` in ordinal world | "values are starred here: `*ω`" |
 | `E_WrongWorld` | literal **or operator** form foreign to the session world (`*3` in surreal; `%` in a field world; `@` outside poly/ratfunc) | "`*3` is a nimber; this is the `surreal` world" |
 | `E_CnfOrder` | star-literal exponents not strictly descending | "CNF indices are structural: write `*(ω + 1)`, not `*(1 + ω)`" |
-| `E_KummerEscape` | ordinal mul/inv past the verified tower | "below ω^(ω^ω), primes ≤ 47 — see docs/OPEN.md" |
+| `E_KummerEscape` | ordinal mul/inv past the verified tower | "below ω^(ω^ω), primes ≤ 709 — see docs/OPEN.md" |
 | `E_NotInvertible` | failed `inv`/`multivector_inverse`/`dual` | per-world math in message (§7.5) |
 | `E_DivisionByZero` | `/0` | |
 | `E_BladeIndex` | `e‹i›` with i ≥ dim | |

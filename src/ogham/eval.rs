@@ -4283,7 +4283,7 @@ fn kummer_escape(span: Span) -> OghamError {
         span,
         "ordinal nim-product escaped beyond the source-verified tower below ω^(ω^ω)",
     )
-    .with_hint("below ω^(ω^ω), primes <= 47 — see docs/OPEN.md")
+    .with_hint("below ω^(ω^ω), primes <= 709 — see docs/OPEN.md")
 }
 
 fn overflow(message: impl Into<String>) -> OghamError {

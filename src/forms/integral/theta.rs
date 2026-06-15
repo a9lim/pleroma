@@ -1,8 +1,10 @@
-//! Theta series of positive-definite even integral lattices.
+//! Theta series of positive-definite integral lattices.
 //!
 //! For an even lattice `L`, the scalar theta series is
 //! `theta_L = sum_v q^{Q(v)/2}`. The implementation enumerates short vectors up
 //! to the requested norm bound and buckets them exactly by `Q/2`.
+//! Odd lattices instead use [`IntegralForm::theta_series_level4`], the
+//! norm-indexed `sum_v q^{Q(v)}` head compatible with the level-4 boundary.
 
 use super::lattice::IntegralForm;
 
@@ -35,6 +37,33 @@ impl IntegralForm {
         }
         Some(out)
     }
+
+    /// The first `terms` coefficients of the norm-indexed theta head
+    /// `sum_v q^{Q(v)}`.
+    ///
+    /// This is the honest integer-exponent surface for odd positive-definite
+    /// lattices, whose usual theta series is a level-4 modular form rather than
+    /// an `SL_2(Z)` form. It also works for even lattices, but the full-level
+    /// even-lattice modular-form helper remains [`theta_series`](Self::theta_series).
+    pub fn theta_series_level4(&self, terms: usize) -> Option<Vec<i128>> {
+        if terms == 0 {
+            return Some(Vec::new());
+        }
+        if !self.is_positive_definite() {
+            return None;
+        }
+        let mut out = vec![0i128; terms];
+        out[0] = 1;
+        let bound = (terms - 1) as i128;
+        for v in self.short_vectors(bound)? {
+            let q = self.norm(&v);
+            let idx = usize::try_from(q).ok()?;
+            if idx < terms {
+                out[idx] += 1;
+            }
+        }
+        Some(out)
+    }
 }
 
 #[cfg(test)]
@@ -55,6 +84,25 @@ mod tests {
         );
         assert!(IntegralForm::diagonal(&[1]).theta_series(3).is_none());
         assert!(IntegralForm::diagonal(&[2, -2]).theta_series(3).is_none());
+    }
+
+    #[test]
+    fn theta_series_level4_handles_odd_lattices() {
+        assert_eq!(
+            IntegralForm::diagonal(&[1]).theta_series_level4(5),
+            Some(vec![1, 2, 0, 0, 2])
+        );
+        assert_eq!(
+            IntegralForm::diagonal(&[1, 1]).theta_series_level4(5),
+            Some(vec![1, 4, 4, 0, 4])
+        );
+        assert_eq!(
+            IntegralForm::diagonal(&[2]).theta_series_level4(5),
+            Some(vec![1, 0, 2, 0, 0])
+        );
+        assert!(IntegralForm::diagonal(&[1, -1])
+            .theta_series_level4(3)
+            .is_none());
     }
 
     #[test]

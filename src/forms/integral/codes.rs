@@ -10,8 +10,9 @@
 //!
 //! The `1/sqrt(2)` scale is part of the construction. Since [`IntegralForm`]
 //! stores an integer Gram matrix, [`BinaryCode::construction_a`] returns `None`
-//! unless the resulting Gram is integral; self-orthogonal codes, and in
-//! particular Type II self-dual codes, satisfy that boundary.
+//! unless the resulting Gram is integral; self-orthogonal codes satisfy that
+//! boundary. Type I self-dual codes give odd unimodular lattices, while Type II
+//! self-dual codes give even unimodular lattices.
 
 use super::lattice::IntegralForm;
 use crate::linalg::integer::normalize_relation_rows;
@@ -235,6 +236,22 @@ impl BinaryCode {
         BinaryCode::new(self.n, dual_rows).expect("dual rows have the same length")
     }
 
+    /// The block direct sum `C ⊕ D`.
+    pub fn direct_sum(&self, other: &BinaryCode) -> BinaryCode {
+        let mut rows = Vec::with_capacity(self.dim() + other.dim());
+        for row in &self.generators {
+            let mut out = vec![0u8; self.n + other.n];
+            out[..self.n].copy_from_slice(row);
+            rows.push(out);
+        }
+        for row in &other.generators {
+            let mut out = vec![0u8; self.n + other.n];
+            out[self.n..].copy_from_slice(row);
+            rows.push(out);
+        }
+        BinaryCode::new(self.n + other.n, rows).expect("direct-sum rows are binary")
+    }
+
     /// `C = C^perp`.
     pub fn is_self_dual(&self) -> bool {
         self.dim() * 2 == self.n && self.generators == self.dual().generators
@@ -396,6 +413,25 @@ pub fn hamming_code() -> BinaryCode {
     .expect("Hamming generator is binary")
 }
 
+/// The binary repetition `[n,1,n]` code, for `n > 0`.
+pub fn repetition_code(n: usize) -> Option<BinaryCode> {
+    if n == 0 {
+        return None;
+    }
+    BinaryCode::new(n, vec![vec![1u8; n]])
+}
+
+/// The Type I self-dual `[2,1,2]` code; Construction A gives an odd unimodular
+/// rank-2 lattice isometric to `Z^2`.
+pub fn type_i_z2_code() -> BinaryCode {
+    repetition_code(2).expect("length-2 repetition code exists")
+}
+
+/// A Type I self-dual code whose Construction A lattice is `Z^2 ⊕ E8`.
+pub fn type_i_z2_plus_e8_code() -> BinaryCode {
+    type_i_z2_code().direct_sum(&extended_hamming_code())
+}
+
 /// The extended Hamming `[8,4,4]` Type II code; Construction A gives `E8`.
 pub fn extended_hamming_code() -> BinaryCode {
     BinaryCode::new(
@@ -494,6 +530,33 @@ mod tests {
         assert_eq!(h.minimum_distance(), Some(3));
         assert_eq!(h.macwilliams_transform(), h.dual().weight_enumerator());
         assert!(h.construction_a().is_none());
+    }
+
+    #[test]
+    fn direct_sum_and_repetition_codes_build_type_i_examples() {
+        assert!(repetition_code(0).is_none());
+        let r2 = type_i_z2_code();
+        assert_eq!(r2.len(), 2);
+        assert_eq!(r2.dim(), 1);
+        assert!(r2.is_self_dual());
+        assert!(r2.is_self_orthogonal());
+        assert!(!r2.is_doubly_even());
+        assert_eq!(r2.weight_enumerator(), vec![1, 0, 1]);
+
+        let z2 = r2.construction_a().unwrap();
+        assert_eq!(z2.determinant(), 1);
+        assert!(!z2.is_even());
+        assert_eq!(z2.minimum(), Some(1));
+
+        let z2_e8 = type_i_z2_plus_e8_code();
+        assert_eq!(z2_e8.len(), 10);
+        assert_eq!(z2_e8.dim(), 5);
+        assert!(z2_e8.is_self_dual());
+        assert!(!z2_e8.is_doubly_even());
+        let lattice = z2_e8.construction_a().unwrap();
+        assert_eq!(lattice.dim(), 10);
+        assert!(lattice.is_unimodular());
+        assert!(!lattice.is_even());
     }
 
     #[test]

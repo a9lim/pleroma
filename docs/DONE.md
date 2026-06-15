@@ -45,6 +45,26 @@ derivation alongside the code or in a `writeups/` note.
 
 ## completed items
 
+### 2·e_i: `odd-lattices`
+**Completed:** 2026-06-15
+**Summary:** Type I lattices now have the odd discriminant `Q/Z` surface, the
+oddity-corrected Milgram/van der Blij verifier, Type I Construction A witnesses,
+and a norm-indexed level-4 theta head.
+**Pillars:** integral    **Claim level:** standard math, implemented and tested
+- surface: `OddDiscriminantForm`, `OddMilgramReport`, `odd_milgram_report`,
+  `verify_odd_milgram`, `IntegralForm::theta_series_level4`,
+  `BinaryCode::direct_sum`, `repetition_code`, `type_i_z2_code`, and
+  `type_i_z2_plus_e8_code`, plus matching Python bindings.
+- oracles: `Z`, `⟨3⟩`, `⟨1⟩⊕A_1`, and `Z⊕E8`-style odd lattices verify
+  `signature ≡ oddity - p_excess (mod 8)`; `q_L` is checked modulo `Z` on
+  `⟨3⟩`; Type I Construction A from the `[2,1,2]` repetition code gives an
+  odd unimodular rank-2 lattice with minimum 1 and kissing number 4; and
+  `theta_series_level4` pins the `Z` and `Z^2` norm counts.
+- boundaries: the original `DiscriminantForm`, Weil `S`/`T`, Brown slice,
+  Nikulin discriminant-form isomorphism, and `theta_series(q^{Q/2})` remain
+  even-lattice surfaces; odd theta is exposed only as the norm-indexed
+  level-4 head, not as level-`N` modular-form identification.
+
 ### 2·e_i: `niemeier`
 **Completed:** 2026-06-12
 **Summary:** the rank-24 even-unimodular genus now has the Niemeier catalogue and the
@@ -74,5 +94,5 @@ exposed on the Rust and Python `Genus` surface.
   canonical-symbol examples, random unimodular-congruence invariance, `Z^8` vs
   `E8`, `E8⊕E8` vs `D16+`, and Nikulin/discriminant-form agreement across the
   ADE zoo and Milnor pair.
-- boundaries: odd-lattice discriminant forms, full spinor-genus computation, and
-  level-`N` theta machinery stay on their separate docket items.
+- boundaries: full spinor-genus computation and level-`N` theta machinery stay on
+  their separate docket items.

@@ -56,17 +56,20 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
     `mat_mul`, `mat_pow`, `mat_scale`, `mat_approx_eq`); all matrix helpers
     `pub(super)`.
   - **`discriminant/form.rs`** — `DiscriminantForm { group, reps, gram_inv }` representing
-    `A_L = L#/L` as `Z^n/GZ^n`; `quadratic_value_mod2`, `bilinear_value_mod1`,
-    `GaussSum::phase_mod8`, and the p-primary `FqmGaussPhase` / `FqmPrimaryPhase`
-    projection (`milgram_signature_mod8_fqm`); `verify_milgram`; `Complex64`, `weil_t`,
-    `weil_s`, `weil_s_prefactor_phase_mod8`, `weil_s_recovers_milgram_phase_mod8`, and
-    `verify_weil_relations`. `is_isomorphic`/`is_isomorphic_bounded` (Nikulin's
-    criterion). `pub(crate)` surface: `IsoTables`, `phase_mod8_from_q_values`
-    (used by `fqm_witt.rs`). **Looks like a bug, isn't:** the standard Weil `S` prefactor
-    is the conjugate of the positive Milgram phase stored by `GaussSum`; the verifier
-    checks `S² = σ²·(γ↦−γ)`, `S⁴ = σ⁴·I`, and `(ST)³ = S²`, not the oversimplified
-    `S⁴ = I`. The lattice ↔ Clifford/Brauer-Wall mod-8 seam. Even-lattice only; odd
-    type-I refinements stay a documented boundary.
+    the even-lattice `A_L = L#/L` as `Z^n/GZ^n`; `quadratic_value_mod2`,
+    `bilinear_value_mod1`, `GaussSum::phase_mod8`, and the p-primary `FqmGaussPhase` /
+    `FqmPrimaryPhase` projection (`milgram_signature_mod8_fqm`); `verify_milgram`;
+    `Complex64`, `weil_t`, `weil_s`, `weil_s_prefactor_phase_mod8`,
+    `weil_s_recovers_milgram_phase_mod8`, and `verify_weil_relations`.
+    `is_isomorphic`/`is_isomorphic_bounded` (Nikulin's criterion). The odd-lattice
+    sibling is `OddDiscriminantForm`, with `q_L(y)=y^T G^{-1}y mod Z`,
+    `OddMilgramReport`, and `verify_odd_milgram` for the Conway-Sloane
+    oddity-corrected congruence `signature ≡ oddity - p_excess (mod 8)`.
+    `pub(crate)` surface: `IsoTables`, `phase_mod8_from_q_values` (used by
+    `fqm_witt.rs`). **Looks like a bug, isn't:** the standard Weil `S` prefactor is the
+    conjugate of the positive Milgram phase stored by `GaussSum`; the verifier checks
+    `S² = σ²·(γ↦−γ)`, `S⁴ = σ⁴·I`, and `(ST)³ = S²`, not the oversimplified `S⁴ = I`.
+    The Weil/Brown/Nikulin discriminant-form surfaces remain even-lattice only.
   - **`discriminant/phases.rs`** — `FqmPrimaryPhase` and `FqmGaussPhase`: the p-primary
     Milgram/Brown Gauss-sum phase projection of a finite quadratic module. Separated
     from `form.rs` so that type records don't pull in cyclotomic arithmetic.
@@ -119,14 +122,19 @@ unique rank-8 even unimodular lattice. Convention: **norm** `Q(x) = xᵀGx` (a
   exact. `construction_a` uses the `1/sqrt(2)` scaling (HNF basis of `{x ∈ Z^n : x mod 2
   ∈ C}`, dot products /2); returns `None` when the scaled Gram is not integral.
   `theta_series_via_weight_enumerator` builds the Construction A theta series straight
-  from the Hamming weight enumerator (`None` outside the doubly-even boundary). Shipped
-  constructors: `hamming_code`, `extended_hamming_code`, `golay_code`,
-  `type_ii_e8_sum_code`, `type_ii_len16_code`, `d16_plus` (the factorized
-  `D16_PLUS_AUT_ORDER` pins its automorphism count). **Looks like a bug, isn't:**
+  from the Hamming weight enumerator (`None` outside the doubly-even boundary). Type I
+  witnesses are `repetition_code(2)` / `type_i_z2_code` (Construction A gives an odd
+  unimodular rank-2 lattice isometric to `Z^2`) and `type_i_z2_plus_e8_code`; `direct_sum`
+  composes code blocks. Shipped Type II constructors: `hamming_code`,
+  `extended_hamming_code`, `golay_code`, `type_ii_e8_sum_code`, `type_ii_len16_code`,
+  `d16_plus` (the factorized `D16_PLUS_AUT_ORDER` pins its automorphism count).
+  **Looks like a bug, isn't:**
   bare Golay Construction A is even unimodular rank 24 **with roots**; it is not Leech.
 - **`theta.rs` / `modular.rs`** — exact theta and modular-form bridge.
   `IntegralForm::theta_series(terms)` buckets short vectors by `Q/2`, `None` outside the
-  positive-definite even-lattice boundary. `eisenstein_e4`, `eisenstein_e6`,
+  positive-definite even-lattice boundary. `theta_series_level4(terms)` buckets by `Q`
+  for positive-definite odd or even lattices; it is the honest integer-exponent level-4
+  head, not a level-`N` modular-form identifier. `eisenstein_e4`, `eisenstein_e6`,
   `eisenstein_e12`, `delta`,
   `mk_basis`, `as_modular_form` identify q-expansions exactly in `ℂ[E4,E6]`. Oracles pin
   `theta_E8 = E4`, `theta_{E8+E8} = theta_{D16+} = E4²`, Leech's rootless `q^1`

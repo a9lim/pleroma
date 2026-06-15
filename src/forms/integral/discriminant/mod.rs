@@ -1,4 +1,4 @@
-//! Discriminant quadratic forms of even integral lattices and Milgram's Gauss sum.
+//! Discriminant quadratic forms of integral lattices and Milgram's Gauss sums.
 //!
 //! For a nonsingular even lattice `L` with Gram matrix `G`, this module uses the
 //! standard presentation
@@ -9,13 +9,17 @@
 //! ```
 //!
 //! The normalized Gauss sum of `q_L` has phase `exp(2*pi*i*signature/8)`.
+//! Odd lattices use the parallel [`OddDiscriminantForm`] surface, where
+//! `q_L(y) = y^T G^{-1} y mod Z`; their signature congruence needs the
+//! Conway-Sloane oddity correction recorded by [`odd_milgram_report`].
 //!
 //! # Module layout
 //!
 //! - `complex` — the hand-rolled [`Complex64`] (dependency-free; deliberately
 //!   shadows `num_complex::Complex64`).
 //! - `gauss_sum` — [`GaussSum`] and the matrix helpers for the Weil representation.
-//! - `form` — [`DiscriminantForm`], [`genus_signature_mod8`], [`verify_milgram`].
+//! - `form` — [`DiscriminantForm`], [`OddDiscriminantForm`],
+//!   [`genus_signature_mod8`], [`verify_milgram`], [`odd_milgram_report`].
 //! - `phases` — [`FqmPrimaryPhase`], [`FqmGaussPhase`]: the p-primary
 //!   Milgram/Brown phase projection of a finite quadratic module.
 
@@ -25,7 +29,10 @@ mod gauss_sum;
 mod phases;
 
 pub use complex::Complex64;
-pub use form::{genus_signature_mod8, verify_milgram, DiscriminantForm};
+pub use form::{
+    genus_signature_mod8, odd_milgram_report, verify_milgram, verify_odd_milgram, DiscriminantForm,
+    OddDiscriminantForm, OddMilgramReport,
+};
 pub(crate) use form::{phase_mod8_from_q_values, IsoTables};
 pub use gauss_sum::GaussSum;
 pub use phases::{FqmGaussPhase, FqmPrimaryPhase};
@@ -33,8 +40,11 @@ pub use phases::{FqmGaussPhase, FqmPrimaryPhase};
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::forms::{a_n, are_in_same_genus, d16_plus, d_n, e_6, e_7, e_8, IntegralForm};
-    use crate::scalar::Rational;
+    use crate::forms::{
+        a_n, are_in_same_genus, d16_plus, d_n, e_6, e_7, e_8, repetition_code,
+        type_i_z2_plus_e8_code, IntegralForm,
+    };
+    use crate::scalar::{Rational, Scalar};
 
     /// Nikulin's right-hand side: equal signature pairs and isomorphic discriminant
     /// quadratic forms. Both lattices must be even (the `from_lattice` boundary).
@@ -290,5 +300,72 @@ mod tests {
     #[test]
     fn odd_lattices_have_no_even_discriminant_quadratic_form() {
         assert!(DiscriminantForm::from_lattice(&IntegralForm::diagonal(&[1])).is_none());
+    }
+
+    #[test]
+    fn odd_discriminant_form_uses_q_mod_one() {
+        let z = IntegralForm::diagonal(&[1]);
+        let zd = OddDiscriminantForm::from_lattice(&z).unwrap();
+        assert!(zd.group.is_empty());
+        assert_eq!(zd.reps, vec![vec![0]]);
+        assert_eq!(zd.quadratic_value_mod1(&[0]), Rational::zero());
+        assert_eq!(zd.gauss_phase_mod8(), Some(0));
+        assert!(DiscriminantForm::from_lattice(&z).is_none());
+
+        let three = IntegralForm::diagonal(&[3]);
+        let od = OddDiscriminantForm::from_lattice(&three).unwrap();
+        assert_eq!(od.group, vec![3]);
+        assert_eq!(od.quadratic_value_mod1(&[1]), Rational::new(1, 3));
+        assert_eq!(od.quadratic_value_mod1(&[2]), Rational::new(1, 3));
+        assert_eq!(od.bilinear_value_mod1(&[1], &[1]), Rational::new(1, 3));
+        assert_eq!(od.gauss_phase_mod8(), Some(2));
+    }
+
+    #[test]
+    fn odd_milgram_report_matches_signature_with_oddity_correction() {
+        let cases = [
+            IntegralForm::diagonal(&[1]),
+            IntegralForm::diagonal(&[3]),
+            IntegralForm::diagonal(&[1, 2]),
+            IntegralForm::diagonal(&[1]).direct_sum(&e_8()),
+        ];
+        for l in cases {
+            let report = odd_milgram_report(&l).unwrap();
+            assert!(report.verified(), "odd Milgram report failed: {report:?}");
+            assert_eq!(verify_odd_milgram(&l), Some(true));
+        }
+
+        let z = odd_milgram_report(&IntegralForm::diagonal(&[1])).unwrap();
+        assert_eq!(z.oddity_mod8, 1);
+        assert_eq!(z.p_excess_mod8, 0);
+        assert_eq!(z.corrected_signature_mod8, 1);
+
+        let three = odd_milgram_report(&IntegralForm::diagonal(&[3])).unwrap();
+        assert_eq!(three.oddity_mod8, 3);
+        assert_eq!(three.p_excess_mod8, 2);
+        assert_eq!(three.corrected_signature_mod8, 1);
+        assert_eq!(verify_odd_milgram(&e_8()), None);
+    }
+
+    #[test]
+    fn odd_construction_a_witnesses_type_i_unimodular_lattices() {
+        let z2_code = repetition_code(2).unwrap();
+        assert!(z2_code.is_self_dual());
+        assert!(!z2_code.is_doubly_even());
+        let z2 = z2_code.construction_a().unwrap();
+        assert_eq!(z2.dim(), 2);
+        assert!(z2.is_unimodular());
+        assert!(!z2.is_even());
+        assert_eq!(z2.minimum(), Some(1));
+        assert_eq!(z2.kissing_number(), Some(4));
+        assert_eq!(verify_odd_milgram(&z2), Some(true));
+
+        let z2_e8 = type_i_z2_plus_e8_code().construction_a().unwrap();
+        assert_eq!(z2_e8.dim(), 10);
+        assert!(z2_e8.is_unimodular());
+        assert!(!z2_e8.is_even());
+        assert_eq!(z2_e8.minimum(), Some(1));
+        assert_eq!(z2_e8.kissing_number(), Some(4));
+        assert_eq!(verify_odd_milgram(&z2_e8), Some(true));
     }
 }

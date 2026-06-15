@@ -139,7 +139,8 @@ regular/lazy left action. Singular polar forms and general-bilinear `a` metrics 
 rejected.
 
 The cross-pillar bridges live in the Rust core. `IntegralForm` exports rational and even-mod-2 Clifford metrics plus
-discriminant Gauss-sum/Milgram checks; finite char-2 `Fpn<2,N>` classification runs
+even discriminant Gauss-sum/Milgram checks and odd-lattice `Q/Z` discriminant /
+oddity-corrected Milgram reports; finite char-2 `Fpn<2,N>` classification runs
 through the façade; cyclic Galois/Frobenius maps have Clifford linear-map constructors;
 the **rational 2-torsion Brauer class** `Brauer2Class` (`witt/brauer_rational.rs`:
 Hasse–Witt `s(q)` vs the Clifford invariant `c(q) = s(q) + δ(n mod 8, disc)`) and its
@@ -150,10 +151,12 @@ Springer residue layer); `Ordinal` serves as a Clifford scalar inside the verifi
 boundary;
 `forms/integral/codes.rs` carries binary codes, MacWilliams, and Construction A
 (with the `1/sqrt(2)` scaling and an `Option` boundary when the scaled Gram is not
-integral), including the Type II length-16 code whose lattice is `D16+`;
+integral), including Type I witnesses (`Z^2`, `Z^2⊕E8`) and the Type II length-16
+code whose lattice is `D16+`;
 `forms/integral/{theta,modular}.rs` give exact theta coefficients and `E4`/`E6`/`E12`
 identification (`theta_E8 = E4`, `theta_{E8+E8} = theta_{D16+} = E4^2`, the rootless
-Leech `q^1` oracle), while `forms/integral/niemeier.rs` carries the 24-class
+Leech `q^1` oracle), plus the norm-indexed level-4 theta head for odd lattices,
+while `forms/integral/niemeier.rs` carries the 24-class
 Niemeier root/glue/Aut catalogue and verifies the rank-24 mass plus weighted
 Siegel-Weil identity against `E12` and the 691 coefficient; and
 `DiscriminantForm` exposes dependency-free `Complex64` Weil

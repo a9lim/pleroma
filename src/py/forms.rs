@@ -4451,6 +4451,24 @@ impl PyBinaryCode {
             })
     }
     #[staticmethod]
+    fn repetition(n: usize) -> PyResult<Self> {
+        crate::forms::repetition_code(n)
+            .map(|inner| PyBinaryCode { inner })
+            .ok_or_else(|| PyValueError::new_err("repetition code requires n > 0"))
+    }
+    #[staticmethod]
+    fn type_i_z2() -> Self {
+        PyBinaryCode {
+            inner: crate::forms::type_i_z2_code(),
+        }
+    }
+    #[staticmethod]
+    fn type_i_z2_plus_e8() -> Self {
+        PyBinaryCode {
+            inner: crate::forms::type_i_z2_plus_e8_code(),
+        }
+    }
+    #[staticmethod]
     fn hamming() -> Self {
         PyBinaryCode {
             inner: crate::forms::hamming_code(),
@@ -4500,6 +4518,11 @@ impl PyBinaryCode {
             inner: self.inner.dual(),
         }
     }
+    fn direct_sum(&self, other: &PyBinaryCode) -> PyBinaryCode {
+        PyBinaryCode {
+            inner: self.inner.direct_sum(&other.inner),
+        }
+    }
     fn is_self_dual(&self) -> bool {
         self.inner.is_self_dual()
     }
@@ -4534,6 +4557,21 @@ impl PyBinaryCode {
             self.inner.generators()
         )
     }
+}
+
+#[pyfunction]
+fn repetition_code(n: usize) -> PyResult<PyBinaryCode> {
+    PyBinaryCode::repetition(n)
+}
+
+#[pyfunction]
+fn type_i_z2_code() -> PyBinaryCode {
+    PyBinaryCode::type_i_z2()
+}
+
+#[pyfunction]
+fn type_i_z2_plus_e8_code() -> PyBinaryCode {
+    PyBinaryCode::type_i_z2_plus_e8()
 }
 
 #[pyfunction]
@@ -4790,6 +4828,9 @@ impl PyIntegralForm {
     fn theta_series(&self, terms: usize) -> Option<Vec<i128>> {
         self.inner.theta_series(terms)
     }
+    fn theta_series_level4(&self, terms: usize) -> Option<Vec<i128>> {
+        self.inner.theta_series_level4(terms)
+    }
     fn short_vectors(&self, bound: i128) -> Option<Vec<Vec<i128>>> {
         self.inner.short_vectors(bound)
     }
@@ -4915,9 +4956,134 @@ impl PyDiscriminantForm {
     }
 }
 
+#[pyclass(name = "OddDiscriminantForm", module = "ogdoad", from_py_object)]
+#[derive(Clone)]
+struct PyOddDiscriminantForm {
+    inner: crate::forms::OddDiscriminantForm,
+}
+
+fn check_odd_disc_vec(
+    d: &crate::forms::OddDiscriminantForm,
+    v: &[i128],
+    name: &str,
+) -> PyResult<()> {
+    let dim = d.gram_inv.len();
+    if v.len() != dim {
+        Err(PyValueError::new_err(format!(
+            "{name} has length {}, expected {}",
+            v.len(),
+            dim
+        )))
+    } else {
+        Ok(())
+    }
+}
+
+#[pymethods]
+impl PyOddDiscriminantForm {
+    #[staticmethod]
+    fn from_lattice(lattice: &PyIntegralForm) -> Option<Self> {
+        crate::forms::OddDiscriminantForm::from_lattice(&lattice.inner)
+            .map(|inner| PyOddDiscriminantForm { inner })
+    }
+    #[getter]
+    fn group(&self) -> Vec<i128> {
+        self.inner.group.clone()
+    }
+    #[getter]
+    fn reps(&self) -> Vec<Vec<i128>> {
+        self.inner.reps.clone()
+    }
+    #[getter]
+    fn gram_inv(&self) -> Vec<Vec<PyRational>> {
+        self.inner
+            .gram_inv
+            .iter()
+            .map(|row| row.iter().cloned().map(wrap_rational).collect())
+            .collect()
+    }
+    fn quadratic_value_mod1(&self, y: Vec<i128>) -> PyResult<PyRational> {
+        check_odd_disc_vec(&self.inner, &y, "y")?;
+        Ok(wrap_rational(self.inner.quadratic_value_mod1(&y)))
+    }
+    fn bilinear_value_mod1(&self, y: Vec<i128>, z: Vec<i128>) -> PyResult<PyRational> {
+        check_odd_disc_vec(&self.inner, &y, "y")?;
+        check_odd_disc_vec(&self.inner, &z, "z")?;
+        Ok(wrap_rational(self.inner.bilinear_value_mod1(&y, &z)))
+    }
+    fn gauss_sum(&self) -> PyGaussSum {
+        PyGaussSum {
+            inner: self.inner.gauss_sum(),
+        }
+    }
+    fn gauss_phase_mod8(&self) -> Option<i128> {
+        self.inner.gauss_phase_mod8()
+    }
+    fn __repr__(&self) -> String {
+        format!(
+            "OddDiscriminantForm(group={:?}, reps={:?})",
+            self.inner.group, self.inner.reps
+        )
+    }
+}
+
+#[pyclass(name = "OddMilgramReport", module = "ogdoad", skip_from_py_object)]
+#[derive(Clone)]
+struct PyOddMilgramReport {
+    inner: crate::forms::OddMilgramReport,
+}
+
+#[pymethods]
+impl PyOddMilgramReport {
+    #[getter]
+    fn signature_mod8(&self) -> i128 {
+        self.inner.signature_mod8
+    }
+    #[getter]
+    fn oddity_mod8(&self) -> i128 {
+        self.inner.oddity_mod8
+    }
+    #[getter]
+    fn p_excess_mod8(&self) -> i128 {
+        self.inner.p_excess_mod8
+    }
+    #[getter]
+    fn corrected_signature_mod8(&self) -> i128 {
+        self.inner.corrected_signature_mod8
+    }
+    #[getter]
+    fn genus_signature_mod8(&self) -> i128 {
+        self.inner.genus_signature_mod8
+    }
+    fn verified(&self) -> bool {
+        self.inner.verified()
+    }
+    fn __repr__(&self) -> String {
+        format!(
+            "OddMilgramReport(signature_mod8={}, oddity_mod8={}, p_excess_mod8={}, corrected_signature_mod8={}, genus_signature_mod8={}, verified={})",
+            self.inner.signature_mod8,
+            self.inner.oddity_mod8,
+            self.inner.p_excess_mod8,
+            self.inner.corrected_signature_mod8,
+            self.inner.genus_signature_mod8,
+            self.inner.verified()
+        )
+    }
+}
+
 #[pyfunction]
 fn verify_milgram(lattice: &PyIntegralForm) -> Option<bool> {
     crate::forms::verify_milgram(&lattice.inner)
+}
+
+#[pyfunction]
+fn odd_milgram_report(lattice: &PyIntegralForm) -> Option<PyOddMilgramReport> {
+    crate::forms::odd_milgram_report(&lattice.inner).map(|inner| PyOddMilgramReport { inner })
+}
+
+#[pyfunction]
+fn verify_odd_milgram(lattice: &PyIntegralForm) -> Option<bool> {
+    crate::forms::verify_odd_milgram(&lattice.inner)
 }
 
 #[pyfunction]
@@ -5321,6 +5487,8 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyScaleSymbol>()?;
     m.add_class::<PyGenus>()?;
     m.add_class::<PyDiscriminantForm>()?;
+    m.add_class::<PyOddDiscriminantForm>()?;
+    m.add_class::<PyOddMilgramReport>()?;
     m.add("AUTO_NODE_BUDGET", crate::forms::AUTO_NODE_BUDGET)?;
     m.add("E8_WEYL_GROUP_ORDER", crate::forms::E8_WEYL_GROUP_ORDER)?;
     m.add("D16_PLUS_AUT_ORDER", crate::forms::D16_PLUS_AUT_ORDER)?;
@@ -5389,6 +5557,9 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(global_residues, m)?)?;
     m.add_function(wrap_pyfunction!(global_residues_ff, m)?)?;
     m.add_function(wrap_pyfunction!(isotropy_over_adeles, m)?)?;
+    m.add_function(wrap_pyfunction!(repetition_code, m)?)?;
+    m.add_function(wrap_pyfunction!(type_i_z2_code, m)?)?;
+    m.add_function(wrap_pyfunction!(type_i_z2_plus_e8_code, m)?)?;
     m.add_function(wrap_pyfunction!(hamming_code, m)?)?;
     m.add_function(wrap_pyfunction!(extended_hamming_code, m)?)?;
     m.add_function(wrap_pyfunction!(type_ii_e8_sum_code, m)?)?;
@@ -5408,6 +5579,8 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(mass_even_unimodular, m)?)?;
     m.add_function(wrap_pyfunction!(leech_aut_order, m)?)?;
     m.add_function(wrap_pyfunction!(verify_milgram, m)?)?;
+    m.add_function(wrap_pyfunction!(odd_milgram_report, m)?)?;
+    m.add_function(wrap_pyfunction!(verify_odd_milgram, m)?)?;
     m.add_function(wrap_pyfunction!(genus_signature_mod8, m)?)?;
     m.add_function(wrap_pyfunction!(qexp_from_int, m)?)?;
     m.add_function(wrap_pyfunction!(eisenstein_e4, m)?)?;

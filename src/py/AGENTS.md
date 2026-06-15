@@ -84,7 +84,8 @@ policy; consult `catalog.rs` for the actual instance set when you need it.
   (`IntegralForm`, the ADE constructors `a_n`/`d_n`/`e_6`/`e_7`/`e_8`/`d16_plus`,
   `Genus`/`ScaleSymbol`, mass/automorphism constants, `BinaryCode`/Construction A,
   theta + modular q-expansion helpers `eisenstein_e4`/`eisenstein_e6`/`delta`/`as_modular_form`,
-  `DiscriminantForm`/Milgram/Weil `S`/`T`).
+  `DiscriminantForm`/Milgram/Weil `S`/`T`, and the odd-lattice
+  `OddDiscriminantForm` / `OddMilgramReport` surface).
 - **`games.rs`** — `Game`/`NumberGame`/`NimberGame`/`GameExterior`/`GameClifford`/
   `Hackenbush` + typed `Color`; the game-relation surface (`GameRelation`,
   `GameRelationCertificate`, `RelationSearchCertificate`); `nim_mul_mex` + the

@@ -119,15 +119,18 @@ The integral leg carries its own local/global echo: even lattices produce
 discriminant quadratic modules, p-primary Milgram/Brown phase projections, bounded
 exact finite-quadratic-module Witt normal forms, and rational or mod-2 Clifford
 metrics, making the lattice signature, the real Brauer–Wall mod-8 cycle, and the
-Clifford classifier directly comparable in the core. Conway-Sloane `p`-adic genus
-symbols, including the corrected 2-adic train/compartment/oddity calculus, give the
-integral genus comparison without discriminant-form search budgets. The same leg crosses
-the code/theta boundary — binary codes feed Construction A lattices, exact theta
-series are identified inside `ℂ[E4, E6]`, `D16+` and `E8 ⊕ E8` share the `E4²`
-theta series, Leech is pinned by rootlessness in weight 12, and the Niemeier catalogue
-checks the rank-24 mass and weighted theta average against `E12` with the 691
-coefficient. Discriminant forms expose Weil `S`/`T` matrices with the Milgram phase
-recovered from the standard conjugate `S` prefactor.
+Clifford classifier directly comparable in the core. Odd lattices carry the parallel
+`Q/Z` discriminant surface and the Conway-Sloane oddity-corrected Milgram/van der
+Blij report. Conway-Sloane `p`-adic genus symbols, including the corrected 2-adic
+train/compartment/oddity calculus, give the integral genus comparison without
+discriminant-form search budgets. The same leg crosses the code/theta boundary —
+binary codes feed Type I and Type II Construction A lattices, exact even theta
+series are identified inside `ℂ[E4, E6]`, odd theta gets the norm-indexed level-4
+head, `D16+` and `E8 ⊕ E8` share the `E4²` theta series, Leech is pinned by
+rootlessness in weight 12, and the Niemeier catalogue checks the rank-24 mass and
+weighted theta average against `E12` with the 691 coefficient. Discriminant forms
+expose Weil `S`/`T` matrices with the Milgram phase recovered from the standard
+conjugate `S` prefactor.
 
 **the games bridge.** Red/blue/green Hackenbush is the one object that reads out
 as a surreal (blue − red), a nimber (all-green = Nim), or a general partizan game

@@ -71,14 +71,6 @@ on the `Qq`/`F_q(t)` legs. The **wild** symbol stays out — that is star `*4` b
 
 ## numbers — the integral wing
 
-### 2·e_i: `odd-lattices`
-**Type I (odd) lattices for the discriminant chain.** `DiscriminantForm::from_lattice`,
-Milgram, Brown, and `theta_series` are all even-only. Ship the odd-lattice discriminant
-form (`q_L` valued in `ℚ/ℤ` rather than `ℚ/2ℤ`), the oddity-corrected Milgram statement
-(the `genus.rs` oddity is already the independent oracle), and odd Construction A
-(`ℤⁿ` from the `[n,1]` repetition code's complement, `ℤ ⊕ E₈`, …). Document the theta
-boundary honestly (odd `θ` lives at level 4).
-
 ### 1·e_i: `constructions-bd`
 **Constructions B and D** (Conway–Sloane Ch. 5/8), extending Bridge H's code↔lattice
 seam: B from doubly-even subcode data (oracle: `B(golay)` has the right det/min), D

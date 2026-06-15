@@ -890,6 +890,13 @@ print("  A₂ mod-2 Clifford Arf        :", pl.arf_nimber(A2_f2) if A2_f2 else N
 code = pl.BinaryCode.extended_hamming()
 print("  [8,4,4] code weight/theta    :", code.weight_enumerator(), code.theta_series_via_weight_enumerator(3))
 print("  Construction A kissing       :", code.construction_a().kissing_number())
+type_i = pl.BinaryCode.type_i_z2()
+z2 = type_i.construction_a()
+odd_disc = pl.OddDiscriminantForm.from_lattice(pl.IntegralForm.diagonal([3]))
+print("  Type I Construction A        :",
+      type_i.weight_enumerator(), z2.is_even(), z2.theta_series_level4(5))
+print("  odd discr/Milgram report     :",
+      odd_disc.group, odd_disc.quadratic_value_mod1([1]), pl.odd_milgram_report(pl.IntegralForm.diagonal([3])))
 print("  Golay raw generator rows     :", len(pl.extended_golay_generator_rows()),
       len(pl.extended_golay_generator_rows()[0]))
 disc = pl.DiscriminantForm.from_lattice(A2)

@@ -1,5 +1,7 @@
-//! The `DiscriminantForm` core: the finite quadratic module `A_L = L#/L` of an even
-//! integral lattice, its Gauss sum, and the Weil representation (`S`, `T` matrices).
+//! The discriminant-form core: the even-lattice finite quadratic module
+//! [`DiscriminantForm`], the odd-lattice [`OddDiscriminantForm`], Gauss sums,
+//! Milgram/van der Blij checks, and the even Weil representation (`S`, `T`
+//! matrices).
 
 use super::complex::Complex64;
 use super::gauss_sum::{mat_approx_eq, mat_identity, mat_mul, mat_pow, mat_scale, GaussSum};
@@ -154,6 +156,29 @@ fn two_adic_oddity(diag: &[Rational]) -> i128 {
         })
         .sum::<i128>()
         .rem_euclid(8)
+}
+
+fn genus_oddity_and_p_excess_mod8(lattice: &IntegralForm) -> Option<(i128, i128)> {
+    let genus = Genus::of(lattice)?;
+    let oddity = genus
+        .symbol_at(2)
+        .iter()
+        .map(|s| s.oddity)
+        .sum::<i128>()
+        .rem_euclid(8);
+    let p_excess = genus
+        .primes()
+        .into_iter()
+        .filter(|&p| p != 2)
+        .flat_map(|p| {
+            genus
+                .symbol_at(p)
+                .iter()
+                .map(move |s| symbol_p_excess_mod8(p, s.scale, s.dim, s.sign))
+        })
+        .sum::<i128>()
+        .rem_euclid(8);
+    Some((oddity, p_excess))
 }
 
 fn symbol_p_excess_mod8(p: u128, scale: u128, dim: usize, sign: i128) -> i128 {
@@ -630,6 +655,43 @@ pub struct DiscriminantForm {
     pub gram_inv: Vec<Vec<Rational>>,
 }
 
+/// The finite discriminant quadratic object attached to an odd integral lattice.
+///
+/// For odd lattices the even-lattice value `x^2 mod 2Z` is not well-defined on
+/// `L#/L`. The canonical odd replacement used here is `x^2 mod Z`, represented by
+/// `q_L(y) = y^T G^{-1} y mod Z` on `Z^n / GZ^n`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct OddDiscriminantForm {
+    /// Nontrivial invariant factors of `A_L`.
+    pub group: Vec<i128>,
+    /// Canonical representatives `y` for `Z^n / GZ^n`.
+    pub reps: Vec<Vec<i128>>,
+    /// The exact inverse Gram matrix.
+    pub gram_inv: Vec<Vec<Rational>>,
+}
+
+/// The odd-lattice Milgram/van der Blij congruence data.
+///
+/// The corrected signature is `oddity - p_excess (mod 8)`, using the
+/// Conway-Sloane genus symbol. For even lattices the uncorrected discriminant
+/// Gauss sum is handled by [`verify_milgram`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OddMilgramReport {
+    pub signature_mod8: i128,
+    pub oddity_mod8: i128,
+    pub p_excess_mod8: i128,
+    pub corrected_signature_mod8: i128,
+    pub genus_signature_mod8: i128,
+}
+
+impl OddMilgramReport {
+    /// Whether the oddity-corrected genus formula recovers the real signature.
+    pub fn verified(&self) -> bool {
+        self.corrected_signature_mod8 == self.signature_mod8
+            && self.genus_signature_mod8 == self.signature_mod8
+    }
+}
+
 impl DiscriminantForm {
     /// Build `q_L` for a nonsingular even lattice. Odd lattices return `None`
     /// because `x^T G x mod 2Z` is not well-defined on `L#/L`.
@@ -1022,24 +1084,81 @@ impl DiscriminantForm {
     }
 }
 
+impl OddDiscriminantForm {
+    /// Build the odd-lattice discriminant object for a nonsingular odd lattice.
+    ///
+    /// Even lattices stay on [`DiscriminantForm`], whose `Q/2Z` values carry the
+    /// nondegenerate Weil/Milgram finite quadratic module.
+    pub fn from_lattice(lattice: &IntegralForm) -> Option<Self> {
+        if lattice.is_even() || lattice.determinant() == 0 {
+            return None;
+        }
+        let mat: Vec<Vec<Rational>> = lattice
+            .gram()
+            .iter()
+            .map(|row| row.iter().map(|&x| Rational::from_int(x)).collect())
+            .collect();
+        let gram_inv = inverse_matrix(mat)?;
+        let hnf = normalize_relation_rows(lattice.gram().to_vec());
+        let reps = enumerate_hnf_reps(&hnf)?;
+        let det = lattice.determinant().unsigned_abs() as usize;
+        if reps.len() != det {
+            return None;
+        }
+        let group = lattice
+            .invariant_factors()
+            .into_iter()
+            .filter(|&d| d > 1)
+            .collect();
+        Some(OddDiscriminantForm {
+            group,
+            reps,
+            gram_inv,
+        })
+    }
+
+    /// `q_L(y) = y^T G^{-1} y mod Z`, represented in `[0, 1)`.
+    pub fn quadratic_value_mod1(&self, y: &[i128]) -> Rational {
+        rational_mod_int(dot_inv(y, &self.gram_inv, y), 1)
+    }
+
+    /// The discriminant bilinear pairing `b_L(y,z) = y^T G^{-1} z mod Z`.
+    pub fn bilinear_value_mod1(&self, y: &[i128], z: &[i128]) -> Rational {
+        rational_mod_int(dot_inv(y, &self.gram_inv, z), 1)
+    }
+
+    /// The normalized Gauss sum of the `Q/Z` odd-lattice discriminant values.
+    ///
+    /// This sum is useful diagnostic data, but unlike the even `Q/2Z` form it is
+    /// not the whole Milgram statement; use [`odd_milgram_report`] for the
+    /// oddity-corrected signature congruence.
+    pub fn gauss_sum(&self) -> GaussSum {
+        let mut re = 0.0f64;
+        let mut im = 0.0f64;
+        for y in &self.reps {
+            let theta = std::f64::consts::TAU * rational_to_f64(&self.quadratic_value_mod1(y));
+            re += theta.cos();
+            im += theta.sin();
+        }
+        let scale = 1.0 / (self.reps.len() as f64).sqrt();
+        GaussSum {
+            re: re * scale,
+            im: im * scale,
+        }
+    }
+
+    /// Phase of [`gauss_sum`](Self::gauss_sum), when it is an eighth root.
+    pub fn gauss_phase_mod8(&self) -> Option<i128> {
+        self.gauss_sum().phase_mod8(1e-8)
+    }
+}
+
 /// Signature mod 8 from the Conway-Sloane oddity formula, using exact rational
 /// diagonalization as an independent check on Milgram's Gauss sum.
 pub fn genus_signature_mod8(lattice: &IntegralForm) -> Option<i128> {
-    let genus = Genus::of(lattice)?;
     let diag = diagonal_entries(lattice)?;
     let oddity = two_adic_oddity(&diag);
-    let p_excess = genus
-        .primes()
-        .into_iter()
-        .filter(|&p| p != 2)
-        .flat_map(|p| {
-            genus
-                .symbol_at(p)
-                .iter()
-                .map(move |s| symbol_p_excess_mod8(p, s.scale, s.dim, s.sign))
-        })
-        .sum::<i128>()
-        .rem_euclid(8);
+    let (_, p_excess) = genus_oddity_and_p_excess_mod8(lattice)?;
     Some((oddity - p_excess).rem_euclid(8))
 }
 
@@ -1054,4 +1173,25 @@ pub fn verify_milgram(lattice: &IntegralForm) -> Option<bool> {
     let sig = (pos as i128 - neg as i128).rem_euclid(8);
     let genus_sig = genus_signature_mod8(lattice)?;
     Some(phase == sig && float_phase == sig && genus_sig == sig)
+}
+
+/// Report the odd-lattice Milgram/van der Blij signature congruence.
+pub fn odd_milgram_report(lattice: &IntegralForm) -> Option<OddMilgramReport> {
+    let _disc = OddDiscriminantForm::from_lattice(lattice)?;
+    let (pos, neg) = lattice.signature();
+    let signature_mod8 = (pos as i128 - neg as i128).rem_euclid(8);
+    let (oddity_mod8, p_excess_mod8) = genus_oddity_and_p_excess_mod8(lattice)?;
+    let corrected_signature_mod8 = (oddity_mod8 - p_excess_mod8).rem_euclid(8);
+    Some(OddMilgramReport {
+        signature_mod8,
+        oddity_mod8,
+        p_excess_mod8,
+        corrected_signature_mod8,
+        genus_signature_mod8: genus_signature_mod8(lattice)?,
+    })
+}
+
+/// Verify the odd-lattice Milgram/van der Blij congruence.
+pub fn verify_odd_milgram(lattice: &IntegralForm) -> Option<bool> {
+    Some(odd_milgram_report(lattice)?.verified())
 }
